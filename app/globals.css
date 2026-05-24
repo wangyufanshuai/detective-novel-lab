@@ -2,14 +2,13 @@
   --ink: #191711;
   --muted: #6e6758;
   --paper: #f5f0e6;
-  --paper-deep: #ebe1d0;
   --panel: #fffaf0;
   --line: #d8c9ad;
   --accent: #b7202e;
   --accent-dark: #7d121c;
   --green: #2f6b4f;
   --blue: #244d79;
-  --shadow: 0 24px 70px rgba(42, 31, 15, 0.18);
+  --shadow: 0 24px 70px rgba(42, 31, 15, 0.16);
 }
 
 * {
@@ -23,6 +22,7 @@ body {
 
 body {
   margin: 0;
+  color: var(--ink);
   background:
     linear-gradient(90deg, rgba(25, 23, 17, 0.04) 1px, transparent 1px),
     linear-gradient(rgba(25, 23, 17, 0.035) 1px, transparent 1px),
@@ -30,13 +30,13 @@ body {
     radial-gradient(circle at 88% 10%, rgba(47, 107, 79, 0.12), transparent 22rem),
     var(--paper);
   background-size: 34px 34px, 34px 34px, auto, auto, auto;
-  color: var(--ink);
   font-family: "Noto Serif SC", "Source Han Serif SC", "Songti SC", Georgia, serif;
 }
 
 button,
 textarea,
-select {
+select,
+input {
   font: inherit;
 }
 
@@ -78,7 +78,6 @@ button {
   color: #fff7e5;
   background: var(--accent);
   border: 1px solid rgba(255, 255, 255, 0.25);
-  box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.1);
 }
 
 .brand p,
@@ -86,36 +85,28 @@ button {
 .cardKicker,
 .hint {
   margin: 0;
-  color: inherit;
   font-size: 12px;
   letter-spacing: 0;
-  opacity: 0.72;
+  opacity: 0.75;
 }
 
 .brand h1 {
   margin: 3px 0 0;
   font-size: 24px;
   font-weight: 800;
-  letter-spacing: 0;
 }
 
-.stageList {
+.modeSwitch,
+.quickSteps {
   display: grid;
   gap: 8px;
-}
-
-.modeSwitch {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 8px;
-  margin: 0 0 18px;
+  margin-bottom: 18px;
 }
 
 .modeSwitch button {
   display: inline-flex;
   gap: 8px;
   align-items: center;
-  justify-content: flex-start;
   min-height: 42px;
   padding: 0 12px;
   color: rgba(246, 237, 220, 0.78);
@@ -128,83 +119,6 @@ button {
 .modeSwitch button.selected {
   color: #fffaf0;
   background: var(--accent);
-  border-color: rgba(255, 255, 255, 0.25);
-}
-
-.quickSteps {
-  display: grid;
-  gap: 8px;
-}
-
-.quickSteps .step {
-  padding: 12px;
-  color: rgba(246, 237, 220, 0.68);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  font-size: 13px;
-  line-height: 1.45;
-}
-
-.quickSteps .step.active {
-  color: #fff8ea;
-  border-color: rgba(255, 255, 255, 0.22);
-}
-
-.quickSteps .step.done {
-  color: #fff8ea;
-  background: rgba(47, 107, 79, 0.42);
-  border-color: rgba(255, 255, 255, 0.18);
-}
-
-.stageButton {
-  display: grid;
-  grid-template-columns: 32px 1fr;
-  gap: 12px;
-  width: 100%;
-  padding: 12px;
-  color: rgba(246, 237, 220, 0.78);
-  text-align: left;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-}
-
-.stageButton:hover,
-.stageButton.active {
-  color: #fff8ea;
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.25);
-}
-
-.stageButton.done .stageNumber {
-  background: var(--green);
-}
-
-.stageNumber {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  color: #fff7e5;
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 50%;
-}
-
-.stageButton strong,
-.stageButton small {
-  display: block;
-}
-
-.stageButton strong {
-  font-size: 15px;
-}
-
-.stageButton small {
-  margin-top: 3px;
-  font-size: 12px;
-  line-height: 1.45;
-  opacity: 0.68;
 }
 
 .sidebarPanel {
@@ -268,23 +182,22 @@ button {
   margin: 6px 0 0;
   font-size: clamp(28px, 4vw, 52px);
   line-height: 1.05;
-  letter-spacing: 0;
 }
 
-.eyebrow {
+.eyebrow,
+.cardKicker {
   color: var(--accent-dark);
   font-weight: 800;
 }
 
-.topActions {
+.topActions,
+.actionRow {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
-  justify-content: flex-end;
 }
 
 .iconButton,
-.softButton,
 .primaryButton,
 .secondaryButton {
   display: inline-flex;
@@ -293,52 +206,51 @@ button {
   justify-content: center;
   min-height: 40px;
   border-radius: 8px;
-  transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease;
+  border: 1px solid transparent;
+  font-weight: 800;
 }
 
 .iconButton {
   width: 42px;
   color: var(--ink);
   background: var(--panel);
-  border: 1px solid var(--line);
+  border-color: var(--line);
 }
 
-.iconButton:hover,
-.primaryButton:hover,
-.secondaryButton:hover,
-.softButton:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 12px 28px rgba(42, 31, 15, 0.14);
+.primaryButton {
+  padding: 0 15px;
+  color: #fff8ea;
+  background: var(--accent);
+  border-color: var(--accent-dark);
 }
 
+.secondaryButton {
+  padding: 0 15px;
+  color: var(--ink);
+  background: #fffaf0;
+  border-color: var(--line);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.gameGrid,
 .contentGrid {
   display: grid;
-  grid-template-columns: minmax(320px, 0.9fr) minmax(420px, 1.4fr);
+  grid-template-columns: minmax(320px, 0.9fr) minmax(420px, 1.25fr);
   gap: 18px;
-}
-
-.quickGrid {
-  display: grid;
-  grid-template-columns: minmax(320px, 0.95fr) minmax(420px, 1.15fr);
-  gap: 18px;
-}
-
-.twoCols {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
 }
 
 .inputDeck,
 .outputDeck,
-.fullOutput {
+.panel {
   display: flex;
   flex-direction: column;
-  min-height: 680px;
+  min-height: 560px;
   padding: 20px;
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(255, 250, 240, 0.86)),
-    var(--panel);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(255, 250, 240, 0.9)), var(--panel);
   border: 1px solid var(--line);
   border-radius: 8px;
   box-shadow: var(--shadow);
@@ -350,9 +262,13 @@ button {
     repeating-linear-gradient(0deg, transparent 0 31px, rgba(36, 77, 121, 0.1) 32px);
 }
 
-.fullOutput {
+.panel {
+  min-height: 420px;
+}
+
+.widePanel,
+.reviewStrip {
   grid-column: 1 / -1;
-  min-height: 600px;
 }
 
 .cardHeader {
@@ -368,11 +284,6 @@ button {
 .cardHeader h3 {
   margin: 3px 0 0;
   font-size: 24px;
-}
-
-.cardKicker {
-  color: var(--accent-dark);
-  font-weight: 800;
 }
 
 .field {
@@ -391,96 +302,46 @@ button {
   font-weight: 800;
 }
 
+.twoCols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
 select,
-textarea {
+textarea,
+input {
   width: 100%;
   color: var(--ink);
-  background: rgba(255, 255, 255, 0.64);
+  background: rgba(255, 255, 255, 0.66);
   border: 1px solid var(--line);
   border-radius: 8px;
   outline: none;
 }
 
-select {
+select,
+input {
   min-height: 44px;
   padding: 0 12px;
 }
 
 textarea {
-  min-height: 320px;
+  min-height: 280px;
   resize: vertical;
   padding: 14px;
   line-height: 1.7;
 }
 
-textarea:focus,
-select:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(183, 32, 46, 0.12);
-}
-
 .smallArea {
-  min-height: 94px;
+  min-height: 92px;
 }
 
 .draftEditor {
   flex: 1;
-  min-height: 520px;
+  min-height: 460px;
   color: #211d16;
   background: rgba(255, 252, 244, 0.76);
   font-size: 15px;
-}
-
-.novelEditor {
-  flex: 1;
-  min-height: 520px;
-  color: #211d16;
-  background: rgba(255, 252, 244, 0.76);
-  font-size: 15px;
-}
-
-.actionRow {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 4px;
-}
-
-.actionRow.compact {
-  margin-top: 14px;
-}
-
-.primaryButton,
-.secondaryButton,
-.softButton {
-  padding: 0 15px;
-  border: 1px solid transparent;
-  font-weight: 800;
-}
-
-.primaryButton {
-  color: #fff8ea;
-  background: var(--accent);
-  border-color: var(--accent-dark);
-}
-
-.secondaryButton,
-.softButton {
-  color: var(--ink);
-  background: #fffaf0;
-  border-color: var(--line);
-}
-
-.softButton {
-  min-height: 34px;
-  font-size: 13px;
-}
-
-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-  transform: none;
-  box-shadow: none;
 }
 
 .truthToggle {
@@ -494,7 +355,6 @@ button:disabled {
 
 .reviewStrip {
   display: grid;
-  grid-column: 1 / -1;
   grid-template-columns: 180px 180px 1fr;
   gap: 12px;
 }
@@ -525,6 +385,44 @@ button:disabled {
   line-height: 1.45;
 }
 
+.scrollList {
+  display: grid;
+  gap: 10px;
+  max-height: 380px;
+  margin-top: 14px;
+  overflow: auto;
+}
+
+.miniCard {
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.miniCard p {
+  margin: 6px 0 0;
+  line-height: 1.55;
+}
+
+.caseGraph {
+  width: 100%;
+  min-height: 320px;
+  background: rgba(255, 255, 255, 0.42);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.judgement {
+  white-space: pre-wrap;
+  margin: 14px 0 0;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.66);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  line-height: 1.65;
+}
+
 .spin {
   animation: spin 900ms linear infinite;
 }
@@ -545,12 +443,9 @@ button:disabled {
     height: auto;
   }
 
-  .stageList {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
+  .gameGrid,
   .contentGrid,
-  .quickGrid {
+  .reviewStrip {
     grid-template-columns: 1fr;
   }
 }
@@ -565,21 +460,11 @@ button:disabled {
     flex-direction: column;
   }
 
-  .stageList,
-  .reviewStrip {
-    grid-template-columns: 1fr;
-  }
-
   .inputDeck,
   .outputDeck,
-  .fullOutput {
+  .panel {
     min-height: auto;
     padding: 16px;
-  }
-
-  .draftEditor,
-  .novelEditor {
-    min-height: 420px;
   }
 
   .twoCols {
