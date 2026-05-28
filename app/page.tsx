@@ -10,7 +10,6 @@ import {
   GitBranch,
   KeyRound,
   Loader2,
-  Map,
   MessageSquare,
   Network,
   Search,
@@ -24,9 +23,12 @@ import {
   Character,
   DeductionCase,
   Evidence,
+  EvidenceChallenge,
   PlayerTheory,
   createFallbackCase,
+  evaluateEvidenceChallenge,
   evidenceByScene,
+  getTimelineContradictions,
   judgeTheory,
   validateCase
 } from "@/lib/deduction";
@@ -37,9 +39,12 @@ type Mode = "game" | "novel";
 type DialogueEntry = {
   characterId: string;
   question: string;
+  evidenceId?: string;
+  challenge?: EvidenceChallenge;
   answer: string;
 };
 
+const storageKey = "deduction-engine-v3";
 const caseTypes = ["随机组合", "密室杀人", "死亡留言", "不在场证明", "毒杀", "身份误认", "消失的凶器"];
 const lengthTargets = ["3000-6000字", "8000-15000字", "15000-25000字"];
 
@@ -57,10 +62,10 @@ const gameStarter = `题材：校园天文台死亡留言
 要求：
 - 公平推理。
 - 凶手唯一。
+- 每个非凶手都要有可发现的排除证据。
 - 不要超自然、双胞胎、秘密通道。`;
 
 const novelStarter = `我想写一篇中文本格推理小说。
-
 背景：
 - 地点：
 - 时代：
@@ -113,18 +118,21 @@ export default function Home() {
   const [deductionCase, setDeductionCase] = useState<DeductionCase | null>(null);
   const [caseFile, setCaseFile] = useState("");
   const [discoveredEvidenceIds, setDiscoveredEvidenceIds] = useState<string[]>([]);
+  const [exposedContradictionIds, setExposedContradictionIds] = useState<string[]>([]);
   const [selectedSceneId, setSelectedSceneId] = useState("");
   const [selectedCharacterId, setSelectedCharacterId] = useState("");
+  const [selectedEvidenceId, setSelectedEvidenceId] = useState("");
   const [question, setQuestion] = useState("");
   const [dialogues, setDialogues] = useState<DialogueEntry[]>([]);
   const [theory, setTheory] = useState<PlayerTheory>({ culpritId: "", motive: "", method: "", evidenceIds: [] });
   const [judgementText, setJudgementText] = useState("");
+  const [solutionText, setSolutionText] = useState("");
 
   const [novelBrief, setNovelBrief] = useState(novelStarter);
   const [novelSynopsis, setNovelSynopsis] = useState("");
 
   useEffect(() => {
-    const saved = localStorage.getItem("deduction-engine-v2");
+    const saved = localStorage.getItem(storageKey);
     if (!saved) return;
     try {
       const data = JSON.parse(saved);
@@ -136,11 +144,14 @@ export default function Home() {
       setDeductionCase(data.deductionCase || null);
       setCaseFile(data.caseFile || "");
       setDiscoveredEvidenceIds(data.discoveredEvidenceIds || []);
+      setExposedContradictionIds(data.exposedContradictionIds || []);
       setSelectedSceneId(data.selectedSceneId || "");
       setSelectedCharacterId(data.selectedCharacterId || "");
+      setSelectedEvidenceId(data.selectedEvidenceId || "");
       setDialogues(data.dialogues || []);
       setTheory(data.theory || { culpritId: "", motive: "", method: "", evidenceIds: [] });
       setJudgementText(data.judgementText || "");
+      setSolutionText(data.solutionText || "");
       setNovelBrief(data.novelBrief || novelStarter);
       setNovelSynopsis(data.novelSynopsis || "");
     } catch {
@@ -150,7 +161,7 @@ export default function Home() {
 
   useEffect(() => {
     localStorage.setItem(
-      "deduction-engine-v2",
+      storageKey,
       JSON.stringify({
         mode,
         provider,
@@ -160,11 +171,14 @@ export default function Home() {
         deductionCase,
         caseFile,
         discoveredEvidenceIds,
+        exposedContradictionIds,
         selectedSceneId,
         selectedCharacterId,
+        selectedEvidenceId,
         dialogues,
         theory,
         judgementText,
+        solutionText,
         novelBrief,
         novelSynopsis
       })
@@ -178,11 +192,14 @@ export default function Home() {
     deductionCase,
     caseFile,
     discoveredEvidenceIds,
+    exposedContradictionIds,
     selectedSceneId,
     selectedCharacterId,
+    selectedEvidenceId,
     dialogues,
     theory,
     judgementText,
+    solutionText,
     novelBrief,
     novelSynopsis
   ]);
@@ -192,6 +209,10 @@ export default function Home() {
     () => (deductionCase ? deductionCase.evidence.filter((item) => discoveredEvidenceIds.includes(item.id)) : []),
     [deductionCase, discoveredEvidenceIds]
   );
+  const timelineContradictions = useMemo(
+    () => (deductionCase ? getTimelineContradictions(deductionCase, discoveredEvidenceIds) : []),
+    [deductionCase, discoveredEvidenceIds]
+  );
 
   const exportText = useMemo(() => {
     if (!deductionCase) return "";
@@ -199,18 +220,22 @@ export default function Home() {
       `# ${deductionCase.title}`,
       "## 玩家案卷",
       caseFile,
-      "## 结构化真相",
+      "## 已发现证据",
+      discoveredEvidence.map((item) => `- ${item.id} ${item.title}: ${item.visibleDescription}`).join("\n"),
+      "## 质询记录",
+      dialogues
+        .map((item) => `### ${characterName(deductionCase, item.characterId)}\n证据：${item.evidenceId || "无"}\n问：${item.question}\n答：${item.answer}`)
+        .join("\n\n"),
+      "## 判定",
+      judgementText,
+      "## 解答篇",
+      solutionText,
+      "## 结构化案件",
       "```json",
       renderJson(deductionCase),
-      "```",
-      "## 已发现证据",
-      discoveredEvidence.map((item) => `- ${item.title}: ${item.visibleDescription}`).join("\n"),
-      "## 对话记录",
-      dialogues.map((item) => `### ${characterName(deductionCase, item.characterId)}\n问：${item.question}\n答：${item.answer}`).join("\n\n"),
-      "## 判定",
-      judgementText
+      "```"
     ].join("\n\n");
-  }, [caseFile, deductionCase, dialogues, discoveredEvidence, judgementText]);
+  }, [caseFile, deductionCase, dialogues, discoveredEvidence, judgementText, solutionText]);
 
   async function callGenerate(stage: string, body: Record<string, unknown>) {
     const response = await fetch("/api/generate", {
@@ -236,65 +261,44 @@ export default function Home() {
 
   async function generateCase() {
     setIsGenerating(true);
-    setStatus("正在生成结构化真相...");
+    setStatus("正在生成并校验结构化真相...");
     setProgress("gameTruthSeed");
     try {
       const seed = await callGenerate("gameTruthSeed", { currentDraft: {} });
       const nextCase = seed.json as DeductionCase;
       const nextValidation = validateCase(nextCase);
-      if (!nextValidation.valid) {
-        setStatus(`案件结构存在问题：${nextValidation.issues.join("；")}。已载入，建议重试生成。`);
-      }
-
       setDeductionCase(nextCase);
       setDiscoveredEvidenceIds([]);
+      setExposedContradictionIds([]);
       setDialogues([]);
       setJudgementText("");
+      setSolutionText("");
       setTheory({ culpritId: "", motive: "", method: "", evidenceIds: [] });
       setSelectedSceneId(nextCase.scenes[0]?.id || "");
       setSelectedCharacterId(nextCase.characters.find((character) => !character.isCulprit)?.id || nextCase.characters[0]?.id || "");
+      setSelectedEvidenceId("");
 
-      setStatus("正在生成玩家案卷...");
+      setStatus(nextValidation.valid ? "结构校验通过，正在生成玩家案卷..." : `结构仍有问题：${nextValidation.issues.join("；")}`);
       setProgress("gameCaseFile");
       const file = await callGenerate("gameCaseFile", {
-        currentDraft: { structuredCase: renderJson(nextCase) },
-        userDirection: "生成玩家可见案卷，不要泄露凶手、幕后真相和证据真实含义。"
+        currentDraft: { structuredCase: renderJson(nextCase), validation: renderJson(nextValidation) },
+        userDirection: "生成玩家可见案卷，不要泄露凶手、幕后真相、证据真实含义和完整排除链。"
       });
       setCaseFile(file.content);
-      setStatus("案件已生成。开始询问角色、搜索场景并提交推理。");
+      setStatus(seed.repaired ? "案件已生成，期间自动修复过逻辑结构。" : "案件已生成。开始搜索、质询并提交推理。");
       setProgress("");
     } catch (error) {
       const fallback = createFallbackCase(topic);
       setDeductionCase(fallback);
       setCaseFile(fallback.publicCaseFile);
+      setDiscoveredEvidenceIds([]);
+      setExposedContradictionIds([]);
+      setDialogues([]);
+      setJudgementText("");
+      setSolutionText("");
       setSelectedSceneId(fallback.scenes[0]?.id || "");
-      setSelectedCharacterId(fallback.characters[1]?.id || fallback.characters[0]?.id || "");
+      setSelectedCharacterId(fallback.characters[0]?.id || "");
       setStatus(error instanceof Error ? `生成失败，已载入本地示例：${error.message}` : "生成失败，已载入本地示例。");
-    } finally {
-      setIsGenerating(false);
-    }
-  }
-
-  async function askCharacter() {
-    if (!deductionCase || !selectedCharacterId || !question.trim()) return;
-    setIsGenerating(true);
-    setStatus("正在生成角色回答...");
-    try {
-      const character = deductionCase.characters.find((item) => item.id === selectedCharacterId) as Character;
-      const result = await callGenerate("gameDialogue", {
-        currentDraft: {
-          structuredCase: renderJson(deductionCase),
-          character: renderJson(character),
-          discoveredEvidence: renderJson(discoveredEvidence)
-        },
-        userDirection: `玩家问题：${question}`
-      });
-      const entry = { characterId: selectedCharacterId, question, answer: result.content };
-      setDialogues((items) => [...items, entry]);
-      setQuestion("");
-      setStatus("角色回答已记录。");
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "询问失败");
     } finally {
       setIsGenerating(false);
     }
@@ -305,6 +309,37 @@ export default function Home() {
     const found = evidenceByScene(deductionCase, selectedSceneId).map((item) => item.id);
     setDiscoveredEvidenceIds((current) => Array.from(new Set([...current, ...found])));
     setStatus(found.length ? `发现 ${found.length} 条证据。` : "这个场景没有新的可发现证据。");
+  }
+
+  async function challengeCharacter() {
+    if (!deductionCase || !selectedCharacterId || !question.trim()) return;
+    setIsGenerating(true);
+    setStatus("正在生成质询回答...");
+    try {
+      const character = deductionCase.characters.find((item) => item.id === selectedCharacterId) as Character;
+      const evidence = deductionCase.evidence.find((item) => item.id === selectedEvidenceId) as Evidence | undefined;
+      const challenge = evidence ? evaluateEvidenceChallenge(deductionCase, selectedCharacterId, selectedEvidenceId) : undefined;
+      if (challenge?.exposedContradictions.length) {
+        setExposedContradictionIds((current) => Array.from(new Set([...current, ...challenge.exposedContradictions])));
+      }
+      const result = await callGenerate(evidence ? "gameEvidenceChallenge" : "gameDialogue", {
+        currentDraft: {
+          structuredCase: renderJson(deductionCase),
+          character: renderJson(character),
+          selectedEvidence: renderJson(evidence || null),
+          challenge: renderJson(challenge || null),
+          discoveredEvidence: renderJson(discoveredEvidence)
+        },
+        userDirection: `玩家问题：${question}`
+      });
+      setDialogues((items) => [...items, { characterId: selectedCharacterId, evidenceId: selectedEvidenceId || undefined, question, challenge, answer: result.content }]);
+      setQuestion("");
+      setStatus(challenge?.hit ? "质询命中矛盾，已记录。" : "角色回答已记录。");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "质询失败");
+    } finally {
+      setIsGenerating(false);
+    }
   }
 
   async function submitTheory() {
@@ -321,9 +356,21 @@ export default function Home() {
         },
         userDirection: `规则结论必须保持为：${result.accepted ? "推理成立" : "推理不成立"}。`
       });
-      setJudgementText(`${result.accepted ? "推理成立" : "推理不成立"}｜得分 ${result.score}/100\n\n${explanation.content}`);
+      setJudgementText(`${result.accepted ? "推理成立" : "推理不成立"}，得分 ${result.score}/100\n\n${explanation.content}`);
+      if (result.accepted) {
+        const solution = await callGenerate("gameSolutionReveal", {
+          currentDraft: { structuredCase: renderJson(deductionCase), playerTheory: renderJson(theory), ruleJudgement: renderJson(result) },
+          userDirection: "玩家已通过规则判定，生成完整解答篇。"
+        });
+        setSolutionText(solution.content);
+        setStatus("推理通过，解答篇已生成。");
+      } else {
+        setSolutionText("");
+        setStatus("推理未通过，只展示缺口提示。");
+      }
     } catch {
-      setJudgementText(`${result.accepted ? "推理成立" : "推理不成立"}｜得分 ${result.score}/100\n\n${result.explanation}\n\n缺失：${result.missing.join("；") || "无"}\n矛盾：${result.contradictions.join("；") || "无"}`);
+      setJudgementText(`${result.accepted ? "推理成立" : "推理不成立"}，得分 ${result.score}/100\n\n${result.explanation}\n\n缺口：${result.missing.join("；") || "无"}\n矛盾：${result.contradictions.join("；") || "无"}`);
+      setStatus("已使用本地规则结果展示判定。");
     } finally {
       setIsGenerating(false);
     }
@@ -356,7 +403,7 @@ export default function Home() {
           </div>
           <div>
             <p>Deduction Engine</p>
-            <h1>本格推理游戏</h1>
+            <h1>硬逻辑案件引擎</h1>
           </div>
         </div>
 
@@ -384,378 +431,300 @@ export default function Home() {
               硅基流动
             </button>
           </div>
-          <p className="hint">游戏判定由本地规则引擎执行，LLM 只生成结构与文本。</p>
+          <p className="hint">API 入口不变。案件裁判由本地规则执行，LLM 只负责结构候选和自然语言。</p>
         </div>
       </aside>
 
       {mode === "game" ? (
-        <GameWorkspace
-          caseType={caseType}
-          deductionCase={deductionCase}
-          dialogues={dialogues}
-          discoveredEvidence={discoveredEvidence}
-          discoveredEvidenceIds={discoveredEvidenceIds}
-          exportText={exportText}
-          isGenerating={isGenerating}
-          judgementText={judgementText}
-          lengthTarget={lengthTarget}
-          progress={progress}
-          provider={provider}
-          question={question}
-          selectedCharacterId={selectedCharacterId}
-          selectedSceneId={selectedSceneId}
-          setCaseType={setCaseType}
-          setLengthTarget={setLengthTarget}
-          setQuestion={setQuestion}
-          setSelectedCharacterId={setSelectedCharacterId}
-          setSelectedSceneId={setSelectedSceneId}
-          setTheory={setTheory}
-          setTopic={setTopic}
-          status={status}
-          theory={theory}
-          topic={topic}
-          validation={validation}
-          askCharacter={askCharacter}
-          generateCase={generateCase}
-          searchScene={searchScene}
-          submitTheory={submitTheory}
-          caseFile={caseFile}
-        />
+        <section className="workspace">
+          <header className="topbar">
+            <div>
+              <p className="eyebrow">结构化真相 → 规则校验 → 证据质询 → 推理判定</p>
+              <h2>{deductionCase?.title || "Deduction Game"}</h2>
+            </div>
+            <div className="topActions">
+              <button className="iconButton" onClick={() => navigator.clipboard.writeText(exportText)} title="复制案卷" type="button">
+                <ClipboardCopy size={18} />
+              </button>
+              <button className="iconButton" onClick={() => downloadFile("deduction-case.md", exportText, "text/markdown;charset=utf-8")} title="导出 Markdown" type="button">
+                <Download size={18} />
+              </button>
+            </div>
+          </header>
+
+          <div className="gameGrid">
+            <section className="inputDeck">
+              <div className="cardHeader">
+                <div>
+                  <p className="cardKicker">案件生成</p>
+                  <h3>题材与约束</h3>
+                </div>
+              </div>
+              <div className="twoCols">
+                <label className="field">
+                  <span>案件类型</span>
+                  <select value={caseType} onChange={(event) => setCaseType(event.target.value)}>
+                    {caseTypes.map((type) => (
+                      <option key={type}>{type}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="field">
+                  <span>篇幅档位</span>
+                  <select value={lengthTarget} onChange={(event) => setLengthTarget(event.target.value)}>
+                    {lengthTargets.map((target) => (
+                      <option key={target}>{target}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <label className="field grow">
+                <span>输入题材</span>
+                <textarea value={topic} onChange={(event) => setTopic(event.target.value)} spellCheck={false} translate="no" />
+              </label>
+              <button className="primaryButton" disabled={isGenerating} onClick={generateCase} type="button">
+                {isGenerating ? <Loader2 className="spin" size={18} /> : <Wand2 size={18} />}
+                生成并校验案件
+              </button>
+            </section>
+
+            <section className="outputDeck">
+              <div className="cardHeader">
+                <div>
+                  <p className="cardKicker">玩家案卷</p>
+                  <h3>公开信息</h3>
+                </div>
+                <div className="truthToggle">{progress || "规则优先"}</div>
+              </div>
+              <textarea className="draftEditor" value={caseFile} readOnly placeholder="生成案件后显示玩家可见案卷。" />
+            </section>
+
+            <section className="reviewStrip">
+              <div className="reviewItem">
+                {validation?.valid ? <CheckCircle2 size={18} /> : <XCircle size={18} />}
+                <span>结构校验</span>
+                <strong>{validation ? (validation.valid ? "通过" : "有问题") : "未生成"}</strong>
+              </div>
+              <div className="reviewItem">
+                <Eye size={18} />
+                <span>已发现证据</span>
+                <strong>{discoveredEvidenceIds.length}</strong>
+              </div>
+              <div className="reviewItem">
+                <GitBranch size={18} />
+                <span>已暴露矛盾</span>
+                <strong>{exposedContradictionIds.length}</strong>
+              </div>
+              <div className="reviewItem wide">
+                <Sparkles size={18} />
+                <span>状态</span>
+                <strong>{status}</strong>
+              </div>
+            </section>
+
+            {deductionCase && (
+              <>
+                <section className="panel">
+                  <div className="cardHeader">
+                    <div>
+                      <p className="cardKicker">场景</p>
+                      <h3>搜索证据</h3>
+                    </div>
+                  </div>
+                  <label className="field">
+                    <span>场景</span>
+                    <select value={selectedSceneId} onChange={(event) => setSelectedSceneId(event.target.value)}>
+                      {deductionCase.scenes.map((scene) => (
+                        <option key={scene.id} value={scene.id}>
+                          {scene.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button className="secondaryButton" onClick={searchScene} type="button">
+                    <Search size={17} />
+                    搜索场景
+                  </button>
+                  <div className="scrollList">
+                    {discoveredEvidence.map((item) => (
+                      <div className="miniCard" key={item.id}>
+                        <strong>{item.title}</strong>
+                        <p>{item.visibleDescription}</p>
+                        <code>{item.id}</code>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="panel">
+                  <div className="cardHeader">
+                    <div>
+                      <p className="cardKicker">人物</p>
+                      <h3>证据质询</h3>
+                    </div>
+                  </div>
+                  <div className="twoCols">
+                    <label className="field">
+                      <span>角色</span>
+                      <select value={selectedCharacterId} onChange={(event) => setSelectedCharacterId(event.target.value)}>
+                        {deductionCase.characters.map((character) => (
+                          <option key={character.id} value={character.id}>
+                            {character.name} - {character.role}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="field">
+                      <span>出示证据</span>
+                      <select value={selectedEvidenceId} onChange={(event) => setSelectedEvidenceId(event.target.value)}>
+                        <option value="">不出示证据</option>
+                        {discoveredEvidence.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.title}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  <label className="field">
+                    <span>问题</span>
+                    <textarea className="smallArea" value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="你案发时在哪里？这条证据能解释你的说法吗？" />
+                  </label>
+                  <button className="secondaryButton" disabled={isGenerating || !question.trim()} onClick={challengeCharacter} type="button">
+                    <MessageSquare size={17} />
+                    质询
+                  </button>
+                  <div className="scrollList">
+                    {dialogues.map((item, index) => (
+                      <div className={item.challenge?.hit ? "miniCard hot" : "miniCard"} key={`${item.characterId}-${index}`}>
+                        <strong>{characterName(deductionCase, item.characterId)}</strong>
+                        <p>证据：{item.evidenceId || "未出示"}</p>
+                        <p>问：{item.question}</p>
+                        <p>答：{item.answer}</p>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="panel widePanel">
+                  <div className="cardHeader">
+                    <div>
+                      <p className="cardKicker">时间线</p>
+                      <h3>公开证词与证据矛盾</h3>
+                    </div>
+                  </div>
+                  <div className="timeline">
+                    {timelineContradictions.map((item) => (
+                      <div className={item.revealed ? "timelineItem revealed" : "timelineItem"} key={item.eventId}>
+                        <span>{item.time}</span>
+                        <strong>{item.publicVersion}</strong>
+                        <p>{item.revealed ? item.trueEvent : "需要找到对应证据后才会揭示矛盾。"}</p>
+                        <code>{item.evidenceIds.join(", ")}</code>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="panel widePanel">
+                  <div className="cardHeader">
+                    <div>
+                      <p className="cardKicker">图谱</p>
+                      <h3>人物关系与证据图</h3>
+                    </div>
+                  </div>
+                  <CaseGraph deductionCase={deductionCase} discoveredEvidenceIds={discoveredEvidenceIds} />
+                </section>
+
+                <section className="panel widePanel">
+                  <div className="cardHeader">
+                    <div>
+                      <p className="cardKicker">终局</p>
+                      <h3>提交推理</h3>
+                    </div>
+                  </div>
+                  <div className="twoCols">
+                    <label className="field">
+                      <span>凶手</span>
+                      <select value={theory.culpritId} onChange={(event) => setTheory((current) => ({ ...current, culpritId: event.target.value }))}>
+                        <option value="">选择嫌疑人</option>
+                        {deductionCase.characters.map((character) => (
+                          <option key={character.id} value={character.id}>
+                            {character.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="field">
+                      <span>证据 ID，逗号分隔</span>
+                      <input
+                        value={theory.evidenceIds.join(",")}
+                        onChange={(event) => setTheory((current) => ({ ...current, evidenceIds: safeIdList(event.target.value) }))}
+                        placeholder="e-power-log,e-base-mark,e-dust"
+                      />
+                    </label>
+                  </div>
+                  <label className="field">
+                    <span>动机</span>
+                    <textarea className="smallArea" value={theory.motive} onChange={(event) => setTheory((current) => ({ ...current, motive: event.target.value }))} />
+                  </label>
+                  <label className="field">
+                    <span>手法</span>
+                    <textarea className="smallArea" value={theory.method} onChange={(event) => setTheory((current) => ({ ...current, method: event.target.value }))} />
+                  </label>
+                  <button className="primaryButton" disabled={isGenerating} onClick={submitTheory} type="button">
+                    <Target size={18} />
+                    判定推理
+                  </button>
+                  {judgementText && <pre className="judgement">{judgementText}</pre>}
+                  {solutionText && <pre className="solution">{solutionText}</pre>}
+                </section>
+              </>
+            )}
+          </div>
+        </section>
       ) : (
-        <NovelWorkspace
-          isGenerating={isGenerating}
-          novelBrief={novelBrief}
-          novelSynopsis={novelSynopsis}
-          setNovelBrief={setNovelBrief}
-          generateNovelSynopsis={generateNovelSynopsis}
-          status={status}
-        />
+        <NovelWorkspace isGenerating={isGenerating} novelBrief={novelBrief} novelSynopsis={novelSynopsis} setNovelBrief={setNovelBrief} generateNovelSynopsis={generateNovelSynopsis} status={status} />
       )}
     </main>
   );
 }
 
-type GameWorkspaceProps = {
-  caseType: string;
-  deductionCase: DeductionCase | null;
-  dialogues: DialogueEntry[];
-  discoveredEvidence: Evidence[];
-  discoveredEvidenceIds: string[];
-  exportText: string;
-  isGenerating: boolean;
-  judgementText: string;
-  lengthTarget: string;
-  progress: string;
-  provider: Provider;
-  question: string;
-  selectedCharacterId: string;
-  selectedSceneId: string;
-  setCaseType: (value: string) => void;
-  setLengthTarget: (value: string) => void;
-  setQuestion: (value: string) => void;
-  setSelectedCharacterId: (value: string) => void;
-  setSelectedSceneId: (value: string) => void;
-  setTheory: (value: PlayerTheory | ((current: PlayerTheory) => PlayerTheory)) => void;
-  setTopic: (value: string) => void;
-  status: string;
-  theory: PlayerTheory;
-  topic: string;
-  validation: ReturnType<typeof validateCase> | null;
-  askCharacter: () => void;
-  generateCase: () => void;
-  searchScene: () => void;
-  submitTheory: () => void;
-  caseFile: string;
-};
-
-function GameWorkspace(props: GameWorkspaceProps) {
-  const {
-    caseType,
-    deductionCase,
-    dialogues,
-    discoveredEvidence,
-    discoveredEvidenceIds,
-    exportText,
-    isGenerating,
-    judgementText,
-    lengthTarget,
-    progress,
-    question,
-    selectedCharacterId,
-    selectedSceneId,
-    setCaseType,
-    setLengthTarget,
-    setQuestion,
-    setSelectedCharacterId,
-    setSelectedSceneId,
-    setTheory,
-    setTopic,
-    status,
-    theory,
-    topic,
-    validation,
-    askCharacter,
-    generateCase,
-    searchScene,
-    submitTheory,
-    caseFile
-  } = props;
-
-  return (
-    <section className="workspace">
-      <header className="topbar">
-        <div>
-          <p className="eyebrow">符号真相结构 → LLM 案卷 → 玩家推理判定</p>
-          <h2>{deductionCase?.title || "Deduction Game"}</h2>
-        </div>
-        <div className="topActions">
-          <button className="iconButton" onClick={() => navigator.clipboard.writeText(exportText)} title="复制案卷" type="button">
-            <ClipboardCopy size={18} />
-          </button>
-          <button className="iconButton" onClick={() => downloadFile("deduction-case.md", exportText, "text/markdown;charset=utf-8")} title="导出 Markdown" type="button">
-            <Download size={18} />
-          </button>
-        </div>
-      </header>
-
-      <div className="gameGrid">
-        <section className="inputDeck">
-          <div className="cardHeader">
-            <div>
-              <p className="cardKicker">案件生成</p>
-              <h3>题材与约束</h3>
-            </div>
-          </div>
-          <div className="twoCols">
-            <label className="field">
-              <span>案件类型</span>
-              <select value={caseType} onChange={(event) => setCaseType(event.target.value)}>
-                {caseTypes.map((type) => (
-                  <option key={type}>{type}</option>
-                ))}
-              </select>
-            </label>
-            <label className="field">
-              <span>篇幅档位</span>
-              <select value={lengthTarget} onChange={(event) => setLengthTarget(event.target.value)}>
-                {lengthTargets.map((target) => (
-                  <option key={target}>{target}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <label className="field grow">
-            <span>输入题材</span>
-            <textarea value={topic} onChange={(event) => setTopic(event.target.value)} spellCheck={false} translate="no" />
-          </label>
-          <button className="primaryButton" disabled={isGenerating} onClick={generateCase} type="button">
-            {isGenerating ? <Loader2 className="spin" size={18} /> : <Wand2 size={18} />}
-            生成可玩案件
-          </button>
-        </section>
-
-        <section className="outputDeck">
-          <div className="cardHeader">
-            <div>
-              <p className="cardKicker">玩家案卷</p>
-              <h3>公开信息</h3>
-            </div>
-            <div className="truthToggle">{progress || "规则判定"}</div>
-          </div>
-          <textarea className="draftEditor" value={caseFile} readOnly placeholder="生成案件后显示玩家可见案卷。" />
-        </section>
-
-        <section className="reviewStrip">
-          <div className="reviewItem">
-            {validation?.valid ? <CheckCircle2 size={18} /> : <XCircle size={18} />}
-            <span>结构校验</span>
-            <strong>{validation ? (validation.valid ? "通过" : "有问题") : "未生成"}</strong>
-          </div>
-          <div className="reviewItem">
-            <Eye size={18} />
-            <span>已发现证据</span>
-            <strong>{discoveredEvidenceIds.length}</strong>
-          </div>
-          <div className="reviewItem wide">
-            <Sparkles size={18} />
-            <span>状态</span>
-            <strong>{status}</strong>
-          </div>
-        </section>
-
-        {deductionCase && (
-          <>
-            <section className="panel">
-              <div className="cardHeader">
-                <div>
-                  <p className="cardKicker">人物</p>
-                  <h3>询问角色</h3>
-                </div>
-              </div>
-              <label className="field">
-                <span>角色</span>
-                <select value={selectedCharacterId} onChange={(event) => setSelectedCharacterId(event.target.value)}>
-                  {deductionCase.characters.map((character) => (
-                    <option key={character.id} value={character.id}>
-                      {character.name} - {character.role}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="field">
-                <span>问题</span>
-                <textarea className="smallArea" value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="你案发时在哪里？你怎么看死者留下的线索？" />
-              </label>
-              <button className="secondaryButton" disabled={isGenerating || !question.trim()} onClick={askCharacter} type="button">
-                <MessageSquare size={17} />
-                询问
-              </button>
-              <div className="scrollList">
-                {dialogues.map((item, index) => (
-                  <div className="miniCard" key={`${item.characterId}-${index}`}>
-                    <strong>{characterName(deductionCase, item.characterId)}</strong>
-                    <p>问：{item.question}</p>
-                    <p>答：{item.answer}</p>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            <section className="panel">
-              <div className="cardHeader">
-                <div>
-                  <p className="cardKicker">场景</p>
-                  <h3>搜索证据</h3>
-                </div>
-              </div>
-              <label className="field">
-                <span>场景</span>
-                <select value={selectedSceneId} onChange={(event) => setSelectedSceneId(event.target.value)}>
-                  {deductionCase.scenes.map((scene) => (
-                    <option key={scene.id} value={scene.id}>
-                      {scene.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button className="secondaryButton" onClick={searchScene} type="button">
-                <Search size={17} />
-                搜索场景
-              </button>
-              <div className="scrollList">
-                {discoveredEvidence.map((item) => (
-                  <div className="miniCard" key={item.id}>
-                    <strong>{item.title}</strong>
-                    <p>{item.visibleDescription}</p>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            <section className="panel widePanel">
-              <div className="cardHeader">
-                <div>
-                  <p className="cardKicker">图谱</p>
-                  <h3>人物关系与证据图</h3>
-                </div>
-              </div>
-              <CaseGraph deductionCase={deductionCase} discoveredEvidenceIds={discoveredEvidenceIds} />
-            </section>
-
-            <section className="panel widePanel">
-              <div className="cardHeader">
-                <div>
-                  <p className="cardKicker">终局</p>
-                  <h3>提交推理</h3>
-                </div>
-              </div>
-              <div className="twoCols">
-                <label className="field">
-                  <span>凶手</span>
-                  <select value={theory.culpritId} onChange={(event) => setTheory((current) => ({ ...current, culpritId: event.target.value }))}>
-                    <option value="">选择嫌疑人</option>
-                    {deductionCase.characters
-                      .filter((character) => character.id !== "detective")
-                      .map((character) => (
-                        <option key={character.id} value={character.id}>
-                          {character.name}
-                        </option>
-                      ))}
-                  </select>
-                </label>
-                <label className="field">
-                  <span>证据 ID（逗号分隔）</span>
-                  <input
-                    value={theory.evidenceIds.join(",")}
-                    onChange={(event) => setTheory((current) => ({ ...current, evidenceIds: safeIdList(event.target.value) }))}
-                    placeholder="e-star-map,e-power-log"
-                  />
-                </label>
-              </div>
-              <label className="field">
-                <span>动机</span>
-                <textarea className="smallArea" value={theory.motive} onChange={(event) => setTheory((current) => ({ ...current, motive: event.target.value }))} />
-              </label>
-              <label className="field">
-                <span>手法</span>
-                <textarea className="smallArea" value={theory.method} onChange={(event) => setTheory((current) => ({ ...current, method: event.target.value }))} />
-              </label>
-              <button className="primaryButton" onClick={submitTheory} type="button">
-                <Target size={18} />
-                判定推理
-              </button>
-              {judgementText && <pre className="judgement">{judgementText}</pre>}
-            </section>
-          </>
-        )}
-      </div>
-    </section>
-  );
-}
-
 function CaseGraph({ deductionCase, discoveredEvidenceIds }: { deductionCase: DeductionCase; discoveredEvidenceIds: string[] }) {
-  const people = deductionCase.characters.filter((character) => character.id !== "detective").slice(0, 6);
+  const people = deductionCase.characters.slice(0, 6);
   const evidence = deductionCase.evidence.slice(0, 6);
-  const width = 860;
-  const height = 320;
-  const centerX = 430;
-  const peopleY = 70;
-  const evidenceY = 240;
-
   return (
-    <svg className="caseGraph" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="人物关系与证据图">
-      <line x1={centerX} y1={peopleY + 40} x2={centerX} y2={evidenceY - 48} stroke="#d8c9ad" strokeWidth="2" />
+    <svg className="caseGraph" viewBox="0 0 900 340" role="img" aria-label="人物关系与证据图">
+      <g>
+        <circle cx="450" cy="170" r="48" fill="#8d1d2c" />
+        <text x="450" y="175" textAnchor="middle" fill="#fffaf0" fontSize="14">
+          案件核心
+        </text>
+      </g>
       {people.map((person, index) => {
-        const x = 80 + index * 140;
+        const x = 90 + index * 145;
         return (
           <g key={person.id}>
-            <line x1={centerX} y1={peopleY + 40} x2={x} y2={peopleY + 40} stroke="#d8c9ad" strokeWidth="1.5" />
-            <circle cx={x} cy={peopleY} r="34" fill={person.isCulprit ? "#7d121c" : "#244d79"} />
-            <text x={x} y={peopleY + 5} textAnchor="middle" fill="#fffaf0" fontSize="13">
+            <line x1="450" y1="170" x2={x} y2="78" stroke="#cab98f" strokeWidth="1.5" />
+            <circle cx={x} cy="70" r="34" fill={person.isCulprit ? "#8d1d2c" : "#23536b"} />
+            <text x={x} y="75" textAnchor="middle" fill="#fffaf0" fontSize="13">
               {person.name.slice(0, 4)}
             </text>
           </g>
         );
       })}
       {evidence.map((item, index) => {
-        const x = 80 + index * 140;
+        const x = 90 + index * 145;
         const found = discoveredEvidenceIds.includes(item.id);
         return (
           <g key={item.id}>
-            <line x1={centerX} y1={evidenceY - 48} x2={x} y2={evidenceY - 28} stroke="#d8c9ad" strokeWidth="1.5" />
-            <rect x={x - 48} y={evidenceY - 28} width="96" height="56" rx="8" fill={found ? "#2f6b4f" : "#8b806d"} />
-            <text x={x} y={evidenceY + 4} textAnchor="middle" fill="#fffaf0" fontSize="12">
+            <line x1="450" y1="170" x2={x} y2="260" stroke="#cab98f" strokeWidth="1.5" />
+            <rect x={x - 50} y="242" width="100" height="56" rx="8" fill={found ? "#2f6b4f" : "#827766"} />
+            <text x={x} y="274" textAnchor="middle" fill="#fffaf0" fontSize="12">
               {item.title.slice(0, 6)}
             </text>
           </g>
         );
       })}
-      <g>
-        <circle cx={centerX} cy={155} r="42" fill="#b7202e" />
-        <text x={centerX} y={160} textAnchor="middle" fill="#fffaf0" fontSize="14">
-          案件核心
-        </text>
-      </g>
     </svg>
   );
 }
