@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test:rules": "node scripts/run-rule-tests.mjs"
+    "test:rules": "node scripts/run-rule-tests.mjs",
+    "eval": "node scripts/run-eval.mjs",
+    "eval:report": "node scripts/run-eval.mjs"
   },
   "dependencies": {
     "@types/node": "^24.10.1",

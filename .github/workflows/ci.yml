@@ -24,5 +24,8 @@ jobs:
       - name: Rule tests
         run: npm run test:rules
 
+      - name: Evaluation benchmark
+        run: npm run eval
+
       - name: Build
         run: npm run build

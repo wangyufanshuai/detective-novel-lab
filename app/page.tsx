@@ -31,12 +31,14 @@ import {
   getReasoningCoverage,
   getTimelineContradictions,
   judgeTheory,
+  runEval,
+  validateCaseSchema,
   validateCase
 } from "@/lib/engine";
 
 type Provider = "deepseek" | "siliconflow";
 type Mode = "game" | "novel";
-type WorkbenchView = "truth" | "matrix" | "evidence" | "timeline" | "report" | "json";
+type WorkbenchView = "truth" | "matrix" | "evidence" | "timeline" | "report" | "schema" | "eval" | "json";
 
 type DialogueEntry = {
   characterId: string;
@@ -706,6 +708,8 @@ function Workbench({
     ["evidence", "Evidence Graph"],
     ["timeline", "Timeline"],
     ["report", "Rule Report"],
+    ["schema", "Schema"],
+    ["eval", "Eval"],
     ["json", "JSON"]
   ];
   return (
@@ -728,6 +732,8 @@ function Workbench({
       {view === "evidence" && <EvidenceGraph deductionCase={deductionCase} discoveredEvidenceIds={discoveredEvidenceIds} />}
       {view === "timeline" && <TimelinePanel deductionCase={deductionCase} discoveredEvidenceIds={discoveredEvidenceIds} />}
       {view === "report" && <ReportPanel validation={validation} />}
+      {view === "schema" && <SchemaPanel deductionCase={deductionCase} />}
+      {view === "eval" && <EvalPanel deductionCase={deductionCase} validation={validation} />}
       {view === "json" && <pre className="jsonBlock">{renderJson(deductionCase)}</pre>}
     </section>
   );
@@ -849,6 +855,59 @@ function ReportPanel({ validation }: { validation: ReturnType<typeof validateCas
         <strong>{Math.round(validation.reasoningCoverage.coverageRatio * 100)}%</strong>
       </div>
       <pre className="jsonBlock">{renderJson({ errors: validation.errors, warnings: validation.warnings, fixSuggestions: validation.fixSuggestions })}</pre>
+    </div>
+  );
+}
+
+function SchemaPanel({ deductionCase }: { deductionCase: DeductionCase }) {
+  const schema = validateCaseSchema(deductionCase);
+  return (
+    <div className="reportGrid">
+      <div className={schema.valid ? "reportCard pass" : "reportCard fail"}>
+        <span>Schema</span>
+        <strong>{schema.valid ? "valid" : "invalid"}</strong>
+      </div>
+      <div className="reportCard">
+        <span>Errors</span>
+        <strong>{schema.errors.length}</strong>
+      </div>
+      <div className="reportCard">
+        <span>Warnings</span>
+        <strong>{schema.warnings.length}</strong>
+      </div>
+      <div className="reportCard">
+        <span>Normalize</span>
+        <strong>{schema.normalizedHints.length}</strong>
+      </div>
+      <pre className="jsonBlock">{renderJson(schema)}</pre>
+    </div>
+  );
+}
+
+function EvalPanel({ deductionCase, validation }: { deductionCase: DeductionCase; validation: ReturnType<typeof validateCase> | null }) {
+  const schema = validateCaseSchema(deductionCase);
+  const suite = runEval();
+  return (
+    <div className="reportGrid">
+      <div className={schema.valid && validation?.valid ? "reportCard pass" : "reportCard fail"}>
+        <span>Current Case</span>
+        <strong>{schema.valid && validation?.valid ? "pass" : "fail"}</strong>
+      </div>
+      <div className="reportCard">
+        <span>Coverage</span>
+        <strong>{validation ? `${Math.round(validation.reasoningCoverage.coverageRatio * 100)}%` : "0%"}</strong>
+      </div>
+      <div className={suite.failed === 0 ? "reportCard pass" : "reportCard fail"}>
+        <span>Fixture Eval</span>
+        <strong>
+          {suite.passed}/{suite.total}
+        </strong>
+      </div>
+      <div className="reportCard">
+        <span>Avg Coverage</span>
+        <strong>{Math.round(suite.averageCoverage * 100)}%</strong>
+      </div>
+      <pre className="jsonBlock">{renderJson({ currentSchema: schema, currentRules: validation, fixtureEval: suite })}</pre>
     </div>
   );
 }

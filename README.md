@@ -8,7 +8,8 @@ Deduction Engine is an open-source prototype for generating and validating fair-
 
 - **JSON-first mystery design**: every case has a structured culprit, motive, method, opportunity, timeline, evidence set, and exclusion chain.
 - **Symbolic rule engine**: local rules check unique culprit, fair clues, suspect matrix, timeline contradictions, and reasoning coverage.
-- **Visual Workbench**: inspect truth structure, suspect matrix, evidence graph, timeline contradictions, rule report, and raw JSON.
+- **Visual Workbench**: inspect truth structure, suspect matrix, evidence graph, timeline contradictions, rule report, schema status, eval metrics, and raw JSON.
+- **SDK-ready engine**: reusable TypeScript exports live under `packages/engine` while the Next.js app remains the official demo.
 - **Playable demo**: search scenes, discover evidence, challenge characters, submit a theory, and reveal the solution.
 - **Showcase mode**: no API key required. Load the built-in demo case and inspect the full engine flow.
 
@@ -81,10 +82,12 @@ Novel generation stages remain:
 
 ## Engine Exports
 
-Core exports are available from `lib/engine`:
+Core exports are available from `packages/engine/src` and through the compatibility layer `lib/engine`:
 
 - `createFallbackCase`
+- `createShowcaseCase`
 - `validateCase`
+- `validateCaseSchema`
 - `judgeTheory`
 - `evaluateEvidenceChallenge`
 - `getTimelineContradictions`
@@ -92,12 +95,33 @@ Core exports are available from `lib/engine`:
 - `getReasoningCoverage`
 - Types: `DeductionCase`, `LogicPuzzle`, `Evidence`, `Character`, `PlayerTheory`
 
+Example:
+
+```ts
+import { createShowcaseCase, judgeTheory, validateCase } from "./packages/engine/src";
+
+const deductionCase = createShowcaseCase();
+const report = validateCase(deductionCase);
+const judgement = judgeTheory(deductionCase, {
+  culpritId: deductionCase.truth.culpritId,
+  motive: deductionCase.truth.motive,
+  method: deductionCase.truth.method,
+  evidenceIds: deductionCase.logicPuzzle.criticalEvidenceIds,
+});
+```
+
 ## Tests
 
 ```powershell
 npm run build
 npm run test:rules
+npm run eval
 ```
+
+`npm run eval` writes:
+
+- `outputs/eval-report.json`
+- `outputs/eval-report.md`
 
 DeepSeek API integration test:
 
@@ -125,12 +149,15 @@ Required environment variables for live generation:
 - [Case Schema](docs/case-schema.md)
 - [Rule Engine](docs/rule-engine.md)
 - [Prompt Pipeline](docs/prompt-pipeline.md)
+- [SDK API](docs/sdk-api.md)
+- [Evaluation](docs/evaluation.md)
+- [JSON Schema](docs/json-schema.md)
 - [Contributing](CONTRIBUTING.md)
 
 ## Roadmap
 
 - More built-in case fixtures.
-- Exportable engine package.
+- Published npm package.
 - More formal solver layer for timeline and opportunity constraints.
 - Browser screenshot tests for the Workbench.
 - Community case gallery.
