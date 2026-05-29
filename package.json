@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:rules": "node scripts/run-rule-tests.mjs"
   },
   "dependencies": {
     "@types/node": "^24.10.1",

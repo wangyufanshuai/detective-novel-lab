@@ -6,7 +6,7 @@ import {
   ClipboardCopy,
   Download,
   Eye,
-  FileText,
+  FileJson,
   GitBranch,
   KeyRound,
   Loader2,
@@ -28,13 +28,15 @@ import {
   createFallbackCase,
   evaluateEvidenceChallenge,
   evidenceByScene,
+  getReasoningCoverage,
   getTimelineContradictions,
   judgeTheory,
   validateCase
-} from "@/lib/deduction";
+} from "@/lib/engine";
 
 type Provider = "deepseek" | "siliconflow";
 type Mode = "game" | "novel";
+type WorkbenchView = "truth" | "matrix" | "evidence" | "timeline" | "report" | "json";
 
 type DialogueEntry = {
   characterId: string;
@@ -44,7 +46,7 @@ type DialogueEntry = {
   answer: string;
 };
 
-const storageKey = "deduction-engine-v3";
+const storageKey = "deduction-engine-v4";
 const caseTypes = ["随机组合", "密室杀人", "死亡留言", "不在场证明", "毒杀", "身份误认", "消失的凶器"];
 const lengthTargets = ["3000-6000字", "8000-15000字", "15000-25000字"];
 
@@ -97,12 +99,12 @@ function safeIdList(value: string) {
     .filter(Boolean);
 }
 
-function characterName(deductionCase: DeductionCase | null, id: string) {
-  return deductionCase?.characters.find((character) => character.id === id)?.name || id;
-}
-
 function renderJson(value: unknown) {
   return JSON.stringify(value, null, 2);
+}
+
+function characterName(deductionCase: DeductionCase | null, id: string) {
+  return deductionCase?.characters.find((character) => character.id === id)?.name || id;
 }
 
 export default function Home() {
@@ -127,6 +129,7 @@ export default function Home() {
   const [theory, setTheory] = useState<PlayerTheory>({ culpritId: "", motive: "", method: "", evidenceIds: [] });
   const [judgementText, setJudgementText] = useState("");
   const [solutionText, setSolutionText] = useState("");
+  const [workbenchView, setWorkbenchView] = useState<WorkbenchView>("truth");
 
   const [novelBrief, setNovelBrief] = useState(novelStarter);
   const [novelSynopsis, setNovelSynopsis] = useState("");
@@ -152,6 +155,7 @@ export default function Home() {
       setTheory(data.theory || { culpritId: "", motive: "", method: "", evidenceIds: [] });
       setJudgementText(data.judgementText || "");
       setSolutionText(data.solutionText || "");
+      setWorkbenchView(data.workbenchView || "truth");
       setNovelBrief(data.novelBrief || novelStarter);
       setNovelSynopsis(data.novelSynopsis || "");
     } catch {
@@ -179,6 +183,7 @@ export default function Home() {
         theory,
         judgementText,
         solutionText,
+        workbenchView,
         novelBrief,
         novelSynopsis
       })
@@ -200,6 +205,7 @@ export default function Home() {
     theory,
     judgementText,
     solutionText,
+    workbenchView,
     novelBrief,
     novelSynopsis
   ]);
@@ -213,29 +219,35 @@ export default function Home() {
     () => (deductionCase ? getTimelineContradictions(deductionCase, discoveredEvidenceIds) : []),
     [deductionCase, discoveredEvidenceIds]
   );
+  const reasoningCoverage = useMemo(
+    () => (deductionCase ? getReasoningCoverage(deductionCase, theory.evidenceIds) : null),
+    [deductionCase, theory.evidenceIds]
+  );
 
-  const exportText = useMemo(() => {
+  const exportMarkdown = useMemo(() => {
     if (!deductionCase) return "";
     return [
       `# ${deductionCase.title}`,
-      "## 玩家案卷",
+      "## Player Case File",
       caseFile,
-      "## 已发现证据",
+      "## Rule Report",
+      "```json",
+      renderJson(validation),
+      "```",
+      "## Discovered Evidence",
       discoveredEvidence.map((item) => `- ${item.id} ${item.title}: ${item.visibleDescription}`).join("\n"),
-      "## 质询记录",
-      dialogues
-        .map((item) => `### ${characterName(deductionCase, item.characterId)}\n证据：${item.evidenceId || "无"}\n问：${item.question}\n答：${item.answer}`)
-        .join("\n\n"),
-      "## 判定",
+      "## Dialogues",
+      dialogues.map((item) => `### ${characterName(deductionCase, item.characterId)}\nEvidence: ${item.evidenceId || "none"}\nQ: ${item.question}\nA: ${item.answer}`).join("\n\n"),
+      "## Judgement",
       judgementText,
-      "## 解答篇",
+      "## Solution",
       solutionText,
-      "## 结构化案件",
+      "## Structured Case",
       "```json",
       renderJson(deductionCase),
       "```"
     ].join("\n\n");
-  }, [caseFile, deductionCase, dialogues, discoveredEvidence, judgementText, solutionText]);
+  }, [caseFile, deductionCase, dialogues, discoveredEvidence, judgementText, solutionText, validation]);
 
   async function callGenerate(stage: string, body: Record<string, unknown>) {
     const response = await fetch("/api/generate", {
@@ -253,52 +265,49 @@ export default function Home() {
       })
     });
     const data = await response.json();
-    if (!response.ok || !data.ok) {
-      throw new Error(data.error || "生成失败");
-    }
+    if (!response.ok || !data.ok) throw new Error(data.error || "生成失败");
     return data;
+  }
+
+  function hydrateCase(nextCase: DeductionCase, nextCaseFile = nextCase.publicCaseFile, nextStatus = "案件已载入。") {
+    setDeductionCase(nextCase);
+    setCaseFile(nextCaseFile);
+    setDiscoveredEvidenceIds([]);
+    setExposedContradictionIds([]);
+    setDialogues([]);
+    setJudgementText("");
+    setSolutionText("");
+    setTheory({ culpritId: "", motive: "", method: "", evidenceIds: [] });
+    setSelectedSceneId(nextCase.scenes[0]?.id || "");
+    setSelectedCharacterId(nextCase.characters.find((character) => !character.isCulprit)?.id || nextCase.characters[0]?.id || "");
+    setSelectedEvidenceId("");
+    setStatus(nextStatus);
+    setWorkbenchView("truth");
+  }
+
+  function loadShowcase() {
+    const showcase = createFallbackCase("Showcase: 校园天文台死亡留言");
+    hydrateCase(showcase, showcase.publicCaseFile, "Showcase 案件已载入：无需 API Key，可完整体验工作台和规则引擎。");
   }
 
   async function generateCase() {
     setIsGenerating(true);
-    setStatus("正在生成并校验结构化真相...");
+    setStatus("正在调用模型生成并校验结构化案件...");
     setProgress("gameTruthSeed");
     try {
       const seed = await callGenerate("gameTruthSeed", { currentDraft: {} });
       const nextCase = seed.json as DeductionCase;
       const nextValidation = validateCase(nextCase);
-      setDeductionCase(nextCase);
-      setDiscoveredEvidenceIds([]);
-      setExposedContradictionIds([]);
-      setDialogues([]);
-      setJudgementText("");
-      setSolutionText("");
-      setTheory({ culpritId: "", motive: "", method: "", evidenceIds: [] });
-      setSelectedSceneId(nextCase.scenes[0]?.id || "");
-      setSelectedCharacterId(nextCase.characters.find((character) => !character.isCulprit)?.id || nextCase.characters[0]?.id || "");
-      setSelectedEvidenceId("");
-
-      setStatus(nextValidation.valid ? "结构校验通过，正在生成玩家案卷..." : `结构仍有问题：${nextValidation.issues.join("；")}`);
       setProgress("gameCaseFile");
       const file = await callGenerate("gameCaseFile", {
         currentDraft: { structuredCase: renderJson(nextCase), validation: renderJson(nextValidation) },
         userDirection: "生成玩家可见案卷，不要泄露凶手、幕后真相、证据真实含义和完整排除链。"
       });
-      setCaseFile(file.content);
-      setStatus(seed.repaired ? "案件已生成，期间自动修复过逻辑结构。" : "案件已生成。开始搜索、质询并提交推理。");
+      hydrateCase(nextCase, file.content, seed.repaired ? "案件已生成，自动修复过逻辑结构。" : "案件已生成。");
       setProgress("");
     } catch (error) {
       const fallback = createFallbackCase(topic);
-      setDeductionCase(fallback);
-      setCaseFile(fallback.publicCaseFile);
-      setDiscoveredEvidenceIds([]);
-      setExposedContradictionIds([]);
-      setDialogues([]);
-      setJudgementText("");
-      setSolutionText("");
-      setSelectedSceneId(fallback.scenes[0]?.id || "");
-      setSelectedCharacterId(fallback.characters[0]?.id || "");
-      setStatus(error instanceof Error ? `生成失败，已载入本地示例：${error.message}` : "生成失败，已载入本地示例。");
+      hydrateCase(fallback, fallback.publicCaseFile, error instanceof Error ? `生成失败，已载入 Showcase：${error.message}` : "生成失败，已载入 Showcase。");
     } finally {
       setIsGenerating(false);
     }
@@ -403,7 +412,7 @@ export default function Home() {
           </div>
           <div>
             <p>Deduction Engine</p>
-            <h1>硬逻辑案件引擎</h1>
+            <h1>Engine + Workbench</h1>
           </div>
         </div>
 
@@ -431,7 +440,7 @@ export default function Home() {
               硅基流动
             </button>
           </div>
-          <p className="hint">API 入口不变。案件裁判由本地规则执行，LLM 只负责结构候选和自然语言。</p>
+          <p className="hint">LLM 负责候选结构和文本，本地规则引擎负责最终裁判。Showcase 模式无需 API Key。</p>
         </div>
       </aside>
 
@@ -439,24 +448,44 @@ export default function Home() {
         <section className="workspace">
           <header className="topbar">
             <div>
-              <p className="eyebrow">结构化真相 → 规则校验 → 证据质询 → 推理判定</p>
-              <h2>{deductionCase?.title || "Deduction Game"}</h2>
+              <p className="eyebrow">LLM + Symbolic Rules + Visual Case Workbench</p>
+              <h2>{deductionCase?.title || "Deduction Engine"}</h2>
             </div>
             <div className="topActions">
-              <button className="iconButton" onClick={() => navigator.clipboard.writeText(exportText)} title="复制案卷" type="button">
+              <button className="iconButton" onClick={() => navigator.clipboard.writeText(exportMarkdown)} title="复制案卷" type="button">
                 <ClipboardCopy size={18} />
               </button>
-              <button className="iconButton" onClick={() => downloadFile("deduction-case.md", exportText, "text/markdown;charset=utf-8")} title="导出 Markdown" type="button">
+              <button className="iconButton" onClick={() => downloadFile("deduction-case.md", exportMarkdown, "text/markdown;charset=utf-8")} title="导出 Markdown" type="button">
                 <Download size={18} />
+              </button>
+              <button className="iconButton" onClick={() => deductionCase && downloadFile("deduction-case.json", renderJson(deductionCase), "application/json;charset=utf-8")} title="导出 JSON" type="button">
+                <FileJson size={18} />
               </button>
             </div>
           </header>
+
+          <div className="heroBand">
+            <div>
+              <p>GitHub-ready AI deduction engine</p>
+              <h3>不是让 AI 直接编故事，而是让 AI 生成可验证的案件结构。</h3>
+            </div>
+            <div className="heroActions">
+              <button className="primaryButton" onClick={loadShowcase} type="button">
+                <Sparkles size={18} />
+                Demo Case
+              </button>
+              <button className="secondaryButton" disabled={isGenerating} onClick={generateCase} type="button">
+                {isGenerating ? <Loader2 className="spin" size={18} /> : <Wand2 size={18} />}
+                Generate Case
+              </button>
+            </div>
+          </div>
 
           <div className="gameGrid">
             <section className="inputDeck">
               <div className="cardHeader">
                 <div>
-                  <p className="cardKicker">案件生成</p>
+                  <p className="cardKicker">Generate Case</p>
                   <h3>题材与约束</h3>
                 </div>
               </div>
@@ -479,31 +508,27 @@ export default function Home() {
                 </label>
               </div>
               <label className="field grow">
-                <span>输入题材</span>
+                <span>Prompt Brief</span>
                 <textarea value={topic} onChange={(event) => setTopic(event.target.value)} spellCheck={false} translate="no" />
               </label>
-              <button className="primaryButton" disabled={isGenerating} onClick={generateCase} type="button">
-                {isGenerating ? <Loader2 className="spin" size={18} /> : <Wand2 size={18} />}
-                生成并校验案件
-              </button>
             </section>
 
             <section className="outputDeck">
               <div className="cardHeader">
                 <div>
-                  <p className="cardKicker">玩家案卷</p>
-                  <h3>公开信息</h3>
+                  <p className="cardKicker">Player Case File</p>
+                  <h3>玩家可见案卷</h3>
                 </div>
-                <div className="truthToggle">{progress || "规则优先"}</div>
+                <div className="truthToggle">{progress || "Rule First"}</div>
               </div>
-              <textarea className="draftEditor" value={caseFile} readOnly placeholder="生成案件后显示玩家可见案卷。" />
+              <textarea className="draftEditor" value={caseFile} readOnly placeholder="点击 Demo Case 立即载入示范案，或调用 DeepSeek 生成新案。" />
             </section>
 
             <section className="reviewStrip">
               <div className="reviewItem">
                 {validation?.valid ? <CheckCircle2 size={18} /> : <XCircle size={18} />}
-                <span>结构校验</span>
-                <strong>{validation ? (validation.valid ? "通过" : "有问题") : "未生成"}</strong>
+                <span>规则校验</span>
+                <strong>{validation ? (validation.valid ? "通过" : "有问题") : "未载入"}</strong>
               </div>
               <div className="reviewItem">
                 <Eye size={18} />
@@ -512,8 +537,8 @@ export default function Home() {
               </div>
               <div className="reviewItem">
                 <GitBranch size={18} />
-                <span>已暴露矛盾</span>
-                <strong>{exposedContradictionIds.length}</strong>
+                <span>推理覆盖</span>
+                <strong>{reasoningCoverage ? `${Math.round(reasoningCoverage.coverageRatio * 100)}%` : "0%"}</strong>
               </div>
               <div className="reviewItem wide">
                 <Sparkles size={18} />
@@ -524,10 +549,12 @@ export default function Home() {
 
             {deductionCase && (
               <>
+                <Workbench deductionCase={deductionCase} validation={validation} discoveredEvidenceIds={discoveredEvidenceIds} view={workbenchView} setView={setWorkbenchView} />
+
                 <section className="panel">
                   <div className="cardHeader">
                     <div>
-                      <p className="cardKicker">场景</p>
+                      <p className="cardKicker">Scene Search</p>
                       <h3>搜索证据</h3>
                     </div>
                   </div>
@@ -559,7 +586,7 @@ export default function Home() {
                 <section className="panel">
                   <div className="cardHeader">
                     <div>
-                      <p className="cardKicker">人物</p>
+                      <p className="cardKicker">Evidence Challenge</p>
                       <h3>证据质询</h3>
                     </div>
                   </div>
@@ -588,7 +615,7 @@ export default function Home() {
                   </div>
                   <label className="field">
                     <span>问题</span>
-                    <textarea className="smallArea" value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="你案发时在哪里？这条证据能解释你的说法吗？" />
+                    <textarea className="smallArea" value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="这条证据和你的证词是否矛盾？" />
                   </label>
                   <button className="secondaryButton" disabled={isGenerating || !question.trim()} onClick={challengeCharacter} type="button">
                     <MessageSquare size={17} />
@@ -609,36 +636,7 @@ export default function Home() {
                 <section className="panel widePanel">
                   <div className="cardHeader">
                     <div>
-                      <p className="cardKicker">时间线</p>
-                      <h3>公开证词与证据矛盾</h3>
-                    </div>
-                  </div>
-                  <div className="timeline">
-                    {timelineContradictions.map((item) => (
-                      <div className={item.revealed ? "timelineItem revealed" : "timelineItem"} key={item.eventId}>
-                        <span>{item.time}</span>
-                        <strong>{item.publicVersion}</strong>
-                        <p>{item.revealed ? item.trueEvent : "需要找到对应证据后才会揭示矛盾。"}</p>
-                        <code>{item.evidenceIds.join(", ")}</code>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-
-                <section className="panel widePanel">
-                  <div className="cardHeader">
-                    <div>
-                      <p className="cardKicker">图谱</p>
-                      <h3>人物关系与证据图</h3>
-                    </div>
-                  </div>
-                  <CaseGraph deductionCase={deductionCase} discoveredEvidenceIds={discoveredEvidenceIds} />
-                </section>
-
-                <section className="panel widePanel">
-                  <div className="cardHeader">
-                    <div>
-                      <p className="cardKicker">终局</p>
+                      <p className="cardKicker">Final Theory</p>
                       <h3>提交推理</h3>
                     </div>
                   </div>
@@ -689,43 +687,169 @@ export default function Home() {
   );
 }
 
-function CaseGraph({ deductionCase, discoveredEvidenceIds }: { deductionCase: DeductionCase; discoveredEvidenceIds: string[] }) {
-  const people = deductionCase.characters.slice(0, 6);
-  const evidence = deductionCase.evidence.slice(0, 6);
+function Workbench({
+  deductionCase,
+  validation,
+  discoveredEvidenceIds,
+  view,
+  setView
+}: {
+  deductionCase: DeductionCase;
+  validation: ReturnType<typeof validateCase> | null;
+  discoveredEvidenceIds: string[];
+  view: WorkbenchView;
+  setView: (view: WorkbenchView) => void;
+}) {
+  const tabs: Array<[WorkbenchView, string]> = [
+    ["truth", "Truth"],
+    ["matrix", "Matrix"],
+    ["evidence", "Evidence Graph"],
+    ["timeline", "Timeline"],
+    ["report", "Rule Report"],
+    ["json", "JSON"]
+  ];
   return (
-    <svg className="caseGraph" viewBox="0 0 900 340" role="img" aria-label="人物关系与证据图">
-      <g>
-        <circle cx="450" cy="170" r="48" fill="#8d1d2c" />
-        <text x="450" y="175" textAnchor="middle" fill="#fffaf0" fontSize="14">
-          案件核心
-        </text>
-      </g>
-      {people.map((person, index) => {
-        const x = 90 + index * 145;
+    <section className="panel widePanel workbench">
+      <div className="cardHeader">
+        <div>
+          <p className="cardKicker">Visual Workbench</p>
+          <h3>案件逻辑工作台</h3>
+        </div>
+        <div className="tabs">
+          {tabs.map(([id, label]) => (
+            <button className={view === id ? "selected" : ""} key={id} onClick={() => setView(id)} type="button">
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+      {view === "truth" && <TruthPanel deductionCase={deductionCase} />}
+      {view === "matrix" && <MatrixPanel validation={validation} />}
+      {view === "evidence" && <EvidenceGraph deductionCase={deductionCase} discoveredEvidenceIds={discoveredEvidenceIds} />}
+      {view === "timeline" && <TimelinePanel deductionCase={deductionCase} discoveredEvidenceIds={discoveredEvidenceIds} />}
+      {view === "report" && <ReportPanel validation={validation} />}
+      {view === "json" && <pre className="jsonBlock">{renderJson(deductionCase)}</pre>}
+    </section>
+  );
+}
+
+function TruthPanel({ deductionCase }: { deductionCase: DeductionCase }) {
+  const culprit = deductionCase.characters.find((item) => item.id === deductionCase.truth.culpritId);
+  return (
+    <div className="truthGrid">
+      <div className="factBox">
+        <span>Culprit</span>
+        <strong>{culprit?.name || deductionCase.truth.culpritId}</strong>
+      </div>
+      <div className="factBox">
+        <span>Motive</span>
+        <p>{deductionCase.truth.motive}</p>
+      </div>
+      <div className="factBox">
+        <span>Method</span>
+        <p>{deductionCase.truth.method}</p>
+      </div>
+      <div className="factBox">
+        <span>Opportunity</span>
+        <p>{deductionCase.truth.opportunity}</p>
+      </div>
+    </div>
+  );
+}
+
+function MatrixPanel({ validation }: { validation: ReturnType<typeof validateCase> | null }) {
+  if (!validation) return null;
+  return (
+    <div className="matrixTable">
+      <div className="matrixHead">
+        <span>Suspect</span>
+        <span>Motive</span>
+        <span>Means</span>
+        <span>Opportunity</span>
+        <span>Excluded By</span>
+      </div>
+      {validation.suspectMatrix.map((row) => (
+        <div className={row.completeAndUnexcluded ? "matrixRow active" : "matrixRow"} key={row.characterId}>
+          <strong>{row.name}</strong>
+          <span>{row.motive ? "yes" : "no"}</span>
+          <span>{row.means ? "yes" : "no"}</span>
+          <span>{row.opportunity ? "yes" : "no"}</span>
+          <code>{row.excludedByEvidenceIds.join(", ") || "-"}</code>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EvidenceGraph({ deductionCase, discoveredEvidenceIds }: { deductionCase: DeductionCase; discoveredEvidenceIds: string[] }) {
+  const steps = deductionCase.logicPuzzle.criticalReasoningChain.slice(0, 5);
+  return (
+    <svg className="caseGraph" viewBox="0 0 980 360" role="img" aria-label="证据链图">
+      {steps.map((step, index) => {
+        const y = 54 + index * 58;
+        const evidenceId = step.evidenceIds[0];
+        const found = discoveredEvidenceIds.includes(evidenceId);
         return (
-          <g key={person.id}>
-            <line x1="450" y1="170" x2={x} y2="78" stroke="#cab98f" strokeWidth="1.5" />
-            <circle cx={x} cy="70" r="34" fill={person.isCulprit ? "#8d1d2c" : "#23536b"} />
-            <text x={x} y="75" textAnchor="middle" fill="#fffaf0" fontSize="13">
-              {person.name.slice(0, 4)}
+          <g key={step.id}>
+            <rect x="24" y={y - 22} width="170" height="44" rx="8" fill={found ? "#2f6b4f" : "#827766"} />
+            <text x="109" y={y + 5} textAnchor="middle" fill="#fffaf0" fontSize="12">
+              {evidenceId}
             </text>
+            <line x1="194" y1={y} x2="286" y2={y} stroke="#cab98f" strokeWidth="2" />
+            <rect x="286" y={y - 24} width="420" height="48" rx="8" fill="#fffaf0" stroke="#cab98f" />
+            <text x="496" y={y + 5} textAnchor="middle" fill="#191711" fontSize="13">
+              {step.conclusion.slice(0, 32)}
+            </text>
+            <line x1="706" y1={y} x2="788" y2="180" stroke="#cab98f" strokeWidth="2" />
           </g>
         );
       })}
-      {evidence.map((item, index) => {
-        const x = 90 + index * 145;
-        const found = discoveredEvidenceIds.includes(item.id);
-        return (
-          <g key={item.id}>
-            <line x1="450" y1="170" x2={x} y2="260" stroke="#cab98f" strokeWidth="1.5" />
-            <rect x={x - 50} y="242" width="100" height="56" rx="8" fill={found ? "#2f6b4f" : "#827766"} />
-            <text x={x} y="274" textAnchor="middle" fill="#fffaf0" fontSize="12">
-              {item.title.slice(0, 6)}
-            </text>
-          </g>
-        );
-      })}
+      <circle cx="840" cy="180" r="58" fill="#8d1d2c" />
+      <text x="840" y="185" textAnchor="middle" fill="#fffaf0" fontSize="14">
+        Conclusion
+      </text>
     </svg>
+  );
+}
+
+function TimelinePanel({ deductionCase, discoveredEvidenceIds }: { deductionCase: DeductionCase; discoveredEvidenceIds: string[] }) {
+  const items = getTimelineContradictions(deductionCase, discoveredEvidenceIds);
+  return (
+    <div className="timeline">
+      {items.map((item) => (
+        <div className={item.revealed ? "timelineItem revealed" : "timelineItem"} key={item.eventId}>
+          <span>{item.time}</span>
+          <strong>{item.publicVersion}</strong>
+          <p>{item.revealed ? item.trueEvent : "需要找到对应证据后才会揭示矛盾。"}</p>
+          <code>{item.evidenceIds.join(", ")}</code>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ReportPanel({ validation }: { validation: ReturnType<typeof validateCase> | null }) {
+  if (!validation) return null;
+  return (
+    <div className="reportGrid">
+      <div className={validation.valid ? "reportCard pass" : "reportCard fail"}>
+        <span>Valid</span>
+        <strong>{validation.valid ? "true" : "false"}</strong>
+      </div>
+      <div className="reportCard">
+        <span>Errors</span>
+        <strong>{validation.errors.length}</strong>
+      </div>
+      <div className="reportCard">
+        <span>Warnings</span>
+        <strong>{validation.warnings.length}</strong>
+      </div>
+      <div className="reportCard">
+        <span>Coverage</span>
+        <strong>{Math.round(validation.reasoningCoverage.coverageRatio * 100)}%</strong>
+      </div>
+      <pre className="jsonBlock">{renderJson({ errors: validation.errors, warnings: validation.warnings, fixSuggestions: validation.fixSuggestions })}</pre>
+    </div>
   );
 }
 

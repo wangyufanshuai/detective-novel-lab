@@ -191,7 +191,9 @@ button {
 }
 
 .topActions,
-.actionRow {
+.actionRow,
+.heroActions,
+.tabs {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
@@ -243,6 +245,36 @@ button:disabled {
   gap: 18px;
 }
 
+.heroBand {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: center;
+  margin-bottom: 18px;
+  padding: 20px;
+  color: #fffaf0;
+  background:
+    linear-gradient(135deg, rgba(25, 23, 17, 0.94), rgba(58, 43, 29, 0.96)),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0 1px, transparent 1px 16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.heroBand p {
+  margin: 0;
+  color: #dfccb0;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.heroBand h3 {
+  max-width: 760px;
+  margin: 6px 0 0;
+  font-size: clamp(22px, 3vw, 36px);
+  line-height: 1.15;
+}
+
 .inputDeck,
 .outputDeck,
 .panel {
@@ -264,6 +296,10 @@ button:disabled {
 
 .panel {
   min-height: 420px;
+}
+
+.workbench {
+  min-height: 520px;
 }
 
 .widePanel,
@@ -351,6 +387,23 @@ textarea {
   font-weight: 800;
   background: var(--blue);
   border-radius: 8px;
+}
+
+.tabs button {
+  min-height: 34px;
+  padding: 0 10px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.56);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.tabs button.selected {
+  color: #fffaf0;
+  background: var(--accent);
+  border-color: var(--accent-dark);
 }
 
 .reviewStrip {
@@ -473,6 +526,97 @@ textarea {
   border-radius: 8px;
 }
 
+.truthGrid,
+.reportGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.factBox,
+.reportCard {
+  min-height: 120px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.factBox span,
+.reportCard span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.factBox strong,
+.reportCard strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 20px;
+}
+
+.factBox p {
+  margin: 8px 0 0;
+  line-height: 1.6;
+}
+
+.matrixTable {
+  display: grid;
+  gap: 8px;
+}
+
+.matrixHead,
+.matrixRow {
+  display: grid;
+  grid-template-columns: 1.1fr 0.55fr 0.55fr 0.75fr 1.6fr;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 8px;
+}
+
+.matrixHead {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  background: rgba(25, 23, 17, 0.06);
+}
+
+.matrixRow {
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid var(--line);
+}
+
+.matrixRow.active {
+  border-color: rgba(183, 32, 46, 0.5);
+  background: rgba(183, 32, 46, 0.08);
+}
+
+.reportCard.pass {
+  border-color: rgba(47, 107, 79, 0.55);
+  background: rgba(47, 107, 79, 0.1);
+}
+
+.reportCard.fail {
+  border-color: rgba(183, 32, 46, 0.55);
+  background: rgba(183, 32, 46, 0.1);
+}
+
+.jsonBlock {
+  grid-column: 1 / -1;
+  max-height: 420px;
+  overflow: auto;
+  white-space: pre-wrap;
+  margin: 0;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.66);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  line-height: 1.55;
+}
+
 .judgement {
   white-space: pre-wrap;
   margin: 14px 0 0;
@@ -516,7 +660,19 @@ textarea {
 
   .gameGrid,
   .contentGrid,
-  .reviewStrip {
+  .reviewStrip,
+  .truthGrid,
+  .reportGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .heroBand {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .matrixHead,
+  .matrixRow {
     grid-template-columns: 1fr;
   }
 }

@@ -1,11 +1,5 @@
 export type Provider = "deepseek" | "siliconflow";
 
-export type SuspectAxis = {
-  motive: boolean;
-  means: boolean;
-  opportunity: boolean;
-};
-
 export type Character = {
   id: string;
   name: string;
@@ -133,12 +127,25 @@ export type TimelineContradiction = {
   revealed: boolean;
 };
 
-export type CaseValidation = {
+export type ReasoningCoverage = {
+  requiredEvidenceIds: string[];
+  coveredEvidenceIds: string[];
+  missingEvidenceIds: string[];
+  coverageRatio: number;
+};
+
+export type RuleReport = {
   valid: boolean;
+  errors: string[];
+  warnings: string[];
   issues: string[];
   suspectMatrix: SuspectMatrixRow[];
   timelineContradictions: TimelineContradiction[];
+  reasoningCoverage: ReasoningCoverage;
+  fixSuggestions: string[];
 };
+
+export type CaseValidation = RuleReport;
 
 export type Judgement = {
   accepted: boolean;
@@ -156,7 +163,7 @@ export type EvidenceChallenge = {
   guidance: string;
 };
 
-const emptyWords = new Set(["无", "没有", "未知", "不适用", "none", "no"]);
+const emptyWords = new Set(["无", "没有", "未知", "不适用", "none", "no", ""]);
 
 export function normalizeId(value: string) {
   return value
@@ -195,6 +202,14 @@ function aliases(value: unknown) {
   return [];
 }
 
+function evidenceMap(deductionCase: DeductionCase) {
+  return new Map((deductionCase.evidence || []).map((item) => [item.id, item]));
+}
+
+function characterMap(deductionCase: DeductionCase) {
+  return new Map((deductionCase.characters || []).map((item) => [item.id, item]));
+}
+
 function resolveCharacterId(deductionCase: DeductionCase, value: unknown) {
   if (typeof value !== "string") return "";
   if (deductionCase.characters.some((item) => item.id === value)) return value;
@@ -202,13 +217,13 @@ function resolveCharacterId(deductionCase: DeductionCase, value: unknown) {
 }
 
 function resolveEvidenceIds(deductionCase: DeductionCase, value: unknown) {
-  const known = deductionCase.evidence;
+  const known = deductionCase.evidence || [];
   return aliases(value).map((raw) => known.find((item) => item.id === raw || item.title === raw)?.id || raw);
 }
 
 function evidenceIdsFromText(deductionCase: DeductionCase, text: string) {
   const hits = new Set<string>();
-  for (const evidence of deductionCase.evidence) {
+  for (const evidence of deductionCase.evidence || []) {
     if (text.includes(evidence.id) || text.includes(evidence.title)) {
       hits.add(evidence.id);
     }
@@ -220,22 +235,21 @@ function evidenceIdsFromText(deductionCase: DeductionCase, text: string) {
   return Array.from(hits);
 }
 
-function evidenceMap(deductionCase: DeductionCase) {
-  return new Map(deductionCase.evidence.map((item) => [item.id, item]));
+function getReasoningStepEvidenceIds(deductionCase: DeductionCase, step: ReasoningStep | string | unknown) {
+  if (typeof step === "string") return evidenceIdsFromText(deductionCase, step);
+  const raw = (step || {}) as Record<string, unknown>;
+  return resolveEvidenceIds(deductionCase, raw.evidenceIds || raw.evidence || raw.keyEvidence);
 }
 
-function characterMap(deductionCase: DeductionCase) {
-  return new Map(deductionCase.characters.map((item) => [item.id, item]));
-}
-
-export function createFallbackCase(topic: string): DeductionCase {
+export function createFallbackCase(topic = "校园天文台死亡留言"): DeductionCase {
   return {
-    id: `case-${Date.now()}`,
+    id: "showcase-north-star",
     title: "北极星不在天上",
-    theme: topic || "校园天文台死亡留言",
-    premise: "校庆前夜，暴雨封山，天体物理教授林远舟死在圆顶观测室。监控显示案发时段无人进入，死者手边留下半张圈出北极星的星图。",
+    theme: topic,
+    premise:
+      "校庆前夜，暴雨封山。天体物理教授林远舟死在圆顶观测室，门禁显示案发时段无人进入。死者手边留下半张圈出北极星的星图。",
     publicCaseFile:
-      "校庆前夜，山顶天文台发生命案。死者林远舟教授被发现倒在圆顶观测室内，观测室门禁记录显示 20:15 到 20:30 没有外人进入。死者手边有半张旧星图，红笔圈出“北极星”，旁边写着“这里不动”。当晚暴雨，天空不可见星光。玩家需要搜索天文台、询问相关人员，并解释死亡留言到底指向什么。",
+      "山顶天文台发生命案。林远舟教授被发现倒在圆顶观测室内，门禁记录显示 20:15 到 20:30 没有外人进入。死者手边有半张旧星图，红笔圈出“北极星”，旁边写着“这里不动”。当晚暴雨，天空不可见星光。玩家需要搜索天文台、询问相关人员，并解释死亡留言到底指向什么。",
     truth: {
       culpritId: "assistant",
       motive: "陆青长期篡改观测数据并挪用维护经费，林远舟准备在校庆演讲中公开证据。",
@@ -448,9 +462,10 @@ export function createFallbackCase(topic: string): DeductionCase {
 
 export function deriveSuspectMatrix(deductionCase: DeductionCase): SuspectMatrixRow[] {
   const existing = Array.isArray(deductionCase.logicPuzzle?.suspectMatrix) ? deductionCase.logicPuzzle.suspectMatrix : [];
-  const evidenceIds = new Set(deductionCase.evidence.map((item) => item.id));
+  const evidenceIds = new Set((deductionCase.evidence || []).map((item) => item.id));
   const exclusionByCharacter = new Map<string, string[]>();
   const exclusionChains = Array.isArray(deductionCase.logicPuzzle?.exclusionChains) ? deductionCase.logicPuzzle.exclusionChains : [];
+
   for (const chain of exclusionChains) {
     const raw = chain as unknown as Record<string, unknown>;
     const characterId = resolveCharacterId(deductionCase, chain.characterId || raw.suspectId || raw.suspect || raw.character);
@@ -459,7 +474,8 @@ export function deriveSuspectMatrix(deductionCase: DeductionCase): SuspectMatrix
       exclusionByCharacter.set(characterId, Array.from(new Set([...(exclusionByCharacter.get(characterId) || []), ...ids])));
     }
   }
-  return deductionCase.characters
+
+  return (deductionCase.characters || [])
     .filter((character) => character.id !== "detective" && character.id !== "victim")
     .map((character) => {
       const declared = existing.find((row) => {
@@ -472,6 +488,7 @@ export function deriveSuspectMatrix(deductionCase: DeductionCase): SuspectMatrix
       const motive = axisValue(declared?.motive, hasContent(character.motive));
       const means = axisValue(declared?.means, hasContent(character.means));
       const opportunity = axisValue(declared?.opportunity, hasContent(character.opportunity));
+
       return {
         characterId: character.id,
         name: character.name,
@@ -487,7 +504,7 @@ export function deriveSuspectMatrix(deductionCase: DeductionCase): SuspectMatrix
 
 export function getTimelineContradictions(deductionCase: DeductionCase, discoveredEvidenceIds: string[] = []): TimelineContradiction[] {
   const discovered = new Set(discoveredEvidenceIds);
-  return (deductionCase.truth.trueTimeline || [])
+  return (deductionCase.truth?.trueTimeline || [])
     .filter((event) => event.publicVersion && event.contradictedByEvidenceIds?.length)
     .map((event) => ({
       eventId: event.id,
@@ -499,43 +516,65 @@ export function getTimelineContradictions(deductionCase: DeductionCase, discover
     }));
 }
 
+export function getReasoningCoverage(deductionCase: DeductionCase, selectedEvidenceIds: string[] = []): ReasoningCoverage {
+  const required = new Set<string>();
+  for (const id of deductionCase.truth?.decisiveEvidenceIds || []) required.add(id);
+  const chain = Array.isArray(deductionCase.logicPuzzle?.criticalReasoningChain) ? deductionCase.logicPuzzle.criticalReasoningChain : [];
+  for (const step of chain) {
+    for (const id of getReasoningStepEvidenceIds(deductionCase, step)) required.add(id);
+  }
+  const selected = new Set(selectedEvidenceIds);
+  const requiredEvidenceIds = Array.from(required);
+  const coveredEvidenceIds = requiredEvidenceIds.filter((id) => selected.has(id));
+  const missingEvidenceIds = requiredEvidenceIds.filter((id) => !selected.has(id));
+  return {
+    requiredEvidenceIds,
+    coveredEvidenceIds,
+    missingEvidenceIds,
+    coverageRatio: requiredEvidenceIds.length ? coveredEvidenceIds.length / requiredEvidenceIds.length : 1
+  };
+}
+
 export function validateCase(deductionCase: DeductionCase): CaseValidation {
-  const issues: string[] = [];
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  const fixSuggestions: string[] = [];
   const characters = characterMap(deductionCase);
   const evidence = evidenceMap(deductionCase);
-  const culpritFlags = deductionCase.characters.filter((character) => character.isCulprit);
+  const culpritFlags = (deductionCase.characters || []).filter((character) => character.isCulprit);
 
   if (culpritFlags.length !== 1) {
-    issues.push(`凶手字段必须唯一，当前为 ${culpritFlags.length} 个。`);
+    errors.push(`凶手字段必须唯一，当前为 ${culpritFlags.length} 个。`);
+    fixSuggestions.push("确保 characters 中只有一个 isCulprit=true。");
   }
 
   const culprit = characters.get(deductionCase.truth?.culpritId);
   if (!culprit) {
-    issues.push("truth.culpritId 必须对应一个人物。");
+    errors.push("truth.culpritId 必须对应一个人物。");
   } else if (!culprit.isCulprit) {
-    issues.push("truth.culpritId 对应人物必须标记 isCulprit=true。");
+    errors.push("truth.culpritId 对应人物必须标记 isCulprit=true。");
   }
 
   const decisive = deductionCase.truth?.decisiveEvidenceIds || [];
   const missingDecisive = decisive.filter((id) => !evidence.has(id));
   if (missingDecisive.length) {
-    issues.push(`关键证据不存在：${missingDecisive.join(", ")}。`);
+    errors.push(`关键证据不存在：${missingDecisive.join(", ")}。`);
   }
 
   const undiscoverableDecisive = decisive.filter((id) => evidence.has(id) && !evidence.get(id)?.discoverable);
   if (undiscoverableDecisive.length) {
-    issues.push(`关键证据必须可发现：${undiscoverableDecisive.join(", ")}。`);
+    errors.push(`关键证据必须可发现：${undiscoverableDecisive.join(", ")}。`);
   }
 
-  const discoverableKey = deductionCase.evidence.filter((item) => item.isKey && item.discoverable);
+  const discoverableKey = (deductionCase.evidence || []).filter((item) => item.isKey && item.discoverable);
   if (discoverableKey.length < 3) {
-    issues.push("至少需要 3 条可发现关键证据。");
+    errors.push("至少需要 3 条可发现关键证据。");
   }
 
   for (const scene of deductionCase.scenes || []) {
     for (const id of scene.evidenceIds || []) {
       if (!evidence.has(id)) {
-        issues.push(`场景“${scene.name}”引用了不存在的证据 ${id}。`);
+        errors.push(`场景“${scene.name}”引用了不存在的证据 ${id}。`);
       }
     }
   }
@@ -543,12 +582,13 @@ export function validateCase(deductionCase: DeductionCase): CaseValidation {
   const suspectMatrix = deriveSuspectMatrix(deductionCase);
   const complete = suspectMatrix.filter((row) => row.completeAndUnexcluded);
   if (complete.length !== 1 || complete[0]?.characterId !== deductionCase.truth?.culpritId) {
-    issues.push("规则矩阵必须只留下一个完整且未被反证排除的嫌疑人，并且必须是 truth.culpritId。");
+    errors.push("规则矩阵必须只留下一个完整且未被反证排除的嫌疑人，并且必须是 truth.culpritId。");
+    fixSuggestions.push("为每个非凶手补充排除证据，或降低其 motive/means/opportunity 中至少一项。");
   }
 
   for (const row of suspectMatrix) {
     if (!row.isCulprit && row.motive && row.means && row.opportunity && row.excludedByEvidenceIds.length === 0) {
-      issues.push(`非凶手“${row.name}”具备动机/手段/机会，但缺少可发现排除证据。`);
+      errors.push(`非凶手“${row.name}”具备动机/手段/机会，但缺少可发现排除证据。`);
     }
   }
 
@@ -557,54 +597,49 @@ export function validateCase(deductionCase: DeductionCase): CaseValidation {
     const raw = chain as unknown as Record<string, unknown>;
     const characterId = resolveCharacterId(deductionCase, chain.characterId || raw.suspectId || raw.suspect || raw.character);
     const ids = resolveEvidenceIds(deductionCase, chain.evidenceIds || raw.evidence);
-    if (!characters.has(characterId)) {
-      issues.push(`排除链引用了不存在的人物 ${characterId || "undefined"}。`);
-    }
-    if (!ids.length) {
-      issues.push(`排除链 ${characterId || "undefined"} 缺少证据。`);
-    }
+    if (!characters.has(characterId)) errors.push(`排除链引用了不存在的人物 ${characterId || "undefined"}。`);
+    if (!ids.length) errors.push(`排除链 ${characterId || "undefined"} 缺少证据。`);
     for (const id of ids) {
       if (!evidence.has(id) || !evidence.get(id)?.discoverable) {
-        issues.push(`排除链 ${characterId} 使用了不可发现或不存在的证据 ${id}。`);
+        errors.push(`排除链 ${characterId} 使用了不可发现或不存在的证据 ${id}。`);
       }
     }
   }
 
   const criticalReasoningChain = Array.isArray(deductionCase.logicPuzzle?.criticalReasoningChain) ? deductionCase.logicPuzzle.criticalReasoningChain : [];
   for (const step of criticalReasoningChain) {
-    if (typeof step === "string") {
-      const ids = evidenceIdsFromText(deductionCase, step);
-      if (!ids.length) {
-        issues.push(`关键推理“${step}”缺少证据支撑。`);
-      }
-      continue;
-    }
-    const raw = step as unknown as Record<string, unknown>;
-    const conclusion = step.conclusion || String(raw.step || raw.reason || "未命名推理");
-    const ids = resolveEvidenceIds(deductionCase, step.evidenceIds || raw.evidence);
-    if (!ids.length) {
-      issues.push(`关键推理“${conclusion}”缺少证据支撑。`);
-    }
+    const raw = (step || {}) as Record<string, unknown>;
+    const conclusion = typeof step === "string" ? step : String(raw.conclusion || raw.step || raw.reason || "未命名推理");
+    const ids = getReasoningStepEvidenceIds(deductionCase, step);
+    if (!ids.length) errors.push(`关键推理“${conclusion}”缺少证据支撑。`);
     for (const id of ids) {
       if (!evidence.has(id) || !evidence.get(id)?.discoverable) {
-        issues.push(`关键推理“${conclusion}”依赖不可发现或不存在的证据 ${id}。`);
+        errors.push(`关键推理“${conclusion}”依赖不可发现或不存在的证据 ${id}。`);
       }
     }
   }
 
   const timelineContradictions = getTimelineContradictions(deductionCase);
-  if (!deductionCase.truth?.trueTimeline?.length) {
-    issues.push("真实时间线不能为空。");
+  if (!deductionCase.truth?.trueTimeline?.length) errors.push("真实时间线不能为空。");
+  if (!timelineContradictions.length) errors.push("至少需要一处证词/公开版本与证据可揭示的时间线矛盾。");
+
+  const reasoningCoverage = getReasoningCoverage(deductionCase);
+  if (reasoningCoverage.requiredEvidenceIds.length < 3) {
+    warnings.push("关键推理链较短，建议至少覆盖 3 条证据。");
   }
-  if (!timelineContradictions.length) {
-    issues.push("至少需要一处证词/公开版本与证据可揭示的时间线矛盾。");
+  if ((deductionCase.logicPuzzle?.redHerrings || []).length < 2) {
+    warnings.push("误导线索偏少，展示效果会弱。");
   }
 
   return {
-    valid: issues.length === 0,
-    issues,
+    valid: errors.length === 0,
+    errors,
+    warnings,
+    issues: errors,
     suspectMatrix,
-    timelineContradictions
+    timelineContradictions,
+    reasoningCoverage,
+    fixSuggestions
   };
 }
 
@@ -646,29 +681,17 @@ export function judgeTheory(deductionCase: DeductionCase, theory: PlayerTheory, 
   const selected = new Set(theory.evidenceIds);
   const decisive = deductionCase.truth.decisiveEvidenceIds || [];
 
-  if (theory.culpritId !== deductionCase.truth.culpritId) {
-    contradictions.push("指认的凶手与真相不符。");
-  }
+  if (theory.culpritId !== deductionCase.truth.culpritId) contradictions.push("指认的凶手与真相不符。");
 
-  if (!theory.motive.trim()) {
-    missing.push("缺少动机说明。");
-  } else if (!textHits(theory.motive, deductionCase.truth.motive)) {
-    missing.push("动机说明没有覆盖真相中的核心动机。");
-  }
+  if (!theory.motive.trim()) missing.push("缺少动机说明。");
+  else if (!textHits(theory.motive, deductionCase.truth.motive)) missing.push("动机说明没有覆盖真相中的核心动机。");
 
-  if (!theory.method.trim()) {
-    missing.push("缺少手法说明。");
-  } else if (!textHits(theory.method, deductionCase.truth.method)) {
-    missing.push("手法说明没有覆盖真相中的核心作案机制。");
-  }
+  if (!theory.method.trim()) missing.push("缺少手法说明。");
+  else if (!textHits(theory.method, deductionCase.truth.method)) missing.push("手法说明没有覆盖真相中的核心作案机制。");
 
   for (const id of decisive) {
-    if (!discovered.has(id)) {
-      missing.push(`尚未发现关键证据：${id}`);
-    }
-    if (!selected.has(id)) {
-      missing.push(`推理链缺少关键证据：${id}`);
-    }
+    if (!discovered.has(id)) missing.push(`尚未发现关键证据：${id}`);
+    if (!selected.has(id)) missing.push(`推理链缺少关键证据：${id}`);
   }
 
   const matrix = deriveSuspectMatrix(deductionCase);
