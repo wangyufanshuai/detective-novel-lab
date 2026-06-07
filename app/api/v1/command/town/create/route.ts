@@ -1,5 +1,5 @@
 import { errorResponse, ok, readJson } from "@/app/api/v1/_utils";
-import { createInitialWorld, extractCaseFromWorld, simulateDailyLife, simulateWorldTick, type MurderArchetype, type WorldMode } from "@/lib/engine";
+import { createInitialWorld, createPremiumShowcaseWorld, extractCaseFromWorld, simulateDailyLife, simulateWorldTick, type MurderArchetype, type WorldMode } from "@/lib/engine";
 import { worldRepository } from "@/lib/world/repository";
 
 type CreateTownBody = {
@@ -9,12 +9,20 @@ type CreateTownBody = {
   npcCount?: number;
   timelineHours?: number;
   preSimDays?: number;
+  caseMode?: "premium" | "generated";
 };
 
 export async function POST(request: Request) {
   try {
     const body = await readJson<CreateTownBody>(request, {});
     const mode = body.mode || "showcase";
+    if (mode === "showcase" && (body.caseMode || "generated") === "premium") {
+      const premium = createPremiumShowcaseWorld(body.seed || "premium-showcase");
+      const savedWorld = worldRepository.saveWorld(premium.world);
+      worldRepository.addEvents(premium.events);
+      worldRepository.saveCase(premium.activeCase);
+      return ok({ world: savedWorld, events: premium.events, activeCase: premium.activeCase, qualityReport: premium.activeCase.qualityReport, simulationReports: [] });
+    }
     const world = createInitialWorld(body.seed || "detective-town-showcase", {
       mode,
       npcCount: body.npcCount || (mode === "advanced" ? 30 : 8),

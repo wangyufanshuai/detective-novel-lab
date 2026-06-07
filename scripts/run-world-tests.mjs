@@ -25,6 +25,58 @@ async function loadEngine() {
 const engine = await loadEngine();
 
 {
+  const premium = engine.createPremiumShowcaseWorld("premium-showcase");
+  const { world, events, activeCase } = premium;
+  assert.equal(world.mode, "showcase", "premium showcase uses showcase mode");
+  assert.equal(world.npcs.length, 8, "premium showcase has exactly 8 NPCs");
+  assert.equal(world.timelineHours, 24, "premium showcase covers a 24h timeline");
+  assert.equal(events.filter((event) => event.type === "death").length, 1, "premium showcase has exactly one murder");
+  assert.equal(activeCase.validation.valid, true, "premium showcase passes combined validation");
+  assert.equal(activeCase.generationProfile.focusSuspectIds.length >= 2, true, "premium showcase has at least two strong red herrings");
+  assert.equal(activeCase.qualityReport.logicStrength >= 95, true, "premium showcase has strong case logic");
+  assert.equal(activeCase.qualityReport.misdirectionQuality >= 90, true, "premium showcase has strong misdirection");
+  assert.equal(activeCase.qualityReport.deductionGraphComplete, true, "premium deduction graph is complete");
+  assert.equal(activeCase.qualityReport.allNonCulpritsExplainablyExcluded, true, "premium non-culprits are explainably excluded");
+  assert.equal(
+    activeCase.deductionCase.truth.decisiveEvidenceIds.every((id) => events.some((event) => event.evidenceId === id)),
+    true,
+    "premium decisive evidence is backed by world events"
+  );
+  const graph = engine.buildDeductionGraph(activeCase, events);
+  const logicReport = engine.buildCaseLogicReport(world, events, activeCase);
+  const board = engine.deriveSuspectBoard(activeCase, events);
+  assert.equal(graph.complete, true, "premium graph closes every required edge");
+  assert.equal(logicReport.strongMisdirections.length, 2, "premium graph exposes two red herring profiles");
+  assert.equal(board.filter((row) => row.status === "culprit").length, 1, "premium suspect board leaves one culprit");
+  assert.equal(board.filter((row) => row.status === "red_herring").length >= 2, true, "premium suspect board marks red herrings");
+  assert.equal(engine.validateHardCaseLogic(world, events, activeCase).valid, true, "premium hard logic validator passes");
+
+  const allEvidenceIds = activeCase.deductionCase.evidence.map((item) => item.id);
+  const missingOne = engine.judgeTheory(
+    activeCase.deductionCase,
+    {
+      culpritId: activeCase.deductionCase.truth.culpritId,
+      motive: activeCase.deductionCase.truth.motive,
+      method: activeCase.deductionCase.truth.method,
+      evidenceIds: allEvidenceIds.filter((id) => id !== "ev-trace")
+    },
+    allEvidenceIds.filter((id) => id !== "ev-trace")
+  );
+  assert.equal(missingOne.accepted, false, "premium theory cannot pass with missing decisive evidence");
+  const correct = engine.judgeTheory(
+    activeCase.deductionCase,
+    {
+      culpritId: activeCase.deductionCase.truth.culpritId,
+      motive: activeCase.deductionCase.truth.motive,
+      method: activeCase.deductionCase.truth.method,
+      evidenceIds: allEvidenceIds
+    },
+    allEvidenceIds
+  );
+  assert.equal(correct.accepted, true, "premium correct theory passes");
+}
+
+{
   const first = engine.createInitialWorld("stable-seed");
   const second = engine.createInitialWorld("stable-seed");
   assert.equal(first.mode, "showcase", "default world uses showcase mode");

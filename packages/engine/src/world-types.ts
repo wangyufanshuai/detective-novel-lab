@@ -195,15 +195,92 @@ export type CaseQualityReport = {
   testimonyContradictions: number;
   timelineReadability: number;
   memorySupport: number;
+  logicStrength?: number;
+  misdirectionQuality?: number;
   worldBackedEvidence: boolean;
   memoryScopedTestimony: boolean;
   timeline24hComplete: boolean;
   nonCulpritExcluded: boolean;
   reasoningTraceComplete: boolean;
+  deductionGraphComplete?: boolean;
+  allNonCulpritsExplainablyExcluded?: boolean;
   uniqueCulprit: boolean;
   reachabilityValid: boolean;
   candidateAnalysis: CulpritCandidateAnalysis[];
   reasoningTrace: ReasoningTrace[];
+  warnings: string[];
+};
+
+export type MisdirectionProfile = {
+  characterId: string;
+  apparentMotive: string;
+  apparentMeans: string;
+  apparentOpportunity: string;
+  refutedByEvidenceIds: string[];
+  sourceEventIds: string[];
+};
+
+export type SuspectEliminationStep = {
+  characterId: string;
+  suspectName: string;
+  surfaceSuspicion: string;
+  eliminatedByEvidenceIds: string[];
+  sourceEventIds: string[];
+  explanation: string;
+  isCulprit: boolean;
+};
+
+export type DeductionGraphNodeType = "evidence" | "event" | "testimony" | "elimination" | "conclusion";
+
+export type DeductionGraphNode = {
+  id: string;
+  type: DeductionGraphNodeType;
+  label: string;
+  detail: string;
+  characterIds: string[];
+  evidenceIds: string[];
+  eventIds: string[];
+};
+
+export type DeductionGraphEdge = {
+  id: string;
+  from: string;
+  to: string;
+  label: string;
+};
+
+export type DeductionGraph = {
+  caseId: string;
+  nodes: DeductionGraphNode[];
+  edges: DeductionGraphEdge[];
+  culpritConclusionNodeId: string;
+  complete: boolean;
+};
+
+export type SuspectBoardRow = {
+  characterId: string;
+  name: string;
+  role: string;
+  motive: boolean;
+  means: boolean;
+  opportunity: boolean;
+  surfaceSuspicion: string;
+  exclusionEvidenceIds: string[];
+  sourceEventIds: string[];
+  status: "culprit" | "eliminated" | "red_herring" | "victim";
+};
+
+export type CaseLogicReport = {
+  caseId: string;
+  summary: string;
+  fairPlay: boolean;
+  uniqueCulprit: boolean;
+  logicStrength: number;
+  misdirectionQuality: number;
+  deductionGraphComplete: boolean;
+  allNonCulpritsExplainablyExcluded: boolean;
+  strongMisdirections: MisdirectionProfile[];
+  eliminationSteps: SuspectEliminationStep[];
   warnings: string[];
 };
 

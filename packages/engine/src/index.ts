@@ -9,3 +9,5 @@ export * from "./world-simulator";
 export * from "./world-case";
 export * from "./world-analysis";
 export * from "./world-map";
+export * from "./deduction-graph";
+export * from "./premium-showcase";

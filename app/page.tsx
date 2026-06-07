@@ -11,6 +11,7 @@ import {
   Loader2,
   Map as MapIcon,
   MessageSquare,
+  Pause,
   Play,
   Search,
   ShieldCheck,
@@ -19,6 +20,8 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import type {
   CaseFromLog,
+  CaseLogicReport,
+  DeductionGraph,
   DeepSeekLiveEvalReport,
   MurderArchetype,
   NpcDialogueEvalReport,
@@ -27,6 +30,7 @@ import type {
   PromptAuditReport,
   RevealEvalReport,
   RevealFactContract,
+  SuspectBoardRow,
   WorldEvent,
   WorldMapActor,
   WorldMapMarker,
@@ -48,6 +52,7 @@ type AiSafetyState = {
   memoryCount?: number;
   evidenceCount?: number;
 };
+type CaseMode = "premium" | "generated";
 
 const storageKey = "detective-town-showcase-v2";
 const timeMin = 8 * 60;
@@ -121,6 +126,7 @@ export default function Home() {
   const [snapshot, setSnapshot] = useState<WorldMapSnapshot | null>(null);
   const [worldIdInput, setWorldIdInput] = useState("");
   const [seedInput, setSeedInput] = useState("showcase-seed");
+  const [caseMode, setCaseMode] = useState<CaseMode>("premium");
   const [caseArchetype, setCaseArchetype] = useState<MurderArchetype | "auto">("auto");
   const [mode, setMode] = useState<WorldMode>("showcase");
   const [playerName, setPlayerName] = useState("调查员");
@@ -135,6 +141,10 @@ export default function Home() {
   const [revealText, setRevealText] = useState("");
   const [lastAiSafety, setLastAiSafety] = useState<AiSafetyState | null>(null);
   const [latestLiveEval, setLatestLiveEval] = useState<DeepSeekLiveEvalReport | null>(null);
+  const [deductionGraph, setDeductionGraph] = useState<DeductionGraph | null>(null);
+  const [suspectBoard, setSuspectBoard] = useState<SuspectBoardRow[]>([]);
+  const [logicReport, setLogicReport] = useState<CaseLogicReport | null>(null);
+  const [replaying, setReplaying] = useState(false);
   const [busy, setBusy] = useState(false);
   const [developerOpen, setDeveloperOpen] = useState(false);
 
@@ -172,14 +182,15 @@ export default function Home() {
     () =>
       JSON.stringify(
         {
-          createTown: { method: "POST", url: "/api/v1/command/town/create", body: { seed: seedInput, mode, npcCount: mode === "advanced" ? 30 : 8, timelineHours: mode === "advanced" ? 120 : 24, caseArchetype } },
+          createTown: { method: "POST", url: "/api/v1/command/town/create", body: { seed: seedInput, mode, caseMode, npcCount: mode === "advanced" ? 30 : 8, timelineHours: mode === "advanced" ? 120 : 24, caseArchetype } },
           mapSnapshot: world ? { method: "GET", url: `/api/v1/query/world/map?worldId=${world.id}&caseId=${activeCase?.id || ""}&sessionId=${session?.id || ""}&day=1&time=${minutesToTime(timeValue)}` } : null,
+          deductionGraph: activeCase ? { method: "GET", url: `/api/v1/query/case/deduction-graph?caseId=${activeCase.id}` } : null,
           interrogate: session ? { method: "POST", url: "/api/v1/command/investigation/interrogate", body: { sessionId: session.id, characterId: selectedCharacterId, question, evidenceId: selectedEvidenceId || undefined } } : null
         },
         null,
         2
       ),
-    [activeCase?.id, caseArchetype, mode, question, seedInput, selectedCharacterId, selectedEvidenceId, session?.id, timeValue, world]
+    [activeCase?.id, caseArchetype, caseMode, mode, question, seedInput, selectedCharacterId, selectedEvidenceId, session?.id, timeValue, world]
   );
 
   useEffect(() => {
@@ -210,6 +221,37 @@ export default function Home() {
       .catch(() => undefined);
   }, [activeCase?.id, session?.id, timeValue, world]);
 
+  useEffect(() => {
+    if (!activeCase?.id) {
+      setDeductionGraph(null);
+      setSuspectBoard([]);
+      setLogicReport(null);
+      return;
+    }
+    getV1<{ graph: DeductionGraph; suspectBoard: SuspectBoardRow[]; logicReport: CaseLogicReport }>(`/api/v1/query/case/deduction-graph?caseId=${activeCase.id}`)
+      .then((data) => {
+        setDeductionGraph(data.graph);
+        setSuspectBoard(data.suspectBoard);
+        setLogicReport(data.logicReport);
+      })
+      .catch(() => undefined);
+  }, [activeCase?.id]);
+
+  useEffect(() => {
+    if (!replaying || !world) return;
+    const timer = window.setInterval(() => {
+      setTimeValue((value) => {
+        const next = value + 10;
+        if (next >= timeMax) {
+          setReplaying(false);
+          return timeMax;
+        }
+        return next;
+      });
+    }, 700);
+    return () => window.clearInterval(timer);
+  }, [replaying, world]);
+
   function persist(nextWorldId?: string, nextSessionId?: string) {
     localStorage.setItem(storageKey, JSON.stringify({ worldId: nextWorldId || world?.id, sessionId: nextSessionId || session?.id }));
   }
@@ -232,8 +274,9 @@ export default function Home() {
     setBusy(true);
     try {
       const data = await postJson<{ world: WorldState; events: WorldEvent[]; activeCase: CaseFromLog }>("/api/worlds/create", {
-        seed: seedInput.trim() || "showcase-seed",
+        seed: seedInput.trim() || (caseMode === "premium" ? "premium-showcase" : "showcase-seed"),
         mode,
+        caseMode: mode === "showcase" ? caseMode : "generated",
         npcCount: mode === "advanced" ? 30 : 8,
         timelineHours: mode === "advanced" ? 120 : 24,
         preSimDays: mode === "advanced" ? 5 : 1,
@@ -245,6 +288,7 @@ export default function Home() {
       setSessions([]);
       setRevealText("");
       setLastAiSafety(null);
+      setReplaying(false);
       persist(data.world.id, "");
       setStatus("Detective Town 已创建：地图、事件、记忆和证据已从模拟世界生成。");
     } catch (error) {
@@ -439,6 +483,12 @@ export default function Home() {
         <section className="railPanel">
           <h2>创建 / 载入</h2>
           <label>Seed<input value={seedInput} onChange={(event) => setSeedInput(event.target.value)} /></label>
+          <label>Case Mode
+            <select value={caseMode} onChange={(event) => setCaseMode(event.target.value as CaseMode)} disabled={mode === "advanced"}>
+              <option value="premium">Premium hard case</option>
+              <option value="generated">Generated case</option>
+            </select>
+          </label>
           <label>案件类型
             <select value={caseArchetype} onChange={(event) => setCaseArchetype(event.target.value as MurderArchetype | "auto")}>
               {archetypeOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
@@ -471,6 +521,8 @@ export default function Home() {
           <div className="metricGrid">
             <div><strong>{quality?.qualityScore ?? quality?.score ?? 0}</strong><small>Quality</small></div>
             <div><strong>{quality?.uniqueCulprit ? "Yes" : "No"}</strong><small>Unique</small></div>
+            <div><strong>{quality?.logicStrength ?? logicReport?.logicStrength ?? 0}</strong><small>Logic</small></div>
+            <div><strong>{quality?.misdirectionQuality ?? logicReport?.misdirectionQuality ?? 0}</strong><small>Misdirect</small></div>
             <div><strong>{session?.discoveredEvidenceIds.length || 0}/{deductionCase?.evidence.length || 0}</strong><small>Evidence</small></div>
             <div><strong>{latestLiveEval?.passed === false ? "Fail" : latestLiveEval ? "Pass" : "Local"}</strong><small>AI Eval</small></div>
           </div>
@@ -519,6 +571,9 @@ export default function Home() {
 
         <footer className="timelineScrubber">
           <div className="scrubLabels"><span>08:00</span><strong>24h 时间轴回放</strong><span>23:00</span></div>
+          <button className="replayButton" onClick={() => setReplaying((value) => !value)} disabled={!world}>
+            {replaying ? <Pause size={14} /> : <Play size={14} />} {replaying ? "Pause Replay" : "Play Replay"}
+          </button>
           <input type="range" min={timeMin} max={timeMax} step={10} value={timeValue} onChange={(event) => setTimeValue(Number(event.target.value))} />
           <div className="scrubTicks">
             {["08:00", "12:00", "16:00", "20:00", "21:30", "21:47", "23:00"].map((time) => (
@@ -537,6 +592,42 @@ export default function Home() {
                 <time>第{event.day}日 {event.time}</time>
                 <strong>{event.publicSummary}</strong>
                 <span>{event.type} / {event.locationId}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="actionPanel logicPanel">
+          <h2><ShieldCheck size={16} /> Case Logic Report</h2>
+          <p>{logicReport?.summary || "Create a case to inspect hard logic."}</p>
+          <div className="logicBadges">
+            <span>Graph: {logicReport?.deductionGraphComplete ? "Pass" : "Pending"}</span>
+            <span>Unique: {logicReport?.uniqueCulprit ? "Yes" : "No"}</span>
+            <span>Fair: {logicReport?.fairPlay ? "Yes" : "No"}</span>
+            <span>Excluded: {logicReport?.allNonCulpritsExplainablyExcluded ? "Yes" : "No"}</span>
+          </div>
+        </section>
+
+        <section className="actionPanel deductionGraphPanel">
+          <h2><Database size={16} /> Deduction Graph</h2>
+          <div className="graphRail">
+            {(deductionGraph?.nodes || []).filter((node) => node.type !== "event").slice(0, 14).map((node) => (
+              <button key={node.id} className={`graphNode graph-${node.type}`} onClick={() => node.eventIds[0] && setHighlightedEventId(node.eventIds[0])}>
+                <strong>{node.label}</strong>
+                <span>{node.type} · {node.evidenceIds.join(", ") || node.characterIds.map((id) => deductionCase?.characters.find((character) => character.id === id)?.name || id).join(", ")}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="actionPanel suspectBoardPanel">
+          <h2><Users size={16} /> Suspect Board</h2>
+          <div className="suspectBoard">
+            {suspectBoard.map((row) => (
+              <button key={row.characterId} className={`suspectRow ${row.status}`} onClick={() => setSelectedCharacterId(row.characterId)}>
+                <strong>{row.name}</strong>
+                <span>M {row.motive ? "Y" : "N"} / W {row.means ? "Y" : "N"} / O {row.opportunity ? "Y" : "N"}</span>
+                <small>{row.status === "culprit" ? "Only complete chain" : row.exclusionEvidenceIds.join(", ") || "excluded"}</small>
               </button>
             ))}
           </div>

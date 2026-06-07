@@ -209,6 +209,21 @@ export function evaluateNpcDialogue(input: {
   };
 }
 
+function buildRuleSafeNpcFallback(input: {
+  context: ReturnType<typeof buildNpcKnowledgeContext>;
+  evidence?: DeductionCase["evidence"][number];
+  evidenceId?: string;
+}) {
+  const name = input.context.character?.name || "NPC";
+  const memoryLine = input.context.visibleMemories.length
+    ? `I have ${input.context.visibleMemories.length} visible memory record(s) related to my own actions or direct observations.`
+    : "I do not have a direct visible memory for that detail.";
+  if (input.evidenceId) {
+    return `${name}: This evidence record does affect my earlier statement. ${memoryLine} I can revise only my own testimony and cannot identify facts I did not personally observe.`;
+  }
+  return `${name}: I can only answer from my own memory scope. ${memoryLine}`;
+}
+
 export async function generateGuardedNpcReplyWithAudit(input: {
   provider?: Provider;
   world: WorldState;
@@ -263,13 +278,24 @@ export async function generateGuardedNpcReplyWithAudit(input: {
     }
   }
 
-  const dialogueEval = evaluateNpcDialogue({
+  let dialogueEval = evaluateNpcDialogue({
     answer: content,
     caseFromLog: input.caseFromLog,
     characterId: input.characterId,
     evidenceId: input.evidenceId,
     promptAudit
   });
+  if (dialogueEval.safetyFlags.length) {
+    content = buildRuleSafeNpcFallback({ context, evidence, evidenceId: input.evidenceId });
+    mock = true;
+    dialogueEval = evaluateNpcDialogue({
+      answer: content,
+      caseFromLog: input.caseFromLog,
+      characterId: input.characterId,
+      evidenceId: input.evidenceId,
+      promptAudit
+    });
+  }
   return {
     content,
     mock,

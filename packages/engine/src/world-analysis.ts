@@ -168,6 +168,10 @@ export function buildCaseQualityReport(world: WorldState, events: WorldEvent[], 
   const timelineReadability = Math.min(100, caseFromLog.deductionCase.truth.trueTimeline.length * 18);
   const structuralBonus = [worldBackedEvidence, memoryScopedTestimony, timeline24hComplete, nonCulpritExcluded, reasoningTraceComplete].filter(Boolean).length * 4;
   const score = Math.min(100, Math.round((fairPlay + uniqueness + evidenceCoverage + redHerringQuality + testimonyScore + timelineReadability + memorySupport) / 7 + structuralBonus));
+  const deductionGraphComplete = reasoningTraceComplete && worldBackedEvidence && nonCulpritExcluded;
+  const allNonCulpritsExplainablyExcluded = nonCulpritExcluded && candidateAnalysis.filter((item) => item.characterId !== caseFromLog.generationProfile.culpritId).every((item) => item.exclusionEvidenceIds.length > 0);
+  const misdirectionQuality = Math.min(100, caseFromLog.generationProfile.focusSuspectIds.length * 35 + redHerringQuality * 0.3);
+  const logicStrength = Math.min(100, Math.round((score + evidenceCoverage + uniqueness + (deductionGraphComplete ? 100 : 0) + (allNonCulpritsExplainablyExcluded ? 100 : 0)) / 5));
   const warnings: string[] = [];
   if (!uniqueCulprit) warnings.push("Culprit is not unique.");
   if (!reachabilityValid) warnings.push("Some non-culprit reachability remains unresolved.");
@@ -185,11 +189,15 @@ export function buildCaseQualityReport(world: WorldState, events: WorldEvent[], 
     testimonyContradictions: testimonyScore,
     timelineReadability,
     memorySupport,
+    logicStrength,
+    misdirectionQuality,
     worldBackedEvidence,
     memoryScopedTestimony,
     timeline24hComplete,
     nonCulpritExcluded,
     reasoningTraceComplete,
+    deductionGraphComplete,
+    allNonCulpritsExplainablyExcluded,
     uniqueCulprit,
     reachabilityValid,
     candidateAnalysis,

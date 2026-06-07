@@ -73,12 +73,14 @@ try {
   const created = await request("POST", "/api/v1/command/town/create", {
     seed: "agent-api-smoke",
     mode: "showcase",
+    caseMode: "premium",
     npcCount: 8,
     timelineHours: 24,
     caseArchetype: "auto"
   });
   assert.equal(created.world.npcs.length, 8);
   assert.equal(created.activeCase.validation.valid, true);
+  assert.equal(created.activeCase.qualityReport.deductionGraphComplete, true);
 
   const state = await request("GET", `/api/v1/query/world/state?worldId=${created.world.id}`);
   assert.equal(state.world.id, created.world.id);
@@ -89,6 +91,9 @@ try {
   const caseResult = await request("GET", `/api/v1/query/case?caseId=${created.activeCase.id}`);
   const caseFromLog = caseResult.caseFromLog;
   assert.equal(caseFromLog.deductionCase.truth.culpritId, created.activeCase.deductionCase.truth.culpritId);
+  const graphResult = await request("GET", `/api/v1/query/case/deduction-graph?caseId=${created.activeCase.id}`);
+  assert.equal(graphResult.graph.complete, true);
+  assert.equal(graphResult.suspectBoard.filter((row) => row.status === "culprit").length, 1);
 
   const joined = await request("POST", "/api/v1/command/player/join", {
     worldId: created.world.id,

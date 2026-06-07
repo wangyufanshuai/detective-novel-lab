@@ -677,6 +677,102 @@ blockquote {
   line-height: 1.6;
 }
 
+.replayButton {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-height: 30px;
+  padding: 6px 10px;
+  color: #f5f0dd;
+  background: #1a2834;
+  border: 1px solid rgba(243, 193, 91, 0.35);
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.logicPanel p {
+  margin: 0 0 9px;
+  color: var(--soft);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.logicBadges {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.logicBadges span {
+  padding: 6px 7px;
+  color: #dff4db;
+  background: rgba(121, 200, 111, 0.1);
+  border: 1px solid rgba(121, 200, 111, 0.28);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.graphRail,
+.suspectBoard {
+  display: grid;
+  gap: 7px;
+  max-height: 260px;
+  overflow: auto;
+}
+
+.graphNode,
+.suspectRow {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 8px;
+  text-align: left;
+  background: #0c1219;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+}
+
+.graphNode strong,
+.suspectRow strong {
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.graphNode span,
+.suspectRow span,
+.suspectRow small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.graph-evidence {
+  border-color: rgba(243, 193, 91, 0.35);
+}
+
+.graph-testimony {
+  border-color: rgba(114, 178, 255, 0.35);
+}
+
+.graph-elimination,
+.suspectRow.eliminated {
+  border-color: rgba(121, 200, 111, 0.28);
+}
+
+.graph-conclusion,
+.suspectRow.culprit {
+  border-color: rgba(240, 91, 97, 0.5);
+}
+
+.suspectRow.red_herring {
+  border-color: rgba(243, 193, 91, 0.42);
+}
+
 .checkRow {
   display: flex;
   grid-template-columns: auto 1fr;
