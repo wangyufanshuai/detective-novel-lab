@@ -106,6 +106,73 @@ export type WorldEvent = {
   evidenceId?: string;
   relatedCharacterIds: string[];
   tags: string[];
+  intentId?: string;
+  causedByEventIds?: string[];
+  goalId?: string;
+  explanation?: string;
+};
+
+export type CaseTemplateId = "archive-blunt" | "clocktower-locked-room" | "clinic-poison";
+
+export type NpcGoal = {
+  id: string;
+  npcId: string;
+  label: string;
+  priority: number;
+  targetLocationId: string;
+  relatedSecret: string;
+  activeFrom: string;
+  activeUntil: string;
+};
+
+export type NpcIntent = {
+  id: string;
+  npcId: string;
+  goalId: string;
+  time: string;
+  locationId: string;
+  reason: string;
+  riskFactors: string[];
+  intendedAction: "routine" | "avoid" | "threaten" | "obtain_means" | "follow" | "attack" | "stage_scene" | "hide_trace" | "testify";
+  visibleToPlayer: boolean;
+};
+
+export type CausalEventLink = {
+  fromEventId: string;
+  toEventId: string;
+  relation:
+    | "schedule-enables"
+    | "secret-risk-raises"
+    | "conflict-triggers"
+    | "means-enables"
+    | "opportunity-enables"
+    | "crime-causes"
+    | "staging-creates"
+    | "trace-reveals"
+    | "alibi-excludes";
+  explanation: string;
+};
+
+export type WorldCausalTrace = {
+  caseId: string;
+  goals: NpcGoal[];
+  intents: NpcIntent[];
+  links: CausalEventLink[];
+  orderedEventIds: string[];
+  publicEventIds: string[];
+  hiddenEventIds: string[];
+  complete: boolean;
+  emergenceScore: number;
+};
+
+export type CausalTraceReport = {
+  valid: boolean;
+  complete: boolean;
+  emergenceScore: number;
+  intentBackedEvents: number;
+  totalKeyEvents: number;
+  errors: string[];
+  warnings: string[];
 };
 
 export type MemoryKind = "direct" | "rumor" | "secret" | "false" | "deduced";
@@ -197,6 +264,9 @@ export type CaseQualityReport = {
   memorySupport: number;
   logicStrength?: number;
   misdirectionQuality?: number;
+  emergenceScore?: number;
+  causalTraceComplete?: boolean;
+  intentBackedEvents?: number;
   worldBackedEvidence: boolean;
   memoryScopedTestimony: boolean;
   timeline24hComplete: boolean;
@@ -443,6 +513,7 @@ export type CaseFromLog = {
   sourceMap: WorldCaseSourceMap;
   testimonies: TestimonyRecord[];
   qualityReport: CaseQualityReport;
+  causalTrace?: WorldCausalTrace;
   deductionCase: DeductionCase;
   validation: WorldCaseValidation;
   createdAt: string;

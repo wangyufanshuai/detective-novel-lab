@@ -31,8 +31,8 @@ const advancedPeople = [
   ["梁岚", "咖啡店主"],
   ["唐纪", "小学教师"],
   ["邵闻", "木匠"],
-  ["白鹿", "邮差"],
-  ["程澜", "图书管理员"],
+  ["白鹭", "邮差"],
+  ["程澄", "图书管理员"],
   ["孟遥", "面包师"],
   ["江燃", "摄影师"],
   ["秦露", "珠宝修理师"],
@@ -42,10 +42,10 @@ const advancedPeople = [
   ["钟离", "钟表匠"],
   ["叶檀", "植物学学生"],
   ["冯瓷", "陶艺师"],
-  ["罗栩", "电台主持"],
-  ["马聿", "旧货商"],
+  ["罗栖", "电台主持"],
+  ["马聪", "旧货商"],
   ["戴云", "司机"],
-  ["宋珩", "律师"],
+  ["宋彦", "律师"],
   ["季衣", "剧团演员"]
 ] as const;
 
@@ -258,10 +258,6 @@ function locationName(world: WorldState, id: string) {
   return world.locations.find((location) => location.id === id)?.name || id;
 }
 
-function npcName(world: WorldState, id: string) {
-  return world.npcs.find((npc) => npc.id === id)?.name || id;
-}
-
 export function computeSocialPressures(world: WorldState, events: WorldEvent[]): SocialPressure[] {
   const pressureByPair = new Map<string, SocialPressure>();
   function entry(npcId: string, targetId: string) {
@@ -307,8 +303,9 @@ export function simulateDailyLife(world: WorldState, days = 1, previousEvents: W
       const leak = npc.relationships[other.id] === "secret" || random() > 0.78;
       const type = leak ? "conversation" : tension ? "conflict" : "conversation";
       const time = `${String(9 + index).padStart(2, "0")}:20`;
+      const id = eventId(day, time, `${npc.id}-${other.id}-daily`);
       const event: WorldEvent = {
-        id: eventId(day, time, `${npc.id}-${other.id}-daily`),
+        id,
         worldId: nextWorld.id,
         day,
         time,
@@ -319,7 +316,11 @@ export function simulateDailyLife(world: WorldState, days = 1, previousEvents: W
         publicSummary: tension ? `${location.name}有人发生争执。` : `${location.name}有人交谈。`,
         hidden: leak,
         relatedCharacterIds: [npc.id, other.id],
-        tags: [leak ? "secret_leak" : tension ? "tension" : "social", random() > 0.7 ? "rumor" : "direct", location.kind === "restricted" || location.kind === "work" ? "means_access" : "opportunity_window"]
+        tags: [leak ? "secret_leak" : tension ? "tension" : "social", random() > 0.7 ? "rumor" : "direct", location.kind === "restricted" || location.kind === "work" ? "means_access" : "opportunity_window"],
+        goalId: `goal-${npc.id}-protect-secret`,
+        intentId: `intent-${id}`,
+        causedByEventIds: [],
+        explanation: leak ? `${npc.name}的秘密风险上升，后续可能转化为动机。` : `${npc.name}的日常关系事件被写入世界日志。`
       };
       dayEvents.push(event);
       remember(nextWorld, event);
@@ -395,8 +396,9 @@ export function simulateWorldTick(world: WorldState, previousEvents: WorldEvent[
   for (const time of times) {
     for (const npc of nextWorld.npcs.filter((item) => item.alive)) {
       const locationId = npc.schedule[time] || "town-square";
+      const id = eventId(nextWorld.day, time, `${npc.id}-move`);
       const event: WorldEvent = {
-        id: eventId(nextWorld.day, time, `${npc.id}-move`),
+        id,
         worldId: nextWorld.id,
         day: nextWorld.day,
         time,
@@ -407,7 +409,10 @@ export function simulateWorldTick(world: WorldState, previousEvents: WorldEvent[
         publicSummary: `${npc.name}在 ${time} 左右出现在${locationName(nextWorld, locationId)}。`,
         hidden: false,
         relatedCharacterIds: [npc.id],
-        tags: ["schedule"]
+        tags: ["schedule"],
+        goalId: `goal-${npc.id}-protect-secret`,
+        intentId: `intent-${id}`,
+        explanation: "日程事件提供后续可达性和不在场判断。"
       };
       events.push(event);
       remember(nextWorld, event);
@@ -424,6 +429,8 @@ export function simulateWorldTick(world: WorldState, previousEvents: WorldEvent[
     const focusSuspects = nextWorld.npcs.filter((npc) => profile.focusSuspectIds.includes(npc.id));
     const sceneName = locationName(nextWorld, profile.sceneLocationId);
     const prepName = locationName(nextWorld, profile.prepLocationId);
+    const priorPressure = nextWorld.simulationReports.flatMap((report) => report.topPressures).find((pressure) => pressure.npcId === culprit.id && pressure.targetId === victim.id);
+    const pressureCause = priorPressure?.sourceEventIds[0];
 
     const murderEvents: WorldEvent[] = [
       {
@@ -439,7 +446,11 @@ export function simulateWorldTick(world: WorldState, previousEvents: WorldEvent[
         hidden: true,
         evidenceId: "ev-means",
         relatedCharacterIds: [culprit.id],
-        tags: ["prep", "means", spec.id]
+        tags: ["prep", "means", spec.id],
+        goalId: `goal-${culprit.id}-protect-secret`,
+        intentId: `intent-${profile.meansEventId}`,
+        causedByEventIds: pressureCause ? [pressureCause] : [],
+        explanation: "秘密风险促使凶手提前准备可用手段。"
       },
       {
         id: profile.motiveEventId,
@@ -454,7 +465,11 @@ export function simulateWorldTick(world: WorldState, previousEvents: WorldEvent[
         hidden: true,
         evidenceId: "ev-motive",
         relatedCharacterIds: [culprit.id, victim.id],
-        tags: ["secret_leak", "motive", "suspicion"]
+        tags: ["secret_leak", "motive", "suspicion"],
+        goalId: `goal-${culprit.id}-protect-secret`,
+        intentId: `intent-${profile.motiveEventId}`,
+        causedByEventIds: pressureCause ? [pressureCause] : [profile.meansEventId],
+        explanation: "死者掌握秘密，动机从风险升级为直接冲突。"
       },
       {
         id: profile.opportunityEventId,
@@ -469,7 +484,11 @@ export function simulateWorldTick(world: WorldState, previousEvents: WorldEvent[
         hidden: false,
         evidenceId: "ev-opportunity",
         relatedCharacterIds: [culprit.id, witness.id],
-        tags: ["witness", "opportunity"]
+        tags: ["witness", "opportunity"],
+        goalId: `goal-${culprit.id}-protect-secret`,
+        intentId: `intent-${profile.opportunityEventId}`,
+        causedByEventIds: [profile.motiveEventId],
+        explanation: "冲突后凶手移动到案发地点，形成机会。"
       },
       {
         id: profile.deathEventId,
@@ -484,7 +503,11 @@ export function simulateWorldTick(world: WorldState, previousEvents: WorldEvent[
         hidden: true,
         evidenceId: "ev-death-scene",
         relatedCharacterIds: [culprit.id, victim.id],
-        tags: ["murder", spec.id]
+        tags: ["murder", spec.id],
+        goalId: `goal-${culprit.id}-protect-secret`,
+        intentId: `intent-${profile.deathEventId}`,
+        causedByEventIds: [profile.meansEventId, profile.motiveEventId, profile.opportunityEventId],
+        explanation: "动机、手段和机会汇合，案件从世界行为中发生。"
       },
       {
         id: profile.stagingEventId,
@@ -499,7 +522,11 @@ export function simulateWorldTick(world: WorldState, previousEvents: WorldEvent[
         hidden: true,
         evidenceId: "ev-staging",
         relatedCharacterIds: [culprit.id],
-        tags: ["staging", "time-trick", spec.id]
+        tags: ["staging", "time-trick", spec.id],
+        goalId: `goal-${culprit.id}-protect-secret`,
+        intentId: `intent-${profile.stagingEventId}`,
+        causedByEventIds: [profile.deathEventId],
+        explanation: "凶手试图把真实犯罪伪装成另一种事件。"
       },
       {
         id: profile.traceEventId,
@@ -514,7 +541,11 @@ export function simulateWorldTick(world: WorldState, previousEvents: WorldEvent[
         hidden: false,
         evidenceId: "ev-trace",
         relatedCharacterIds: [culprit.id],
-        tags: ["trace", "forensic", spec.id]
+        tags: ["trace", "forensic", spec.id],
+        goalId: `goal-${culprit.id}-protect-secret`,
+        intentId: `intent-${profile.traceEventId}`,
+        causedByEventIds: [profile.stagingEventId],
+        explanation: "伪装行为留下反证，成为玩家可发现的关键线索。"
       }
     ];
     events.push(...murderEvents);
@@ -523,8 +554,9 @@ export function simulateWorldTick(world: WorldState, previousEvents: WorldEvent[
 
     focusSuspects.forEach((npc, index) => {
       const location = pick(nextWorld.locations.filter((item) => item.id !== profile.sceneLocationId), random);
+      const id = eventId(nextWorld.day, "21:45", `${npc.id}-focus-alibi`);
       const event: WorldEvent = {
-        id: eventId(nextWorld.day, "21:45", `${npc.id}-focus-alibi`),
+        id,
         worldId: nextWorld.id,
         day: nextWorld.day,
         time: "21:45",
@@ -536,7 +568,11 @@ export function simulateWorldTick(world: WorldState, previousEvents: WorldEvent[
         hidden: false,
         evidenceId: `ev-focus-alibi-${index + 1}`,
         relatedCharacterIds: [npc.id],
-        tags: ["alibi", "exclusion", "focus_suspect"]
+        tags: ["alibi", "exclusion", "focus_suspect"],
+        goalId: `goal-${npc.id}-protect-secret`,
+        intentId: `intent-${id}`,
+        causedByEventIds: [],
+        explanation: "表面嫌疑人被独立世界事件排除。"
       };
       events.push(event);
       remember(nextWorld, event);
@@ -559,7 +595,9 @@ export function simulateWorldTick(world: WorldState, previousEvents: WorldEvent[
       hidden: false,
       evidenceId: "ev-town-rollcall",
       relatedCharacterIds: rollcallActors,
-      tags: ["alibi", "exclusion", "group_alibi"]
+      tags: ["alibi", "exclusion", "group_alibi"],
+      intentId: `intent-${profile.groupAlibiEventId}`,
+      explanation: "公共登记为非凶手建立可发现的排除链。"
     };
     events.push(rollcall);
     remember(nextWorld, rollcall);

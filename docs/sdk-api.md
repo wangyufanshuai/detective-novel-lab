@@ -14,6 +14,9 @@ import {
   getTimelineContradictions,
   getReasoningCoverage,
   evaluateEvidenceChallenge,
+  listCaseTemplates,
+  createCaseTemplate,
+  buildWorldCausalTrace,
 } from "../packages/engine/src";
 ```
 
@@ -32,6 +35,10 @@ import {
 | `getTimelineContradictions` | Returns public testimony vs evidence contradictions. |
 | `getReasoningCoverage` | Scores whether the reasoning chain is supported by discoverable evidence. |
 | `evaluateEvidenceChallenge` | Determines whether evidence hits a character contradiction before LLM wording. |
+| `listCaseTemplates` | Lists built-in premium case templates. |
+| `createCaseTemplate` | Creates a deterministic premium world, events, memories, and case from a template id. |
+| `buildWorldCausalTrace` | Derives an explainable event chain from world logs and a case. |
+| `validateCausalTrace` | Checks whether decisive evidence events are backed by intents or cause links. |
 
 ## Minimal Example
 
@@ -49,6 +56,18 @@ const result = judgeTheory(deductionCase, {
 });
 
 console.log(report.valid, result.passed);
+```
+
+## Case Library Example
+
+```ts
+import { createCaseTemplate, listCaseTemplates, validateHardCaseLogic } from "./packages/engine/src";
+
+const templates = listCaseTemplates();
+const { world, events, caseFromLog } = createCaseTemplate("clocktower-locked-room");
+const hardLogic = validateHardCaseLogic(world, events, caseFromLog);
+
+console.log(templates.map((template) => template.id), hardLogic.valid);
 ```
 
 ## Stability

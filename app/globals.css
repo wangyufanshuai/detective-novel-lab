@@ -622,7 +622,8 @@ label {
 .eventList,
 .dialogueLog,
 .evidenceList,
-.checkList {
+.checkList,
+.causalTraceList {
   display: grid;
   gap: 8px;
 }
@@ -633,7 +634,8 @@ label {
 }
 
 .eventRow,
-.evidenceList button {
+.evidenceList button,
+.causalTraceList button {
   display: grid;
   gap: 5px;
   width: 100%;
@@ -648,6 +650,39 @@ label {
 .eventRow.selected {
   border-color: var(--accent-2);
   box-shadow: inset 4px 0 0 var(--accent-2);
+}
+
+.causalTracePanel p {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.causalTraceList {
+  max-height: 280px;
+  overflow: auto;
+}
+
+.causalTraceList button {
+  border-color: rgba(86, 166, 255, 0.35);
+}
+
+.causalTraceList button.locked {
+  opacity: 0.62;
+  border-color: rgba(159, 176, 186, 0.28);
+}
+
+.causalTraceList time {
+  color: var(--accent-2);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.causalTraceList span {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
 }
 
 .eventRow time,

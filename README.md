@@ -23,9 +23,22 @@ DeepSeek is used only for NPC surface dialogue and optional solution prose. It d
 - **Simulated NPC lives**: NPCs have schedules, secrets, relationships, and memories.
 - **Event-sourced evidence**: decisive clues must come from `WorldEvent` records.
 - **Memory-scoped testimony**: NPCs can only answer from visible memories and discovered evidence.
+- **Explainable emergence**: goals, intents, and causal links show how the case came out of simulated life events.
 - **Symbolic culprit validation**: local rules verify motive, means, opportunity, exclusions, and reasoning coverage.
 - **Playable investigation**: search scenes, question NPCs, challenge testimony with evidence, submit a theory, and reveal the solution.
 - **Case authoring**: authors can edit a playable case draft, run real-time hard-logic validation, and export runnable JSON or Markdown.
+
+## Case Library
+
+Static Demo and Authoring mode include three deterministic 8 NPC / 24h cases:
+
+| Template id | Case | Focus |
+| --- | --- | --- |
+| `archive-blunt` | Archive blunt-force misdirection | strong red herrings, staged scene, exclusion chain |
+| `clocktower-locked-room` | Clocktower locked-room timing case | timeline contradiction, mechanical misdirection |
+| `clinic-poison` | Clinic poison testimony case | testimony reversal, medicine-cabinet records |
+
+Every template is validated by `validateHardCaseLogic`, has a complete `WorldCausalTrace`, keeps decisive clues backed by `WorldEvent` records, and gives every non-culprit a discoverable exclusion.
 
 ## Case Authoring Workbench
 
@@ -61,15 +74,17 @@ Advanced mode keeps the larger 30 NPC multi-day simulation for development and s
 ```mermaid
 flowchart LR
   A["Seed"] --> B["NPC schedules"]
-  B --> C["World events"]
-  C --> D["NPC memories"]
-  D --> E["Social pressure"]
-  E --> F["Murder event"]
-  F --> G["Evidence placement"]
-  G --> H["Case extraction"]
-  H --> I["Rule validation"]
-  I --> J["Playable investigation"]
-  J --> K["Theory judgement"]
+  B --> C["NPC goals and intents"]
+  C --> D["World events"]
+  D --> E["NPC memories"]
+  E --> F["Social pressure"]
+  F --> G["Causal trace"]
+  G --> H["Murder event"]
+  H --> I["Evidence placement"]
+  I --> J["Case extraction"]
+  J --> K["Rule validation"]
+  K --> L["Playable investigation"]
+  L --> M["Theory judgement"]
 ```
 
 ## Quick Start
@@ -135,7 +150,7 @@ Example:
 ```powershell
 curl -X POST http://localhost:3000/api/v1/command/town/create `
   -H "Content-Type: application/json" `
-  -d '{ "seed": "showcase-seed", "mode": "showcase", "npcCount": 8, "timelineHours": 24, "caseArchetype": "auto" }'
+  -d '{ "seed": "showcase-seed", "mode": "showcase", "caseMode": "premium", "caseTemplateId": "archive-blunt", "npcCount": 8, "timelineHours": 24, "caseArchetype": "auto" }'
 ```
 
 Legacy world and investigation APIs remain available:
@@ -165,13 +180,15 @@ Default creation payload:
 {
   "seed": "showcase-seed",
   "mode": "showcase",
+  "caseMode": "premium",
+  "caseTemplateId": "archive-blunt",
   "npcCount": 8,
   "timelineHours": 24,
   "caseArchetype": "auto"
 }
 ```
 
-`mode` may be `showcase` or `advanced`. `caseArchetype` may be `auto`, `blade`, `poison`, `blunt`, or `fall`.
+`mode` may be `showcase` or `advanced`. `caseMode` may be `premium` or `generated`. `caseTemplateId` may be `archive-blunt`, `clocktower-locked-room`, or `clinic-poison`. `caseArchetype` may be `auto`, `blade`, `poison`, `blunt`, or `fall`.
 
 Legacy structured case and novel generation remain available through:
 
@@ -186,6 +203,7 @@ Core exports are available from `packages/engine/src` and `lib/engine`:
 - Evaluation: `runEval`, `renderEvalMarkdown`.
 - Static runtime: `createStaticDemoRuntime`, `discoverDemoEvidence`, `interrogateDemoNpc`, `submitDemoTheory`, `revealDemoSolution`.
 - Visual logic: `buildWorldMapSnapshot`, `buildDeductionGraph`, `deriveSuspectBoard`, `buildCaseLogicReport`, `validateHardCaseLogic`.
+- Case library and emergence: `createCaseLibrary`, `createCaseTemplate`, `listCaseTemplates`, `buildWorldCausalTrace`, `validateCausalTrace`, `deriveNpcIntentTimeline`.
 - Authoring: `createAuthoringDraftFromCase`, `createPremiumAuthoringDraft`, `validateAuthoringDraft`, `applyAuthoringPatch`, `exportAuthoringJson`, `exportAuthoringMarkdown`.
 
 ## Tests
@@ -195,13 +213,14 @@ npm run build
 npm run test:rules
 npm run test:world
 npm run test:ai
+npm run test:encoding
 npm run test
 npm run eval
 npm run test:e2e
 node scripts/run-agent-api-smoke.mjs
 ```
 
-`npm run test:world` checks deterministic Showcase generation, 8 NPC default mode, 24h timeline, event-backed evidence, memory-scoped testimony, unique culprit validation, non-culprit exclusions, reasoning traces, and advanced 30 NPC regression.
+`npm run test:world` checks deterministic Showcase generation, all three premium templates, 8 NPC default mode, 24h timeline, event-backed evidence, memory-scoped testimony, unique culprit validation, non-culprit exclusions, causal traces, reasoning traces, and advanced 30 NPC regression. `npm run test:encoding` fails on known mojibake markers in app, engine, and E2E source files.
 
 Optional live DeepSeek eval:
 
@@ -230,6 +249,6 @@ The live eval is intentionally not part of the default test command. It uses loc
 ## Roadmap
 
 - Public hosted Static Demo.
-- More Premium cases and case archetypes.
+- Additional authored Premium cases beyond the built-in three.
 - Optional solver integration for stricter travel and opportunity constraints.
 - Community case gallery.

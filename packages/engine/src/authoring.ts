@@ -4,7 +4,7 @@ import { validateCaseSchema } from "./schema";
 import { getReasoningCoverage, validateCase } from "./validators";
 import { validateWorldCase } from "./world-case";
 import type { DeductionCase, ReasoningCoverage, SchemaReport } from "./types";
-import type { CaseFromLog, CaseLogicReport, DeductionGraph, SuspectBoardRow, WorldEvent, WorldState } from "./world-types";
+import type { CaseFromLog, CaseLogicReport, CaseTemplateId, DeductionGraph, SuspectBoardRow, WorldEvent, WorldState } from "./world-types";
 
 export type AuthoringIssue = {
   id: string;
@@ -99,8 +99,8 @@ export function createAuthoringDraftFromCase(caseFromLog: CaseFromLog, world?: W
   };
 }
 
-export function createPremiumAuthoringDraft(): AuthoringDraft {
-  const premium = createPremiumShowcaseWorld("premium-showcase");
+export function createPremiumAuthoringDraft(templateId: CaseTemplateId = "archive-blunt"): AuthoringDraft {
+  const premium = createPremiumShowcaseWorld("premium-showcase", templateId);
   return createAuthoringDraftFromCase(premium.activeCase, premium.world, premium.events);
 }
 

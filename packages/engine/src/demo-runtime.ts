@@ -2,7 +2,7 @@ import { judgeTheory } from "./judgement";
 import { createPremiumShowcaseWorld } from "./premium-showcase";
 import { buildNpcKnowledgeContext, makeRuleBoundInterrogation, updateTestimonyWithContradiction } from "./world-case";
 import type { PlayerTheory } from "./types";
-import type { DemoRuntimeState, PlayerSession } from "./world-types";
+import type { CaseTemplateId, DemoRuntimeState, PlayerSession } from "./world-types";
 
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
@@ -23,8 +23,8 @@ function createSession(worldId: string, caseId: string): PlayerSession {
   };
 }
 
-export function createStaticDemoRuntime(): DemoRuntimeState {
-  const premium = createPremiumShowcaseWorld("premium-showcase");
+export function createStaticDemoRuntime(templateId: CaseTemplateId = "archive-blunt"): DemoRuntimeState {
+  const premium = createPremiumShowcaseWorld("premium-showcase", templateId);
   return {
     mode: "static-demo",
     world: premium.world,

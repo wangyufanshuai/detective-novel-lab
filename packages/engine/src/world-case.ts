@@ -1,5 +1,6 @@
 import { judgeTheory } from "./judgement";
 import { buildCaseQualityReport } from "./world-analysis";
+import { buildWorldCausalTrace } from "./world-causal-trace";
 import type { Character, DeductionCase, Evidence, PlayerTheory } from "./types";
 import { deriveSuspectMatrix, evaluateEvidenceChallenge, validateCase } from "./validators";
 import type {
@@ -246,6 +247,27 @@ export function extractCaseFromWorld(world: WorldState, events: WorldEvent[]): C
   const testimonies = createTestimonies(world, deductionCase, profile);
   const validation = validateWorldCase(world, events, deductionCase);
   const qualityReport = buildCaseQualityReport(world, events, { deductionCase, generationProfile: profile, testimonies });
+  const causalTrace = buildWorldCausalTrace(
+    world,
+    events,
+    {
+      id: deductionCase.id,
+      worldId: world.id,
+      sourceEventIds: sourceEvents.map((event) => event.id),
+      deathEventId: death.id,
+      generationProfile: profile,
+      sourceMap,
+      testimonies,
+      qualityReport,
+      causalTrace: undefined,
+      deductionCase,
+      validation,
+      createdAt: new Date().toISOString()
+    }
+  );
+  qualityReport.emergenceScore = causalTrace.emergenceScore;
+  qualityReport.causalTraceComplete = causalTrace.complete;
+  qualityReport.intentBackedEvents = causalTrace.intents.length;
   return {
     id: deductionCase.id,
     worldId: world.id,
@@ -255,6 +277,7 @@ export function extractCaseFromWorld(world: WorldState, events: WorldEvent[]): C
     sourceMap,
     testimonies,
     qualityReport,
+    causalTrace,
     deductionCase,
     validation,
     createdAt: new Date().toISOString()

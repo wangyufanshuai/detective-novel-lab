@@ -16,7 +16,26 @@ test("loads a playable premium town without server APIs", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "推理小镇" })).toBeVisible();
   await expect(page.locator(".actorPin")).toHaveCount(8);
   await expect(page.getByTestId("deduction-graph").locator('[data-node-type="evidence"].locked').first()).toBeVisible();
+  await expect(page.getByTestId("causal-trace")).toContainText("Causal Trace");
   await expect(page.locator("body")).not.toHaveCSS("overflow-x", "scroll");
+});
+
+test("case library switches all three static templates", async ({ page }) => {
+  await page.locator(".settingsDrawer summary").click();
+  const select = page.getByTestId("case-template-select");
+  await select.selectOption("archive-blunt");
+  await expect(page.locator("body")).toContainText("档案馆钝器误导案");
+  await expect(page.getByTestId("causal-trace")).toContainText("未揭示的因果节点");
+
+  await select.selectOption("clocktower-locked-room");
+  await expect(page.locator("body")).toContainText("钟楼密室时间案");
+  await expect(page.locator(".actorPin")).toHaveCount(8);
+  await expect(page.getByTestId("deduction-graph")).toBeVisible();
+
+  await select.selectOption("clinic-poison");
+  await expect(page.locator("body")).toContainText("诊所毒杀证词案");
+  await expect(page.locator(".eventRow")).not.toHaveCount(0);
+  await expect(page.getByTestId("causal-trace")).toContainText("案件因果链");
 });
 
 test("search, interrogate and solve use the local rule engine", async ({ page }) => {
@@ -42,7 +61,7 @@ test("search, interrogate and solve use the local rule engine", async ({ page })
   await expect(page.locator(".aiSafetyStrip").getByText("Prompt Safe: Yes")).toBeVisible();
 
   await page.locator('select').filter({ has: page.locator('option[value="npc-06"]') }).last().selectOption("npc-06");
-  await page.getByPlaceholder("动机").fill("林澈告诉陆执，明早会公开旧剧院修缮款原始票据。");
+  await page.getByPlaceholder("动机").fill("林澈准备公开旧剧院修缮款票据，陆执会失去剧院和名声。");
   await page.getByPlaceholder("手法").fill("陆执在镇档案馆用舞台配重锤击杀林澈，再伪装成灯架坠落事故。");
   for (const checkbox of await page.locator(".checkRow input").all()) await checkbox.check();
   await page.getByRole("button", { name: "判定推理" }).click();
@@ -53,6 +72,14 @@ test("search, interrogate and solve use the local rule engine", async ({ page })
 
   await page.reload();
   await expect(page.locator(".revealBox")).toContainText("凶手：陆执");
+});
+
+test("causal trace node jumps timeline and event selection", async ({ page }) => {
+  const badge = page.locator(".timeBadge");
+  await expect(badge).toHaveText("08:00");
+  await page.getByTestId("causal-trace").locator("button").filter({ hasText: "22:05" }).click();
+  await expect(badge).toHaveText("22:05");
+  await expect(page.locator(".eventRow.selected")).toBeVisible();
 });
 
 test("replay advances the 24h timeline", async ({ page }) => {

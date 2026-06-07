@@ -31,6 +31,7 @@ import {
   exportAuthoringJson,
   exportAuthoringMarkdown,
   interrogateDemoNpc,
+  listCaseTemplates,
   markDemoCrimeObserved,
   revealDemoSolution,
   submitDemoTheory,
@@ -41,6 +42,7 @@ import type {
   AuthoringValidationReport,
   CaseFromLog,
   CaseLogicReport,
+  CaseTemplateId,
   DeductionGraph,
   DemoRuntimeState,
   DeepSeekLiveEvalReport,
@@ -104,6 +106,7 @@ const archetypeLabels: Record<string, string> = {
   blunt: "钝器误导",
   fall: "坠落机关"
 };
+const caseTemplates = listCaseTemplates();
 
 function apiUrl(path: string) {
   if (typeof window === "undefined") return path;
@@ -174,6 +177,7 @@ export default function Home() {
   const [worldIdInput, setWorldIdInput] = useState("");
   const [seedInput, setSeedInput] = useState("showcase-seed");
   const [caseMode, setCaseMode] = useState<CaseMode>("premium");
+  const [caseTemplateId, setCaseTemplateId] = useState<CaseTemplateId>("archive-blunt");
   const [caseArchetype, setCaseArchetype] = useState<MurderArchetype | "auto">("auto");
   const [mode, setMode] = useState<WorldMode>("showcase");
   const [playerName, setPlayerName] = useState("调查员");
@@ -221,9 +225,14 @@ export default function Home() {
   const selectedNpcMemories = useMemo(() => (world?.memories || []).filter((memory) => memory.npcId === selectedCharacterId), [world?.memories, selectedCharacterId]);
   const visibleEvents = snapshot?.visibleEvents || events.slice(-30).reverse();
   const selectedEvent = events.find((event) => event.id === highlightedEventId);
+  const causalTrace = activeCase?.causalTrace;
+  const causalTraceEvents = useMemo(
+    () => (causalTrace?.orderedEventIds || []).map((id) => events.find((event) => event.id === id)).filter((event): event is WorldEvent => Boolean(event)),
+    [causalTrace?.orderedEventIds, events]
+  );
   const authoringReport: AuthoringValidationReport = useMemo(() => validateAuthoringDraft(authoringDraft), [authoringDraft]);
   const authoringCase = authoringDraft.caseFromLog.deductionCase;
-  const authoringCharacters = authoringCase.characters.filter((character) => character.role !== "姝昏€?");
+  const authoringCharacters = authoringCase.characters.filter((character) => character.role !== "死者");
   const authoringCharacter = authoringCase.characters.find((character) => character.id === authoringCharacterId) || authoringCharacters[0] || authoringCase.characters[0];
   const authoringEvidence = authoringCase.evidence.find((item) => item.id === authoringEvidenceId) || authoringCase.evidence[0];
   const authoringScene = authoringCase.scenes.find((item) => item.id === authoringSceneId) || authoringCase.scenes[0];
@@ -252,7 +261,7 @@ export default function Home() {
     () =>
       JSON.stringify(
         {
-          createTown: { method: "POST", url: "/api/v1/command/town/create", body: { seed: seedInput, mode, caseMode, npcCount: mode === "advanced" ? 30 : 8, timelineHours: mode === "advanced" ? 120 : 24, caseArchetype } },
+          createTown: { method: "POST", url: "/api/v1/command/town/create", body: { seed: seedInput, mode, caseMode, caseTemplateId, npcCount: mode === "advanced" ? 30 : 8, timelineHours: mode === "advanced" ? 120 : 24, caseArchetype } },
           mapSnapshot: world ? { method: "GET", url: `/api/v1/query/world/map?worldId=${world.id}&caseId=${activeCase?.id || ""}&sessionId=${session?.id || ""}&day=1&time=${minutesToTime(timeValue)}` } : null,
           deductionGraph: activeCase ? { method: "GET", url: `/api/v1/query/case/deduction-graph?caseId=${activeCase.id}` } : null,
           interrogate: session ? { method: "POST", url: "/api/v1/command/investigation/interrogate", body: { sessionId: session.id, characterId: selectedCharacterId, question, evidenceId: selectedEvidenceId || undefined } } : null
@@ -260,7 +269,7 @@ export default function Home() {
         null,
         2
       ),
-    [activeCase?.id, caseArchetype, caseMode, mode, question, seedInput, selectedCharacterId, selectedEvidenceId, session?.id, timeValue, world]
+    [activeCase?.id, caseArchetype, caseMode, caseTemplateId, mode, question, seedInput, selectedCharacterId, selectedEvidenceId, session?.id, timeValue, world]
   );
 
   useEffect(() => {
@@ -272,7 +281,7 @@ export default function Home() {
     setRuntimeMode(selectedRuntime);
     const saved = loadLocal<{ worldId?: string; sessionId?: string; runtimeState?: DemoRuntimeState }>(storageKey, {});
     if (selectedRuntime === "static-demo") {
-      hydrateStatic(saved.runtimeState?.mode === "static-demo" ? saved.runtimeState : createStaticDemoRuntime());
+      hydrateStatic(saved.runtimeState?.mode === "static-demo" ? saved.runtimeState : createStaticDemoRuntime(caseTemplateId));
       return;
     }
     if (saved.worldId) setWorldIdInput(saved.worldId);
@@ -407,7 +416,7 @@ export default function Home() {
   async function createWorld(forcedRuntime?: RuntimeMode) {
     const targetRuntime = forcedRuntime || runtimeMode;
     if (targetRuntime === "static-demo") {
-      hydrateStatic(createStaticDemoRuntime());
+      hydrateStatic(createStaticDemoRuntime(caseTemplateId));
       setLastAiSafety(null);
       setReplaying(false);
       return;
@@ -418,6 +427,7 @@ export default function Home() {
         seed: seedInput.trim() || (caseMode === "premium" ? "premium-showcase" : "showcase-seed"),
         mode,
         caseMode: mode === "showcase" ? caseMode : "generated",
+        caseTemplateId,
         npcCount: mode === "advanced" ? 30 : 8,
         timelineHours: mode === "advanced" ? 120 : 24,
         preSimDays: mode === "advanced" ? 5 : 1,
@@ -686,7 +696,7 @@ export default function Home() {
     setReplaying(false);
     if (next === "static-demo") {
       const saved = loadLocal<{ runtimeState?: DemoRuntimeState }>(storageKey, {});
-      hydrateStatic(saved.runtimeState?.mode === "static-demo" ? saved.runtimeState : createStaticDemoRuntime());
+      hydrateStatic(saved.runtimeState?.mode === "static-demo" ? saved.runtimeState : createStaticDemoRuntime(caseTemplateId));
       return;
     }
     setWorld(null);
@@ -696,6 +706,16 @@ export default function Home() {
     setSnapshot(null);
     setProgress(initialProgress);
     setStatus("已切换到 Server Runtime。创建小镇后将使用 SQLite，并可调用 DeepSeek 生成 NPC 表层回答。");
+  }
+
+  function switchCaseTemplate(next: CaseTemplateId) {
+    setCaseTemplateId(next);
+    if (runtimeMode === "static-demo" && caseMode === "premium") {
+      hydrateStatic(createStaticDemoRuntime(next));
+      setReplaying(false);
+      setLastAiSafety(null);
+      setStatus(`已切换案例模板：${caseTemplates.find((item) => item.id === next)?.title || next}`);
+    }
   }
 
   function selectGraphEvidence(evidenceId: string) {
@@ -717,8 +737,8 @@ export default function Home() {
     setAuthoringDraft((current) => applyAuthoringPatch(current, { op: "set", path, value }));
   }
 
-  function loadPremiumTemplate() {
-    const draft = createPremiumAuthoringDraft();
+  function loadPremiumTemplate(templateId: CaseTemplateId = caseTemplateId) {
+    const draft = createPremiumAuthoringDraft(templateId);
     setAuthoringDraft(draft);
     setAuthoringCharacterId("");
     setAuthoringEvidenceId("");
@@ -726,7 +746,8 @@ export default function Home() {
     setAuthoringTimelineId("");
     setAuthoringExportText("");
     setAuthoringImportText("");
-    setAuthoringStatus("已恢复 Premium Template，可继续编辑或直接 Run Draft。");
+    setCaseTemplateId(templateId);
+    setAuthoringStatus("已恢复案例模板，可继续编辑或直接 Run Draft。");
   }
 
   function deleteAuthoringEvidence() {
@@ -999,8 +1020,13 @@ export default function Home() {
 
           <section className="authoringPanel">
             <h2>Import / Export</h2>
+            <label>模板
+              <select value={caseTemplateId} onChange={(event) => loadPremiumTemplate(event.target.value as CaseTemplateId)}>
+                {caseTemplates.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
+              </select>
+            </label>
             <div className="authoringActions">
-              <button onClick={loadPremiumTemplate}>Load Premium Template</button>
+              <button onClick={() => loadPremiumTemplate()}>Load Premium Template</button>
               <button onClick={() => exportAuthoring("json")}>Export JSON</button>
               <button onClick={() => exportAuthoring("markdown")}>Export Markdown</button>
             </div>
@@ -1043,6 +1069,11 @@ export default function Home() {
             <select value={caseMode} onChange={(event) => setCaseMode(event.target.value as CaseMode)} disabled={mode === "advanced"}>
               <option value="premium">Premium hard case</option>
               <option value="generated">Generated case</option>
+            </select>
+          </label>
+          <label>Case Library
+            <select data-testid="case-template-select" value={caseTemplateId} onChange={(event) => switchCaseTemplate(event.target.value as CaseTemplateId)} disabled={mode === "advanced" || caseMode !== "premium"}>
+              {caseTemplates.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
             </select>
           </label>
           <label>案件类型
@@ -1176,6 +1207,33 @@ export default function Home() {
             <span>Unique: {logicReport?.uniqueCulprit ? "Yes" : "No"}</span>
             <span>Fair: {logicReport?.fairPlay ? "Yes" : "No"}</span>
             <span>Excluded: {logicReport?.allNonCulpritsExplainablyExcluded ? "Yes" : "No"}</span>
+            <span>Emergence: {quality?.emergenceScore ?? causalTrace?.emergenceScore ?? 0}</span>
+            <span>Causal: {quality?.causalTraceComplete || causalTrace?.complete ? "Pass" : "Pending"}</span>
+          </div>
+        </section>
+
+        <section className="actionPanel causalTracePanel" data-testid="causal-trace">
+          <h2><Clock size={16} /> Causal Trace</h2>
+          <p>案件因果链：日程、秘密风险、手段准备、案发、伪装和反证。</p>
+          <div className="causalTraceList">
+            {causalTraceEvents.map((event, index) => {
+              const locked = event.hidden && !session?.judgement?.accepted && !session?.discoveredEvidenceIds.includes(event.evidenceId || "");
+              return (
+                <button
+                  key={event.id}
+                  className={locked ? "locked" : ""}
+                  onClick={() => {
+                    setHighlightedEventId(event.id);
+                    setSelectedSceneId(event.locationId);
+                    setTimeValue(timeToMinutes(event.time));
+                  }}
+                >
+                  <time>{event.time}</time>
+                  <strong>{locked ? "未揭示的因果节点" : event.publicSummary}</strong>
+                  <span>{index + 1}. {event.explanation || event.tags.join(", ")}</span>
+                </button>
+              );
+            })}
           </div>
         </section>
 

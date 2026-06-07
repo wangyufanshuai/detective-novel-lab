@@ -77,6 +77,63 @@ const engine = await loadEngine();
 }
 
 {
+  const templateIds = ["archive-blunt", "clocktower-locked-room", "clinic-poison"];
+  assert.deepEqual(engine.listCaseTemplates().map((item) => item.id), templateIds, "case library exposes three stable templates");
+  for (const templateId of templateIds) {
+    const { world, events, activeCase } = engine.createCaseTemplate(templateId);
+    assert.equal(world.npcs.length, 8, `${templateId} has 8 NPCs`);
+    assert.equal(world.timelineHours, 24, `${templateId} covers 24h`);
+    assert.equal(events.filter((event) => event.type === "death").length, 1, `${templateId} has one murder`);
+    assert.equal(engine.validateHardCaseLogic(world, events, activeCase).valid, true, `${templateId} passes hard logic`);
+    const trace = engine.buildWorldCausalTrace(world, events, activeCase);
+    const traceReport = engine.validateCausalTrace(world, events, { ...activeCase, causalTrace: trace });
+    assert.equal(trace.complete, true, `${templateId} causal trace is complete`);
+    assert.equal(trace.emergenceScore >= 85, true, `${templateId} emergence score is high`);
+    assert.equal(traceReport.valid, true, `${templateId} causal trace validates`);
+    assert.equal(
+      activeCase.deductionCase.truth.decisiveEvidenceIds.every((id) => events.some((event) => event.evidenceId === id && (event.intentId || event.causedByEventIds?.length))),
+      true,
+      `${templateId} decisive evidence is intent or cause backed`
+    );
+    const allEvidenceIds = activeCase.deductionCase.evidence.map((item) => item.id);
+    const correct = engine.judgeTheory(
+      activeCase.deductionCase,
+      {
+        culpritId: activeCase.deductionCase.truth.culpritId,
+        motive: activeCase.deductionCase.truth.motive,
+        method: activeCase.deductionCase.truth.method,
+        evidenceIds: allEvidenceIds
+      },
+      allEvidenceIds
+    );
+    assert.equal(correct.accepted, true, `${templateId} correct theory passes`);
+    const wrongCulprit = activeCase.deductionCase.characters.find((item) => item.id !== activeCase.deductionCase.truth.culpritId && item.role !== "死者")?.id;
+    const wrong = engine.judgeTheory(
+      activeCase.deductionCase,
+      {
+        culpritId: wrongCulprit,
+        motive: activeCase.deductionCase.truth.motive,
+        method: activeCase.deductionCase.truth.method,
+        evidenceIds: allEvidenceIds
+      },
+      allEvidenceIds
+    );
+    assert.equal(wrong.accepted, false, `${templateId} wrong culprit fails`);
+    const missingOne = engine.judgeTheory(
+      activeCase.deductionCase,
+      {
+        culpritId: activeCase.deductionCase.truth.culpritId,
+        motive: activeCase.deductionCase.truth.motive,
+        method: activeCase.deductionCase.truth.method,
+        evidenceIds: allEvidenceIds.filter((id) => id !== activeCase.deductionCase.truth.decisiveEvidenceIds[0])
+      },
+      allEvidenceIds.filter((id) => id !== activeCase.deductionCase.truth.decisiveEvidenceIds[0])
+    );
+    assert.equal(missingOne.accepted, false, `${templateId} missing decisive evidence fails`);
+  }
+}
+
+{
   const first = engine.createInitialWorld("stable-seed");
   const second = engine.createInitialWorld("stable-seed");
   assert.equal(first.mode, "showcase", "default world uses showcase mode");

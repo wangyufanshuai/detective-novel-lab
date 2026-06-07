@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createInitialWorld, createPremiumShowcaseWorld, extractCaseFromWorld, simulateDailyLife, simulateWorldTick, type MurderArchetype, type WorldMode } from "@/lib/engine";
+import { createInitialWorld, createPremiumShowcaseWorld, extractCaseFromWorld, simulateDailyLife, simulateWorldTick, type CaseTemplateId, type MurderArchetype, type WorldMode } from "@/lib/engine";
 import { worldRepository } from "@/lib/world/repository";
 
 export async function POST(request: NextRequest) {
@@ -12,10 +12,11 @@ export async function POST(request: NextRequest) {
       timelineHours?: number;
       preSimDays?: number;
       caseMode?: "premium" | "generated";
+      caseTemplateId?: CaseTemplateId;
     };
     const mode = body.mode || "showcase";
     if (mode === "showcase" && (body.caseMode || "generated") === "premium") {
-      const premium = createPremiumShowcaseWorld(body.seed || "premium-showcase");
+      const premium = createPremiumShowcaseWorld(body.seed || "premium-showcase", body.caseTemplateId || "archive-blunt");
       const savedWorld = worldRepository.saveWorld(premium.world);
       worldRepository.addEvents(premium.events);
       worldRepository.saveCase(premium.activeCase);
