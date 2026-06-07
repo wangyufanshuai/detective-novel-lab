@@ -92,8 +92,6 @@ export function buildGuardedNpcPromptPayload(input: {
         }
       : null,
     visibleMemories: context.visibleMemories.map((memory) => ({
-      id: memory.id,
-      eventId: memory.eventId,
       day: memory.day,
       kind: memory.kind,
       confidence: memory.confidence,
@@ -189,7 +187,7 @@ export function evaluateNpcDialogue(input: {
     answer && input.characterId !== truth.culpritId && (answer.includes(truth.culpritId) || (culprit?.name && answer.includes(culprit.name)))
   );
   const mentionsHiddenMethod = Boolean(truth.method && answer.includes(truth.method));
-  const challengeCues = ["证据", "矛盾", "确实", "修正", "记错", "隐瞒", "不完整", "解释", "核实", "可疑", "对得上", "challenge", "evidence"];
+  const challengeCues = ["证据", "矛盾", "确实", "修正", "记错", "隐瞒", "不完整", "解释", "核实", "可疑", "对得上", "记录", "证明", "粉末", "鞋印", "痕迹", "登记", "承认", "challenge", "evidence"];
   const acknowledgesChallenge = input.evidenceId ? challengeCues.some((cue) => answer.includes(cue)) : true;
   const referencesVisibleMemory = input.promptAudit.memoryCount > 0 ? answer.trim().length > 0 : true;
 

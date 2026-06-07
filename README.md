@@ -6,6 +6,8 @@ Detective Town is a local-first mystery engine for fair-play detective games. It
 
 DeepSeek is used only for NPC surface dialogue and optional solution prose. It does not decide the culprit, method, evidence, or timeline.
 
+> Screenshot/GIF target: create the Showcase town, search one scene, interrogate one NPC, then open the Developer / Agent API panel. The demo is deterministic, so screenshots do not depend on live model output.
+
 ## Why It Is Different
 
 - **Simulated NPC lives**: NPCs have schedules, secrets, relationships, and memories.
@@ -76,7 +78,38 @@ API keys are read only on the server. Do not expose them in client code.
 
 ## API
 
-World and investigation APIs:
+Stable Agent Control API:
+
+- `GET /api/v1/query/runtime/status`
+- `GET /api/v1/query/world/state?worldId=...`
+- `GET /api/v1/query/world/events?worldId=...`
+- `GET /api/v1/query/world/memories?worldId=...&npcId=...`
+- `GET /api/v1/query/case?caseId=...`
+- `POST /api/v1/command/town/create`
+- `POST /api/v1/command/player/join`
+- `POST /api/v1/command/investigation/discover`
+- `POST /api/v1/command/investigation/interrogate`
+- `POST /api/v1/command/investigation/submit-theory`
+
+`/api/v1/*` responses use one shape:
+
+```json
+{ "ok": true, "data": {} }
+```
+
+```json
+{ "ok": false, "error": { "code": "WORLD_NOT_FOUND", "message": "World not found" } }
+```
+
+Example:
+
+```powershell
+curl -X POST http://localhost:3000/api/v1/command/town/create `
+  -H "Content-Type: application/json" `
+  -d '{ "seed": "showcase-seed", "mode": "showcase", "npcCount": 8, "timelineHours": 24, "caseArchetype": "auto" }'
+```
+
+Legacy world and investigation APIs remain available:
 
 - `POST /api/worlds/create`
 - `POST /api/worlds/{worldId}/tick`
@@ -132,6 +165,7 @@ npm run test:world
 npm run test:ai
 npm run test
 npm run eval
+node scripts/run-agent-api-smoke.mjs
 ```
 
 `npm run test:world` checks deterministic Showcase generation, 8 NPC default mode, 24h timeline, event-backed evidence, memory-scoped testimony, unique culprit validation, non-culprit exclusions, reasoning traces, and advanced 30 NPC regression.
@@ -143,6 +177,13 @@ npm run test:deepseek
 ```
 
 The live eval is intentionally not part of the default test command. It uses local `.env.local` / `.env` credentials and writes reports under `outputs/`.
+
+## Docs
+
+- [Agent Control API](docs/agent-control-api.md)
+- [World Model](docs/world-model.md)
+- [AI Safety](docs/ai-safety.md)
+- [Showcase Walkthrough](docs/showcase-walkthrough.md)
 
 ## Current Limits
 

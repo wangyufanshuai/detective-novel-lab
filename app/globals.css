@@ -489,6 +489,16 @@ blockquote {
   font-weight: 900;
 }
 
+.eventFeed.compact {
+  margin-top: 10px;
+  max-height: 260px;
+  overflow: auto;
+}
+
+.eventFeed.compact div {
+  padding: 10px;
+}
+
 .checkRow {
   display: flex;
   gap: 9px;
@@ -564,6 +574,31 @@ blockquote {
   font-size: 13px;
 }
 
+.developerGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.developerGrid > div {
+  min-width: 0;
+}
+
+.apiExample {
+  max-height: 260px;
+  overflow: auto;
+  margin: 14px 0 0;
+  padding: 12px;
+  color: #f7efe2;
+  background: #17191d;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  white-space: pre-wrap;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .debugPanel {
   margin-top: 18px;
   padding: 18px;
@@ -619,7 +654,8 @@ blockquote {
 
   .metricStrip,
   .locationGrid,
-  .formGrid {
+  .formGrid,
+  .developerGrid {
     grid-template-columns: 1fr;
     width: 100%;
   }

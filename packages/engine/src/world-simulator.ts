@@ -375,7 +375,8 @@ function addEventMemoryForActors(world: WorldState, event: WorldEvent, culpritId
   remember(world, event);
   for (const actorId of event.actorIds) {
     const kind: MemoryKind = actorId === culpritId && event.hidden ? "secret" : "direct";
-    addMemory(world, event, actorId, kind, event.summary, { confidence: actorId === culpritId ? 1 : 0.85, visibleToPlayer: kind !== "secret", challengeableEvidenceIds: event.evidenceId ? [event.evidenceId] : [] });
+    const memorySummary = kind === "secret" ? event.summary : event.publicSummary;
+    addMemory(world, event, actorId, kind, memorySummary, { confidence: actorId === culpritId ? 1 : 0.85, visibleToPlayer: kind !== "secret", challengeableEvidenceIds: event.evidenceId ? [event.evidenceId] : [] });
   }
   if (event.relatedCharacterIds.includes(witnessId) && !event.actorIds.includes(witnessId)) {
     addMemory(world, event, witnessId, "direct", event.publicSummary, { confidence: 0.85, visibleToPlayer: true, challengeableEvidenceIds: event.evidenceId ? [event.evidenceId] : [] });

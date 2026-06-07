@@ -65,6 +65,8 @@ const missingEvidenceReveal = [
 ].join("\n");
 
 assert.equal(text.includes("culpritId"), false, "NPC prompt payload must not include culpritId");
+assert.equal(text.includes("eventId"), false, "NPC prompt payload must not expose internal event ids");
+assert.equal(text.includes("mem-"), false, "NPC prompt payload must not expose internal memory ids");
 assert.equal(text.includes(caseFromLog.deductionCase.truth.method), false, "NPC prompt payload must not include full truth method");
 assert.equal(audit.safe, true, "Prompt audit must mark scoped NPC payload as safe");
 assert.equal(dialogueEval.safetyFlags.length, 0, "Harmless scoped dialogue should not trigger safety flags");
@@ -74,9 +76,9 @@ assert.equal(ai.evaluateReveal(wrongCulpritReveal, caseFromLog).culpritPreserved
 assert.equal(ai.evaluateReveal(wrongMethodReveal, caseFromLog).methodPreserved, false, "Changed method must fail reveal evaluation");
 assert.equal(ai.evaluateReveal(missingEvidenceReveal, caseFromLog).evidencePreserved, false, "Missing decisive evidence must fail reveal evaluation");
 assert.equal(
-  payload.visibleMemories.every((memory) => context.visibleMemories.some((source) => source.id === memory.id && source.npcId === focus)),
+  payload.visibleMemories.every((memory) => context.visibleMemories.some((source) => source.summary === memory.summary && source.npcId === focus)),
   true,
-  "NPC prompt payload should only include selected NPC memories"
+  "NPC prompt payload should only include selected NPC memory summaries"
 );
 
 console.log("AI safety tests passed.");

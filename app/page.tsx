@@ -73,8 +73,13 @@ function loadLocal<T>(key: string, fallback: T): T {
   }
 }
 
+function apiUrl(path: string) {
+  if (typeof window === "undefined") return path;
+  return new URL(path, window.location.origin).toString();
+}
+
 async function postJson<T>(url: string, body: unknown) {
-  const response = await fetch(url, {
+  const response = await fetch(apiUrl(url), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body)
@@ -114,17 +119,45 @@ export default function Home() {
   const selectedScene = scenes.find((scene) => scene.id === selectedSceneId) || scenes[0];
   const sceneEvidence = selectedScene ? deductionCase?.evidence.filter((item) => selectedScene.evidenceIds.includes(item.id)) || [] : [];
   const discoveredEvidence = deductionCase?.evidence.filter((item) => discovered.has(item.id)) || [];
-  const recentEvents = useMemo(() => events.slice(-14).reverse(), [events]);
+  const recentEvents = useMemo(() => events.slice(-10).reverse(), [events]);
   const playerTheoryEvidence = useMemo(() => new Set(theory.evidenceIds), [theory.evidenceIds]);
   const selectedTestimony = activeCase?.testimonies?.find((item) => item.characterId === selectedCharacterId);
   const quality = activeCase?.qualityReport;
   const factLockScore = lastAiSafety?.revealEval?.factContractScore ?? lastAiSafety?.revealEval?.score;
   const exposedContradictions = activeCase?.testimonies?.reduce((sum, item) => sum + item.exposedContradictions.length, 0) || 0;
+  const selectedNpcMemories = useMemo(
+    () => (world?.memories || []).filter((memory) => memory.npcId === selectedCharacterId),
+    [world?.memories, selectedCharacterId]
+  );
+  const agentApiExample = useMemo(
+    () =>
+      JSON.stringify(
+        {
+          createTown: {
+            method: "POST",
+            url: "/api/v1/command/town/create",
+            body: { seed: seedInput || "showcase-seed", mode, npcCount: mode === "advanced" ? 30 : 8, timelineHours: mode === "advanced" ? 120 : 24, caseArchetype }
+          },
+          queryState: world ? { method: "GET", url: `/api/v1/query/world/state?worldId=${world.id}` } : null,
+          queryCase: activeCase ? { method: "GET", url: `/api/v1/query/case?caseId=${activeCase.id}` } : null,
+          interrogate: session
+            ? {
+                method: "POST",
+                url: "/api/v1/command/investigation/interrogate",
+                body: { sessionId: session.id, characterId: selectedCharacterId, question, evidenceId: selectedEvidenceId || undefined }
+              }
+            : null
+        },
+        null,
+        2
+      ),
+    [activeCase, caseArchetype, mode, question, seedInput, selectedCharacterId, selectedEvidenceId, session, world]
+  );
 
   useEffect(() => {
     const saved = loadLocal<{ worldId?: string; sessionId?: string }>(storageKey, {});
     if (saved.worldId) setWorldIdInput(saved.worldId);
-    fetch("/api/ai/live-eval/latest")
+    fetch(apiUrl("/api/ai/live-eval/latest"))
       .then((response) => (response.ok ? response.json() : null))
       .then((data) => {
         if (data?.ok) setLatestLiveEval(data.report);
@@ -179,9 +212,9 @@ export default function Home() {
     if (!worldIdInput.trim()) return;
     setBusy(true);
     try {
-      const state = await fetch(`/api/worlds/${worldIdInput.trim()}/state`).then((response) => response.json());
+      const state = await fetch(apiUrl(`/api/worlds/${worldIdInput.trim()}/state`)).then((response) => response.json());
       if (!state.ok) throw new Error(state.error || "读取小镇失败");
-      const eventResult = await fetch(`/api/worlds/${worldIdInput.trim()}/events`).then((response) => response.json());
+      const eventResult = await fetch(apiUrl(`/api/worlds/${worldIdInput.trim()}/events`)).then((response) => response.json());
       hydrateCase({ world: state.world, activeCase: state.activeCase, sessions: state.sessions || [], events: eventResult.events || [] });
       persist(state.world.id, session?.id);
       setStatus("已载入现有 Detective Town。");
@@ -263,7 +296,7 @@ export default function Home() {
       setLastAiSafety({ mock: data.mock, promptAudit: data.promptAudit, dialogueEval: data.dialogueEval, safetyFlags: data.safetyFlags, memoryCount: data.memoryCount, evidenceCount: data.evidenceCount });
       setStatus(data.testimonyUpdated ? "证据击中矛盾，NPC 证词已被修正。" : "NPC 已按自身记忆回答。");
       if (activeCase) {
-        const latestCase = await fetch(`/api/cases/${activeCase.id}`).then((response) => response.json());
+        const latestCase = await fetch(apiUrl(`/api/cases/${activeCase.id}`)).then((response) => response.json());
         if (latestCase.ok) setActiveCase(latestCase.caseFromLog || latestCase.activeCase || latestCase.case);
       }
     } catch (error) {
@@ -308,6 +341,15 @@ export default function Home() {
       setStatus(error instanceof Error ? error.message : "生成解答失败");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function copyAgentApiExample() {
+    try {
+      await navigator.clipboard.writeText(agentApiExample);
+      setStatus("Agent API 示例已复制。");
+    } catch {
+      setStatus("复制失败：当前浏览器未开放剪贴板权限。");
     }
   }
 
@@ -541,6 +583,47 @@ export default function Home() {
             <span>Fact Lock: {factLockScore ?? "N/A"}</span>
             <span>Exposed Contradictions: {exposedContradictions}</span>
           </div>
+        </section>
+
+        <section className="workPanel" style={{ marginTop: 18 }}>
+          <h4><Database size={16} /> Developer / Agent API</h4>
+          <div className="caseMeta">
+            <span>worldId: {world?.id || "N/A"}</span>
+            <span>caseId: {activeCase?.id || "N/A"}</span>
+            <span>sessionId: {session?.id || "N/A"}</span>
+            <span>Selected NPC memories: {selectedNpcMemories.length}</span>
+            <span>Quality: {quality?.qualityScore ?? quality?.score ?? "N/A"}</span>
+            <span>Safety Flags: {lastAiSafety?.safetyFlags?.length ? lastAiSafety.safetyFlags.join(", ") : "none"}</span>
+          </div>
+          <button className="secondaryButton" onClick={copyAgentApiExample}><FileSearch size={16} /> Copy Agent API Example</button>
+          <div className="developerGrid">
+            <div>
+              <strong>Recent WorldEvents</strong>
+              <div className="eventFeed compact">
+                {recentEvents.map((event) => (
+                  <div key={`dev-${event.id}`}>
+                    <time>第{event.day}日 {event.time}</time>
+                    <strong>{event.publicSummary}</strong>
+                    <span>{event.id}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <strong>NPC Memory Scope</strong>
+              <div className="eventFeed compact">
+                {selectedNpcMemories.slice(-8).reverse().map((memory) => (
+                  <div key={memory.id}>
+                    <time>{memory.kind} / confidence {memory.confidence}</time>
+                    <strong>{memory.summary}</strong>
+                    <span>{memory.eventId}</span>
+                  </div>
+                ))}
+                {!selectedNpcMemories.length && <p>选择 NPC 后显示其可用记忆范围。</p>}
+              </div>
+            </div>
+          </div>
+          <pre className="apiExample">{agentApiExample}</pre>
         </section>
 
         {debugOpen && (

@@ -10,6 +10,7 @@
     "test:rules": "node scripts/run-rule-tests.mjs",
     "test:world": "node scripts/run-world-tests.mjs",
     "test:ai": "node scripts/run-ai-safety-tests.mjs",
+    "test:agent-api": "node scripts/run-agent-api-smoke.mjs",
     "test:deepseek": "node scripts/run-deepseek-live-eval.mjs",
     "test": "npm run test:rules && npm run test:world && npm run test:ai",
     "eval": "node scripts/run-eval.mjs",
