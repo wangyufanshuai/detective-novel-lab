@@ -223,4 +223,47 @@ const engine = await loadEngine();
   assert.equal(runtime.revealText.length > 80, true, "static runtime produces a source-locked solution");
 }
 
+{
+  const draft = engine.createPremiumAuthoringDraft();
+  const validReport = engine.validateAuthoringDraft(draft);
+  assert.equal(validReport.valid, true, "premium case converts to a valid authoring draft");
+  assert.equal(validReport.hardLogicValid, true, "authoring draft keeps hard logic valid");
+
+  const withoutKeyEvidence = engine.applyAuthoringPatch(draft, {
+    op: "delete-array-item",
+    path: "caseFromLog.deductionCase.evidence",
+    id: draft.caseFromLog.deductionCase.truth.decisiveEvidenceIds[0]
+  });
+  assert.equal(engine.validateAuthoringDraft(withoutKeyEvidence).valid, false, "deleting decisive evidence fails authoring validation");
+
+  const noExclusionChains = engine.applyAuthoringPatch(draft, {
+    op: "set",
+    path: "caseFromLog.deductionCase.logicPuzzle.exclusionChains",
+    value: []
+  });
+  const missingExclusions = engine.applyAuthoringPatch(noExclusionChains, {
+    op: "set",
+    path: "caseFromLog.deductionCase.logicPuzzle.suspectMatrix",
+    value: noExclusionChains.caseFromLog.deductionCase.logicPuzzle.suspectMatrix.map((row) => ({ ...row, excludedByEvidenceIds: row.isCulprit ? [] : [] }))
+  });
+  assert.equal(engine.validateAuthoringDraft(missingExclusions).valid, false, "removing non-culprit exclusions fails authoring validation");
+
+  const exported = engine.exportAuthoringJson(draft);
+  const imported = JSON.parse(exported);
+  assert.deepEqual(imported.caseFromLog.deductionCase.title, draft.caseFromLog.deductionCase.title, "exported authoring JSON can be imported without title drift");
+  assert.equal(engine.validateAuthoringDraft(imported).valid, true, "exported authoring JSON validates after import");
+
+  const markdown = engine.exportAuthoringMarkdown(draft);
+  assert.equal(markdown.includes("## Characters"), true, "authoring markdown includes characters");
+  assert.equal(markdown.includes("## Evidence"), true, "authoring markdown includes evidence");
+  assert.equal(markdown.includes("## True Timeline"), true, "authoring markdown includes timeline");
+  assert.equal(markdown.includes("## Critical Reasoning Chain"), true, "authoring markdown includes reasoning chain");
+
+  const drift = structuredClone(draft);
+  delete drift.caseFromLog.deductionCase.characters[0].knowledgeScope;
+  const driftReport = engine.validateAuthoringDraft(drift);
+  assert.equal(driftReport.valid, false, "field drift in imported authoring JSON is reported clearly");
+  assert.equal(driftReport.errors.some((item) => item.path.includes("knowledgeScope")), true, "field drift issue locates the missing field");
+}
+
 console.log("World simulation tests passed.");

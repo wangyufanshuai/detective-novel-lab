@@ -1001,6 +1001,195 @@ blockquote {
   white-space: nowrap;
 }
 
+.modeSwitch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 10px 0 12px;
+}
+
+.modeSwitch button,
+.authoringTabs button,
+.authoringActions button,
+.dangerButton {
+  min-height: 36px;
+  color: var(--soft);
+  background: #0c1219;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  font-weight: 900;
+}
+
+.modeSwitch button.active,
+.authoringTabs button.active {
+  color: #061018;
+  background: var(--accent);
+  border-color: #b8dcff;
+}
+
+.authoringShell {
+  display: grid;
+  grid-template-columns: 330px minmax(520px, 1fr) 380px;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.authoringRail,
+.authoringInspector {
+  height: 100vh;
+  overflow: auto;
+  padding: 16px;
+  background: linear-gradient(180deg, var(--rail), #0d131b);
+  border-color: var(--line);
+  border-style: solid;
+}
+
+.authoringRail {
+  border-width: 0 1px 0 0;
+}
+
+.authoringInspector {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  border-width: 0 0 0 1px;
+}
+
+.authoringStage {
+  display: grid;
+  grid-template-rows: auto minmax(320px, 0.95fr) auto;
+  min-height: 100vh;
+  overflow: auto;
+  background: #070b10;
+}
+
+.authoringTabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.authoringPanel,
+.authoringReport {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  background: rgba(21, 29, 38, 0.92);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.authoringPanel h2,
+.authoringReport h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.authoringPanel select + label,
+.authoringPanel label + label {
+  margin-top: 2px;
+}
+
+.compactMap {
+  min-height: 0;
+}
+
+.compactMap .pixelMap {
+  min-width: 760px;
+}
+
+.authoringReport.pass {
+  border-color: rgba(121, 200, 111, 0.42);
+}
+
+.authoringReport.fail {
+  border-color: rgba(240, 91, 97, 0.42);
+}
+
+.issueList {
+  display: grid;
+  gap: 7px;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.issueItem {
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  background: #0c1219;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  font-size: 11px;
+}
+
+.issueItem.error {
+  border-color: rgba(240, 91, 97, 0.5);
+}
+
+.issueItem.warning {
+  border-color: rgba(246, 195, 91, 0.45);
+}
+
+.issueItem strong {
+  color: var(--ink);
+}
+
+.issueItem span {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.authoringActions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.dangerButton {
+  color: #ffe5e7;
+  border-color: rgba(240, 91, 97, 0.5);
+}
+
+.matrixEditor {
+  display: grid;
+  gap: 8px;
+}
+
+.matrixEditorRow {
+  display: grid;
+  grid-template-columns: 1fr repeat(3, auto);
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+  background: #0c1219;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+}
+
+.matrixEditorRow strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.matrixEditorRow label {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.matrixEditorRow input[type="text"],
+.matrixEditorRow input:not([type]) {
+  grid-column: 1 / -1;
+}
+
 .spin {
   animation: spin 0.9s linear infinite;
 }
@@ -1021,6 +1210,17 @@ blockquote {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     height: auto;
     max-height: none;
+    border-width: 1px 0 0;
+  }
+
+  .authoringShell {
+    grid-template-columns: 300px minmax(420px, 1fr);
+  }
+
+  .authoringInspector {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    height: auto;
     border-width: 1px 0 0;
   }
 }
@@ -1048,5 +1248,22 @@ blockquote {
 
   .pixelMap {
     min-width: 820px;
+  }
+
+  .authoringShell {
+    display: block;
+    overflow: auto;
+  }
+
+  .authoringRail,
+  .authoringInspector,
+  .authoringStage {
+    height: auto;
+    min-height: 0;
+  }
+
+  .authoringInspector {
+    display: grid;
+    grid-template-columns: 1fr;
   }
 }

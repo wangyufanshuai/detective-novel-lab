@@ -12,3 +12,4 @@ export * from "./world-map";
 export * from "./deduction-graph";
 export * from "./premium-showcase";
 export * from "./demo-runtime";
+export * from "./authoring";

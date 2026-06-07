@@ -62,3 +62,36 @@ test("replay advances the 24h timeline", async ({ page }) => {
   await expect(badge).not.toHaveText("08:00", { timeout: 3_000 });
   await page.getByRole("button", { name: /Pause Replay/ }).click();
 });
+
+test("authoring workbench validates, persists, exports and runs a draft", async ({ page }) => {
+  await page.evaluate(() => localStorage.removeItem("detective-town-authoring-v1"));
+  await page.reload();
+  await page.getByTestId("open-authoring").click();
+  await expect(page.getByTestId("authoring-workbench")).toBeVisible();
+  await expect(page.getByTestId("authoring-rule-report")).toContainText("Pass");
+
+  await page.getByTestId("authoring-title").fill("雾灯镇：作者测试案");
+  await page.getByRole("button", { name: "Evidence" }).click();
+  await page.getByTestId("authoring-evidence-description").fill("作者测试版证据描述，仍然保持原始逻辑链。");
+  await expect(page.getByTestId("authoring-rule-report")).toContainText("Pass");
+
+  await page.reload();
+  await page.getByTestId("open-authoring").click();
+  await expect(page.getByTestId("authoring-title")).toHaveValue("雾灯镇：作者测试案");
+
+  await page.getByRole("button", { name: "Evidence" }).click();
+  await page.getByTestId("delete-authoring-evidence").click();
+  await expect(page.getByTestId("authoring-rule-report")).toContainText("Fail");
+  await expect(page.getByTestId("run-authoring-draft")).toBeDisabled();
+
+  await page.getByRole("button", { name: "Load Premium Template" }).click();
+  await expect(page.getByTestId("run-authoring-draft")).toBeEnabled();
+  await page.getByRole("button", { name: "Export JSON" }).click();
+  await expect(page.getByTestId("authoring-export-text")).toContainText("caseFromLog");
+
+  await page.getByRole("button", { name: "Case" }).click();
+  await page.getByTestId("authoring-title").fill("雾灯镇：作者测试案");
+  await page.getByTestId("run-authoring-draft").click();
+  await expect(page.getByTestId("pixel-map").locator(".mapTile")).toHaveCount(504);
+  await expect(page.locator("body")).toContainText("雾灯镇：作者测试案");
+});

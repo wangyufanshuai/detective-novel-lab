@@ -25,6 +25,22 @@ DeepSeek is used only for NPC surface dialogue and optional solution prose. It d
 - **Memory-scoped testimony**: NPCs can only answer from visible memories and discovered evidence.
 - **Symbolic culprit validation**: local rules verify motive, means, opportunity, exclusions, and reasoning coverage.
 - **Playable investigation**: search scenes, question NPCs, challenge testimony with evidence, submit a theory, and reveal the solution.
+- **Case authoring**: authors can edit a playable case draft, run real-time hard-logic validation, and export runnable JSON or Markdown.
+
+## Case Authoring Workbench
+
+The app now includes an Authoring mode next to the default Play mode. It loads an editable copy of the Premium Showcase and keeps draft changes in browser `localStorage` under `detective-town-authoring-v1`.
+
+Authoring supports:
+
+- Editing case title, public case file, characters, scenes, evidence, timeline events, red herrings, clue order, and suspect matrix rows.
+- Live validation with schema issues, rule errors, hard-case logic, suspect board, deduction graph, quality score, logic strength, misdirection quality, and reasoning coverage.
+- `Export JSON` for a runnable `AuthoringDraft`.
+- `Import JSON` for an `AuthoringDraft` or standalone `DeductionCase`.
+- `Export Markdown` for case documentation.
+- `Run Draft` when hard logic passes, using the browser-only Static Demo Runtime.
+
+See [docs/authoring-workbench.md](docs/authoring-workbench.md).
 
 ## Default Showcase
 
@@ -170,6 +186,7 @@ Core exports are available from `packages/engine/src` and `lib/engine`:
 - Evaluation: `runEval`, `renderEvalMarkdown`.
 - Static runtime: `createStaticDemoRuntime`, `discoverDemoEvidence`, `interrogateDemoNpc`, `submitDemoTheory`, `revealDemoSolution`.
 - Visual logic: `buildWorldMapSnapshot`, `buildDeductionGraph`, `deriveSuspectBoard`, `buildCaseLogicReport`, `validateHardCaseLogic`.
+- Authoring: `createAuthoringDraftFromCase`, `createPremiumAuthoringDraft`, `validateAuthoringDraft`, `applyAuthoringPatch`, `exportAuthoringJson`, `exportAuthoringMarkdown`.
 
 ## Tests
 

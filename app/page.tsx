@@ -20,18 +20,25 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import DeductionGraphView from "@/app/components/DeductionGraphView";
 import {
+  applyAuthoringPatch,
   buildCaseLogicReport,
   buildDeductionGraph,
   buildWorldMapSnapshot,
+  createPremiumAuthoringDraft,
   createStaticDemoRuntime,
   deriveSuspectBoard,
   discoverDemoEvidence,
+  exportAuthoringJson,
+  exportAuthoringMarkdown,
   interrogateDemoNpc,
   markDemoCrimeObserved,
   revealDemoSolution,
-  submitDemoTheory
+  submitDemoTheory,
+  validateAuthoringDraft
 } from "@/lib/engine";
 import type {
+  AuthoringDraft,
+  AuthoringValidationReport,
   CaseFromLog,
   CaseLogicReport,
   DeductionGraph,
@@ -69,8 +76,11 @@ type AiSafetyState = {
   evidenceCount?: number;
 };
 type CaseMode = "premium" | "generated";
+type AppMode = "play" | "authoring";
+type AuthoringTab = "case" | "characters" | "evidence" | "scenes" | "timeline" | "logic";
 
 const storageKey = "detective-town-launch-v1";
+const authoringStorageKey = "detective-town-authoring-v1";
 const timeMin = 8 * 60;
 const timeMax = 23 * 60;
 const initialProgress: InvestigationProgress = {
@@ -108,6 +118,10 @@ function loadLocal<T>(key: string, fallback: T): T {
   } catch {
     return fallback;
   }
+}
+
+function cloneLocal<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
 }
 
 function minutesToTime(minutes: number) {
@@ -182,6 +196,16 @@ export default function Home() {
   const [developerOpen, setDeveloperOpen] = useState(false);
   const [runtimeMode, setRuntimeMode] = useState<RuntimeMode>("server");
   const [progress, setProgress] = useState<InvestigationProgress>(initialProgress);
+  const [appMode, setAppMode] = useState<AppMode>("play");
+  const [authoringDraft, setAuthoringDraft] = useState<AuthoringDraft>(() => createPremiumAuthoringDraft());
+  const [authoringTab, setAuthoringTab] = useState<AuthoringTab>("case");
+  const [authoringCharacterId, setAuthoringCharacterId] = useState("");
+  const [authoringEvidenceId, setAuthoringEvidenceId] = useState("");
+  const [authoringSceneId, setAuthoringSceneId] = useState("");
+  const [authoringTimelineId, setAuthoringTimelineId] = useState("");
+  const [authoringImportText, setAuthoringImportText] = useState("");
+  const [authoringExportText, setAuthoringExportText] = useState("");
+  const [authoringStatus, setAuthoringStatus] = useState("Authoring 使用浏览器本地状态，不请求 DeepSeek，不写入 SQLite。");
 
   const deductionCase = activeCase?.deductionCase || null;
   const scenes = deductionCase?.scenes || [];
@@ -197,6 +221,17 @@ export default function Home() {
   const selectedNpcMemories = useMemo(() => (world?.memories || []).filter((memory) => memory.npcId === selectedCharacterId), [world?.memories, selectedCharacterId]);
   const visibleEvents = snapshot?.visibleEvents || events.slice(-30).reverse();
   const selectedEvent = events.find((event) => event.id === highlightedEventId);
+  const authoringReport: AuthoringValidationReport = useMemo(() => validateAuthoringDraft(authoringDraft), [authoringDraft]);
+  const authoringCase = authoringDraft.caseFromLog.deductionCase;
+  const authoringCharacters = authoringCase.characters.filter((character) => character.role !== "姝昏€?");
+  const authoringCharacter = authoringCase.characters.find((character) => character.id === authoringCharacterId) || authoringCharacters[0] || authoringCase.characters[0];
+  const authoringEvidence = authoringCase.evidence.find((item) => item.id === authoringEvidenceId) || authoringCase.evidence[0];
+  const authoringScene = authoringCase.scenes.find((item) => item.id === authoringSceneId) || authoringCase.scenes[0];
+  const authoringTimelineEvent = authoringCase.truth.trueTimeline.find((item) => item.id === authoringTimelineId) || authoringCase.truth.trueTimeline[0];
+  const authoringMapSnapshot = useMemo(
+    () => buildWorldMapSnapshot(authoringDraft.world, authoringDraft.events, authoringDraft.caseFromLog, undefined, { day: 1, time: minutesToTime(timeValue) }),
+    [authoringDraft, timeValue]
+  );
   const mapActorsByTile = useMemo(() => {
     const result = new Map<string, WorldMapActor[]>();
     for (const actor of snapshot?.actors || []) {
@@ -231,6 +266,8 @@ export default function Home() {
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
+    const savedDraft = loadLocal<AuthoringDraft | null>(authoringStorageKey, null);
+    if (savedDraft?.caseFromLog?.deductionCase) setAuthoringDraft(savedDraft);
     const selectedRuntime = resolveRuntimeMode();
     setRuntimeMode(selectedRuntime);
     const saved = loadLocal<{ worldId?: string; sessionId?: string; runtimeState?: DemoRuntimeState }>(storageKey, {});
@@ -247,6 +284,17 @@ export default function Home() {
       .catch(() => undefined);
     void createWorld("server");
   }, []);
+
+  useEffect(() => {
+    if (!authoringCharacterId && authoringCharacters[0]) setAuthoringCharacterId(authoringCharacters[0].id);
+    if (!authoringEvidenceId && authoringCase.evidence[0]) setAuthoringEvidenceId(authoringCase.evidence[0].id);
+    if (!authoringSceneId && authoringCase.scenes[0]) setAuthoringSceneId(authoringCase.scenes[0].id);
+    if (!authoringTimelineId && authoringCase.truth.trueTimeline[0]) setAuthoringTimelineId(authoringCase.truth.trueTimeline[0].id);
+  }, [authoringCase, authoringCharacterId, authoringCharacters, authoringEvidenceId, authoringSceneId, authoringTimelineId]);
+
+  useEffect(() => {
+    localStorage.setItem(authoringStorageKey, JSON.stringify(authoringDraft));
+  }, [authoringDraft]);
 
   useEffect(() => {
     if (!world) {
@@ -665,6 +713,307 @@ export default function Home() {
     }
   }
 
+  function patchAuthoring(path: string, value: unknown) {
+    setAuthoringDraft((current) => applyAuthoringPatch(current, { op: "set", path, value }));
+  }
+
+  function loadPremiumTemplate() {
+    const draft = createPremiumAuthoringDraft();
+    setAuthoringDraft(draft);
+    setAuthoringCharacterId("");
+    setAuthoringEvidenceId("");
+    setAuthoringSceneId("");
+    setAuthoringTimelineId("");
+    setAuthoringExportText("");
+    setAuthoringImportText("");
+    setAuthoringStatus("已恢复 Premium Template，可继续编辑或直接 Run Draft。");
+  }
+
+  function deleteAuthoringEvidence() {
+    if (!authoringEvidence) return;
+    setAuthoringDraft((current) => applyAuthoringPatch(current, { op: "delete-array-item", path: "caseFromLog.deductionCase.evidence", id: authoringEvidence.id }));
+    setAuthoringEvidenceId("");
+    setAuthoringStatus("证据已从草稿移除。若仍被场景、时间线或推理链引用，Rule Report 会阻断 Run Draft。");
+  }
+
+  function importAuthoringJson() {
+    try {
+      const parsed = JSON.parse(authoringImportText);
+      if (parsed?.caseFromLog?.deductionCase && parsed?.world && Array.isArray(parsed?.events)) {
+        setAuthoringDraft({ ...parsed, version: 1, source: "imported", updatedAt: new Date().toISOString() });
+      } else if (parsed?.id && parsed?.truth && parsed?.logicPuzzle) {
+        const next = cloneLocal(authoringDraft);
+        next.caseFromLog.deductionCase = parsed;
+        next.source = "imported";
+        next.updatedAt = new Date().toISOString();
+        setAuthoringDraft(next);
+      } else {
+        throw new Error("JSON 必须是 AuthoringDraft，或单独的 DeductionCase。");
+      }
+      setAuthoringStatus("导入完成，已运行 schema 与 hard logic 校验。");
+    } catch (error) {
+      setAuthoringStatus(error instanceof Error ? error.message : "导入失败：JSON 格式无效。");
+    }
+  }
+
+  function exportAuthoring(kind: "json" | "markdown") {
+    const text = kind === "json" ? exportAuthoringJson(authoringDraft) : exportAuthoringMarkdown(authoringDraft);
+    setAuthoringExportText(text);
+    setAuthoringStatus(kind === "json" ? "已生成可运行案件 JSON。" : "已生成案件 Markdown 说明。");
+  }
+
+  function runAuthoringDraft() {
+    if (!authoringReport.valid) {
+      setAuthoringStatus("当前草稿没有通过 hard logic 校验，不能作为 playable case 运行。");
+      return;
+    }
+    const stamp = new Date().toISOString();
+    const runtimeState: DemoRuntimeState = {
+      mode: "static-demo",
+      world: cloneLocal(authoringDraft.world),
+      events: cloneLocal(authoringDraft.events),
+      activeCase: cloneLocal(authoringDraft.caseFromLog),
+      session: {
+        id: `session-authoring-${Date.now()}`,
+        worldId: authoringDraft.world.id,
+        caseId: authoringDraft.caseFromLog.id,
+        playerId: "player-authoring",
+        displayName: "作者试玩",
+        discoveredEvidenceIds: [],
+        interrogationLog: [],
+        createdAt: stamp,
+        updatedAt: stamp
+      },
+      progress: { ...initialProgress, joinedInvestigation: true },
+      revealText: ""
+    };
+    setRuntimeMode("static-demo");
+    hydrateStatic(runtimeState);
+    setAppMode("play");
+    setStatus("已使用当前 Authoring Draft 创建临时 Static Demo Runtime。");
+  }
+
+  if (appMode === "authoring") {
+    const authoringActorsByTile = new Map<string, WorldMapActor[]>();
+    for (const actor of authoringMapSnapshot.actors) {
+      const key = `${actor.x}:${actor.y}`;
+      authoringActorsByTile.set(key, [...(authoringActorsByTile.get(key) || []), actor]);
+    }
+    const authoringMarkersByTile = new Map<string, WorldMapMarker[]>();
+    for (const marker of authoringMapSnapshot.markers) {
+      const key = `${marker.x}:${marker.y}`;
+      authoringMarkersByTile.set(key, [...(authoringMarkersByTile.get(key) || []), marker]);
+    }
+
+    return (
+      <main className="authoringShell" data-testid="authoring-workbench">
+        <aside className="authoringRail">
+          <div className="brandBlock">
+            <div className="brandIcon"><MapIcon size={24} /></div>
+            <div>
+              <p>Detective Town</p>
+              <h1>案件创作台</h1>
+            </div>
+          </div>
+          <div className="modeSwitch">
+            <button onClick={() => setAppMode("play")}>Play</button>
+            <button className="active">Authoring</button>
+          </div>
+          <div className="authoringTabs">
+            {[
+              ["case", "Case"],
+              ["characters", "Characters"],
+              ["evidence", "Evidence"],
+              ["scenes", "Scenes"],
+              ["timeline", "Timeline"],
+              ["logic", "Logic"]
+            ].map(([value, label]) => (
+              <button key={value} className={authoringTab === value ? "active" : ""} onClick={() => setAuthoringTab(value as AuthoringTab)}>{label}</button>
+            ))}
+          </div>
+
+          {authoringTab === "case" && (
+            <section className="authoringPanel">
+              <h2>案件基础</h2>
+              <label>案件标题
+                <input data-testid="authoring-title" value={authoringCase.title} onChange={(event) => patchAuthoring("caseFromLog.deductionCase.title", event.target.value)} />
+              </label>
+              <label>公开案情
+                <textarea value={authoringCase.publicCaseFile} onChange={(event) => patchAuthoring("caseFromLog.deductionCase.publicCaseFile", event.target.value)} />
+              </label>
+              <label>主题
+                <input value={authoringCase.theme} onChange={(event) => patchAuthoring("caseFromLog.deductionCase.theme", event.target.value)} />
+              </label>
+              <label>前提
+                <textarea value={authoringCase.premise} onChange={(event) => patchAuthoring("caseFromLog.deductionCase.premise", event.target.value)} />
+              </label>
+            </section>
+          )}
+
+          {authoringTab === "characters" && authoringCharacter && (
+            <section className="authoringPanel">
+              <h2>人物</h2>
+              <select value={authoringCharacter.id} onChange={(event) => setAuthoringCharacterId(event.target.value)}>
+                {authoringCase.characters.map((character) => <option key={character.id} value={character.id}>{character.name} - {character.role}</option>)}
+              </select>
+              <label>姓名<input value={authoringCharacter.name} onChange={(event) => patchAuthoring(`caseFromLog.deductionCase.characters.${authoringCase.characters.findIndex((item) => item.id === authoringCharacter.id)}.name`, event.target.value)} /></label>
+              <label>身份<input value={authoringCharacter.role} onChange={(event) => patchAuthoring(`caseFromLog.deductionCase.characters.${authoringCase.characters.findIndex((item) => item.id === authoringCharacter.id)}.role`, event.target.value)} /></label>
+              <label>公开履历<textarea value={authoringCharacter.publicBio} onChange={(event) => patchAuthoring(`caseFromLog.deductionCase.characters.${authoringCase.characters.findIndex((item) => item.id === authoringCharacter.id)}.publicBio`, event.target.value)} /></label>
+              <label>证词<textarea value={authoringCharacter.initialStatement} onChange={(event) => patchAuthoring(`caseFromLog.deductionCase.characters.${authoringCase.characters.findIndex((item) => item.id === authoringCharacter.id)}.initialStatement`, event.target.value)} /></label>
+              <label>动机表象<textarea value={authoringCharacter.motive} onChange={(event) => patchAuthoring(`caseFromLog.deductionCase.characters.${authoringCase.characters.findIndex((item) => item.id === authoringCharacter.id)}.motive`, event.target.value)} /></label>
+            </section>
+          )}
+
+          {authoringTab === "evidence" && authoringEvidence && (
+            <section className="authoringPanel">
+              <h2>证据</h2>
+              <select value={authoringEvidence.id} onChange={(event) => setAuthoringEvidenceId(event.target.value)}>
+                {authoringCase.evidence.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
+              </select>
+              <label>标题<input value={authoringEvidence.title} onChange={(event) => patchAuthoring(`caseFromLog.deductionCase.evidence.${authoringCase.evidence.findIndex((item) => item.id === authoringEvidence.id)}.title`, event.target.value)} /></label>
+              <label>玩家可见描述<textarea data-testid="authoring-evidence-description" value={authoringEvidence.visibleDescription} onChange={(event) => patchAuthoring(`caseFromLog.deductionCase.evidence.${authoringCase.evidence.findIndex((item) => item.id === authoringEvidence.id)}.visibleDescription`, event.target.value)} /></label>
+              <label>真实含义<textarea value={authoringEvidence.trueMeaning} onChange={(event) => patchAuthoring(`caseFromLog.deductionCase.evidence.${authoringCase.evidence.findIndex((item) => item.id === authoringEvidence.id)}.trueMeaning`, event.target.value)} /></label>
+              <label className="checkRow"><input type="checkbox" checked={authoringEvidence.discoverable} onChange={(event) => patchAuthoring(`caseFromLog.deductionCase.evidence.${authoringCase.evidence.findIndex((item) => item.id === authoringEvidence.id)}.discoverable`, event.target.checked)} /> 可发现</label>
+              <button data-testid="delete-authoring-evidence" className="dangerButton" onClick={deleteAuthoringEvidence}>Delete Evidence</button>
+            </section>
+          )}
+
+          {authoringTab === "scenes" && authoringScene && (
+            <section className="authoringPanel">
+              <h2>场景</h2>
+              <select value={authoringScene.id} onChange={(event) => setAuthoringSceneId(event.target.value)}>
+                {authoringCase.scenes.map((scene) => <option key={scene.id} value={scene.id}>{scene.name}</option>)}
+              </select>
+              <label>名称<input value={authoringScene.name} onChange={(event) => patchAuthoring(`caseFromLog.deductionCase.scenes.${authoringCase.scenes.findIndex((item) => item.id === authoringScene.id)}.name`, event.target.value)} /></label>
+              <label>描述<textarea value={authoringScene.description} onChange={(event) => patchAuthoring(`caseFromLog.deductionCase.scenes.${authoringCase.scenes.findIndex((item) => item.id === authoringScene.id)}.description`, event.target.value)} /></label>
+              <label>证据 IDs<input value={authoringScene.evidenceIds.join(", ")} onChange={(event) => patchAuthoring(`caseFromLog.deductionCase.scenes.${authoringCase.scenes.findIndex((item) => item.id === authoringScene.id)}.evidenceIds`, event.target.value.split(",").map((item) => item.trim()).filter(Boolean))} /></label>
+            </section>
+          )}
+
+          {authoringTab === "timeline" && authoringTimelineEvent && (
+            <section className="authoringPanel">
+              <h2>时间线</h2>
+              <select value={authoringTimelineEvent.id} onChange={(event) => setAuthoringTimelineId(event.target.value)}>
+                {authoringCase.truth.trueTimeline.map((item) => <option key={item.id} value={item.id}>{item.time} - {item.id}</option>)}
+              </select>
+              <label>时间<input value={authoringTimelineEvent.time} onChange={(event) => patchAuthoring(`caseFromLog.deductionCase.truth.trueTimeline.${authoringCase.truth.trueTimeline.findIndex((item) => item.id === authoringTimelineEvent.id)}.time`, event.target.value)} /></label>
+              <label>真实事件<textarea value={authoringTimelineEvent.event} onChange={(event) => patchAuthoring(`caseFromLog.deductionCase.truth.trueTimeline.${authoringCase.truth.trueTimeline.findIndex((item) => item.id === authoringTimelineEvent.id)}.event`, event.target.value)} /></label>
+              <label>公开版本<textarea value={authoringTimelineEvent.publicVersion} onChange={(event) => patchAuthoring(`caseFromLog.deductionCase.truth.trueTimeline.${authoringCase.truth.trueTimeline.findIndex((item) => item.id === authoringTimelineEvent.id)}.publicVersion`, event.target.value)} /></label>
+              <label>反驳证据 IDs<input value={authoringTimelineEvent.contradictedByEvidenceIds.join(", ")} onChange={(event) => patchAuthoring(`caseFromLog.deductionCase.truth.trueTimeline.${authoringCase.truth.trueTimeline.findIndex((item) => item.id === authoringTimelineEvent.id)}.contradictedByEvidenceIds`, event.target.value.split(",").map((item) => item.trim()).filter(Boolean))} /></label>
+            </section>
+          )}
+
+          {authoringTab === "logic" && (
+            <section className="authoringPanel">
+              <h2>逻辑链</h2>
+              <label>关键线索顺序
+                <input value={authoringCase.logicPuzzle.requiredClueOrder.join(", ")} onChange={(event) => patchAuthoring("caseFromLog.deductionCase.logicPuzzle.requiredClueOrder", event.target.value.split(",").map((item) => item.trim()).filter(Boolean))} />
+              </label>
+              <label>误导线索
+                <textarea value={authoringCase.logicPuzzle.redHerrings.join("\n")} onChange={(event) => patchAuthoring("caseFromLog.deductionCase.logicPuzzle.redHerrings", event.target.value.split("\n").map((item) => item.trim()).filter(Boolean))} />
+              </label>
+              <div className="matrixEditor">
+                {authoringCase.logicPuzzle.suspectMatrix.map((row, index) => (
+                  <div key={row.characterId} className="matrixEditorRow">
+                    <strong>{row.name}</strong>
+                    <label><input type="checkbox" checked={row.motive} onChange={(event) => patchAuthoring(`caseFromLog.deductionCase.logicPuzzle.suspectMatrix.${index}.motive`, event.target.checked)} /> Motive</label>
+                    <label><input type="checkbox" checked={row.means} onChange={(event) => patchAuthoring(`caseFromLog.deductionCase.logicPuzzle.suspectMatrix.${index}.means`, event.target.checked)} /> Means</label>
+                    <label><input type="checkbox" checked={row.opportunity} onChange={(event) => patchAuthoring(`caseFromLog.deductionCase.logicPuzzle.suspectMatrix.${index}.opportunity`, event.target.checked)} /> Opportunity</label>
+                    <input value={row.excludedByEvidenceIds.join(", ")} onChange={(event) => patchAuthoring(`caseFromLog.deductionCase.logicPuzzle.suspectMatrix.${index}.excludedByEvidenceIds`, event.target.value.split(",").map((item) => item.trim()).filter(Boolean))} />
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+        </aside>
+
+        <section className="authoringStage">
+          <header className="stageTopbar">
+            <div>
+              <p>Visual preview</p>
+              <h2>{authoringCase.title}</h2>
+            </div>
+            <button data-testid="run-authoring-draft" className="primaryButton" onClick={runAuthoringDraft} disabled={!authoringReport.valid}><Play size={15} /> Run Draft</button>
+          </header>
+          <section className="pixelMapWrap compactMap" data-testid="authoring-map">
+            <div className="pixelMap" style={{ gridTemplateColumns: `repeat(${authoringMapSnapshot.width}, minmax(18px, 1fr))` }}>
+              {authoringMapSnapshot.tiles.map((tile) => {
+                const actors = authoringActorsByTile.get(`${tile.x}:${tile.y}`) || [];
+                const markers = authoringMarkersByTile.get(`${tile.x}:${tile.y}`) || [];
+                return (
+                  <button key={tile.id} className={`mapTile terrain-${tile.terrain} ${tile.searchable ? "searchable" : ""}`} title={tile.locationName || tile.terrain}>
+                    {tile.locationName && <span className="placeName">{tile.locationName}</span>}
+                    {markers.slice(0, 2).map((marker) => <span key={marker.id} className={`marker marker-${marker.type}`}>●</span>)}
+                    <span className="actorStack">{actors.slice(0, 3).map((actor) => <span key={actor.id} className={`actorPin actor-${actor.status}`}>{actorInitial(actor.name)}</span>)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+          <section className="actionPanel">
+            <h2><Database size={16} /> Deduction Graph Preview</h2>
+            <DeductionGraphView
+              graph={authoringReport.deductionGraph}
+              discoveredEvidenceIds={authoringCase.evidence.map((item) => item.id)}
+              solutionRevealed
+              onSelectEvidence={setAuthoringEvidenceId}
+              onSelectEvent={setAuthoringTimelineId}
+              onSelectCharacter={setAuthoringCharacterId}
+            />
+          </section>
+        </section>
+
+        <aside className="authoringInspector">
+          <section className={`authoringReport ${authoringReport.valid ? "pass" : "fail"}`} data-testid="authoring-rule-report">
+            <h2>Rule Report</h2>
+            <div className="metricGrid">
+              <div><strong>{authoringReport.valid ? "Pass" : "Fail"}</strong><small>Status</small></div>
+              <div><strong>{authoringReport.qualityScore}</strong><small>Quality</small></div>
+              <div><strong>{authoringReport.logicStrength}</strong><small>Logic</small></div>
+              <div><strong>{authoringReport.misdirectionQuality}</strong><small>Misdirect</small></div>
+              <div><strong>{Math.round(authoringReport.reasoningCoverage.coverageRatio * 100)}%</strong><small>Coverage</small></div>
+              <div><strong>{authoringReport.errors.length}</strong><small>Errors</small></div>
+            </div>
+            <div className="issueList">
+              {(authoringReport.issues.length ? authoringReport.issues : [{ id: "ok", severity: "warning", source: "authoring", path: "$", message: "当前草稿通过 schema、世界来源、hard logic 和推理覆盖校验。" }]).slice(0, 12).map((item) => (
+                <div key={item.id} className={`issueItem ${item.severity}`}>
+                  <strong>{item.source} / {item.path}</strong>
+                  <span>{item.message}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="authoringPanel">
+            <h2>Suspect Matrix</h2>
+            <div className="suspectBoard">
+              {authoringReport.suspectBoard.map((row) => (
+                <button key={row.characterId} className={`suspectRow ${row.status}`}>
+                  <strong>{row.name}</strong>
+                  <span>M {row.motive ? "Y" : "N"} / W {row.means ? "Y" : "N"} / O {row.opportunity ? "Y" : "N"}</span>
+                  <small>{row.exclusionEvidenceIds.join(", ") || "no exclusion"}</small>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="authoringPanel">
+            <h2>Import / Export</h2>
+            <div className="authoringActions">
+              <button onClick={loadPremiumTemplate}>Load Premium Template</button>
+              <button onClick={() => exportAuthoring("json")}>Export JSON</button>
+              <button onClick={() => exportAuthoring("markdown")}>Export Markdown</button>
+            </div>
+            <textarea data-testid="authoring-import-text" placeholder="Paste AuthoringDraft or DeductionCase JSON" value={authoringImportText} onChange={(event) => setAuthoringImportText(event.target.value)} />
+            <button className="secondaryButton full" onClick={importAuthoringJson}>Import JSON</button>
+            <textarea data-testid="authoring-export-text" readOnly value={authoringExportText} placeholder="Export output appears here" />
+            <div className="statusBox"><AlertTriangle size={16} /><span>{authoringStatus}</span></div>
+          </section>
+        </aside>
+      </main>
+    );
+  }
+
   return (
     <main className="pixelShell">
       <aside className="controlRail">
@@ -674,6 +1023,11 @@ export default function Home() {
             <p>Detective Town</p>
             <h1>推理小镇</h1>
           </div>
+        </div>
+
+        <div className="modeSwitch">
+          <button className="active">Play</button>
+          <button data-testid="open-authoring" onClick={() => setAppMode("authoring")}>Authoring</button>
         </div>
 
         <details className="settingsDrawer railPanel">
