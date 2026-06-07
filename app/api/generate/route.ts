@@ -19,7 +19,7 @@ const providerConfig = {
   deepseek: {
     apiKey: process.env.DEEPSEEK_API_KEY,
     baseUrl: process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com",
-    model: process.env.DEEPSEEK_MODEL || "deepseek-chat"
+    model: process.env.DEEPSEEK_MODEL || "deepseek-v4-flash"
   },
   siliconflow: {
     apiKey: process.env.SILICONFLOW_API_KEY,

@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "逻辑之王推理工坊",
-  description: "分阶段生成公平推理中文短篇小说的 AI 创作工作台"
+  title: "Detective Town",
+  description: "A murder mystery engine where cases emerge from simulated NPC lives."
 };
 
 export default function RootLayout({

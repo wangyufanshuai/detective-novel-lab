@@ -84,7 +84,7 @@ export function deriveSuspectMatrix(deductionCase: DeductionCase): SuspectMatrix
   }
 
   return (deductionCase.characters || [])
-    .filter((character) => character.id !== "detective" && character.id !== "victim")
+    .filter((character) => character.id !== "detective" && character.id !== "victim" && character.role !== "死者")
     .map((character) => {
       const declared = existing.find((row) => {
         const raw = row as unknown as Record<string, unknown>;

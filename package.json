@@ -8,6 +8,10 @@
     "start": "next start",
     "lint": "next lint",
     "test:rules": "node scripts/run-rule-tests.mjs",
+    "test:world": "node scripts/run-world-tests.mjs",
+    "test:ai": "node scripts/run-ai-safety-tests.mjs",
+    "test:deepseek": "node scripts/run-deepseek-live-eval.mjs",
+    "test": "npm run test:rules && npm run test:world && npm run test:ai",
     "eval": "node scripts/run-eval.mjs",
     "eval:report": "node scripts/run-eval.mjs"
   },
@@ -15,11 +19,14 @@
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.6",
     "@types/react-dom": "^19.2.3",
+    "better-sqlite3": "^12.10.0",
     "lucide-react": "^0.468.0",
     "next": "^16.0.4",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "typescript": "^5.9.3"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13"
+  }
 }

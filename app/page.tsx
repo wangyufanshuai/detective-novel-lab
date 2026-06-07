@@ -1,964 +1,554 @@
 "use client";
 
 import {
-  BookOpen,
+  AlertTriangle,
+  Bot,
   CheckCircle2,
-  ClipboardCopy,
-  Download,
+  Clock,
+  Database,
   Eye,
-  FileJson,
-  GitBranch,
-  KeyRound,
+  FileSearch,
+  Gavel,
   Loader2,
+  Map,
   MessageSquare,
   Network,
+  Play,
+  Plus,
   Search,
-  Sparkles,
-  Target,
-  Wand2,
-  XCircle
+  ShieldCheck,
+  Users
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import {
-  Character,
-  DeductionCase,
-  Evidence,
-  EvidenceChallenge,
+import type {
+  CaseFromLog,
+  DeepSeekLiveEvalReport,
+  MurderArchetype,
+  NpcDialogueEvalReport,
+  PlayerSession,
   PlayerTheory,
-  createFallbackCase,
-  evaluateEvidenceChallenge,
-  evidenceByScene,
-  getReasoningCoverage,
-  getTimelineContradictions,
-  judgeTheory,
-  runEval,
-  validateCaseSchema,
-  validateCase
+  PromptAuditReport,
+  RevealEvalReport,
+  RevealFactContract,
+  WorldEvent,
+  WorldMode,
+  WorldState
 } from "@/lib/engine";
 
-type Provider = "deepseek" | "siliconflow";
-type Mode = "game" | "novel";
-type WorkbenchView = "truth" | "matrix" | "evidence" | "timeline" | "report" | "schema" | "eval" | "json";
-
-type DialogueEntry = {
-  characterId: string;
-  question: string;
-  evidenceId?: string;
-  challenge?: EvidenceChallenge;
-  answer: string;
+type ApiResult<T> = T & { ok: boolean; error?: string };
+type AiSafetyState = {
+  mock?: boolean;
+  promptAudit?: PromptAuditReport;
+  dialogueEval?: NpcDialogueEvalReport;
+  revealEval?: RevealEvalReport;
+  factContract?: RevealFactContract;
+  safetyFlags?: string[];
+  memoryCount?: number;
+  evidenceCount?: number;
 };
 
-const storageKey = "deduction-engine-v4";
-const caseTypes = ["随机组合", "密室杀人", "死亡留言", "不在场证明", "毒杀", "身份误认", "消失的凶器"];
-const lengthTargets = ["3000-6000字", "8000-15000字", "15000-25000字"];
+const storageKey = "detective-town-showcase-v1";
+const archetypeOptions: { value: MurderArchetype | "auto"; label: string }[] = [
+  { value: "auto", label: "Auto" },
+  { value: "blade", label: "Blade" },
+  { value: "poison", label: "Poison" },
+  { value: "blunt", label: "Blunt" },
+  { value: "fall", label: "Fall" }
+];
 
-const gameStarter = `题材：校园天文台死亡留言
+const archetypeLabels: Record<string, string> = {
+  blade: "刀具伪装",
+  poison: "药物投毒",
+  blunt: "钝器误导",
+  fall: "坠落机关"
+};
 
-背景：
-- 大学校庆前夜，暴雨，山顶天文台。
-- 天体物理教授死在圆顶观测室。
-
-谜面：
-- 监控显示案发时间无人进入。
-- 死者手边留下半张星图，圈出“北极星”。
-- 当晚暴雨无星可见。
-
-要求：
-- 公平推理。
-- 凶手唯一。
-- 每个非凶手都要有可发现的排除证据。
-- 不要超自然、双胞胎、秘密通道。`;
-
-const novelStarter = `我想写一篇中文本格推理小说。
-背景：
-- 地点：
-- 时代：
-
-人物：
-- 侦探：
-- 死者：
-- 嫌疑人：
-
-案件：
-- 核心谜面：
-- 已有线索：
-- 不想要的设定：`;
-
-function downloadFile(filename: string, content: string, type: string) {
-  const blob = new Blob([content], { type });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
+function loadLocal<T>(key: string, fallback: T): T {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const value = localStorage.getItem(key);
+    return value ? (JSON.parse(value) as T) : fallback;
+  } catch {
+    return fallback;
+  }
 }
 
-function safeIdList(value: string) {
-  return value
-    .split(/[,\s，、]+/)
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
-function renderJson(value: unknown) {
-  return JSON.stringify(value, null, 2);
-}
-
-function characterName(deductionCase: DeductionCase | null, id: string) {
-  return deductionCase?.characters.find((character) => character.id === id)?.name || id;
+async function postJson<T>(url: string, body: unknown) {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  const data = (await response.json()) as ApiResult<T>;
+  if (!data.ok) throw new Error(data.error || "Request failed");
+  return data;
 }
 
 export default function Home() {
-  const [mode, setMode] = useState<Mode>("game");
-  const [provider, setProvider] = useState<Provider>("deepseek");
-  const [caseType, setCaseType] = useState("死亡留言");
-  const [lengthTarget, setLengthTarget] = useState("3000-6000字");
-  const [topic, setTopic] = useState(gameStarter);
-  const [status, setStatus] = useState("准备开始。");
-  const [progress, setProgress] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
-
-  const [deductionCase, setDeductionCase] = useState<DeductionCase | null>(null);
-  const [caseFile, setCaseFile] = useState("");
-  const [discoveredEvidenceIds, setDiscoveredEvidenceIds] = useState<string[]>([]);
-  const [exposedContradictionIds, setExposedContradictionIds] = useState<string[]>([]);
+  const [world, setWorld] = useState<WorldState | null>(null);
+  const [events, setEvents] = useState<WorldEvent[]>([]);
+  const [activeCase, setActiveCase] = useState<CaseFromLog | null>(null);
+  const [session, setSession] = useState<PlayerSession | null>(null);
+  const [sessions, setSessions] = useState<PlayerSession[]>([]);
+  const [worldIdInput, setWorldIdInput] = useState("");
+  const [seedInput, setSeedInput] = useState("showcase-seed");
+  const [caseArchetype, setCaseArchetype] = useState<MurderArchetype | "auto">("auto");
+  const [mode, setMode] = useState<WorldMode>("showcase");
+  const [playerName, setPlayerName] = useState("调查员");
   const [selectedSceneId, setSelectedSceneId] = useState("");
   const [selectedCharacterId, setSelectedCharacterId] = useState("");
   const [selectedEvidenceId, setSelectedEvidenceId] = useState("");
-  const [question, setQuestion] = useState("");
-  const [dialogues, setDialogues] = useState<DialogueEntry[]>([]);
+  const [question, setQuestion] = useState("案发窗口你在哪里？你记得哪些异常？");
   const [theory, setTheory] = useState<PlayerTheory>({ culpritId: "", motive: "", method: "", evidenceIds: [] });
-  const [judgementText, setJudgementText] = useState("");
-  const [solutionText, setSolutionText] = useState("");
-  const [workbenchView, setWorkbenchView] = useState<WorkbenchView>("truth");
+  const [status, setStatus] = useState("创建一个 8 NPC / 24h Detective Town，小镇会先运行，再从事件日志中抽取案件。");
+  const [revealText, setRevealText] = useState("");
+  const [lastAiSafety, setLastAiSafety] = useState<AiSafetyState | null>(null);
+  const [latestLiveEval, setLatestLiveEval] = useState<DeepSeekLiveEvalReport | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [debugOpen, setDebugOpen] = useState(false);
 
-  const [novelBrief, setNovelBrief] = useState(novelStarter);
-  const [novelSynopsis, setNovelSynopsis] = useState("");
+  const deductionCase = activeCase?.deductionCase || null;
+  const scenes = deductionCase?.scenes || [];
+  const characters = deductionCase?.characters.filter((character) => character.role !== "死者") || [];
+  const discovered = new Set(session?.discoveredEvidenceIds || []);
+  const selectedScene = scenes.find((scene) => scene.id === selectedSceneId) || scenes[0];
+  const sceneEvidence = selectedScene ? deductionCase?.evidence.filter((item) => selectedScene.evidenceIds.includes(item.id)) || [] : [];
+  const discoveredEvidence = deductionCase?.evidence.filter((item) => discovered.has(item.id)) || [];
+  const recentEvents = useMemo(() => events.slice(-14).reverse(), [events]);
+  const playerTheoryEvidence = useMemo(() => new Set(theory.evidenceIds), [theory.evidenceIds]);
+  const selectedTestimony = activeCase?.testimonies?.find((item) => item.characterId === selectedCharacterId);
+  const quality = activeCase?.qualityReport;
+  const factLockScore = lastAiSafety?.revealEval?.factContractScore ?? lastAiSafety?.revealEval?.score;
+  const exposedContradictions = activeCase?.testimonies?.reduce((sum, item) => sum + item.exposedContradictions.length, 0) || 0;
 
   useEffect(() => {
-    const saved = localStorage.getItem(storageKey);
-    if (!saved) return;
-    try {
-      const data = JSON.parse(saved);
-      setMode(data.mode || "game");
-      setProvider(data.provider || "deepseek");
-      setCaseType(data.caseType || "死亡留言");
-      setLengthTarget(data.lengthTarget || "3000-6000字");
-      setTopic(data.topic || gameStarter);
-      setDeductionCase(data.deductionCase || null);
-      setCaseFile(data.caseFile || "");
-      setDiscoveredEvidenceIds(data.discoveredEvidenceIds || []);
-      setExposedContradictionIds(data.exposedContradictionIds || []);
-      setSelectedSceneId(data.selectedSceneId || "");
-      setSelectedCharacterId(data.selectedCharacterId || "");
-      setSelectedEvidenceId(data.selectedEvidenceId || "");
-      setDialogues(data.dialogues || []);
-      setTheory(data.theory || { culpritId: "", motive: "", method: "", evidenceIds: [] });
-      setJudgementText(data.judgementText || "");
-      setSolutionText(data.solutionText || "");
-      setWorkbenchView(data.workbenchView || "truth");
-      setNovelBrief(data.novelBrief || novelStarter);
-      setNovelSynopsis(data.novelSynopsis || "");
-    } catch {
-      setStatus("本地进度读取失败，已使用空白项目。");
-    }
+    const saved = loadLocal<{ worldId?: string; sessionId?: string }>(storageKey, {});
+    if (saved.worldId) setWorldIdInput(saved.worldId);
+    fetch("/api/ai/live-eval/latest")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        if (data?.ok) setLatestLiveEval(data.report);
+      })
+      .catch(() => undefined);
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem(
-      storageKey,
-      JSON.stringify({
+  function persist(nextWorldId?: string, nextSessionId?: string) {
+    localStorage.setItem(storageKey, JSON.stringify({ worldId: nextWorldId || world?.id, sessionId: nextSessionId || session?.id }));
+  }
+
+  function hydrateCase(data: { world: WorldState; events?: WorldEvent[]; activeCase?: CaseFromLog; sessions?: PlayerSession[] }) {
+    setWorld(data.world);
+    if (data.events) setEvents(data.events);
+    if (data.activeCase) {
+      setActiveCase(data.activeCase);
+      setSelectedSceneId(data.activeCase.generationProfile.sceneLocationId);
+      const firstCharacter = data.activeCase.deductionCase.characters.find((item) => item.role !== "死者");
+      setSelectedCharacterId(firstCharacter?.id || data.activeCase.generationProfile.culpritId);
+      setTheory({ culpritId: "", motive: "", method: "", evidenceIds: [] });
+    }
+    if (data.sessions) setSessions(data.sessions);
+  }
+
+  async function createWorld() {
+    setBusy(true);
+    try {
+      const data = await postJson<{ world: WorldState; events: WorldEvent[]; activeCase: CaseFromLog }>("/api/worlds/create", {
+        seed: seedInput.trim() || "showcase-seed",
         mode,
-        provider,
-        caseType,
-        lengthTarget,
-        topic,
-        deductionCase,
-        caseFile,
-        discoveredEvidenceIds,
-        exposedContradictionIds,
-        selectedSceneId,
-        selectedCharacterId,
-        selectedEvidenceId,
-        dialogues,
-        theory,
-        judgementText,
-        solutionText,
-        workbenchView,
-        novelBrief,
-        novelSynopsis
-      })
-    );
-  }, [
-    mode,
-    provider,
-    caseType,
-    lengthTarget,
-    topic,
-    deductionCase,
-    caseFile,
-    discoveredEvidenceIds,
-    exposedContradictionIds,
-    selectedSceneId,
-    selectedCharacterId,
-    selectedEvidenceId,
-    dialogues,
-    theory,
-    judgementText,
-    solutionText,
-    workbenchView,
-    novelBrief,
-    novelSynopsis
-  ]);
-
-  const validation = useMemo(() => (deductionCase ? validateCase(deductionCase) : null), [deductionCase]);
-  const discoveredEvidence = useMemo(
-    () => (deductionCase ? deductionCase.evidence.filter((item) => discoveredEvidenceIds.includes(item.id)) : []),
-    [deductionCase, discoveredEvidenceIds]
-  );
-  const timelineContradictions = useMemo(
-    () => (deductionCase ? getTimelineContradictions(deductionCase, discoveredEvidenceIds) : []),
-    [deductionCase, discoveredEvidenceIds]
-  );
-  const reasoningCoverage = useMemo(
-    () => (deductionCase ? getReasoningCoverage(deductionCase, theory.evidenceIds) : null),
-    [deductionCase, theory.evidenceIds]
-  );
-
-  const exportMarkdown = useMemo(() => {
-    if (!deductionCase) return "";
-    return [
-      `# ${deductionCase.title}`,
-      "## Player Case File",
-      caseFile,
-      "## Rule Report",
-      "```json",
-      renderJson(validation),
-      "```",
-      "## Discovered Evidence",
-      discoveredEvidence.map((item) => `- ${item.id} ${item.title}: ${item.visibleDescription}`).join("\n"),
-      "## Dialogues",
-      dialogues.map((item) => `### ${characterName(deductionCase, item.characterId)}\nEvidence: ${item.evidenceId || "none"}\nQ: ${item.question}\nA: ${item.answer}`).join("\n\n"),
-      "## Judgement",
-      judgementText,
-      "## Solution",
-      solutionText,
-      "## Structured Case",
-      "```json",
-      renderJson(deductionCase),
-      "```"
-    ].join("\n\n");
-  }, [caseFile, deductionCase, dialogues, discoveredEvidence, judgementText, solutionText, validation]);
-
-  async function callGenerate(stage: string, body: Record<string, unknown>) {
-    const response = await fetch("/api/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        provider,
-        stage,
-        stageLabel: stage,
-        brief: topic,
-        selectedCaseType: caseType,
-        lengthTarget,
-        hiddenTruthMode: false,
-        ...body
-      })
-    });
-    const data = await response.json();
-    if (!response.ok || !data.ok) throw new Error(data.error || "生成失败");
-    return data;
-  }
-
-  function hydrateCase(nextCase: DeductionCase, nextCaseFile = nextCase.publicCaseFile, nextStatus = "案件已载入。") {
-    setDeductionCase(nextCase);
-    setCaseFile(nextCaseFile);
-    setDiscoveredEvidenceIds([]);
-    setExposedContradictionIds([]);
-    setDialogues([]);
-    setJudgementText("");
-    setSolutionText("");
-    setTheory({ culpritId: "", motive: "", method: "", evidenceIds: [] });
-    setSelectedSceneId(nextCase.scenes[0]?.id || "");
-    setSelectedCharacterId(nextCase.characters.find((character) => !character.isCulprit)?.id || nextCase.characters[0]?.id || "");
-    setSelectedEvidenceId("");
-    setStatus(nextStatus);
-    setWorkbenchView("truth");
-  }
-
-  function loadShowcase() {
-    const showcase = createFallbackCase("Showcase: 校园天文台死亡留言");
-    hydrateCase(showcase, showcase.publicCaseFile, "Showcase 案件已载入：无需 API Key，可完整体验工作台和规则引擎。");
-  }
-
-  async function generateCase() {
-    setIsGenerating(true);
-    setStatus("正在调用模型生成并校验结构化案件...");
-    setProgress("gameTruthSeed");
-    try {
-      const seed = await callGenerate("gameTruthSeed", { currentDraft: {} });
-      const nextCase = seed.json as DeductionCase;
-      const nextValidation = validateCase(nextCase);
-      setProgress("gameCaseFile");
-      const file = await callGenerate("gameCaseFile", {
-        currentDraft: { structuredCase: renderJson(nextCase), validation: renderJson(nextValidation) },
-        userDirection: "生成玩家可见案卷，不要泄露凶手、幕后真相、证据真实含义和完整排除链。"
+        npcCount: mode === "advanced" ? 30 : 8,
+        timelineHours: mode === "advanced" ? 120 : 24,
+        preSimDays: mode === "advanced" ? 5 : 1,
+        caseArchetype
       });
-      hydrateCase(nextCase, file.content, seed.repaired ? "案件已生成，自动修复过逻辑结构。" : "案件已生成。");
-      setProgress("");
+      hydrateCase(data);
+      setWorldIdInput(data.world.id);
+      setSession(null);
+      setSessions([]);
+      setRevealText("");
+      setLastAiSafety(null);
+      persist(data.world.id, "");
+      setStatus("Detective Town 已创建：案件来自 NPC 日程、记忆、事件和证据日志。");
     } catch (error) {
-      const fallback = createFallbackCase(topic);
-      hydrateCase(fallback, fallback.publicCaseFile, error instanceof Error ? `生成失败，已载入 Showcase：${error.message}` : "生成失败，已载入 Showcase。");
+      setStatus(error instanceof Error ? error.message : "创建小镇失败");
     } finally {
-      setIsGenerating(false);
+      setBusy(false);
     }
   }
 
-  function searchScene() {
-    if (!deductionCase || !selectedSceneId) return;
-    const found = evidenceByScene(deductionCase, selectedSceneId).map((item) => item.id);
-    setDiscoveredEvidenceIds((current) => Array.from(new Set([...current, ...found])));
-    setStatus(found.length ? `发现 ${found.length} 条证据。` : "这个场景没有新的可发现证据。");
+  async function loadWorld() {
+    if (!worldIdInput.trim()) return;
+    setBusy(true);
+    try {
+      const state = await fetch(`/api/worlds/${worldIdInput.trim()}/state`).then((response) => response.json());
+      if (!state.ok) throw new Error(state.error || "读取小镇失败");
+      const eventResult = await fetch(`/api/worlds/${worldIdInput.trim()}/events`).then((response) => response.json());
+      hydrateCase({ world: state.world, activeCase: state.activeCase, sessions: state.sessions || [], events: eventResult.events || [] });
+      persist(state.world.id, session?.id);
+      setStatus("已载入现有 Detective Town。");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "读取小镇失败");
+    } finally {
+      setBusy(false);
+    }
   }
 
-  async function challengeCharacter() {
-    if (!deductionCase || !selectedCharacterId || !question.trim()) return;
-    setIsGenerating(true);
-    setStatus("正在生成质询回答...");
+  async function tickWorld() {
+    if (!world) return;
+    setBusy(true);
     try {
-      const character = deductionCase.characters.find((item) => item.id === selectedCharacterId) as Character;
-      const evidence = deductionCase.evidence.find((item) => item.id === selectedEvidenceId) as Evidence | undefined;
-      const challenge = evidence ? evaluateEvidenceChallenge(deductionCase, selectedCharacterId, selectedEvidenceId) : undefined;
-      if (challenge?.exposedContradictions.length) {
-        setExposedContradictionIds((current) => Array.from(new Set([...current, ...challenge.exposedContradictions])));
+      const data = await postJson<{ world: WorldState; events: WorldEvent[]; activeCase: CaseFromLog }>(`/api/worlds/${world.id}/tick`, {});
+      setWorld(data.world);
+      setEvents((items) => [...items, ...data.events]);
+      setActiveCase(data.activeCase);
+      setRevealText("");
+      setStatus(`小镇推进到第 ${data.world.day} 日，新事件已写入日志。`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "推进小镇失败");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function joinCase() {
+    if (!world || !activeCase) return;
+    setBusy(true);
+    try {
+      const data = await postJson<{ session: PlayerSession }>("/api/players/join", { worldId: world.id, caseId: activeCase.id, displayName: playerName.trim() || "调查员" });
+      setSession(data.session);
+      setSessions((items) => [data.session, ...items.filter((item) => item.id !== data.session.id)]);
+      persist(world.id, data.session.id);
+      setStatus("已加入调查。现在可以搜索场景、询问 NPC、提交推理。");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "加入调查失败");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function discoverEvidence(evidenceId: string) {
+    if (!session) return;
+    setBusy(true);
+    try {
+      const data = await postJson<{ session: PlayerSession }>("/api/investigation/discover", { sessionId: session.id, evidenceId });
+      setSession(data.session);
+      setStatus(`发现证据：${deductionCase?.evidence.find((item) => item.id === evidenceId)?.title || evidenceId}`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "搜索证据失败");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function interrogate() {
+    if (!session || !selectedCharacterId || !question.trim()) return;
+    setBusy(true);
+    try {
+      const data = await postJson<{
+        entry: PlayerSession["interrogationLog"][number];
+        session: PlayerSession;
+        mock: boolean;
+        promptAudit: PromptAuditReport;
+        dialogueEval: NpcDialogueEvalReport;
+        safetyFlags: string[];
+        memoryCount: number;
+        evidenceCount: number;
+        testimonyUpdated: boolean;
+      }>("/api/investigation/interrogate", {
+        sessionId: session.id,
+        characterId: selectedCharacterId,
+        question,
+        evidenceId: selectedEvidenceId || undefined
+      });
+      setSession(data.session);
+      setLastAiSafety({ mock: data.mock, promptAudit: data.promptAudit, dialogueEval: data.dialogueEval, safetyFlags: data.safetyFlags, memoryCount: data.memoryCount, evidenceCount: data.evidenceCount });
+      setStatus(data.testimonyUpdated ? "证据击中矛盾，NPC 证词已被修正。" : "NPC 已按自身记忆回答。");
+      if (activeCase) {
+        const latestCase = await fetch(`/api/cases/${activeCase.id}`).then((response) => response.json());
+        if (latestCase.ok) setActiveCase(latestCase.caseFromLog || latestCase.activeCase || latestCase.case);
       }
-      const result = await callGenerate(evidence ? "gameEvidenceChallenge" : "gameDialogue", {
-        currentDraft: {
-          structuredCase: renderJson(deductionCase),
-          character: renderJson(character),
-          selectedEvidence: renderJson(evidence || null),
-          challenge: renderJson(challenge || null),
-          discoveredEvidence: renderJson(discoveredEvidence)
-        },
-        userDirection: `玩家问题：${question}`
-      });
-      setDialogues((items) => [...items, { characterId: selectedCharacterId, evidenceId: selectedEvidenceId || undefined, question, challenge, answer: result.content }]);
-      setQuestion("");
-      setStatus(challenge?.hit ? "质询命中矛盾，已记录。" : "角色回答已记录。");
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "质询失败");
+      setStatus(error instanceof Error ? error.message : "询问失败");
     } finally {
-      setIsGenerating(false);
+      setBusy(false);
     }
+  }
+
+  function toggleTheoryEvidence(evidenceId: string) {
+    setTheory((current) => {
+      const ids = new Set(current.evidenceIds);
+      if (ids.has(evidenceId)) ids.delete(evidenceId);
+      else ids.add(evidenceId);
+      return { ...current, evidenceIds: Array.from(ids) };
+    });
   }
 
   async function submitTheory() {
-    if (!deductionCase) return;
-    const result = judgeTheory(deductionCase, theory, discoveredEvidenceIds);
-    setIsGenerating(true);
-    setStatus("正在解释判定结果...");
+    if (!session) return;
+    setBusy(true);
     try {
-      const explanation = await callGenerate("gameJudgement", {
-        currentDraft: {
-          structuredCase: renderJson(deductionCase),
-          ruleJudgement: renderJson(result),
-          playerTheory: renderJson(theory)
-        },
-        userDirection: `规则结论必须保持为：${result.accepted ? "推理成立" : "推理不成立"}。`
-      });
-      setJudgementText(`${result.accepted ? "推理成立" : "推理不成立"}，得分 ${result.score}/100\n\n${explanation.content}`);
-      if (result.accepted) {
-        const solution = await callGenerate("gameSolutionReveal", {
-          currentDraft: { structuredCase: renderJson(deductionCase), playerTheory: renderJson(theory), ruleJudgement: renderJson(result) },
-          userDirection: "玩家已通过规则判定，生成完整解答篇。"
-        });
-        setSolutionText(solution.content);
-        setStatus("推理通过，解答篇已生成。");
-      } else {
-        setSolutionText("");
-        setStatus("推理未通过，只展示缺口提示。");
-      }
-    } catch {
-      setJudgementText(`${result.accepted ? "推理成立" : "推理不成立"}，得分 ${result.score}/100\n\n${result.explanation}\n\n缺口：${result.missing.join("；") || "无"}\n矛盾：${result.contradictions.join("；") || "无"}`);
-      setStatus("已使用本地规则结果展示判定。");
+      const data = await postJson<{ judgement: PlayerSession["judgement"]; session: PlayerSession }>("/api/investigation/submit-theory", { sessionId: session.id, theory });
+      setSession(data.session);
+      setStatus(data.judgement?.accepted ? "推理成立。可以生成解答篇。" : `推理不成立：${data.judgement?.missing?.join("、") || "证据链不足"}`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "提交推理失败");
     } finally {
-      setIsGenerating(false);
+      setBusy(false);
     }
   }
 
-  async function generateNovelSynopsis() {
-    setIsGenerating(true);
-    setStatus("正在生成小说故事大概...");
+  async function revealSolution() {
+    if (!session?.judgement?.accepted) return;
+    setBusy(true);
     try {
-      const result = await callGenerate("quickSynopsis", {
-        brief: novelBrief,
-        currentDraft: {},
-        userDirection: "生成标准版故事大概。"
-      });
-      setNovelSynopsis(result.content);
-      setStatus("小说故事大概已生成。");
+      const data = await postJson<{ content: string; revealEval: RevealEvalReport; factContract: RevealFactContract; mock: boolean }>("/api/investigation/reveal", { sessionId: session.id });
+      setRevealText(data.content);
+      setLastAiSafety((current) => ({ ...(current || {}), revealEval: data.revealEval, factContract: data.factContract, mock: data.mock }));
+      setStatus("解答篇已生成，并按本地事实锁校验。");
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "生成失败");
+      setStatus(error instanceof Error ? error.message : "生成解答失败");
     } finally {
-      setIsGenerating(false);
+      setBusy(false);
     }
   }
 
   return (
-    <main className="shell">
-      <aside className="sidebar">
-        <div className="brand">
-          <div className="brandMark">
-            <Network size={22} />
-          </div>
+    <main className="mmoShell">
+      <aside className="mmoSidebar">
+        <div className="brandBlock">
+          <div className="brandIcon"><Map size={26} /></div>
           <div>
-            <p>Deduction Engine</p>
-            <h1>Engine + Workbench</h1>
+            <p>Detective Town</p>
+            <h1>AI 推理小镇</h1>
           </div>
         </div>
 
-        <div className="modeSwitch">
-          <button className={mode === "game" ? "selected" : ""} onClick={() => setMode("game")} type="button">
-            <Target size={16} />
-            Deduction Game
-          </button>
-          <button className={mode === "novel" ? "selected" : ""} onClick={() => setMode("novel")} type="button">
-            <BookOpen size={16} />
-            小说生成
-          </button>
+        <div className="sidePanel">
+          <div className="panelTitle"><Plus size={16} /> Create Detective Town</div>
+          <label className="compactLabel">Seed<input value={seedInput} onChange={(event) => setSeedInput(event.target.value)} /></label>
+          <label className="compactLabel">案件类型
+            <select value={caseArchetype} onChange={(event) => setCaseArchetype(event.target.value as MurderArchetype | "auto")}>
+              {archetypeOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+            </select>
+          </label>
+          <label className="compactLabel">模式
+            <select value={mode} onChange={(event) => setMode(event.target.value as WorldMode)}>
+              <option value="showcase">Showcase：8 NPC / 24h</option>
+              <option value="advanced">Advanced：30 NPC / 多日</option>
+            </select>
+          </label>
+          <button className="primaryButton full" onClick={createWorld} disabled={busy}>{busy ? <Loader2 className="spin" size={16} /> : <Play size={16} />} Create Detective Town</button>
         </div>
 
-        <div className="sidebarPanel">
-          <div className="panelTitle">
-            <KeyRound size={16} />
-            <span>模型</span>
+        <div className="sidePanel">
+          <div className="panelTitle"><Database size={16} /> Load / Join</div>
+          <div className="inputLine">
+            <input value={worldIdInput} onChange={(event) => setWorldIdInput(event.target.value)} placeholder="world id" />
+            <button className="iconButton" onClick={loadWorld} disabled={busy}><Search size={16} /></button>
           </div>
-          <div className="segmented">
-            <button className={provider === "deepseek" ? "selected" : ""} onClick={() => setProvider("deepseek")} type="button">
-              DeepSeek
-            </button>
-            <button className={provider === "siliconflow" ? "selected" : ""} onClick={() => setProvider("siliconflow")} type="button">
-              硅基流动
-            </button>
-          </div>
-          <p className="hint">LLM 负责候选结构和文本，本地规则引擎负责最终裁判。Showcase 模式无需 API Key。</p>
+          <label className="compactLabel">玩家名<input value={playerName} onChange={(event) => setPlayerName(event.target.value)} /></label>
+          <button className="secondaryButton full" onClick={joinCase} disabled={busy || !world || !activeCase}><Users size={16} /> 加入调查</button>
+          <button className="secondaryButton full" onClick={tickWorld} disabled={busy || !world}><Clock size={16} /> 推进小镇</button>
+        </div>
+
+        <div className="miniList">
+          <div className="miniRow"><span>NPC</span><strong>{world?.npcs.length || 0}</strong></div>
+          <div className="miniRow"><span>事件</span><strong>{events.length}</strong></div>
+          <div className="miniRow"><span>证据</span><strong>{session?.discoveredEvidenceIds.length || 0}/{deductionCase?.evidence.length || 0}</strong></div>
+          <div className="miniRow"><span>AI Eval</span><strong>{latestLiveEval?.passed === false ? "Fail" : latestLiveEval ? "Pass" : "Local"}</strong></div>
+        </div>
+
+        <div className="statusBox">
+          <AlertTriangle size={16} />
+          <span>{status}</span>
         </div>
       </aside>
 
-      {mode === "game" ? (
-        <section className="workspace">
-          <header className="topbar">
-            <div>
-              <p className="eyebrow">LLM + Symbolic Rules + Visual Case Workbench</p>
-              <h2>{deductionCase?.title || "Deduction Engine"}</h2>
-            </div>
-            <div className="topActions">
-              <button className="iconButton" onClick={() => navigator.clipboard.writeText(exportMarkdown)} title="复制案卷" type="button">
-                <ClipboardCopy size={18} />
-              </button>
-              <button className="iconButton" onClick={() => downloadFile("deduction-case.md", exportMarkdown, "text/markdown;charset=utf-8")} title="导出 Markdown" type="button">
-                <Download size={18} />
-              </button>
-              <button className="iconButton" onClick={() => deductionCase && downloadFile("deduction-case.json", renderJson(deductionCase), "application/json;charset=utf-8")} title="导出 JSON" type="button">
-                <FileJson size={18} />
-              </button>
-            </div>
-          </header>
-
-          <div className="heroBand">
-            <div>
-              <p>GitHub-ready AI deduction engine</p>
-              <h3>不是让 AI 直接编故事，而是让 AI 生成可验证的案件结构。</h3>
-            </div>
-            <div className="heroActions">
-              <button className="primaryButton" onClick={loadShowcase} type="button">
-                <Sparkles size={18} />
-                Demo Case
-              </button>
-              <button className="secondaryButton" disabled={isGenerating} onClick={generateCase} type="button">
-                {isGenerating ? <Loader2 className="spin" size={18} /> : <Wand2 size={18} />}
-                Generate Case
-              </button>
-            </div>
+      <section className="mmoWorkspace">
+        <header className="mmoHeader">
+          <div>
+            <p className="eyebrow">Simulated lives {"->"} world events {"->"} evidence {"->"} fair-play case</p>
+            <h2>{activeCase?.deductionCase.title || "Detective Town Showcase"}</h2>
           </div>
+          <div className="metricStrip">
+            <div><span>Quality</span><strong>{quality?.qualityScore ?? quality?.score ?? 0}</strong></div>
+            <div><span>Unique</span><strong>{quality?.uniqueCulprit ? "Yes" : "No"}</strong></div>
+            <div><span>24h</span><strong>{quality?.timeline24hComplete ? "Yes" : "No"}</strong></div>
+          </div>
+        </header>
 
-          <div className="gameGrid">
-            <section className="inputDeck">
-              <div className="cardHeader">
-                <div>
-                  <p className="cardKicker">Generate Case</p>
-                  <h3>题材与约束</h3>
-                </div>
+        <section className="caseBand">
+          <div>
+            <h3>{deductionCase ? "案件来自世界行为，而不是 AI 直接编故事。" : "创建小镇后开始调查。"}</h3>
+            <p>{deductionCase?.publicCaseFile || "小镇会先生成 NPC 日程、秘密、关系、记忆与事件，再从事件日志中抽取一件可验证的案件。"}</p>
+            {activeCase && (
+              <div className="caseMeta">
+                <span>{world?.mode || "showcase"}</span>
+                <span>{archetypeLabels[activeCase.generationProfile.archetype]}</span>
+                <span>凶手唯一：{quality?.uniqueCulprit ? "是" : "否"}</span>
+                <span>证据来自事件：{quality?.worldBackedEvidence ? "是" : "否"}</span>
+                <span>记忆约束：{quality?.memoryScopedTestimony ? "是" : "否"}</span>
               </div>
-              <div className="twoCols">
-                <label className="field">
-                  <span>案件类型</span>
-                  <select value={caseType} onChange={(event) => setCaseType(event.target.value)}>
-                    {caseTypes.map((type) => (
-                      <option key={type}>{type}</option>
-                    ))}
-                  </select>
-                </label>
-                <label className="field">
-                  <span>篇幅档位</span>
-                  <select value={lengthTarget} onChange={(event) => setLengthTarget(event.target.value)}>
-                    {lengthTargets.map((target) => (
-                      <option key={target}>{target}</option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-              <label className="field grow">
-                <span>Prompt Brief</span>
-                <textarea value={topic} onChange={(event) => setTopic(event.target.value)} spellCheck={false} translate="no" />
-              </label>
-            </section>
-
-            <section className="outputDeck">
-              <div className="cardHeader">
-                <div>
-                  <p className="cardKicker">Player Case File</p>
-                  <h3>玩家可见案卷</h3>
-                </div>
-                <div className="truthToggle">{progress || "Rule First"}</div>
-              </div>
-              <textarea className="draftEditor" value={caseFile} readOnly placeholder="点击 Demo Case 立即载入示范案，或调用 DeepSeek 生成新案。" />
-            </section>
-
-            <section className="reviewStrip">
-              <div className="reviewItem">
-                {validation?.valid ? <CheckCircle2 size={18} /> : <XCircle size={18} />}
-                <span>规则校验</span>
-                <strong>{validation ? (validation.valid ? "通过" : "有问题") : "未载入"}</strong>
-              </div>
-              <div className="reviewItem">
-                <Eye size={18} />
-                <span>已发现证据</span>
-                <strong>{discoveredEvidenceIds.length}</strong>
-              </div>
-              <div className="reviewItem">
-                <GitBranch size={18} />
-                <span>推理覆盖</span>
-                <strong>{reasoningCoverage ? `${Math.round(reasoningCoverage.coverageRatio * 100)}%` : "0%"}</strong>
-              </div>
-              <div className="reviewItem wide">
-                <Sparkles size={18} />
-                <span>状态</span>
-                <strong>{status}</strong>
-              </div>
-            </section>
-
-            {deductionCase && (
-              <>
-                <Workbench deductionCase={deductionCase} validation={validation} discoveredEvidenceIds={discoveredEvidenceIds} view={workbenchView} setView={setWorkbenchView} />
-
-                <section className="panel">
-                  <div className="cardHeader">
-                    <div>
-                      <p className="cardKicker">Scene Search</p>
-                      <h3>搜索证据</h3>
-                    </div>
-                  </div>
-                  <label className="field">
-                    <span>场景</span>
-                    <select value={selectedSceneId} onChange={(event) => setSelectedSceneId(event.target.value)}>
-                      {deductionCase.scenes.map((scene) => (
-                        <option key={scene.id} value={scene.id}>
-                          {scene.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <button className="secondaryButton" onClick={searchScene} type="button">
-                    <Search size={17} />
-                    搜索场景
-                  </button>
-                  <div className="scrollList">
-                    {discoveredEvidence.map((item) => (
-                      <div className="miniCard" key={item.id}>
-                        <strong>{item.title}</strong>
-                        <p>{item.visibleDescription}</p>
-                        <code>{item.id}</code>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-
-                <section className="panel">
-                  <div className="cardHeader">
-                    <div>
-                      <p className="cardKicker">Evidence Challenge</p>
-                      <h3>证据质询</h3>
-                    </div>
-                  </div>
-                  <div className="twoCols">
-                    <label className="field">
-                      <span>角色</span>
-                      <select value={selectedCharacterId} onChange={(event) => setSelectedCharacterId(event.target.value)}>
-                        {deductionCase.characters.map((character) => (
-                          <option key={character.id} value={character.id}>
-                            {character.name} - {character.role}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="field">
-                      <span>出示证据</span>
-                      <select value={selectedEvidenceId} onChange={(event) => setSelectedEvidenceId(event.target.value)}>
-                        <option value="">不出示证据</option>
-                        {discoveredEvidence.map((item) => (
-                          <option key={item.id} value={item.id}>
-                            {item.title}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
-                  <label className="field">
-                    <span>问题</span>
-                    <textarea className="smallArea" value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="这条证据和你的证词是否矛盾？" />
-                  </label>
-                  <button className="secondaryButton" disabled={isGenerating || !question.trim()} onClick={challengeCharacter} type="button">
-                    <MessageSquare size={17} />
-                    质询
-                  </button>
-                  <div className="scrollList">
-                    {dialogues.map((item, index) => (
-                      <div className={item.challenge?.hit ? "miniCard hot" : "miniCard"} key={`${item.characterId}-${index}`}>
-                        <strong>{characterName(deductionCase, item.characterId)}</strong>
-                        <p>证据：{item.evidenceId || "未出示"}</p>
-                        <p>问：{item.question}</p>
-                        <p>答：{item.answer}</p>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-
-                <section className="panel widePanel">
-                  <div className="cardHeader">
-                    <div>
-                      <p className="cardKicker">Final Theory</p>
-                      <h3>提交推理</h3>
-                    </div>
-                  </div>
-                  <div className="twoCols">
-                    <label className="field">
-                      <span>凶手</span>
-                      <select value={theory.culpritId} onChange={(event) => setTheory((current) => ({ ...current, culpritId: event.target.value }))}>
-                        <option value="">选择嫌疑人</option>
-                        {deductionCase.characters.map((character) => (
-                          <option key={character.id} value={character.id}>
-                            {character.name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="field">
-                      <span>证据 ID，逗号分隔</span>
-                      <input
-                        value={theory.evidenceIds.join(",")}
-                        onChange={(event) => setTheory((current) => ({ ...current, evidenceIds: safeIdList(event.target.value) }))}
-                        placeholder="e-power-log,e-base-mark,e-dust"
-                      />
-                    </label>
-                  </div>
-                  <label className="field">
-                    <span>动机</span>
-                    <textarea className="smallArea" value={theory.motive} onChange={(event) => setTheory((current) => ({ ...current, motive: event.target.value }))} />
-                  </label>
-                  <label className="field">
-                    <span>手法</span>
-                    <textarea className="smallArea" value={theory.method} onChange={(event) => setTheory((current) => ({ ...current, method: event.target.value }))} />
-                  </label>
-                  <button className="primaryButton" disabled={isGenerating} onClick={submitTheory} type="button">
-                    <Target size={18} />
-                    判定推理
-                  </button>
-                  {judgementText && <pre className="judgement">{judgementText}</pre>}
-                  {solutionText && <pre className="solution">{solutionText}</pre>}
-                </section>
-              </>
             )}
           </div>
+          <button className="secondaryButton" onClick={() => setDebugOpen((value) => !value)}><Eye size={16} /> Debug</button>
         </section>
-      ) : (
-        <NovelWorkspace isGenerating={isGenerating} novelBrief={novelBrief} novelSynopsis={novelSynopsis} setNovelBrief={setNovelBrief} generateNovelSynopsis={generateNovelSynopsis} status={status} />
-      )}
+
+        <div className="investigationGrid">
+          <section className="workPanel">
+            <h4><Map size={16} /> 小镇地图与搜索</h4>
+            <div className="locationGrid">
+              {scenes.map((scene) => (
+                <button key={scene.id} className={`locationCard ${scene.id === selectedScene?.id ? "selected" : ""}`} onClick={() => setSelectedSceneId(scene.id)}>
+                  <strong>{scene.name}</strong>
+                  <span>{scene.evidenceIds.length} 条可搜索线索</span>
+                </button>
+              ))}
+            </div>
+            <div className="evidenceSearch">
+              {sceneEvidence.map((item) => (
+                <div className="evidenceRow" key={item.id}>
+                  <div>
+                    <strong>{discovered.has(item.id) ? item.title : "未发现线索"}</strong>
+                    <span>{discovered.has(item.id) ? item.visibleDescription : `${selectedScene?.name} 中可能存在调查价值。`}</span>
+                  </div>
+                  <button className="secondaryButton" onClick={() => discoverEvidence(item.id)} disabled={!session || discovered.has(item.id) || busy}><FileSearch size={16} /> 搜索</button>
+                </div>
+              ))}
+              {!sceneEvidence.length && <p>该地点暂无可发现证据。</p>}
+            </div>
+          </section>
+
+          <section className="workPanel">
+            <h4><MessageSquare size={16} /> NPC 询问与证据质询</h4>
+            <div className="formGrid">
+              <label>角色
+                <select value={selectedCharacterId} onChange={(event) => setSelectedCharacterId(event.target.value)}>
+                  {characters.map((character) => <option key={character.id} value={character.id}>{character.name} - {character.role}</option>)}
+                </select>
+              </label>
+              <label>出示证据
+                <select value={selectedEvidenceId} onChange={(event) => setSelectedEvidenceId(event.target.value)}>
+                  <option value="">不出示证据</option>
+                  {discoveredEvidence.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
+                </select>
+              </label>
+            </div>
+            {selectedTestimony && (
+              <div className="testimonyBox">
+                <span>当前证词 / 可挑战证据：{selectedTestimony.contradictionEvidenceIds.join("、") || "无"}</span>
+                <p>{selectedTestimony.currentStatement}</p>
+                <span>{selectedTestimony.revised ? "已被证据修正" : "尚未修正"}</span>
+              </div>
+            )}
+            <textarea value={question} onChange={(event) => setQuestion(event.target.value)} />
+            <button className="primaryButton full" onClick={interrogate} disabled={!session || !selectedCharacterId || busy}><Bot size={16} /> 询问 NPC</button>
+            <div className="dialogueLog">
+              {(session?.interrogationLog || []).slice(-4).reverse().map((entry) => (
+                <article key={entry.id}>
+                  <p><strong>{deductionCase?.characters.find((item) => item.id === entry.characterId)?.name || entry.characterId}</strong><span>{entry.evidenceId ? `出示 ${entry.evidenceId}` : "普通询问"}</span></p>
+                  <blockquote>{entry.answer}</blockquote>
+                </article>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        <div className="lowerGrid">
+          <section className="workPanel">
+            <h4><Network size={16} /> 24h 时间线与证据图谱</h4>
+            <div className="timelineList">
+              {deductionCase?.truth.trueTimeline.map((item) => (
+                <div className="timelineItem" key={item.id}>
+                  <time>{item.time}</time>
+                  <strong>{item.contradictedByEvidenceIds.some((id) => discovered.has(id)) ? item.event : item.publicVersion}</strong>
+                  <span>证据：{item.contradictedByEvidenceIds.join("、") || "无"}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="workPanel">
+            <h4><Gavel size={16} /> 提交推理</h4>
+            <label>凶手
+              <select value={theory.culpritId} onChange={(event) => setTheory((current) => ({ ...current, culpritId: event.target.value }))}>
+                <option value="">选择嫌疑人</option>
+                {characters.map((character) => <option key={character.id} value={character.id}>{character.name}</option>)}
+              </select>
+            </label>
+            <label>动机<textarea value={theory.motive} onChange={(event) => setTheory((current) => ({ ...current, motive: event.target.value }))} /></label>
+            <label>手法<textarea value={theory.method} onChange={(event) => setTheory((current) => ({ ...current, method: event.target.value }))} /></label>
+            <div className="checkList">
+              {discoveredEvidence.map((item) => (
+                <label className="checkRow" key={item.id}>
+                  <input type="checkbox" checked={playerTheoryEvidence.has(item.id)} onChange={() => toggleTheoryEvidence(item.id)} />
+                  {item.title}
+                </label>
+              ))}
+            </div>
+            <button className="primaryButton full" onClick={submitTheory} disabled={!session || busy}><ShieldCheck size={16} /> 判定推理</button>
+            {session?.judgement && (
+              <div className={`judgement ${session.judgement.accepted ? "pass" : "fail"}`}>
+                <strong>{session.judgement.accepted ? "推理成立" : "推理不成立"}</strong>
+                <p>{session.judgement.explanation}</p>
+                <button className="secondaryButton" onClick={revealSolution} disabled={!session.judgement.accepted || busy}>生成解答篇</button>
+              </div>
+            )}
+            {revealText && <pre className="revealBox">{revealText}</pre>}
+          </section>
+        </div>
+
+        <div className="lowerGrid">
+          <section className="workPanel">
+            <h4><CheckCircle2 size={16} /> 质量报告</h4>
+            <div className="boardGrid">
+              {[
+                ["World-backed evidence", quality?.worldBackedEvidence],
+                ["Memory-scoped testimony", quality?.memoryScopedTestimony],
+                ["24h timeline", quality?.timeline24hComplete],
+                ["Non-culprits excluded", quality?.nonCulpritExcluded],
+                ["Reasoning trace", quality?.reasoningTraceComplete],
+                ["Rule validation", activeCase?.validation.valid]
+              ].map(([label, ok]) => (
+                <div className={`boardCard ${ok ? "found" : ""}`} key={String(label)}>
+                  <strong>{ok ? "PASS" : "WAIT"}</strong>
+                  <p>{label}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="workPanel">
+            <h4><Clock size={16} /> 世界事件流</h4>
+            <div className="eventFeed">
+              {recentEvents.map((event) => (
+                <div key={event.id}>
+                  <time>第{event.day}日 {event.time}</time>
+                  <strong>{event.publicSummary}</strong>
+                  <span>{event.type} / {event.locationId}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        <section className="workPanel" style={{ marginTop: 18 }}>
+          <h4><ShieldCheck size={16} /> AI 安全状态</h4>
+          <div className="caseMeta">
+            <span>Prompt Safe: {lastAiSafety?.promptAudit?.safe === false ? "No" : "Yes"}</span>
+            <span>Dialogue Score: {lastAiSafety?.dialogueEval?.score ?? "Local"}</span>
+            <span>Memory Count: {lastAiSafety?.memoryCount ?? 0}</span>
+            <span>Evidence Count: {lastAiSafety?.evidenceCount ?? 0}</span>
+            <span>Fact Lock: {factLockScore ?? "N/A"}</span>
+            <span>Exposed Contradictions: {exposedContradictions}</span>
+          </div>
+        </section>
+
+        {debugOpen && (
+          <section className="debugPanel">
+            <pre>{JSON.stringify({ world, events, activeCase, session, sessions, lastAiSafety }, null, 2)}</pre>
+          </section>
+        )}
+      </section>
     </main>
-  );
-}
-
-function Workbench({
-  deductionCase,
-  validation,
-  discoveredEvidenceIds,
-  view,
-  setView
-}: {
-  deductionCase: DeductionCase;
-  validation: ReturnType<typeof validateCase> | null;
-  discoveredEvidenceIds: string[];
-  view: WorkbenchView;
-  setView: (view: WorkbenchView) => void;
-}) {
-  const tabs: Array<[WorkbenchView, string]> = [
-    ["truth", "Truth"],
-    ["matrix", "Matrix"],
-    ["evidence", "Evidence Graph"],
-    ["timeline", "Timeline"],
-    ["report", "Rule Report"],
-    ["schema", "Schema"],
-    ["eval", "Eval"],
-    ["json", "JSON"]
-  ];
-  return (
-    <section className="panel widePanel workbench">
-      <div className="cardHeader">
-        <div>
-          <p className="cardKicker">Visual Workbench</p>
-          <h3>案件逻辑工作台</h3>
-        </div>
-        <div className="tabs">
-          {tabs.map(([id, label]) => (
-            <button className={view === id ? "selected" : ""} key={id} onClick={() => setView(id)} type="button">
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
-      {view === "truth" && <TruthPanel deductionCase={deductionCase} />}
-      {view === "matrix" && <MatrixPanel validation={validation} />}
-      {view === "evidence" && <EvidenceGraph deductionCase={deductionCase} discoveredEvidenceIds={discoveredEvidenceIds} />}
-      {view === "timeline" && <TimelinePanel deductionCase={deductionCase} discoveredEvidenceIds={discoveredEvidenceIds} />}
-      {view === "report" && <ReportPanel validation={validation} />}
-      {view === "schema" && <SchemaPanel deductionCase={deductionCase} />}
-      {view === "eval" && <EvalPanel deductionCase={deductionCase} validation={validation} />}
-      {view === "json" && <pre className="jsonBlock">{renderJson(deductionCase)}</pre>}
-    </section>
-  );
-}
-
-function TruthPanel({ deductionCase }: { deductionCase: DeductionCase }) {
-  const culprit = deductionCase.characters.find((item) => item.id === deductionCase.truth.culpritId);
-  return (
-    <div className="truthGrid">
-      <div className="factBox">
-        <span>Culprit</span>
-        <strong>{culprit?.name || deductionCase.truth.culpritId}</strong>
-      </div>
-      <div className="factBox">
-        <span>Motive</span>
-        <p>{deductionCase.truth.motive}</p>
-      </div>
-      <div className="factBox">
-        <span>Method</span>
-        <p>{deductionCase.truth.method}</p>
-      </div>
-      <div className="factBox">
-        <span>Opportunity</span>
-        <p>{deductionCase.truth.opportunity}</p>
-      </div>
-    </div>
-  );
-}
-
-function MatrixPanel({ validation }: { validation: ReturnType<typeof validateCase> | null }) {
-  if (!validation) return null;
-  return (
-    <div className="matrixTable">
-      <div className="matrixHead">
-        <span>Suspect</span>
-        <span>Motive</span>
-        <span>Means</span>
-        <span>Opportunity</span>
-        <span>Excluded By</span>
-      </div>
-      {validation.suspectMatrix.map((row) => (
-        <div className={row.completeAndUnexcluded ? "matrixRow active" : "matrixRow"} key={row.characterId}>
-          <strong>{row.name}</strong>
-          <span>{row.motive ? "yes" : "no"}</span>
-          <span>{row.means ? "yes" : "no"}</span>
-          <span>{row.opportunity ? "yes" : "no"}</span>
-          <code>{row.excludedByEvidenceIds.join(", ") || "-"}</code>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function EvidenceGraph({ deductionCase, discoveredEvidenceIds }: { deductionCase: DeductionCase; discoveredEvidenceIds: string[] }) {
-  const steps = deductionCase.logicPuzzle.criticalReasoningChain.slice(0, 5);
-  return (
-    <svg className="caseGraph" viewBox="0 0 980 360" role="img" aria-label="证据链图">
-      {steps.map((step, index) => {
-        const y = 54 + index * 58;
-        const evidenceId = step.evidenceIds[0];
-        const found = discoveredEvidenceIds.includes(evidenceId);
-        return (
-          <g key={step.id}>
-            <rect x="24" y={y - 22} width="170" height="44" rx="8" fill={found ? "#2f6b4f" : "#827766"} />
-            <text x="109" y={y + 5} textAnchor="middle" fill="#fffaf0" fontSize="12">
-              {evidenceId}
-            </text>
-            <line x1="194" y1={y} x2="286" y2={y} stroke="#cab98f" strokeWidth="2" />
-            <rect x="286" y={y - 24} width="420" height="48" rx="8" fill="#fffaf0" stroke="#cab98f" />
-            <text x="496" y={y + 5} textAnchor="middle" fill="#191711" fontSize="13">
-              {step.conclusion.slice(0, 32)}
-            </text>
-            <line x1="706" y1={y} x2="788" y2="180" stroke="#cab98f" strokeWidth="2" />
-          </g>
-        );
-      })}
-      <circle cx="840" cy="180" r="58" fill="#8d1d2c" />
-      <text x="840" y="185" textAnchor="middle" fill="#fffaf0" fontSize="14">
-        Conclusion
-      </text>
-    </svg>
-  );
-}
-
-function TimelinePanel({ deductionCase, discoveredEvidenceIds }: { deductionCase: DeductionCase; discoveredEvidenceIds: string[] }) {
-  const items = getTimelineContradictions(deductionCase, discoveredEvidenceIds);
-  return (
-    <div className="timeline">
-      {items.map((item) => (
-        <div className={item.revealed ? "timelineItem revealed" : "timelineItem"} key={item.eventId}>
-          <span>{item.time}</span>
-          <strong>{item.publicVersion}</strong>
-          <p>{item.revealed ? item.trueEvent : "需要找到对应证据后才会揭示矛盾。"}</p>
-          <code>{item.evidenceIds.join(", ")}</code>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function ReportPanel({ validation }: { validation: ReturnType<typeof validateCase> | null }) {
-  if (!validation) return null;
-  return (
-    <div className="reportGrid">
-      <div className={validation.valid ? "reportCard pass" : "reportCard fail"}>
-        <span>Valid</span>
-        <strong>{validation.valid ? "true" : "false"}</strong>
-      </div>
-      <div className="reportCard">
-        <span>Errors</span>
-        <strong>{validation.errors.length}</strong>
-      </div>
-      <div className="reportCard">
-        <span>Warnings</span>
-        <strong>{validation.warnings.length}</strong>
-      </div>
-      <div className="reportCard">
-        <span>Coverage</span>
-        <strong>{Math.round(validation.reasoningCoverage.coverageRatio * 100)}%</strong>
-      </div>
-      <pre className="jsonBlock">{renderJson({ errors: validation.errors, warnings: validation.warnings, fixSuggestions: validation.fixSuggestions })}</pre>
-    </div>
-  );
-}
-
-function SchemaPanel({ deductionCase }: { deductionCase: DeductionCase }) {
-  const schema = validateCaseSchema(deductionCase);
-  return (
-    <div className="reportGrid">
-      <div className={schema.valid ? "reportCard pass" : "reportCard fail"}>
-        <span>Schema</span>
-        <strong>{schema.valid ? "valid" : "invalid"}</strong>
-      </div>
-      <div className="reportCard">
-        <span>Errors</span>
-        <strong>{schema.errors.length}</strong>
-      </div>
-      <div className="reportCard">
-        <span>Warnings</span>
-        <strong>{schema.warnings.length}</strong>
-      </div>
-      <div className="reportCard">
-        <span>Normalize</span>
-        <strong>{schema.normalizedHints.length}</strong>
-      </div>
-      <pre className="jsonBlock">{renderJson(schema)}</pre>
-    </div>
-  );
-}
-
-function EvalPanel({ deductionCase, validation }: { deductionCase: DeductionCase; validation: ReturnType<typeof validateCase> | null }) {
-  const schema = validateCaseSchema(deductionCase);
-  const suite = runEval();
-  return (
-    <div className="reportGrid">
-      <div className={schema.valid && validation?.valid ? "reportCard pass" : "reportCard fail"}>
-        <span>Current Case</span>
-        <strong>{schema.valid && validation?.valid ? "pass" : "fail"}</strong>
-      </div>
-      <div className="reportCard">
-        <span>Coverage</span>
-        <strong>{validation ? `${Math.round(validation.reasoningCoverage.coverageRatio * 100)}%` : "0%"}</strong>
-      </div>
-      <div className={suite.failed === 0 ? "reportCard pass" : "reportCard fail"}>
-        <span>Fixture Eval</span>
-        <strong>
-          {suite.passed}/{suite.total}
-        </strong>
-      </div>
-      <div className="reportCard">
-        <span>Avg Coverage</span>
-        <strong>{Math.round(suite.averageCoverage * 100)}%</strong>
-      </div>
-      <pre className="jsonBlock">{renderJson({ currentSchema: schema, currentRules: validation, fixtureEval: suite })}</pre>
-    </div>
-  );
-}
-
-function NovelWorkspace({
-  isGenerating,
-  novelBrief,
-  novelSynopsis,
-  setNovelBrief,
-  generateNovelSynopsis,
-  status
-}: {
-  isGenerating: boolean;
-  novelBrief: string;
-  novelSynopsis: string;
-  setNovelBrief: (value: string) => void;
-  generateNovelSynopsis: () => void;
-  status: string;
-}) {
-  return (
-    <section className="workspace">
-      <header className="topbar">
-        <div>
-          <p className="eyebrow">保留原小说生成入口</p>
-          <h2>小说生成</h2>
-        </div>
-      </header>
-      <div className="contentGrid">
-        <section className="inputDeck">
-          <div className="cardHeader">
-            <div>
-              <p className="cardKicker">大纲</p>
-              <h3>输入素材</h3>
-            </div>
-          </div>
-          <textarea value={novelBrief} onChange={(event) => setNovelBrief(event.target.value)} spellCheck={false} />
-          <button className="primaryButton" disabled={isGenerating} onClick={generateNovelSynopsis} type="button">
-            {isGenerating ? <Loader2 className="spin" size={18} /> : <Sparkles size={18} />}
-            生成故事大概
-          </button>
-        </section>
-        <section className="outputDeck">
-          <div className="cardHeader">
-            <div>
-              <p className="cardKicker">输出</p>
-              <h3>故事大概</h3>
-            </div>
-          </div>
-          <textarea className="draftEditor" value={novelSynopsis} readOnly placeholder={status} />
-        </section>
-      </div>
-    </section>
   );
 }

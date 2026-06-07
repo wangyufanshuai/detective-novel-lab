@@ -4,10 +4,13 @@ out
 .env
 .env.local
 outputs/
+data/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 dev.out.log
 dev.err.log
+dev-mmo.out.log
+dev-mmo.err.log
 .playwright-cli/
