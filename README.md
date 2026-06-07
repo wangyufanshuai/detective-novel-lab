@@ -6,7 +6,17 @@ Detective Town is a local-first mystery engine for fair-play detective games. It
 
 DeepSeek is used only for NPC surface dialogue and optional solution prose. It does not decide the culprit, method, evidence, or timeline.
 
-> Screenshot/GIF target: create the Showcase town, search one scene, interrogate one NPC, then open the Developer / Agent API panel. The demo is deterministic, so screenshots do not depend on live model output.
+![Detective Town visual workbench](docs/assets/detective-town-workbench.png)
+
+**Online demo:** deployment URL placeholder. The hosted build uses the browser-only Static Demo Runtime, so it needs no API key or writable database.
+
+## 30-Second Experience
+
+1. Open the app: the Premium Showcase, 8 NPCs, map, timeline, and case file are already loaded.
+2. Replay the 24-hour timeline and inspect WorldEvents.
+3. Search the archive, market, and theater for evidence.
+4. Challenge an NPC testimony, then submit a theory.
+5. Unlock the final deduction node and source-locked solution.
 
 ## Why It Is Different
 
@@ -60,7 +70,7 @@ Open:
 http://localhost:3000
 ```
 
-Click **Create Detective Town**. No API key is required; without DeepSeek credentials, NPC interrogation uses rule-bound local replies.
+The Premium Showcase loads automatically at 08:00. Add `?runtime=static` for the browser-only runtime or `?runtime=server` for SQLite + DeepSeek.
 
 ## Configuration
 
@@ -72,6 +82,7 @@ DEEPSEEK_API_KEY=your_deepseek_key
 DEEPSEEK_BASE_URL=https://api.deepseek.com
 DEEPSEEK_MODEL=deepseek-v4-flash
 DATABASE_URL=file:./data/mystery-town.db
+NEXT_PUBLIC_DEMO_MODE=server
 ```
 
 API keys are read only on the server. Do not expose them in client code.
@@ -84,7 +95,9 @@ Stable Agent Control API:
 - `GET /api/v1/query/world/state?worldId=...`
 - `GET /api/v1/query/world/events?worldId=...`
 - `GET /api/v1/query/world/memories?worldId=...&npcId=...`
+- `GET /api/v1/query/world/map?worldId=...&caseId=...&sessionId=...&day=1&time=21:30`
 - `GET /api/v1/query/case?caseId=...`
+- `GET /api/v1/query/case/deduction-graph?caseId=...`
 - `POST /api/v1/command/town/create`
 - `POST /api/v1/command/player/join`
 - `POST /api/v1/command/investigation/discover`
@@ -155,6 +168,8 @@ Core exports are available from `packages/engine/src` and `lib/engine`:
 - Deduction engine: `validateCase`, `validateCaseSchema`, `judgeTheory`, `evaluateEvidenceChallenge`, `getTimelineContradictions`, `deriveSuspectMatrix`, `getReasoningCoverage`.
 - World engine: `createInitialWorld`, `simulateDailyLife`, `simulateWorldTick`, `extractCaseFromWorld`, `validateWorldCase`, `buildNpcKnowledgeContext`, `makeRuleBoundInterrogation`, `updateTestimonyWithContradiction`, `buildTravelConstraint`, `analyzeReachability`, `buildCaseQualityReport`, `buildReasoningTrace`, `submitWorldTheory`.
 - Evaluation: `runEval`, `renderEvalMarkdown`.
+- Static runtime: `createStaticDemoRuntime`, `discoverDemoEvidence`, `interrogateDemoNpc`, `submitDemoTheory`, `revealDemoSolution`.
+- Visual logic: `buildWorldMapSnapshot`, `buildDeductionGraph`, `deriveSuspectBoard`, `buildCaseLogicReport`, `validateHardCaseLogic`.
 
 ## Tests
 
@@ -165,6 +180,7 @@ npm run test:world
 npm run test:ai
 npm run test
 npm run eval
+npm run test:e2e
 node scripts/run-agent-api-smoke.mjs
 ```
 
@@ -184,6 +200,8 @@ The live eval is intentionally not part of the default test command. It uses loc
 - [World Model](docs/world-model.md)
 - [AI Safety](docs/ai-safety.md)
 - [Showcase Walkthrough](docs/showcase-walkthrough.md)
+- [Runtime Modes](docs/runtime-modes.md)
+- [Deployment](docs/deployment.md)
 
 ## Current Limits
 
@@ -194,8 +212,7 @@ The live eval is intentionally not part of the default test command. It uses loc
 
 ## Roadmap
 
-- Browser screenshot regression for the Showcase flow.
-- Richer town maps and evidence graph interactions.
-- More case archetypes.
+- Public hosted Static Demo.
+- More Premium cases and case archetypes.
 - Optional solver integration for stricter travel and opportunity constraints.
 - Community case gallery.

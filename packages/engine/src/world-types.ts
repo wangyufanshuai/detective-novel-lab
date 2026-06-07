@@ -550,3 +550,31 @@ export type WorldMapSnapshot = {
   selectedEventIds: string[];
   discoveredEvidenceIds: string[];
 };
+
+export type RuntimeMode = "static-demo" | "server";
+
+export type InvestigationProgress = {
+  observedCrimeWindow: boolean;
+  joinedInvestigation: boolean;
+  discoveredEvidence: boolean;
+  challengedTestimony: boolean;
+  submittedTheory: boolean;
+  solvedCase: boolean;
+};
+
+export type DeductionGraphVisibility = {
+  discoveredEvidenceIds: string[];
+  revealedEventIds: string[];
+  revealedCharacterIds: string[];
+  solutionRevealed: boolean;
+};
+
+export type DemoRuntimeState = {
+  mode: "static-demo";
+  world: WorldState;
+  events: WorldEvent[];
+  activeCase: CaseFromLog;
+  session: PlayerSession;
+  progress: InvestigationProgress;
+  revealText: string;
+};

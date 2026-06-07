@@ -17,12 +17,27 @@ import {
   ShieldCheck,
   Users
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import DeductionGraphView from "@/app/components/DeductionGraphView";
+import {
+  buildCaseLogicReport,
+  buildDeductionGraph,
+  buildWorldMapSnapshot,
+  createStaticDemoRuntime,
+  deriveSuspectBoard,
+  discoverDemoEvidence,
+  interrogateDemoNpc,
+  markDemoCrimeObserved,
+  revealDemoSolution,
+  submitDemoTheory
+} from "@/lib/engine";
 import type {
   CaseFromLog,
   CaseLogicReport,
   DeductionGraph,
+  DemoRuntimeState,
   DeepSeekLiveEvalReport,
+  InvestigationProgress,
   MurderArchetype,
   NpcDialogueEvalReport,
   PlayerSession,
@@ -30,6 +45,7 @@ import type {
   PromptAuditReport,
   RevealEvalReport,
   RevealFactContract,
+  RuntimeMode,
   SuspectBoardRow,
   WorldEvent,
   WorldMapActor,
@@ -54,9 +70,17 @@ type AiSafetyState = {
 };
 type CaseMode = "premium" | "generated";
 
-const storageKey = "detective-town-showcase-v2";
+const storageKey = "detective-town-launch-v1";
 const timeMin = 8 * 60;
 const timeMax = 23 * 60;
+const initialProgress: InvestigationProgress = {
+  observedCrimeWindow: false,
+  joinedInvestigation: false,
+  discoveredEvidence: false,
+  challengedTestimony: false,
+  submittedTheory: false,
+  solvedCase: false
+};
 const archetypeOptions: { value: MurderArchetype | "auto"; label: string }[] = [
   { value: "auto", label: "Auto" },
   { value: "blade", label: "Blade" },
@@ -117,7 +141,16 @@ function actorInitial(name: string) {
   return Array.from(name)[0] || "?";
 }
 
+function resolveRuntimeMode(): RuntimeMode {
+  if (typeof window === "undefined") return "server";
+  const requested = new URLSearchParams(window.location.search).get("runtime");
+  if (requested === "static") return "static-demo";
+  if (requested === "server") return "server";
+  return process.env.NEXT_PUBLIC_DEMO_MODE === "static" ? "static-demo" : "server";
+}
+
 export default function Home() {
+  const initialized = useRef(false);
   const [world, setWorld] = useState<WorldState | null>(null);
   const [events, setEvents] = useState<WorldEvent[]>([]);
   const [activeCase, setActiveCase] = useState<CaseFromLog | null>(null);
@@ -147,6 +180,8 @@ export default function Home() {
   const [replaying, setReplaying] = useState(false);
   const [busy, setBusy] = useState(false);
   const [developerOpen, setDeveloperOpen] = useState(false);
+  const [runtimeMode, setRuntimeMode] = useState<RuntimeMode>("server");
+  const [progress, setProgress] = useState<InvestigationProgress>(initialProgress);
 
   const deductionCase = activeCase?.deductionCase || null;
   const scenes = deductionCase?.scenes || [];
@@ -194,7 +229,15 @@ export default function Home() {
   );
 
   useEffect(() => {
-    const saved = loadLocal<{ worldId?: string; sessionId?: string }>(storageKey, {});
+    if (initialized.current) return;
+    initialized.current = true;
+    const selectedRuntime = resolveRuntimeMode();
+    setRuntimeMode(selectedRuntime);
+    const saved = loadLocal<{ worldId?: string; sessionId?: string; runtimeState?: DemoRuntimeState }>(storageKey, {});
+    if (selectedRuntime === "static-demo") {
+      hydrateStatic(saved.runtimeState?.mode === "static-demo" ? saved.runtimeState : createStaticDemoRuntime());
+      return;
+    }
     if (saved.worldId) setWorldIdInput(saved.worldId);
     fetch(apiUrl("/api/ai/live-eval/latest"))
       .then((response) => (response.ok ? response.json() : null))
@@ -202,11 +245,16 @@ export default function Home() {
         if (data?.ok) setLatestLiveEval(data.report);
       })
       .catch(() => undefined);
+    void createWorld("server");
   }, []);
 
   useEffect(() => {
     if (!world) {
       setSnapshot(null);
+      return;
+    }
+    if (runtimeMode === "static-demo" && activeCase) {
+      setSnapshot(buildWorldMapSnapshot(world, events, activeCase, session || undefined, { day: 1, time: minutesToTime(timeValue) }));
       return;
     }
     const query = new URLSearchParams({
@@ -219,13 +267,19 @@ export default function Home() {
     getV1<{ snapshot: WorldMapSnapshot }>(`/api/v1/query/world/map?${query.toString()}`)
       .then((data) => setSnapshot(data.snapshot))
       .catch(() => undefined);
-  }, [activeCase?.id, session?.id, timeValue, world]);
+  }, [activeCase, events, runtimeMode, session, timeValue, world]);
 
   useEffect(() => {
     if (!activeCase?.id) {
       setDeductionGraph(null);
       setSuspectBoard([]);
       setLogicReport(null);
+      return;
+    }
+    if (runtimeMode === "static-demo" && world) {
+      setDeductionGraph(buildDeductionGraph(activeCase, events));
+      setSuspectBoard(deriveSuspectBoard(activeCase, events));
+      setLogicReport(buildCaseLogicReport(world, events, activeCase));
       return;
     }
     getV1<{ graph: DeductionGraph; suspectBoard: SuspectBoardRow[]; logicReport: CaseLogicReport }>(`/api/v1/query/case/deduction-graph?caseId=${activeCase.id}`)
@@ -235,7 +289,18 @@ export default function Home() {
         setLogicReport(data.logicReport);
       })
       .catch(() => undefined);
-  }, [activeCase?.id]);
+  }, [activeCase, events, runtimeMode, world]);
+
+  useEffect(() => {
+    if (runtimeMode !== "static-demo" || !world || !activeCase || !session) return;
+    const runtimeState: DemoRuntimeState = { mode: "static-demo", world, events, activeCase, session, progress, revealText };
+    localStorage.setItem(storageKey, JSON.stringify({ worldId: world.id, sessionId: session.id, runtimeState }));
+  }, [activeCase, events, progress, revealText, runtimeMode, session, world]);
+
+  useEffect(() => {
+    if (runtimeMode !== "static-demo" || !world || !activeCase || !session || timeValue < timeToMinutes("21:47") || progress.observedCrimeWindow) return;
+    hydrateStatic(markDemoCrimeObserved({ mode: "static-demo", world, events, activeCase, session, progress, revealText }), false);
+  }, [activeCase, events, progress, revealText, runtimeMode, session, timeValue, world]);
 
   useEffect(() => {
     if (!replaying || !world) return;
@@ -256,6 +321,27 @@ export default function Home() {
     localStorage.setItem(storageKey, JSON.stringify({ worldId: nextWorldId || world?.id, sessionId: nextSessionId || session?.id }));
   }
 
+  function hydrateStatic(state: DemoRuntimeState, resetTime = true) {
+    setWorld(state.world);
+    setEvents(state.events);
+    setActiveCase(state.activeCase);
+    setSession(state.session);
+    setSessions([state.session]);
+    setProgress(state.progress);
+    setRevealText(state.revealText);
+    setWorldIdInput(state.world.id);
+    setSelectedSceneId(state.activeCase.generationProfile.sceneLocationId);
+    const firstCharacter = state.activeCase.deductionCase.characters.find((item) => item.role !== "死者");
+    setSelectedCharacterId((current) => current || firstCharacter?.id || "");
+    if (resetTime) setTimeValue(timeToMinutes("08:00"));
+    setStatus("Premium Showcase 已载入。拖动时间轴观察案件发生，再搜索场景和质询证词。");
+  }
+
+  function currentStaticState(): DemoRuntimeState | null {
+    if (!world || !activeCase || !session) return null;
+    return { mode: "static-demo", world, events, activeCase, session, progress, revealText };
+  }
+
   function hydrateCase(data: { world: WorldState; events?: WorldEvent[]; activeCase?: CaseFromLog; sessions?: PlayerSession[] }) {
     setWorld(data.world);
     if (data.events) setEvents(data.events);
@@ -265,12 +351,19 @@ export default function Home() {
       const firstCharacter = data.activeCase.deductionCase.characters.find((item) => item.role !== "死者");
       setSelectedCharacterId(firstCharacter?.id || data.activeCase.generationProfile.culpritId);
       setTheory({ culpritId: "", motive: "", method: "", evidenceIds: [] });
-      setTimeValue(timeToMinutes("21:30"));
+      setTimeValue(timeToMinutes("08:00"));
     }
     if (data.sessions) setSessions(data.sessions);
   }
 
-  async function createWorld() {
+  async function createWorld(forcedRuntime?: RuntimeMode) {
+    const targetRuntime = forcedRuntime || runtimeMode;
+    if (targetRuntime === "static-demo") {
+      hydrateStatic(createStaticDemoRuntime());
+      setLastAiSafety(null);
+      setReplaying(false);
+      return;
+    }
     setBusy(true);
     try {
       const data = await postJson<{ world: WorldState; events: WorldEvent[]; activeCase: CaseFromLog }>("/api/worlds/create", {
@@ -288,6 +381,7 @@ export default function Home() {
       setSessions([]);
       setRevealText("");
       setLastAiSafety(null);
+      setProgress(initialProgress);
       setReplaying(false);
       persist(data.world.id, "");
       setStatus("Detective Town 已创建：地图、事件、记忆和证据已从模拟世界生成。");
@@ -299,6 +393,10 @@ export default function Home() {
   }
 
   async function loadWorld() {
+    if (runtimeMode === "static-demo") {
+      setStatus("静态 Demo 使用内置确定性世界；切换到 Server Runtime 后可载入 SQLite 世界。");
+      return;
+    }
     if (!worldIdInput.trim()) return;
     setBusy(true);
     try {
@@ -317,10 +415,16 @@ export default function Home() {
 
   async function joinCase() {
     if (!world || !activeCase) return;
+    if (runtimeMode === "static-demo" && session) {
+      setProgress((current) => ({ ...current, joinedInvestigation: true }));
+      setStatus("已加入调查。点击地图地点搜索证据，点击 NPC 选择询问对象。");
+      return;
+    }
     setBusy(true);
     try {
       const data = await postJson<{ session: PlayerSession }>("/api/players/join", { worldId: world.id, caseId: activeCase.id, displayName: playerName.trim() || "调查员" });
       setSession(data.session);
+      setProgress((current) => ({ ...current, joinedInvestigation: true }));
       setSessions((items) => [data.session, ...items.filter((item) => item.id !== data.session.id)]);
       persist(world.id, data.session.id);
       setStatus("已加入调查。点击地图地点搜索证据，点击 NPC 进行询问。");
@@ -333,6 +437,10 @@ export default function Home() {
 
   async function tickWorld() {
     if (!world) return;
+    if (runtimeMode === "static-demo") {
+      setStatus("静态 Demo 固定为 24 小时 Premium 案件；请使用时间轴回放。");
+      return;
+    }
     setBusy(true);
     try {
       const data = await postJson<{ world: WorldState; events: WorldEvent[]; activeCase: CaseFromLog }>(`/api/worlds/${world.id}/tick`, {});
@@ -353,10 +461,19 @@ export default function Home() {
       setStatus("请先加入调查，再搜索证据。");
       return;
     }
+    if (runtimeMode === "static-demo") {
+      const state = currentStaticState();
+      if (!state) return;
+      hydrateStatic(discoverDemoEvidence(state, evidenceId), false);
+      setSelectedEvidenceId(evidenceId);
+      setStatus(`发现证据：${deductionCase?.evidence.find((item) => item.id === evidenceId)?.title || evidenceId}`);
+      return;
+    }
     setBusy(true);
     try {
       const data = await postJson<{ session: PlayerSession }>("/api/investigation/discover", { sessionId: session.id, evidenceId });
       setSession(data.session);
+      setProgress((current) => ({ ...current, discoveredEvidence: true }));
       setSelectedEvidenceId(evidenceId);
       setStatus(`发现证据：${deductionCase?.evidence.find((item) => item.id === evidenceId)?.title || evidenceId}`);
     } catch (error) {
@@ -369,12 +486,40 @@ export default function Home() {
   async function discoverFirstSceneEvidence(sceneId: string) {
     setSelectedSceneId(sceneId);
     const scene = scenes.find((item) => item.id === sceneId);
-    const target = scene?.evidenceIds.find((id) => !discovered.has(id)) || scene?.evidenceIds[0];
+    const target =
+      scene?.evidenceIds.find((id) => !discovered.has(id) && deductionCase?.evidence.find((item) => item.id === id)?.discoverable) ||
+      scene?.evidenceIds.find((id) => deductionCase?.evidence.find((item) => item.id === id)?.discoverable);
     if (target) await discoverEvidence(target);
   }
 
   async function interrogate() {
     if (!session || !selectedCharacterId || !question.trim()) return;
+    if (runtimeMode === "static-demo") {
+      const state = currentStaticState();
+      if (!state) return;
+      const next = interrogateDemoNpc(state, {
+        characterId: selectedCharacterId,
+        question,
+        evidenceId: selectedEvidenceId || undefined
+      });
+      hydrateStatic(next, false);
+      setLastAiSafety({
+        mock: true,
+        promptAudit: {
+          memoryCount: selectedNpcMemories.length,
+          evidenceCount: discoveredEvidence.length,
+          forbiddenFieldHits: [],
+          containsForbiddenTruth: false,
+          hiddenEventLeakCount: 0,
+          safe: true
+        },
+        memoryCount: selectedNpcMemories.length,
+        evidenceCount: discoveredEvidence.length,
+        safetyFlags: []
+      });
+      setStatus(next.progress.challengedTestimony ? "证据命中矛盾，NPC 已修正证词。" : "NPC 已按自身记忆范围回答。");
+      return;
+    }
     setBusy(true);
     try {
       const data = await postJson<{
@@ -394,6 +539,7 @@ export default function Home() {
         evidenceId: selectedEvidenceId || undefined
       });
       setSession(data.session);
+      setProgress((current) => ({ ...current, challengedTestimony: current.challengedTestimony || data.testimonyUpdated }));
       setLastAiSafety({ mock: data.mock, promptAudit: data.promptAudit, dialogueEval: data.dialogueEval, safetyFlags: data.safetyFlags, memoryCount: data.memoryCount, evidenceCount: data.evidenceCount });
       setStatus(data.testimonyUpdated ? "证据击中矛盾，NPC 证词已被修正。" : "NPC 已按自身记忆回答。");
       if (activeCase) {
@@ -418,10 +564,19 @@ export default function Home() {
 
   async function submitTheory() {
     if (!session) return;
+    if (runtimeMode === "static-demo") {
+      const state = currentStaticState();
+      if (!state) return;
+      const next = submitDemoTheory(state, theory);
+      hydrateStatic(next, false);
+      setStatus(next.session.judgement?.accepted ? "推理成立。最终结论与解答篇已解锁。" : `推理不成立：${next.session.judgement?.missing?.join("、") || "证据链不足"}`);
+      return;
+    }
     setBusy(true);
     try {
       const data = await postJson<{ judgement: PlayerSession["judgement"]; session: PlayerSession }>("/api/investigation/submit-theory", { sessionId: session.id, theory });
       setSession(data.session);
+      setProgress((current) => ({ ...current, submittedTheory: true, solvedCase: Boolean(data.judgement?.accepted) }));
       setStatus(data.judgement?.accepted ? "推理成立。可以生成解答篇。" : `推理不成立：${data.judgement?.missing?.join("、") || "证据链不足"}`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "提交推理失败");
@@ -432,6 +587,14 @@ export default function Home() {
 
   async function revealSolution() {
     if (!session?.judgement?.accepted) return;
+    if (runtimeMode === "static-demo") {
+      const state = currentStaticState();
+      if (!state) return;
+      const next = revealDemoSolution(state);
+      hydrateStatic(next, false);
+      setStatus("解答篇已由本地事实锁生成，不调用 DeepSeek。");
+      return;
+    }
     setBusy(true);
     try {
       const data = await postJson<{ content: string; revealEval: RevealEvalReport; factContract: RevealFactContract; mock: boolean }>("/api/investigation/reveal", { sessionId: session.id });
@@ -469,6 +632,39 @@ export default function Home() {
     setQuestion(`${actor.name}，案发窗口你在哪里？你记得哪些异常？`);
   }
 
+  function switchRuntime(next: RuntimeMode) {
+    if (next === runtimeMode) return;
+    setRuntimeMode(next);
+    setReplaying(false);
+    if (next === "static-demo") {
+      const saved = loadLocal<{ runtimeState?: DemoRuntimeState }>(storageKey, {});
+      hydrateStatic(saved.runtimeState?.mode === "static-demo" ? saved.runtimeState : createStaticDemoRuntime());
+      return;
+    }
+    setWorld(null);
+    setEvents([]);
+    setActiveCase(null);
+    setSession(null);
+    setSnapshot(null);
+    setProgress(initialProgress);
+    setStatus("已切换到 Server Runtime。创建小镇后将使用 SQLite，并可调用 DeepSeek 生成 NPC 表层回答。");
+  }
+
+  function selectGraphEvidence(evidenceId: string) {
+    setSelectedEvidenceId(evidenceId);
+    const scene = scenes.find((item) => item.evidenceIds.includes(evidenceId));
+    if (scene) setSelectedSceneId(scene.id);
+  }
+
+  function selectGraphEvent(eventId: string) {
+    const event = events.find((item) => item.id === eventId);
+    setHighlightedEventId(eventId);
+    if (event) {
+      setSelectedSceneId(event.locationId);
+      setTimeValue(timeToMinutes(event.time));
+    }
+  }
+
   return (
     <main className="pixelShell">
       <aside className="controlRail">
@@ -480,8 +676,14 @@ export default function Home() {
           </div>
         </div>
 
-        <section className="railPanel">
-          <h2>创建 / 载入</h2>
+        <details className="settingsDrawer railPanel">
+          <summary>世界设置 <ChevronDown size={15} /></summary>
+          <label>Runtime
+            <select data-testid="runtime-mode" value={runtimeMode} onChange={(event) => switchRuntime(event.target.value as RuntimeMode)}>
+              <option value="static-demo">Static Demo</option>
+              <option value="server">Server / DeepSeek</option>
+            </select>
+          </label>
           <label>Seed<input value={seedInput} onChange={(event) => setSeedInput(event.target.value)} /></label>
           <label>Case Mode
             <select value={caseMode} onChange={(event) => setCaseMode(event.target.value as CaseMode)} disabled={mode === "advanced"}>
@@ -500,18 +702,33 @@ export default function Home() {
               <option value="advanced">Advanced：30 NPC / 多日</option>
             </select>
           </label>
-          <button className="primaryButton full" onClick={createWorld} disabled={busy}>{busy ? <Loader2 className="spin" size={16} /> : <Play size={16} />} Create Detective Town</button>
-          <div className="inputLine">
+          <button className="primaryButton full" onClick={() => void createWorld()} disabled={busy}>{busy ? <Loader2 className="spin" size={16} /> : <Play size={16} />} Reset / Create Town</button>
+          <div className="inputLine" hidden={runtimeMode === "static-demo"}>
             <input value={worldIdInput} onChange={(event) => setWorldIdInput(event.target.value)} placeholder="world id" />
             <button className="iconButton" onClick={loadWorld} disabled={busy}><Search size={16} /></button>
           </div>
-        </section>
+        </details>
 
         <section className="railPanel">
           <h2>调查员</h2>
           <label>玩家名<input value={playerName} onChange={(event) => setPlayerName(event.target.value)} /></label>
           <button className="secondaryButton full" onClick={joinCase} disabled={busy || !world || !activeCase}><Users size={16} /> 加入调查</button>
-          <button className="secondaryButton full" onClick={tickWorld} disabled={busy || !world}><Clock size={16} /> 推进小镇</button>
+          <button className="secondaryButton full" onClick={tickWorld} disabled={busy || !world || runtimeMode === "static-demo"}><Clock size={16} /> 推进小镇</button>
+        </section>
+
+        <section className="progressPanel" data-testid="investigation-progress">
+          {[
+            ["观察案发", progress.observedCrimeWindow],
+            ["加入调查", progress.joinedInvestigation],
+            ["发现证据", progress.discoveredEvidence],
+            ["质询证词", progress.challengedTestimony],
+            ["提交推理", progress.submittedTheory],
+            ["破解案件", progress.solvedCase]
+          ].map(([label, done], index) => (
+            <div className={done ? "done" : ""} key={String(label)}>
+              <span>{done ? "✓" : index + 1}</span><strong>{label}</strong>
+            </div>
+          ))}
         </section>
 
         <section className="caseCard">
@@ -540,7 +757,7 @@ export default function Home() {
           <div className="timeBadge">{snapshot?.time || minutesToTime(timeValue)}</div>
         </header>
 
-        <section className="pixelMapWrap">
+        <section className="pixelMapWrap" data-testid="pixel-map">
           <div className="pixelMap" style={{ gridTemplateColumns: `repeat(${snapshot?.width || 28}, minmax(18px, 1fr))` }}>
             {(snapshot?.tiles || []).map((tile: WorldMapTile) => {
               const actors = mapActorsByTile.get(`${tile.x}:${tile.y}`) || [];
@@ -599,7 +816,7 @@ export default function Home() {
 
         <section className="actionPanel logicPanel">
           <h2><ShieldCheck size={16} /> Case Logic Report</h2>
-          <p>{logicReport?.summary || "Create a case to inspect hard logic."}</p>
+          <p>{session?.judgement?.accepted ? logicReport?.summary : "本案已通过本地公平推理校验。最终结论只会在玩家提交正确证据链后揭示。"}</p>
           <div className="logicBadges">
             <span>Graph: {logicReport?.deductionGraphComplete ? "Pass" : "Pending"}</span>
             <span>Unique: {logicReport?.uniqueCulprit ? "Yes" : "No"}</span>
@@ -610,24 +827,24 @@ export default function Home() {
 
         <section className="actionPanel deductionGraphPanel">
           <h2><Database size={16} /> Deduction Graph</h2>
-          <div className="graphRail">
-            {(deductionGraph?.nodes || []).filter((node) => node.type !== "event").slice(0, 14).map((node) => (
-              <button key={node.id} className={`graphNode graph-${node.type}`} onClick={() => node.eventIds[0] && setHighlightedEventId(node.eventIds[0])}>
-                <strong>{node.label}</strong>
-                <span>{node.type} · {node.evidenceIds.join(", ") || node.characterIds.map((id) => deductionCase?.characters.find((character) => character.id === id)?.name || id).join(", ")}</span>
-              </button>
-            ))}
-          </div>
+          <DeductionGraphView
+            graph={deductionGraph}
+            discoveredEvidenceIds={session?.discoveredEvidenceIds || []}
+            solutionRevealed={Boolean(session?.judgement?.accepted && revealText)}
+            onSelectEvidence={selectGraphEvidence}
+            onSelectEvent={selectGraphEvent}
+            onSelectCharacter={setSelectedCharacterId}
+          />
         </section>
 
         <section className="actionPanel suspectBoardPanel">
           <h2><Users size={16} /> Suspect Board</h2>
           <div className="suspectBoard">
             {suspectBoard.map((row) => (
-              <button key={row.characterId} className={`suspectRow ${row.status}`} onClick={() => setSelectedCharacterId(row.characterId)}>
+              <button key={row.characterId} className={`suspectRow ${row.status === "culprit" && !session?.judgement?.accepted ? "unresolved" : row.status}`} onClick={() => setSelectedCharacterId(row.characterId)}>
                 <strong>{row.name}</strong>
                 <span>M {row.motive ? "Y" : "N"} / W {row.means ? "Y" : "N"} / O {row.opportunity ? "Y" : "N"}</span>
-                <small>{row.status === "culprit" ? "Only complete chain" : row.exclusionEvidenceIds.join(", ") || "excluded"}</small>
+                <small>{row.status === "culprit" ? (session?.judgement?.accepted ? "Only complete chain" : "尚未排除") : row.exclusionEvidenceIds.join(", ") || "excluded"}</small>
               </button>
             ))}
           </div>
@@ -638,9 +855,9 @@ export default function Home() {
           <p>{selectedScene?.name || "选择地图地点"}</p>
           <div className="evidenceList">
             {sceneEvidence.map((item) => (
-              <button key={item.id} className={discovered.has(item.id) ? "found" : ""} onClick={() => discoverEvidence(item.id)} disabled={!session || discovered.has(item.id) || busy}>
-                <strong>{discovered.has(item.id) ? item.title : "未发现线索"}</strong>
-                <span>{discovered.has(item.id) ? item.visibleDescription : `${selectedScene?.name} 中可能存在调查价值。`}</span>
+              <button key={item.id} className={discovered.has(item.id) ? "found" : ""} onClick={() => discoverEvidence(item.id)} disabled={!session || !item.discoverable || discovered.has(item.id) || busy}>
+                <strong>{discovered.has(item.id) ? item.title : item.discoverable ? "未发现线索" : "公开现场记录"}</strong>
+                <span>{discovered.has(item.id) ? item.visibleDescription : item.discoverable ? `${selectedScene?.name} 中可能存在调查价值。` : item.visibleDescription}</span>
               </button>
             ))}
             {!sceneEvidence.length && <span className="emptyText">该地点暂无可发现证据。</span>}

@@ -21,11 +21,28 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: Rule tests
-        run: npm run test:rules
+      - name: Engine and safety tests
+        run: npm run test
 
       - name: Evaluation benchmark
         run: npm run eval
 
       - name: Build
         run: npm run build
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Browser E2E
+        run: npm run test:e2e
+
+      - name: Upload Playwright diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-diagnostics
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7

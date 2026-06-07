@@ -95,7 +95,7 @@ function evidenceByScene(caseFromLog?: CaseFromLog) {
 function actorStatus(actorId: string, caseFromLog: CaseFromLog | undefined, session: PlayerSession | undefined): WorldMapActor["status"] {
   if (!caseFromLog) return session?.interrogationLog.some((entry) => entry.characterId === actorId) ? "questioned" : "alive";
   if (actorId === caseFromLog.generationProfile.victimId) return "victim";
-  if (actorId === caseFromLog.generationProfile.culpritId) return "culprit";
+  if (actorId === caseFromLog.generationProfile.culpritId && session?.judgement?.accepted) return "culprit";
   if (actorId === caseFromLog.generationProfile.witnessId) return "witness";
   if (caseFromLog.generationProfile.focusSuspectIds.includes(actorId)) return "suspect";
   if (session?.interrogationLog.some((entry) => entry.characterId === actorId)) return "questioned";

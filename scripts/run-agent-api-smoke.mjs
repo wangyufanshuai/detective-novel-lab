@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import process from "node:process";
 import assert from "node:assert/strict";
 
@@ -43,9 +43,7 @@ async function request(method, url, body) {
   return data.data;
 }
 
-const existingBaseUrl = process.env.AGENT_API_BASE_URL
-  ? null
-  : (await isReady("http://127.0.0.1:3000") ? "http://127.0.0.1:3000" : null);
+const existingBaseUrl = process.env.AGENT_API_BASE_URL ? baseUrl : null;
 
 if (existingBaseUrl) {
   baseUrl = existingBaseUrl;
@@ -53,11 +51,10 @@ if (existingBaseUrl) {
 
 const server = process.env.AGENT_API_BASE_URL || existingBaseUrl
   ? null
-  : spawn(process.platform === "win32" ? "npm.cmd" : "npm", ["run", "dev", "--", "-p", String(port)], {
+  : spawn(process.platform === "win32" ? process.env.ComSpec || "cmd.exe" : "npm", process.platform === "win32" ? ["/c", "npm", "run", "dev", "--", "-p", String(port)] : ["run", "dev", "--", "-p", String(port)], {
       cwd: process.cwd(),
       stdio: ["ignore", "pipe", "pipe"],
-      env: { ...process.env, PORT: String(port) },
-      shell: process.platform === "win32"
+      env: { ...process.env, PORT: String(port), AI_PROVIDER: "mock", DEEPSEEK_API_KEY: "", SILICONFLOW_API_KEY: "" }
     });
 
 server?.stdout.on("data", (chunk) => serverOutput.push(String(chunk).trim()));
@@ -114,7 +111,8 @@ try {
     sessionId: joined.session.id,
     characterId: culpritId,
     question: "案发窗口你在哪里？",
-    evidenceId: "ev-opportunity"
+    evidenceId: "ev-opportunity",
+    provider: "mock"
   });
   assert.equal(interrogated.promptAudit.safe, true);
 
@@ -139,6 +137,10 @@ try {
   console.log("Agent API smoke test passed.");
 } finally {
   if (server) {
-    server.kill();
+    if (process.platform === "win32") {
+      spawnSync("taskkill", ["/PID", String(server.pid), "/T", "/F"], { stdio: "ignore" });
+    } else {
+      server.kill();
+    }
   }
 }

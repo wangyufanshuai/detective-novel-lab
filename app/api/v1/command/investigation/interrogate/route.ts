@@ -5,7 +5,7 @@ import { worldRepository } from "@/lib/world/repository";
 
 export async function POST(request: Request) {
   try {
-    const body = await readJson<{ sessionId?: string; characterId?: string; question?: string; evidenceId?: string; provider?: "deepseek" | "siliconflow" }>(request, {});
+    const body = await readJson<{ sessionId?: string; characterId?: string; question?: string; evidenceId?: string; provider?: "deepseek" | "siliconflow" | "mock" }>(request, {});
     if (!body.sessionId || !body.characterId || !body.question) return fail("BAD_REQUEST", "sessionId, characterId, and question are required");
     const session = worldRepository.getSession(body.sessionId);
     if (!session) return fail("SESSION_NOT_FOUND", "Session not found", 404);

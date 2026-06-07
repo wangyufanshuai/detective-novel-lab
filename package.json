@@ -12,6 +12,8 @@
     "test:ai": "node scripts/run-ai-safety-tests.mjs",
     "test:agent-api": "node scripts/run-agent-api-smoke.mjs",
     "test:deepseek": "node scripts/run-deepseek-live-eval.mjs",
+    "test:e2e": "playwright test",
+    "test:e2e:update-screenshots": "playwright test --update-snapshots",
     "test": "npm run test:rules && npm run test:world && npm run test:ai",
     "eval": "node scripts/run-eval.mjs",
     "eval:report": "node scripts/run-eval.mjs"
@@ -28,6 +30,7 @@
     "typescript": "^5.9.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@types/better-sqlite3": "^7.6.13"
   }
 }

@@ -1,0 +1,16 @@
+services:
+  detective-town:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - path: .env.local
+        required: false
+    environment:
+      DATABASE_URL: file:./data/mystery-town.db
+      NEXT_PUBLIC_DEMO_MODE: server
+    volumes:
+      - detective-town-data:/app/data
+
+volumes:
+  detective-town-data:

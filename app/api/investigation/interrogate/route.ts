@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
       characterId?: string;
       question?: string;
       evidenceId?: string;
-      provider?: "deepseek" | "siliconflow";
+      provider?: "deepseek" | "siliconflow" | "mock";
     };
     if (!body.sessionId || !body.characterId || !body.question) {
       return NextResponse.json({ ok: false, error: "sessionId, characterId, and question are required" }, { status: 400 });

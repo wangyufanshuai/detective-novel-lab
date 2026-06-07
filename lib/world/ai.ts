@@ -14,7 +14,7 @@ import {
   type WorldState
 } from "@/lib/engine";
 
-type Provider = "deepseek" | "siliconflow";
+type Provider = "deepseek" | "siliconflow" | "mock";
 
 const providerConfig = {
   deepseek: {
@@ -26,6 +26,11 @@ const providerConfig = {
     apiKey: process.env.SILICONFLOW_API_KEY,
     baseUrl: process.env.SILICONFLOW_BASE_URL || "https://api.siliconflow.cn/v1",
     model: process.env.SILICONFLOW_MODEL || "deepseek-ai/DeepSeek-V3.2-Exp"
+  },
+  mock: {
+    apiKey: "",
+    baseUrl: "",
+    model: "rule-bound-mock"
   }
 };
 
@@ -249,6 +254,7 @@ export async function generateGuardedNpcReplyWithAudit(input: {
     try {
       const response = await fetch(`${config.baseUrl.replace(/\/$/, "")}/chat/completions`, {
         method: "POST",
+        signal: AbortSignal.timeout(20_000),
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${config.apiKey}`
@@ -434,6 +440,7 @@ export async function generateCaseRevealWithEval(input: { provider?: Provider; c
     try {
       const response = await fetch(`${config.baseUrl.replace(/\/$/, "")}/chat/completions`, {
         method: "POST",
+        signal: AbortSignal.timeout(20_000),
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${config.apiKey}`

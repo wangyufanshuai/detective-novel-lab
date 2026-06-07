@@ -151,6 +151,7 @@ label {
 
 .railPanel,
 .caseCard,
+.progressPanel,
 .eventPanel,
 .actionPanel,
 .developerDrawer,
@@ -164,8 +165,68 @@ label {
 
 .railPanel,
 .caseCard,
+.progressPanel,
 .statusBox {
   margin-top: 12px;
+}
+
+.settingsDrawer summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.settingsDrawer[open] summary {
+  margin-bottom: 12px;
+}
+
+.settingsDrawer label + label,
+.settingsDrawer button,
+.settingsDrawer .inputLine {
+  margin-top: 10px;
+}
+
+.progressPanel {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  padding: 10px;
+}
+
+.progressPanel div {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.progressPanel span {
+  display: grid;
+  place-items: center;
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  color: var(--muted);
+  background: #0c1219;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  font-weight: 900;
+}
+
+.progressPanel div.done {
+  color: #dff4db;
+}
+
+.progressPanel div.done span {
+  color: #071019;
+  background: var(--green);
+  border-color: #bde7b8;
 }
 
 .railPanel h2,
@@ -724,6 +785,93 @@ blockquote {
   overflow: auto;
 }
 
+.deductionGraphViewport {
+  width: 100%;
+  overflow-x: auto;
+  background: #090f16;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+}
+
+.deductionGraphViewport svg {
+  display: block;
+  min-width: 720px;
+  width: 100%;
+  height: auto;
+}
+
+.graphEdges path {
+  fill: none;
+  stroke: #5d7387;
+  stroke-width: 1.5;
+}
+
+.graphEdges path.locked {
+  stroke: #35424d;
+  stroke-dasharray: 4 4;
+}
+
+.svgGraphNode {
+  cursor: pointer;
+}
+
+.svgGraphNode rect {
+  fill: #16212c;
+  stroke: #5d7387;
+  stroke-width: 1.5;
+}
+
+.svgGraphNode text {
+  fill: #edf4f2;
+  font-size: 10px;
+  font-weight: 800;
+  pointer-events: none;
+}
+
+.svgGraphNode .nodeType {
+  fill: #9fb0ba;
+  font-size: 8px;
+}
+
+.svgGraphNode.type-evidence rect {
+  stroke: var(--accent-2);
+}
+
+.svgGraphNode.type-testimony rect {
+  stroke: var(--accent);
+}
+
+.svgGraphNode.type-elimination rect {
+  stroke: var(--green);
+}
+
+.svgGraphNode.type-conclusion rect {
+  fill: rgba(240, 91, 97, 0.18);
+  stroke: var(--danger);
+}
+
+.svgGraphNode.locked {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.graphLegend {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  padding: 7px 10px;
+  color: var(--muted);
+  border-top: 1px solid var(--line);
+  font-size: 9px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.graphEmpty {
+  padding: 24px;
+  color: var(--muted);
+  text-align: center;
+}
+
 .graphNode,
 .suspectRow {
   display: grid;
@@ -771,6 +919,10 @@ blockquote {
 
 .suspectRow.red_herring {
   border-color: rgba(243, 193, 91, 0.42);
+}
+
+.suspectRow.unresolved {
+  border-color: rgba(159, 176, 186, 0.35);
 }
 
 .checkRow {

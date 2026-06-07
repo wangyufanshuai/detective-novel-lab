@@ -197,4 +197,30 @@ const engine = await loadEngine();
   assert.equal(signatures.size > 8, true, "different seeds should produce varied culprit/location/archetype signatures");
 }
 
+{
+  let runtime = engine.createStaticDemoRuntime();
+  assert.equal(runtime.world.npcs.length, 8, "static demo starts with eight NPCs");
+  assert.equal(runtime.session.discoveredEvidenceIds.length, 0, "static demo starts with locked evidence");
+  const evidenceId = runtime.activeCase.deductionCase.truth.decisiveEvidenceIds[0];
+  runtime = engine.discoverDemoEvidence(runtime, evidenceId);
+  assert.equal(runtime.session.discoveredEvidenceIds.includes(evidenceId), true, "static discovery updates the browser session");
+  runtime = engine.interrogateDemoNpc(runtime, {
+    characterId: runtime.activeCase.generationProfile.witnessId,
+    question: "你在案发时间看到了什么？",
+    evidenceId
+  });
+  assert.equal(runtime.session.interrogationLog.length, 1, "static interrogation writes a memory-scoped log");
+  const allEvidenceIds = runtime.activeCase.deductionCase.evidence.map((item) => item.id);
+  for (const id of allEvidenceIds) runtime = engine.discoverDemoEvidence(runtime, id);
+  runtime = engine.submitDemoTheory(runtime, {
+    culpritId: runtime.activeCase.deductionCase.truth.culpritId,
+    motive: runtime.activeCase.deductionCase.truth.motive,
+    method: runtime.activeCase.deductionCase.truth.method,
+    evidenceIds: allEvidenceIds
+  });
+  assert.equal(runtime.session.judgement.accepted, true, "static runtime uses the same local judgement engine");
+  runtime = engine.revealDemoSolution(runtime);
+  assert.equal(runtime.revealText.length > 80, true, "static runtime produces a source-locked solution");
+}
+
 console.log("World simulation tests passed.");

@@ -14,3 +14,6 @@ dev.err.log
 dev-mmo.out.log
 dev-mmo.err.log
 .playwright-cli/
+test-results/
+playwright-report/
+blob-report/
