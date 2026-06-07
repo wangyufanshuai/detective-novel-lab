@@ -90,6 +90,23 @@ const engine = await loadEngine();
   const testimonyUpdate = engine.updateTestimonyWithContradiction(caseFromLog.testimonies, caseFromLog.generationProfile.culpritId, "ev-opportunity");
   assert.equal(testimonyUpdate.updated, true, "evidence challenge should update matching testimony");
 
+  for (const time of ["08:00", "12:00", "20:00", "23:00"]) {
+    const snapshot = engine.buildWorldMapSnapshot(tick.world, allEvents, caseFromLog, null, { day: 1, time });
+    assert.equal(snapshot.actors.length, 8, `${time} map snapshot should include 8 actors`);
+    assert.equal(snapshot.actors.every((actor) => actor.locationId && Number.isFinite(actor.x) && Number.isFinite(actor.y)), true, `${time} actors should have explainable positions`);
+    assert.equal(snapshot.tiles.some((tile) => tile.locationId === caseFromLog.generationProfile.sceneLocationId), true, `${time} map should include the crime scene tile`);
+  }
+  const murderWindow = engine.buildWorldMapSnapshot(tick.world, allEvents, caseFromLog, null, { day: 1, time: "21:47" });
+  assert.equal(murderWindow.markers.some((marker) => marker.type === "crime"), true, "murder window map should show a crime marker");
+  const discoveredMap = engine.buildWorldMapSnapshot(
+    tick.world,
+    allEvents,
+    caseFromLog,
+    { id: "session-test", worldId: tick.world.id, caseId: caseFromLog.id, playerId: "test", displayName: "test", discoveredEvidenceIds: ["ev-motive"], interrogationLog: [], createdAt: "", updatedAt: "" },
+    { day: 1, time: "21:47" }
+  );
+  assert.equal(discoveredMap.markers.some((marker) => marker.evidenceId === "ev-motive" && marker.discovered), true, "discovered evidence should be reflected in map markers");
+
   const brokenCase = structuredClone(caseFromLog.deductionCase);
   brokenCase.logicPuzzle.exclusionChains = [];
   brokenCase.logicPuzzle.suspectMatrix = brokenCase.logicPuzzle.suspectMatrix.map((row) => ({ ...row, excludedByEvidenceIds: row.isCulprit ? [] : [] }));

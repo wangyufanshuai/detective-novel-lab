@@ -1,18 +1,17 @@
 import { spawn } from "node:child_process";
-import path from "node:path";
 import process from "node:process";
 import assert from "node:assert/strict";
 
 const port = Number(process.env.AGENT_API_SMOKE_PORT || 3100);
-const baseUrl = process.env.AGENT_API_BASE_URL || `http://127.0.0.1:${port}`;
-const nextBin = path.join(process.cwd(), "node_modules", "next", "dist", "bin", "next");
+let baseUrl = process.env.AGENT_API_BASE_URL || `http://127.0.0.1:${port}`;
+const serverOutput = [];
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function waitForServer() {
-  for (let attempt = 0; attempt < 40; attempt += 1) {
+  for (let attempt = 0; attempt < 90; attempt += 1) {
     try {
       const response = await fetch(`${baseUrl}/api/v1/query/runtime/status`);
       if (response.ok) return;
@@ -21,7 +20,16 @@ async function waitForServer() {
     }
     await sleep(500);
   }
-  throw new Error(`Server did not become ready at ${baseUrl}`);
+  throw new Error(`Server did not become ready at ${baseUrl}\n${serverOutput.slice(-20).join("\n")}`);
+}
+
+async function isReady(url) {
+  try {
+    const response = await fetch(`${url}/api/v1/query/runtime/status`);
+    return response.ok;
+  } catch {
+    return false;
+  }
 }
 
 async function request(method, url, body) {
@@ -35,13 +43,25 @@ async function request(method, url, body) {
   return data.data;
 }
 
-const server = process.env.AGENT_API_BASE_URL
+const existingBaseUrl = process.env.AGENT_API_BASE_URL
   ? null
-  : spawn(process.execPath, [nextBin, "dev", "-p", String(port)], {
+  : (await isReady("http://127.0.0.1:3000") ? "http://127.0.0.1:3000" : null);
+
+if (existingBaseUrl) {
+  baseUrl = existingBaseUrl;
+}
+
+const server = process.env.AGENT_API_BASE_URL || existingBaseUrl
+  ? null
+  : spawn(process.platform === "win32" ? "npm.cmd" : "npm", ["run", "dev", "--", "-p", String(port)], {
       cwd: process.cwd(),
       stdio: ["ignore", "pipe", "pipe"],
-      env: { ...process.env, PORT: String(port) }
+      env: { ...process.env, PORT: String(port) },
+      shell: process.platform === "win32"
     });
+
+server?.stdout.on("data", (chunk) => serverOutput.push(String(chunk).trim()));
+server?.stderr.on("data", (chunk) => serverOutput.push(String(chunk).trim()));
 
 try {
   await waitForServer();

@@ -3,18 +3,15 @@
 import {
   AlertTriangle,
   Bot,
-  CheckCircle2,
+  ChevronDown,
   Clock,
   Database,
-  Eye,
   FileSearch,
   Gavel,
   Loader2,
-  Map,
+  Map as MapIcon,
   MessageSquare,
-  Network,
   Play,
-  Plus,
   Search,
   ShieldCheck,
   Users
@@ -31,11 +28,16 @@ import type {
   RevealEvalReport,
   RevealFactContract,
   WorldEvent,
+  WorldMapActor,
+  WorldMapMarker,
+  WorldMapSnapshot,
+  WorldMapTile,
   WorldMode,
   WorldState
 } from "@/lib/engine";
 
 type ApiResult<T> = T & { ok: boolean; error?: string };
+type V1Result<T> = { ok: boolean; data?: T; error?: { code: string; message: string } };
 type AiSafetyState = {
   mock?: boolean;
   promptAudit?: PromptAuditReport;
@@ -47,7 +49,9 @@ type AiSafetyState = {
   evidenceCount?: number;
 };
 
-const storageKey = "detective-town-showcase-v1";
+const storageKey = "detective-town-showcase-v2";
+const timeMin = 8 * 60;
+const timeMax = 23 * 60;
 const archetypeOptions: { value: MurderArchetype | "auto"; label: string }[] = [
   { value: "auto", label: "Auto" },
   { value: "blade", label: "Blade" },
@@ -55,13 +59,17 @@ const archetypeOptions: { value: MurderArchetype | "auto"; label: string }[] = [
   { value: "blunt", label: "Blunt" },
   { value: "fall", label: "Fall" }
 ];
-
 const archetypeLabels: Record<string, string> = {
   blade: "刀具伪装",
   poison: "药物投毒",
   blunt: "钝器误导",
   fall: "坠落机关"
 };
+
+function apiUrl(path: string) {
+  if (typeof window === "undefined") return path;
+  return new URL(path, window.location.origin).toString();
+}
 
 function loadLocal<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
@@ -73,9 +81,13 @@ function loadLocal<T>(key: string, fallback: T): T {
   }
 }
 
-function apiUrl(path: string) {
-  if (typeof window === "undefined") return path;
-  return new URL(path, window.location.origin).toString();
+function minutesToTime(minutes: number) {
+  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+}
+
+function timeToMinutes(time: string) {
+  const [hours, minutes] = time.split(":").map(Number);
+  return hours * 60 + minutes;
 }
 
 async function postJson<T>(url: string, body: unknown) {
@@ -89,20 +101,34 @@ async function postJson<T>(url: string, body: unknown) {
   return data;
 }
 
+async function getV1<T>(url: string) {
+  const response = await fetch(apiUrl(url));
+  const data = (await response.json()) as V1Result<T>;
+  if (!data.ok || !data.data) throw new Error(data.error?.message || "Request failed");
+  return data.data;
+}
+
+function actorInitial(name: string) {
+  return Array.from(name)[0] || "?";
+}
+
 export default function Home() {
   const [world, setWorld] = useState<WorldState | null>(null);
   const [events, setEvents] = useState<WorldEvent[]>([]);
   const [activeCase, setActiveCase] = useState<CaseFromLog | null>(null);
   const [session, setSession] = useState<PlayerSession | null>(null);
   const [sessions, setSessions] = useState<PlayerSession[]>([]);
+  const [snapshot, setSnapshot] = useState<WorldMapSnapshot | null>(null);
   const [worldIdInput, setWorldIdInput] = useState("");
   const [seedInput, setSeedInput] = useState("showcase-seed");
   const [caseArchetype, setCaseArchetype] = useState<MurderArchetype | "auto">("auto");
   const [mode, setMode] = useState<WorldMode>("showcase");
   const [playerName, setPlayerName] = useState("调查员");
+  const [timeValue, setTimeValue] = useState(21 * 60 + 30);
   const [selectedSceneId, setSelectedSceneId] = useState("");
   const [selectedCharacterId, setSelectedCharacterId] = useState("");
   const [selectedEvidenceId, setSelectedEvidenceId] = useState("");
+  const [highlightedEventId, setHighlightedEventId] = useState("");
   const [question, setQuestion] = useState("案发窗口你在哪里？你记得哪些异常？");
   const [theory, setTheory] = useState<PlayerTheory>({ culpritId: "", motive: "", method: "", evidenceIds: [] });
   const [status, setStatus] = useState("创建一个 8 NPC / 24h Detective Town，小镇会先运行，再从事件日志中抽取案件。");
@@ -110,48 +136,50 @@ export default function Home() {
   const [lastAiSafety, setLastAiSafety] = useState<AiSafetyState | null>(null);
   const [latestLiveEval, setLatestLiveEval] = useState<DeepSeekLiveEvalReport | null>(null);
   const [busy, setBusy] = useState(false);
-  const [debugOpen, setDebugOpen] = useState(false);
+  const [developerOpen, setDeveloperOpen] = useState(false);
 
   const deductionCase = activeCase?.deductionCase || null;
   const scenes = deductionCase?.scenes || [];
   const characters = deductionCase?.characters.filter((character) => character.role !== "死者") || [];
   const discovered = new Set(session?.discoveredEvidenceIds || []);
   const selectedScene = scenes.find((scene) => scene.id === selectedSceneId) || scenes[0];
+  const selectedCharacter = characters.find((character) => character.id === selectedCharacterId);
   const sceneEvidence = selectedScene ? deductionCase?.evidence.filter((item) => selectedScene.evidenceIds.includes(item.id)) || [] : [];
   const discoveredEvidence = deductionCase?.evidence.filter((item) => discovered.has(item.id)) || [];
-  const recentEvents = useMemo(() => events.slice(-10).reverse(), [events]);
   const playerTheoryEvidence = useMemo(() => new Set(theory.evidenceIds), [theory.evidenceIds]);
   const selectedTestimony = activeCase?.testimonies?.find((item) => item.characterId === selectedCharacterId);
   const quality = activeCase?.qualityReport;
-  const factLockScore = lastAiSafety?.revealEval?.factContractScore ?? lastAiSafety?.revealEval?.score;
-  const exposedContradictions = activeCase?.testimonies?.reduce((sum, item) => sum + item.exposedContradictions.length, 0) || 0;
-  const selectedNpcMemories = useMemo(
-    () => (world?.memories || []).filter((memory) => memory.npcId === selectedCharacterId),
-    [world?.memories, selectedCharacterId]
-  );
+  const selectedNpcMemories = useMemo(() => (world?.memories || []).filter((memory) => memory.npcId === selectedCharacterId), [world?.memories, selectedCharacterId]);
+  const visibleEvents = snapshot?.visibleEvents || events.slice(-30).reverse();
+  const selectedEvent = events.find((event) => event.id === highlightedEventId);
+  const mapActorsByTile = useMemo(() => {
+    const result = new Map<string, WorldMapActor[]>();
+    for (const actor of snapshot?.actors || []) {
+      const key = `${actor.x}:${actor.y}`;
+      result.set(key, [...(result.get(key) || []), actor]);
+    }
+    return result;
+  }, [snapshot]);
+  const mapMarkersByTile = useMemo(() => {
+    const result = new Map<string, WorldMapMarker[]>();
+    for (const marker of snapshot?.markers || []) {
+      const key = `${marker.x}:${marker.y}`;
+      result.set(key, [...(result.get(key) || []), marker]);
+    }
+    return result;
+  }, [snapshot]);
   const agentApiExample = useMemo(
     () =>
       JSON.stringify(
         {
-          createTown: {
-            method: "POST",
-            url: "/api/v1/command/town/create",
-            body: { seed: seedInput || "showcase-seed", mode, npcCount: mode === "advanced" ? 30 : 8, timelineHours: mode === "advanced" ? 120 : 24, caseArchetype }
-          },
-          queryState: world ? { method: "GET", url: `/api/v1/query/world/state?worldId=${world.id}` } : null,
-          queryCase: activeCase ? { method: "GET", url: `/api/v1/query/case?caseId=${activeCase.id}` } : null,
-          interrogate: session
-            ? {
-                method: "POST",
-                url: "/api/v1/command/investigation/interrogate",
-                body: { sessionId: session.id, characterId: selectedCharacterId, question, evidenceId: selectedEvidenceId || undefined }
-              }
-            : null
+          createTown: { method: "POST", url: "/api/v1/command/town/create", body: { seed: seedInput, mode, npcCount: mode === "advanced" ? 30 : 8, timelineHours: mode === "advanced" ? 120 : 24, caseArchetype } },
+          mapSnapshot: world ? { method: "GET", url: `/api/v1/query/world/map?worldId=${world.id}&caseId=${activeCase?.id || ""}&sessionId=${session?.id || ""}&day=1&time=${minutesToTime(timeValue)}` } : null,
+          interrogate: session ? { method: "POST", url: "/api/v1/command/investigation/interrogate", body: { sessionId: session.id, characterId: selectedCharacterId, question, evidenceId: selectedEvidenceId || undefined } } : null
         },
         null,
         2
       ),
-    [activeCase, caseArchetype, mode, question, seedInput, selectedCharacterId, selectedEvidenceId, session, world]
+    [activeCase?.id, caseArchetype, mode, question, seedInput, selectedCharacterId, selectedEvidenceId, session?.id, timeValue, world]
   );
 
   useEffect(() => {
@@ -164,6 +192,23 @@ export default function Home() {
       })
       .catch(() => undefined);
   }, []);
+
+  useEffect(() => {
+    if (!world) {
+      setSnapshot(null);
+      return;
+    }
+    const query = new URLSearchParams({
+      worldId: world.id,
+      day: "1",
+      time: minutesToTime(timeValue)
+    });
+    if (activeCase?.id) query.set("caseId", activeCase.id);
+    if (session?.id) query.set("sessionId", session.id);
+    getV1<{ snapshot: WorldMapSnapshot }>(`/api/v1/query/world/map?${query.toString()}`)
+      .then((data) => setSnapshot(data.snapshot))
+      .catch(() => undefined);
+  }, [activeCase?.id, session?.id, timeValue, world]);
 
   function persist(nextWorldId?: string, nextSessionId?: string) {
     localStorage.setItem(storageKey, JSON.stringify({ worldId: nextWorldId || world?.id, sessionId: nextSessionId || session?.id }));
@@ -178,6 +223,7 @@ export default function Home() {
       const firstCharacter = data.activeCase.deductionCase.characters.find((item) => item.role !== "死者");
       setSelectedCharacterId(firstCharacter?.id || data.activeCase.generationProfile.culpritId);
       setTheory({ culpritId: "", motive: "", method: "", evidenceIds: [] });
+      setTimeValue(timeToMinutes("21:30"));
     }
     if (data.sessions) setSessions(data.sessions);
   }
@@ -200,7 +246,7 @@ export default function Home() {
       setRevealText("");
       setLastAiSafety(null);
       persist(data.world.id, "");
-      setStatus("Detective Town 已创建：案件来自 NPC 日程、记忆、事件和证据日志。");
+      setStatus("Detective Town 已创建：地图、事件、记忆和证据已从模拟世界生成。");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "创建小镇失败");
     } finally {
@@ -225,6 +271,22 @@ export default function Home() {
     }
   }
 
+  async function joinCase() {
+    if (!world || !activeCase) return;
+    setBusy(true);
+    try {
+      const data = await postJson<{ session: PlayerSession }>("/api/players/join", { worldId: world.id, caseId: activeCase.id, displayName: playerName.trim() || "调查员" });
+      setSession(data.session);
+      setSessions((items) => [data.session, ...items.filter((item) => item.id !== data.session.id)]);
+      persist(world.id, data.session.id);
+      setStatus("已加入调查。点击地图地点搜索证据，点击 NPC 进行询问。");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "加入调查失败");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function tickWorld() {
     if (!world) return;
     setBusy(true);
@@ -242,34 +304,29 @@ export default function Home() {
     }
   }
 
-  async function joinCase() {
-    if (!world || !activeCase) return;
-    setBusy(true);
-    try {
-      const data = await postJson<{ session: PlayerSession }>("/api/players/join", { worldId: world.id, caseId: activeCase.id, displayName: playerName.trim() || "调查员" });
-      setSession(data.session);
-      setSessions((items) => [data.session, ...items.filter((item) => item.id !== data.session.id)]);
-      persist(world.id, data.session.id);
-      setStatus("已加入调查。现在可以搜索场景、询问 NPC、提交推理。");
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "加入调查失败");
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function discoverEvidence(evidenceId: string) {
-    if (!session) return;
+    if (!session) {
+      setStatus("请先加入调查，再搜索证据。");
+      return;
+    }
     setBusy(true);
     try {
       const data = await postJson<{ session: PlayerSession }>("/api/investigation/discover", { sessionId: session.id, evidenceId });
       setSession(data.session);
+      setSelectedEvidenceId(evidenceId);
       setStatus(`发现证据：${deductionCase?.evidence.find((item) => item.id === evidenceId)?.title || evidenceId}`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "搜索证据失败");
     } finally {
       setBusy(false);
     }
+  }
+
+  async function discoverFirstSceneEvidence(sceneId: string) {
+    setSelectedSceneId(sceneId);
+    const scene = scenes.find((item) => item.id === sceneId);
+    const target = scene?.evidenceIds.find((id) => !discovered.has(id)) || scene?.evidenceIds[0];
+    if (target) await discoverEvidence(target);
   }
 
   async function interrogate() {
@@ -353,285 +410,218 @@ export default function Home() {
     }
   }
 
+  function handleMarker(marker: WorldMapMarker) {
+    if (marker.eventId) setHighlightedEventId(marker.eventId);
+    if (marker.evidenceId) {
+      setSelectedEvidenceId(marker.evidenceId);
+      if (!marker.discovered) void discoverEvidence(marker.evidenceId);
+    }
+    setSelectedSceneId(marker.locationId);
+  }
+
+  function handleActor(actor: WorldMapActor) {
+    setSelectedCharacterId(actor.id);
+    setSelectedSceneId(actor.locationId);
+    setQuestion(`${actor.name}，案发窗口你在哪里？你记得哪些异常？`);
+  }
+
   return (
-    <main className="mmoShell">
-      <aside className="mmoSidebar">
+    <main className="pixelShell">
+      <aside className="controlRail">
         <div className="brandBlock">
-          <div className="brandIcon"><Map size={26} /></div>
+          <div className="brandIcon"><MapIcon size={24} /></div>
           <div>
             <p>Detective Town</p>
-            <h1>AI 推理小镇</h1>
+            <h1>推理小镇</h1>
           </div>
         </div>
 
-        <div className="sidePanel">
-          <div className="panelTitle"><Plus size={16} /> Create Detective Town</div>
-          <label className="compactLabel">Seed<input value={seedInput} onChange={(event) => setSeedInput(event.target.value)} /></label>
-          <label className="compactLabel">案件类型
+        <section className="railPanel">
+          <h2>创建 / 载入</h2>
+          <label>Seed<input value={seedInput} onChange={(event) => setSeedInput(event.target.value)} /></label>
+          <label>案件类型
             <select value={caseArchetype} onChange={(event) => setCaseArchetype(event.target.value as MurderArchetype | "auto")}>
               {archetypeOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
             </select>
           </label>
-          <label className="compactLabel">模式
+          <label>模式
             <select value={mode} onChange={(event) => setMode(event.target.value as WorldMode)}>
               <option value="showcase">Showcase：8 NPC / 24h</option>
               <option value="advanced">Advanced：30 NPC / 多日</option>
             </select>
           </label>
           <button className="primaryButton full" onClick={createWorld} disabled={busy}>{busy ? <Loader2 className="spin" size={16} /> : <Play size={16} />} Create Detective Town</button>
-        </div>
-
-        <div className="sidePanel">
-          <div className="panelTitle"><Database size={16} /> Load / Join</div>
           <div className="inputLine">
             <input value={worldIdInput} onChange={(event) => setWorldIdInput(event.target.value)} placeholder="world id" />
             <button className="iconButton" onClick={loadWorld} disabled={busy}><Search size={16} /></button>
           </div>
-          <label className="compactLabel">玩家名<input value={playerName} onChange={(event) => setPlayerName(event.target.value)} /></label>
+        </section>
+
+        <section className="railPanel">
+          <h2>调查员</h2>
+          <label>玩家名<input value={playerName} onChange={(event) => setPlayerName(event.target.value)} /></label>
           <button className="secondaryButton full" onClick={joinCase} disabled={busy || !world || !activeCase}><Users size={16} /> 加入调查</button>
           <button className="secondaryButton full" onClick={tickWorld} disabled={busy || !world}><Clock size={16} /> 推进小镇</button>
-        </div>
+        </section>
 
-        <div className="miniList">
-          <div className="miniRow"><span>NPC</span><strong>{world?.npcs.length || 0}</strong></div>
-          <div className="miniRow"><span>事件</span><strong>{events.length}</strong></div>
-          <div className="miniRow"><span>证据</span><strong>{session?.discoveredEvidenceIds.length || 0}/{deductionCase?.evidence.length || 0}</strong></div>
-          <div className="miniRow"><span>AI Eval</span><strong>{latestLiveEval?.passed === false ? "Fail" : latestLiveEval ? "Pass" : "Local"}</strong></div>
-        </div>
+        <section className="caseCard">
+          <p>{world?.name || "未创建小镇"}</p>
+          <h2>{activeCase?.deductionCase.title || "Detective Town Showcase"}</h2>
+          <span>{activeCase ? archetypeLabels[activeCase.generationProfile.archetype] : "等待生成案件"}</span>
+          <div className="metricGrid">
+            <div><strong>{quality?.qualityScore ?? quality?.score ?? 0}</strong><small>Quality</small></div>
+            <div><strong>{quality?.uniqueCulprit ? "Yes" : "No"}</strong><small>Unique</small></div>
+            <div><strong>{session?.discoveredEvidenceIds.length || 0}/{deductionCase?.evidence.length || 0}</strong><small>Evidence</small></div>
+            <div><strong>{latestLiveEval?.passed === false ? "Fail" : latestLiveEval ? "Pass" : "Local"}</strong><small>AI Eval</small></div>
+          </div>
+        </section>
 
-        <div className="statusBox">
-          <AlertTriangle size={16} />
-          <span>{status}</span>
-        </div>
+        <div className="statusBox"><AlertTriangle size={16} /><span>{status}</span></div>
       </aside>
 
-      <section className="mmoWorkspace">
-        <header className="mmoHeader">
+      <section className="mapStage">
+        <header className="stageTopbar">
           <div>
-            <p className="eyebrow">Simulated lives {"->"} world events {"->"} evidence {"->"} fair-play case</p>
-            <h2>{activeCase?.deductionCase.title || "Detective Town Showcase"}</h2>
+            <p>WorldEvent sourced case simulation</p>
+            <h2>{activeCase?.deductionCase.publicCaseFile || "创建小镇后，案件会从 NPC 日程、记忆、冲突和事件日志中涌现。"}</h2>
           </div>
-          <div className="metricStrip">
-            <div><span>Quality</span><strong>{quality?.qualityScore ?? quality?.score ?? 0}</strong></div>
-            <div><span>Unique</span><strong>{quality?.uniqueCulprit ? "Yes" : "No"}</strong></div>
-            <div><span>24h</span><strong>{quality?.timeline24hComplete ? "Yes" : "No"}</strong></div>
-          </div>
+          <div className="timeBadge">{snapshot?.time || minutesToTime(timeValue)}</div>
         </header>
 
-        <section className="caseBand">
-          <div>
-            <h3>{deductionCase ? "案件来自世界行为，而不是 AI 直接编故事。" : "创建小镇后开始调查。"}</h3>
-            <p>{deductionCase?.publicCaseFile || "小镇会先生成 NPC 日程、秘密、关系、记忆与事件，再从事件日志中抽取一件可验证的案件。"}</p>
-            {activeCase && (
-              <div className="caseMeta">
-                <span>{world?.mode || "showcase"}</span>
-                <span>{archetypeLabels[activeCase.generationProfile.archetype]}</span>
-                <span>凶手唯一：{quality?.uniqueCulprit ? "是" : "否"}</span>
-                <span>证据来自事件：{quality?.worldBackedEvidence ? "是" : "否"}</span>
-                <span>记忆约束：{quality?.memoryScopedTestimony ? "是" : "否"}</span>
-              </div>
-            )}
-          </div>
-          <button className="secondaryButton" onClick={() => setDebugOpen((value) => !value)}><Eye size={16} /> Debug</button>
-        </section>
-
-        <div className="investigationGrid">
-          <section className="workPanel">
-            <h4><Map size={16} /> 小镇地图与搜索</h4>
-            <div className="locationGrid">
-              {scenes.map((scene) => (
-                <button key={scene.id} className={`locationCard ${scene.id === selectedScene?.id ? "selected" : ""}`} onClick={() => setSelectedSceneId(scene.id)}>
-                  <strong>{scene.name}</strong>
-                  <span>{scene.evidenceIds.length} 条可搜索线索</span>
+        <section className="pixelMapWrap">
+          <div className="pixelMap" style={{ gridTemplateColumns: `repeat(${snapshot?.width || 28}, minmax(18px, 1fr))` }}>
+            {(snapshot?.tiles || []).map((tile: WorldMapTile) => {
+              const actors = mapActorsByTile.get(`${tile.x}:${tile.y}`) || [];
+              const markers = mapMarkersByTile.get(`${tile.x}:${tile.y}`) || [];
+              const selected = tile.locationId && tile.locationId === selectedSceneId;
+              return (
+                <button
+                  key={tile.id}
+                  className={`mapTile terrain-${tile.terrain} ${tile.searchable ? "searchable" : ""} ${selected ? "selected" : ""}`}
+                  title={tile.locationName || tile.terrain}
+                  onClick={() => tile.locationId && void discoverFirstSceneEvidence(tile.locationId)}
+                >
+                  {tile.locationName && <span className="placeName">{tile.locationName}</span>}
+                  {tile.searchable && <span className="evidenceDot">{tile.discoveredEvidenceCount}/{tile.evidenceCount}</span>}
+                  {markers.slice(0, 3).map((marker) => (
+                    <span key={marker.id} className={`marker marker-${marker.type} ${marker.eventId === highlightedEventId ? "hot" : ""}`} onClick={(event) => { event.stopPropagation(); handleMarker(marker); }}>◆</span>
+                  ))}
+                  <span className="actorStack">
+                    {actors.slice(0, 4).map((actor) => (
+                      <span key={actor.id} className={`actorPin actor-${actor.status}`} onClick={(event) => { event.stopPropagation(); handleActor(actor); }}>{actorInitial(actor.name)}</span>
+                    ))}
+                  </span>
                 </button>
-              ))}
-            </div>
-            <div className="evidenceSearch">
-              {sceneEvidence.map((item) => (
-                <div className="evidenceRow" key={item.id}>
-                  <div>
-                    <strong>{discovered.has(item.id) ? item.title : "未发现线索"}</strong>
-                    <span>{discovered.has(item.id) ? item.visibleDescription : `${selectedScene?.name} 中可能存在调查价值。`}</span>
-                  </div>
-                  <button className="secondaryButton" onClick={() => discoverEvidence(item.id)} disabled={!session || discovered.has(item.id) || busy}><FileSearch size={16} /> 搜索</button>
-                </div>
-              ))}
-              {!sceneEvidence.length && <p>该地点暂无可发现证据。</p>}
-            </div>
-          </section>
-
-          <section className="workPanel">
-            <h4><MessageSquare size={16} /> NPC 询问与证据质询</h4>
-            <div className="formGrid">
-              <label>角色
-                <select value={selectedCharacterId} onChange={(event) => setSelectedCharacterId(event.target.value)}>
-                  {characters.map((character) => <option key={character.id} value={character.id}>{character.name} - {character.role}</option>)}
-                </select>
-              </label>
-              <label>出示证据
-                <select value={selectedEvidenceId} onChange={(event) => setSelectedEvidenceId(event.target.value)}>
-                  <option value="">不出示证据</option>
-                  {discoveredEvidence.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
-                </select>
-              </label>
-            </div>
-            {selectedTestimony && (
-              <div className="testimonyBox">
-                <span>当前证词 / 可挑战证据：{selectedTestimony.contradictionEvidenceIds.join("、") || "无"}</span>
-                <p>{selectedTestimony.currentStatement}</p>
-                <span>{selectedTestimony.revised ? "已被证据修正" : "尚未修正"}</span>
-              </div>
-            )}
-            <textarea value={question} onChange={(event) => setQuestion(event.target.value)} />
-            <button className="primaryButton full" onClick={interrogate} disabled={!session || !selectedCharacterId || busy}><Bot size={16} /> 询问 NPC</button>
-            <div className="dialogueLog">
-              {(session?.interrogationLog || []).slice(-4).reverse().map((entry) => (
-                <article key={entry.id}>
-                  <p><strong>{deductionCase?.characters.find((item) => item.id === entry.characterId)?.name || entry.characterId}</strong><span>{entry.evidenceId ? `出示 ${entry.evidenceId}` : "普通询问"}</span></p>
-                  <blockquote>{entry.answer}</blockquote>
-                </article>
-              ))}
-            </div>
-          </section>
-        </div>
-
-        <div className="lowerGrid">
-          <section className="workPanel">
-            <h4><Network size={16} /> 24h 时间线与证据图谱</h4>
-            <div className="timelineList">
-              {deductionCase?.truth.trueTimeline.map((item) => (
-                <div className="timelineItem" key={item.id}>
-                  <time>{item.time}</time>
-                  <strong>{item.contradictedByEvidenceIds.some((id) => discovered.has(id)) ? item.event : item.publicVersion}</strong>
-                  <span>证据：{item.contradictedByEvidenceIds.join("、") || "无"}</span>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="workPanel">
-            <h4><Gavel size={16} /> 提交推理</h4>
-            <label>凶手
-              <select value={theory.culpritId} onChange={(event) => setTheory((current) => ({ ...current, culpritId: event.target.value }))}>
-                <option value="">选择嫌疑人</option>
-                {characters.map((character) => <option key={character.id} value={character.id}>{character.name}</option>)}
-              </select>
-            </label>
-            <label>动机<textarea value={theory.motive} onChange={(event) => setTheory((current) => ({ ...current, motive: event.target.value }))} /></label>
-            <label>手法<textarea value={theory.method} onChange={(event) => setTheory((current) => ({ ...current, method: event.target.value }))} /></label>
-            <div className="checkList">
-              {discoveredEvidence.map((item) => (
-                <label className="checkRow" key={item.id}>
-                  <input type="checkbox" checked={playerTheoryEvidence.has(item.id)} onChange={() => toggleTheoryEvidence(item.id)} />
-                  {item.title}
-                </label>
-              ))}
-            </div>
-            <button className="primaryButton full" onClick={submitTheory} disabled={!session || busy}><ShieldCheck size={16} /> 判定推理</button>
-            {session?.judgement && (
-              <div className={`judgement ${session.judgement.accepted ? "pass" : "fail"}`}>
-                <strong>{session.judgement.accepted ? "推理成立" : "推理不成立"}</strong>
-                <p>{session.judgement.explanation}</p>
-                <button className="secondaryButton" onClick={revealSolution} disabled={!session.judgement.accepted || busy}>生成解答篇</button>
-              </div>
-            )}
-            {revealText && <pre className="revealBox">{revealText}</pre>}
-          </section>
-        </div>
-
-        <div className="lowerGrid">
-          <section className="workPanel">
-            <h4><CheckCircle2 size={16} /> 质量报告</h4>
-            <div className="boardGrid">
-              {[
-                ["World-backed evidence", quality?.worldBackedEvidence],
-                ["Memory-scoped testimony", quality?.memoryScopedTestimony],
-                ["24h timeline", quality?.timeline24hComplete],
-                ["Non-culprits excluded", quality?.nonCulpritExcluded],
-                ["Reasoning trace", quality?.reasoningTraceComplete],
-                ["Rule validation", activeCase?.validation.valid]
-              ].map(([label, ok]) => (
-                <div className={`boardCard ${ok ? "found" : ""}`} key={String(label)}>
-                  <strong>{ok ? "PASS" : "WAIT"}</strong>
-                  <p>{label}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="workPanel">
-            <h4><Clock size={16} /> 世界事件流</h4>
-            <div className="eventFeed">
-              {recentEvents.map((event) => (
-                <div key={event.id}>
-                  <time>第{event.day}日 {event.time}</time>
-                  <strong>{event.publicSummary}</strong>
-                  <span>{event.type} / {event.locationId}</span>
-                </div>
-              ))}
-            </div>
-          </section>
-        </div>
-
-        <section className="workPanel" style={{ marginTop: 18 }}>
-          <h4><ShieldCheck size={16} /> AI 安全状态</h4>
-          <div className="caseMeta">
-            <span>Prompt Safe: {lastAiSafety?.promptAudit?.safe === false ? "No" : "Yes"}</span>
-            <span>Dialogue Score: {lastAiSafety?.dialogueEval?.score ?? "Local"}</span>
-            <span>Memory Count: {lastAiSafety?.memoryCount ?? 0}</span>
-            <span>Evidence Count: {lastAiSafety?.evidenceCount ?? 0}</span>
-            <span>Fact Lock: {factLockScore ?? "N/A"}</span>
-            <span>Exposed Contradictions: {exposedContradictions}</span>
+              );
+            })}
           </div>
         </section>
 
-        <section className="workPanel" style={{ marginTop: 18 }}>
-          <h4><Database size={16} /> Developer / Agent API</h4>
+        <footer className="timelineScrubber">
+          <div className="scrubLabels"><span>08:00</span><strong>24h 时间轴回放</strong><span>23:00</span></div>
+          <input type="range" min={timeMin} max={timeMax} step={10} value={timeValue} onChange={(event) => setTimeValue(Number(event.target.value))} />
+          <div className="scrubTicks">
+            {["08:00", "12:00", "16:00", "20:00", "21:30", "21:47", "23:00"].map((time) => (
+              <button key={time} className={minutesToTime(timeValue) === time ? "active" : ""} onClick={() => setTimeValue(timeToMinutes(time))}>{time}</button>
+            ))}
+          </div>
+        </footer>
+      </section>
+
+      <aside className="eventRail">
+        <section className="eventPanel">
+          <h2><Clock size={16} /> WorldEvent Log</h2>
+          <div className="eventList">
+            {visibleEvents.map((event) => (
+              <button key={event.id} className={`eventRow ${event.id === highlightedEventId ? "selected" : ""}`} onClick={() => { setHighlightedEventId(event.id); setSelectedSceneId(event.locationId); setTimeValue(timeToMinutes(event.time)); }}>
+                <time>第{event.day}日 {event.time}</time>
+                <strong>{event.publicSummary}</strong>
+                <span>{event.type} / {event.locationId}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="actionPanel">
+          <h2><FileSearch size={16} /> 地点与证据</h2>
+          <p>{selectedScene?.name || "选择地图地点"}</p>
+          <div className="evidenceList">
+            {sceneEvidence.map((item) => (
+              <button key={item.id} className={discovered.has(item.id) ? "found" : ""} onClick={() => discoverEvidence(item.id)} disabled={!session || discovered.has(item.id) || busy}>
+                <strong>{discovered.has(item.id) ? item.title : "未发现线索"}</strong>
+                <span>{discovered.has(item.id) ? item.visibleDescription : `${selectedScene?.name} 中可能存在调查价值。`}</span>
+              </button>
+            ))}
+            {!sceneEvidence.length && <span className="emptyText">该地点暂无可发现证据。</span>}
+          </div>
+        </section>
+
+        <section className="actionPanel">
+          <h2><MessageSquare size={16} /> NPC 询问</h2>
+          <label>角色
+            <select value={selectedCharacterId} onChange={(event) => setSelectedCharacterId(event.target.value)}>
+              {characters.map((character) => <option key={character.id} value={character.id}>{character.name} - {character.role}</option>)}
+            </select>
+          </label>
+          <label>出示证据
+            <select value={selectedEvidenceId} onChange={(event) => setSelectedEvidenceId(event.target.value)}>
+              <option value="">不出示证据</option>
+              {discoveredEvidence.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
+            </select>
+          </label>
+          {selectedTestimony && <div className="testimonyBox"><span>当前证词</span><p>{selectedTestimony.currentStatement}</p></div>}
+          <textarea value={question} onChange={(event) => setQuestion(event.target.value)} />
+          <button className="primaryButton full" onClick={interrogate} disabled={!session || !selectedCharacterId || busy}><Bot size={16} /> 询问 NPC</button>
+          <div className={`aiSafetyStrip ${lastAiSafety?.promptAudit?.safe === false ? "unsafe" : "safe"}`}>
+            <span>Prompt Safe: {lastAiSafety?.promptAudit?.safe === false ? "No" : "Yes"}</span>
+            <span>Memory: {lastAiSafety?.memoryCount ?? selectedNpcMemories.length}</span>
+            <span>Evidence: {lastAiSafety?.evidenceCount ?? discoveredEvidence.length}</span>
+            {!!lastAiSafety?.safetyFlags?.length && <span>Flags: {lastAiSafety.safetyFlags.join(", ")}</span>}
+          </div>
+          <div className="dialogueLog">
+            {(session?.interrogationLog || []).slice(-2).reverse().map((entry) => (
+              <article key={entry.id}>
+                <p><strong>{deductionCase?.characters.find((item) => item.id === entry.characterId)?.name || entry.characterId}</strong><span>{entry.evidenceId ? `出示 ${entry.evidenceId}` : "普通询问"}</span></p>
+                <blockquote>{entry.answer}</blockquote>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="actionPanel">
+          <h2><Gavel size={16} /> 提交推理</h2>
+          <label>凶手
+            <select value={theory.culpritId} onChange={(event) => setTheory((current) => ({ ...current, culpritId: event.target.value }))}>
+              <option value="">选择嫌疑人</option>
+              {characters.map((character) => <option key={character.id} value={character.id}>{character.name}</option>)}
+            </select>
+          </label>
+          <textarea placeholder="动机" value={theory.motive} onChange={(event) => setTheory((current) => ({ ...current, motive: event.target.value }))} />
+          <textarea placeholder="手法" value={theory.method} onChange={(event) => setTheory((current) => ({ ...current, method: event.target.value }))} />
+          <div className="checkList">
+            {discoveredEvidence.map((item) => (
+              <label className="checkRow" key={item.id}><input type="checkbox" checked={playerTheoryEvidence.has(item.id)} onChange={() => toggleTheoryEvidence(item.id)} />{item.title}</label>
+            ))}
+          </div>
+          <button className="primaryButton full" onClick={submitTheory} disabled={!session || busy}><ShieldCheck size={16} /> 判定推理</button>
+          {session?.judgement && <div className={`judgement ${session.judgement.accepted ? "pass" : "fail"}`}><strong>{session.judgement.accepted ? "推理成立" : "推理不成立"}</strong><p>{session.judgement.explanation}</p><button className="secondaryButton" onClick={revealSolution} disabled={!session.judgement.accepted || busy}>生成解答篇</button></div>}
+          {revealText && <pre className="revealBox">{revealText}</pre>}
+        </section>
+
+        <details className="developerDrawer" open={developerOpen} onToggle={(event) => setDeveloperOpen(event.currentTarget.open)}>
+          <summary><Database size={16} /> Developer / Agent API <ChevronDown size={15} /></summary>
           <div className="caseMeta">
             <span>worldId: {world?.id || "N/A"}</span>
             <span>caseId: {activeCase?.id || "N/A"}</span>
             <span>sessionId: {session?.id || "N/A"}</span>
-            <span>Selected NPC memories: {selectedNpcMemories.length}</span>
-            <span>Quality: {quality?.qualityScore ?? quality?.score ?? "N/A"}</span>
-            <span>Safety Flags: {lastAiSafety?.safetyFlags?.length ? lastAiSafety.safetyFlags.join(", ") : "none"}</span>
+            <span>NPC memories: {selectedNpcMemories.length}</span>
+            <span>Prompt Safe: {lastAiSafety?.promptAudit?.safe === false ? "No" : "Yes"}</span>
+            <span>Selected: {selectedCharacter?.name || "N/A"}</span>
           </div>
-          <button className="secondaryButton" onClick={copyAgentApiExample}><FileSearch size={16} /> Copy Agent API Example</button>
-          <div className="developerGrid">
-            <div>
-              <strong>Recent WorldEvents</strong>
-              <div className="eventFeed compact">
-                {recentEvents.map((event) => (
-                  <div key={`dev-${event.id}`}>
-                    <time>第{event.day}日 {event.time}</time>
-                    <strong>{event.publicSummary}</strong>
-                    <span>{event.id}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div>
-              <strong>NPC Memory Scope</strong>
-              <div className="eventFeed compact">
-                {selectedNpcMemories.slice(-8).reverse().map((memory) => (
-                  <div key={memory.id}>
-                    <time>{memory.kind} / confidence {memory.confidence}</time>
-                    <strong>{memory.summary}</strong>
-                    <span>{memory.eventId}</span>
-                  </div>
-                ))}
-                {!selectedNpcMemories.length && <p>选择 NPC 后显示其可用记忆范围。</p>}
-              </div>
-            </div>
-          </div>
+          <button className="secondaryButton full" onClick={copyAgentApiExample}>Copy Agent API Example</button>
           <pre className="apiExample">{agentApiExample}</pre>
-        </section>
-
-        {debugOpen && (
-          <section className="debugPanel">
-            <pre>{JSON.stringify({ world, events, activeCase, session, sessions, lastAiSafety }, null, 2)}</pre>
-          </section>
-        )}
-      </section>
+        </details>
+      </aside>
     </main>
   );
 }

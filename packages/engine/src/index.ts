@@ -8,3 +8,4 @@ export * from "./world-types";
 export * from "./world-simulator";
 export * from "./world-case";
 export * from "./world-analysis";
+export * from "./world-map";

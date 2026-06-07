@@ -410,3 +410,66 @@ export type TownSnapshot = {
   activeCase?: CaseFromLog;
   sessions: PlayerSession[];
 };
+
+export type WorldMapTerrain = "grass" | "water" | "road" | "hill" | "forest" | "district" | "building";
+
+export type WorldMapTile = {
+  id: string;
+  x: number;
+  y: number;
+  terrain: WorldMapTerrain;
+  locationId?: string;
+  locationName?: string;
+  searchable: boolean;
+  evidenceCount: number;
+  discoveredEvidenceCount: number;
+};
+
+export type WorldMapActorStatus = "alive" | "victim" | "culprit" | "suspect" | "witness" | "questioned";
+
+export type WorldMapActor = {
+  id: string;
+  name: string;
+  role: string;
+  locationId: string;
+  locationName: string;
+  x: number;
+  y: number;
+  status: WorldMapActorStatus;
+  isVictim: boolean;
+  isCulprit: boolean;
+  isQuestioned: boolean;
+};
+
+export type WorldMapMarkerType = "event" | "evidence" | "crime" | "contradiction" | "highlight";
+
+export type WorldMapMarker = {
+  id: string;
+  type: WorldMapMarkerType;
+  label: string;
+  locationId: string;
+  locationName: string;
+  x: number;
+  y: number;
+  time?: string;
+  eventId?: string;
+  evidenceId?: string;
+  discovered?: boolean;
+  relatedCharacterIds: string[];
+};
+
+export type WorldMapSnapshot = {
+  worldId: string;
+  caseId?: string;
+  sessionId?: string;
+  day: number;
+  time: string;
+  width: number;
+  height: number;
+  tiles: WorldMapTile[];
+  actors: WorldMapActor[];
+  markers: WorldMapMarker[];
+  visibleEvents: WorldEvent[];
+  selectedEventIds: string[];
+  discoveredEvidenceIds: string[];
+};
