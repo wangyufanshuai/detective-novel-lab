@@ -33,14 +33,14 @@ export function describeEvidenceImpact(evidence: Evidence, deductionCase: Deduct
     return {
       tone: "contradiction",
       label: "可能反驳证词或时间线",
-      detail: relatedNames ? `关联人物：${relatedNames}。建议出示给相关 NPC 质询。` : "建议和公开证词、时间线记录交叉比对。"
+      detail: relatedNames ? `可向 ${relatedNames} 出示此证据，检查其证词是否自洽。` : "建议和公开证词、时间线记录交叉比对。"
     };
   }
   if (isRequired) {
     return {
       tone: "key",
       label: "高价值线索",
-      detail: "它可能是完整推理链的一环，但不会单独给出真相。"
+      detail: relatedNames ? `它关联 ${relatedNames}，适合加入关键证据链。` : "它可能是完整推理链的一环，但不会单独给出真相。"
     };
   }
   if (supports.length > 0) {
@@ -68,11 +68,7 @@ export function summarizeJudgementGaps(missing: string[] = []) {
 }
 
 export function hasContradictionHit(session: PlayerSession | null, characterId: string) {
-  return Boolean(
-    session?.interrogationLog.some(
-      (entry) => entry.characterId === characterId && entry.challenge?.hit
-    )
-  );
+  return Boolean(session?.interrogationLog.some((entry) => entry.characterId === characterId && entry.challenge?.hit));
 }
 
 export function useInvestigationView(input: {

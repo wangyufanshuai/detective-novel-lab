@@ -23,7 +23,7 @@ export function getSuggestedAction(input: {
     return {
       phase: "观察",
       title: "观察案发窗口",
-      detail: "拖动时间轴到案发前后，先看 NPC、事件和案发点如何同步变化。",
+      detail: "拖动时间轴到案发前后，查看 NPC、事件和案发点如何同步变化。",
       targetTab: "events"
     };
   }
@@ -39,7 +39,7 @@ export function getSuggestedAction(input: {
     return {
       phase: "搜索",
       title: "搜索地点证据",
-      detail: selectedSceneName ? `当前地点：${selectedSceneName}。优先找可搜索标记。` : "点击地图上的建筑或证据 marker，打开调查面板。",
+      detail: selectedSceneName ? `当前地点：${selectedSceneName}。优先寻找可搜索标记。` : "点击地图建筑或证据 marker，打开调查面板。",
       targetTab: "investigation"
     };
   }
@@ -47,7 +47,7 @@ export function getSuggestedAction(input: {
     return {
       phase: "质询",
       title: "出示证据质询 NPC",
-      detail: "选择已发现证据后询问 NPC，系统只给角色可记得的信息。",
+      detail: "选择已发现证据后询问 NPC，系统只提供角色记忆范围内的信息。",
       targetTab: "investigation"
     };
   }
@@ -55,7 +55,7 @@ export function getSuggestedAction(input: {
     return {
       phase: "推理",
       title: "提交完整推理链",
-      detail: "推理需要覆盖凶手、动机、手法和关键证据链。失败只会显示缺口类型。",
+      detail: "推理需要覆盖凶手、动机、手法和关键证据链。失败只显示缺口类型。",
       targetTab: "investigation"
     };
   }

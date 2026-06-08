@@ -22,6 +22,7 @@ import DeductionGraphView from "@/app/components/DeductionGraphView";
 import { useDetectiveTownRuntimeView } from "@/app/hooks/useDetectiveTownRuntime";
 import { hasContradictionHit, useInvestigationView } from "@/app/hooks/useInvestigationActions";
 import { useInspectorSelection } from "@/app/hooks/useInspectorSelection";
+import { useGuidedOnboarding, type GuidedTask, type SelectionHighlight } from "@/app/hooks/useGuidedOnboarding";
 import {
   CaseLogicPanel,
   CausalTracePanel,
@@ -30,6 +31,7 @@ import {
   EventLogPanel,
   InspectorRail,
   InvestigationPanel,
+  OnboardingOverlay,
   PlayShell,
   SuspectBoardPanel,
   TownMapStage,
@@ -217,6 +219,7 @@ export default function Home() {
   const [runtimeMode, setRuntimeMode] = useState<RuntimeMode>("server");
   const [progress, setProgress] = useState<InvestigationProgress>(initialProgress);
   const { inspectorTab, setInspectorTab, showEvents, showInvestigation, showLogic, showPeople } = useInspectorSelection("events");
+  const [selectionHighlight, setSelectionHighlight] = useState<SelectionHighlight>({});
   const [appMode, setAppMode] = useState<AppMode>("play");
   const [authoringDraft, setAuthoringDraft] = useState<AuthoringDraft>(() => createPremiumAuthoringDraft());
   const [authoringTab, setAuthoringTab] = useState<AuthoringTab>("case");
@@ -259,8 +262,25 @@ export default function Home() {
   );
   const excludedCharacterIds = useMemo(() => new Set(suspectBoard.filter((row) => row.status === "eliminated").map((row) => row.characterId)), [suspectBoard]);
   const selectedNpcContradictionHit = hasContradictionHit(session, selectedCharacterId);
+  const onboarding = useGuidedOnboarding({ runtimeMode, progress, session, revealText });
   const visibleEvents = snapshot?.visibleEvents || events.slice(-30).reverse();
   const selectedEvent = events.find((event) => event.id === highlightedEventId);
+  const selectedEvidence = deductionCase?.evidence.find((item) => item.id === selectedEvidenceId);
+  const inspectorSummary = useMemo(() => {
+    if (inspectorTab === "events") {
+      return selectedEvent
+        ? { title: `${selectedEvent.time} / ${selectedEvent.locationId}`, detail: selectedEvent.publicSummary, tone: "event" }
+        : { title: "事件日志", detail: "选择事件可同步高亮地图地点和时间轴。", tone: "event" };
+    }
+    if (inspectorTab === "investigation") {
+      if (selectedEvidence) return { title: `证据：${selectedEvidence.title}`, detail: "查看用途提示，必要时出示给 NPC 质询。", tone: "evidence" };
+      if (selectedCharacter) return { title: `NPC：${selectedCharacter.name}`, detail: selectedCharacter.role, tone: "person" };
+      return { title: `地点：${selectedScene?.name || "未选择"}`, detail: "搜索地点、询问 NPC、提交推理。", tone: "investigation" };
+    }
+    if (inspectorTab === "logic") return { title: "案件逻辑", detail: "推理图、因果链和解答篇只在正确推理后完整展开。", tone: "logic" };
+    if (inspectorTab === "people") return { title: "嫌疑人矩阵", detail: "查看动机、手段、机会和排除证据。", tone: "people" };
+    return { title: "开发者接口", detail: "查看 Agent API、worldId、caseId 和 sessionId。", tone: "developer" };
+  }, [inspectorTab, selectedCharacter, selectedEvent, selectedEvidence, selectedScene?.name]);
   const causalTrace = activeCase?.causalTrace;
   const causalTraceEvents = useMemo(
     () => (causalTrace?.orderedEventIds || []).map((id) => events.find((event) => event.id === id)).filter((event): event is WorldEvent => Boolean(event)),
@@ -273,6 +293,17 @@ export default function Home() {
   const authoringEvidence = authoringCase.evidence.find((item) => item.id === authoringEvidenceId) || authoringCase.evidence[0];
   const authoringScene = authoringCase.scenes.find((item) => item.id === authoringSceneId) || authoringCase.scenes[0];
   const authoringTimelineEvent = authoringCase.truth.trueTimeline.find((item) => item.id === authoringTimelineId) || authoringCase.truth.trueTimeline[0];
+  const authoringChecklist = useMemo(
+    () => [
+      { label: "Schema", ok: authoringReport.schema.valid, tab: "case" as AuthoringTab },
+      { label: "World-backed Evidence", ok: Boolean(authoringDraft.caseFromLog.qualityReport.worldBackedEvidence), tab: "evidence" as AuthoringTab },
+      { label: "Memory-scoped Testimony", ok: Boolean(authoringDraft.caseFromLog.qualityReport.memoryScopedTestimony), tab: "characters" as AuthoringTab },
+      { label: "Hard Logic", ok: authoringReport.hardLogicValid, tab: "logic" as AuthoringTab },
+      { label: "Playable Runtime", ok: authoringReport.valid, tab: "logic" as AuthoringTab }
+    ],
+    [authoringDraft.caseFromLog.qualityReport.memoryScopedTestimony, authoringDraft.caseFromLog.qualityReport.worldBackedEvidence, authoringReport.hardLogicValid, authoringReport.schema.valid, authoringReport.valid]
+  );
+  const authoringBlocker = authoringReport.issues.find((item) => item.severity === "error");
   const authoringMapSnapshot = useMemo(
     () => buildWorldMapSnapshot(authoringDraft.world, authoringDraft.events, authoringDraft.caseFromLog, undefined, { day: 1, time: minutesToTime(timeValue) }),
     [authoringDraft, timeValue]
@@ -409,6 +440,16 @@ export default function Home() {
     }, 700);
     return () => window.clearInterval(timer);
   }, [replaying, world]);
+
+  useEffect(() => {
+    if (!selectionHighlight.locationId && !selectionHighlight.characterId && !selectionHighlight.evidenceId && !selectionHighlight.eventId) return;
+    const timer = window.setTimeout(() => setSelectionHighlight({}), 1800);
+    return () => window.clearTimeout(timer);
+  }, [selectionHighlight]);
+
+  function highlightSelection(next: SelectionHighlight) {
+    setSelectionHighlight(next);
+  }
 
   function persist(nextWorldId?: string, nextSessionId?: string) {
     localStorage.setItem(storageKey, JSON.stringify({ worldId: nextWorldId || world?.id, sessionId: nextSessionId || session?.id }));
@@ -560,6 +601,8 @@ export default function Home() {
       if (!state) return;
       hydrateStatic(discoverDemoEvidence(state, evidenceId), false);
       setSelectedEvidenceId(evidenceId);
+      const scene = scenes.find((item) => item.evidenceIds.includes(evidenceId));
+      highlightSelection({ evidenceId, locationId: scene?.id });
       setInspectorTab("investigation");
       setStatus(`发现证据：${deductionCase?.evidence.find((item) => item.id === evidenceId)?.title || evidenceId}`);
       return;
@@ -570,6 +613,8 @@ export default function Home() {
       setSession(data.session);
       setProgress((current) => ({ ...current, discoveredEvidence: true }));
       setSelectedEvidenceId(evidenceId);
+      const scene = scenes.find((item) => item.evidenceIds.includes(evidenceId));
+      highlightSelection({ evidenceId, locationId: scene?.id });
       setInspectorTab("investigation");
       setStatus(`发现证据：${deductionCase?.evidence.find((item) => item.id === evidenceId)?.title || evidenceId}`);
     } catch (error) {
@@ -668,6 +713,7 @@ export default function Home() {
       if (!state) return;
       const next = submitDemoTheory(state, theory);
       hydrateStatic(next, false);
+      onboarding.recordTheoryResult(Boolean(next.session.judgement?.accepted));
       setInspectorTab("investigation");
       setStatus(next.session.judgement?.accepted ? "推理成立。最终结论与解答篇已解锁。" : `推理不成立：${next.session.judgement?.missing?.join("、") || "证据链不足"}`);
       return;
@@ -676,6 +722,7 @@ export default function Home() {
     try {
       const data = await postJson<{ judgement: PlayerSession["judgement"]; session: PlayerSession }>("/api/investigation/submit-theory", { sessionId: session.id, theory });
       setSession(data.session);
+      onboarding.recordTheoryResult(Boolean(data.judgement?.accepted));
       setProgress((current) => ({ ...current, submittedTheory: true, solvedCase: Boolean(data.judgement?.accepted) }));
       setInspectorTab("investigation");
       setStatus(data.judgement?.accepted ? "推理成立。可以生成解答篇。" : `推理不成立：${data.judgement?.missing?.join("、") || "证据链不足"}`);
@@ -728,13 +775,61 @@ export default function Home() {
       if (!marker.discovered) void discoverEvidence(marker.evidenceId);
     }
     setSelectedSceneId(marker.locationId);
+    highlightSelection({ locationId: marker.locationId, eventId: marker.eventId, evidenceId: marker.evidenceId });
   }
 
   function handleActor(actor: WorldMapActor) {
     setSelectedCharacterId(actor.id);
     setSelectedSceneId(actor.locationId);
     setQuestion(`${actor.name}，案发窗口你在哪里？你记得哪些异常？`);
+    highlightSelection({ characterId: actor.id, locationId: actor.locationId });
     setInspectorTab("investigation");
+  }
+
+  function handleGuidedTask(task: GuidedTask) {
+    setInspectorTab(task.targetTab);
+    if (task.id === "observe") {
+      const deathEvent = events.find((event) => event.type === "death") || events.find((event) => event.id === activeCase?.deathEventId);
+      if (deathEvent) {
+        setHighlightedEventId(deathEvent.id);
+        setSelectedSceneId(deathEvent.locationId);
+        setTimeValue(timeToMinutes(deathEvent.time));
+        highlightSelection({ eventId: deathEvent.id, locationId: deathEvent.locationId });
+      } else {
+        setTimeValue(timeToMinutes("21:47"));
+      }
+      return;
+    }
+    if (task.id === "search") {
+      const scene = selectedScene || scenes.find((item) => item.evidenceIds.length > 0) || scenes[0];
+      if (scene) {
+        setSelectedSceneId(scene.id);
+        highlightSelection({ locationId: scene.id });
+      }
+      return;
+    }
+    if (task.id === "question") {
+      const character = selectedCharacter || characters[0];
+      if (character) {
+        setSelectedCharacterId(character.id);
+        highlightSelection({ characterId: character.id });
+      }
+      return;
+    }
+    if (task.id === "challenge") {
+      const evidence = discoveredEvidence[0];
+      const character =
+        characters.find((item) => evidence?.relatedCharacterIds.includes(item.id)) ||
+        selectedCharacter ||
+        characters[0];
+      if (evidence) setSelectedEvidenceId(evidence.id);
+      if (character) setSelectedCharacterId(character.id);
+      highlightSelection({ evidenceId: evidence?.id, characterId: character?.id });
+      return;
+    }
+    if (task.id === "reveal") {
+      showLogic();
+    }
   }
 
   function switchRuntime(next: RuntimeMode) {
@@ -769,6 +864,7 @@ export default function Home() {
     setSelectedEvidenceId(evidenceId);
     const scene = scenes.find((item) => item.evidenceIds.includes(evidenceId));
     if (scene) setSelectedSceneId(scene.id);
+    highlightSelection({ evidenceId, locationId: scene?.id });
     setInspectorTab("investigation");
   }
 
@@ -778,6 +874,7 @@ export default function Home() {
     if (event) {
       setSelectedSceneId(event.locationId);
       setTimeValue(timeToMinutes(event.time));
+      highlightSelection({ eventId, locationId: event.locationId });
     }
     setInspectorTab("events");
   }
@@ -1051,7 +1148,14 @@ export default function Home() {
               <p>Visual preview</p>
               <h2>{authoringCase.title}</h2>
             </div>
-            <button data-testid="run-authoring-draft" className="primaryButton" onClick={runAuthoringDraft} disabled={!authoringReport.valid}><Play size={15} /> Run Draft</button>
+            <div className="runDraftControl">
+              <button data-testid="run-authoring-draft" className="primaryButton" onClick={runAuthoringDraft} disabled={!authoringReport.valid}><Play size={15} /> Run Draft</button>
+              {!authoringReport.valid && authoringBlocker && (
+                <button className="runDraftBlocker" type="button" onClick={() => focusAuthoringIssue(authoringBlocker)}>
+                  阻断原因：{authoringBlocker.message}
+                </button>
+              )}
+            </div>
           </header>
           <section className="pixelMapWrap compactMap" data-testid="authoring-map">
             <div className="pixelMap" style={{ gridTemplateColumns: `repeat(${authoringMapSnapshot.width}, minmax(18px, 1fr))` }}>
@@ -1084,6 +1188,14 @@ export default function Home() {
         <aside className="authoringInspector">
           <section className={`authoringReport ${authoringReport.valid ? "pass" : "fail"}`} data-testid="authoring-rule-report">
             <h2>Rule Report</h2>
+            <div className="validationChecklist" data-testid="authoring-validation-checklist">
+              {authoringChecklist.map((item) => (
+                <button key={item.label} type="button" className={item.ok ? "pass" : "fail"} onClick={() => setAuthoringTab(item.tab)}>
+                  <span>{item.ok ? "✓" : "!"}</span>
+                  <strong>{item.label}</strong>
+                </button>
+              ))}
+            </div>
             <div className="metricGrid">
               <div><strong>{authoringReport.valid ? "Pass" : "Fail"}</strong><small>Status</small></div>
               <div><strong>{authoringReport.qualityScore}</strong><small>Quality</small></div>
@@ -1192,6 +1304,9 @@ export default function Home() {
           status={status}
           suggestedAction={suggestedAction}
           onSuggestedAction={() => setInspectorTab(suggestedAction.targetTab)}
+          guidedTasks={onboarding.tasks}
+          onGuidedTaskSelect={handleGuidedTask}
+          reopenOnboarding={onboarding.reopen}
           openAuthoring={() => setAppMode("authoring")}
           switchRuntime={switchRuntime}
         />
@@ -1206,6 +1321,7 @@ export default function Home() {
           selectedSceneId={selectedSceneId}
           highlightedEventId={highlightedEventId}
           selectedCharacterId={selectedCharacterId}
+          selectionHighlight={selectionHighlight}
           characterState={{
             questionedIds: questionedCharacterIds,
             contradictionIds: contradictedCharacterIds,
@@ -1229,6 +1345,7 @@ export default function Home() {
         <InspectorRail
           activeTab={inspectorTab}
           setActiveTab={setInspectorTab}
+          summary={inspectorSummary}
           tabs={[
             {
               id: "events",
@@ -1345,6 +1462,14 @@ export default function Home() {
               )
             }
           ]}
+        />
+      )}
+      overlay={(
+        <OnboardingOverlay
+          open={onboarding.overlayOpen}
+          tasks={onboarding.tasks}
+          onSelectTask={handleGuidedTask}
+          onDismiss={onboarding.dismiss}
         />
       )}
     />

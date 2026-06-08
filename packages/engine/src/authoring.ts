@@ -179,8 +179,18 @@ export function exportAuthoringJson(draft: AuthoringDraft): string {
 export function exportAuthoringMarkdown(draft: AuthoringDraft): string {
   const c: DeductionCase = draft.caseFromLog.deductionCase;
   const board = deriveSuspectBoard(draft.caseFromLog, draft.events);
+  const quality = draft.caseFromLog.qualityReport;
   const lines = [
     `# ${c.title}`,
+    "",
+    "## Playable Case Summary",
+    `- Template source: ${draft.source}`,
+    `- NPC count: ${draft.world.npcs.length}`,
+    `- Timeline: ${draft.world.timelineHours || 24}h`,
+    `- Quality score: ${quality.qualityScore || quality.score}`,
+    `- Unique culprit: ${quality.uniqueCulprit ? "yes" : "no"}`,
+    `- World-backed evidence: ${quality.worldBackedEvidence ? "yes" : "no"}`,
+    `- Memory-scoped testimony: ${quality.memoryScopedTestimony ? "yes" : "no"}`,
     "",
     "## Public Case File",
     c.publicCaseFile,

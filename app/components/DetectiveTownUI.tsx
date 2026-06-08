@@ -8,6 +8,7 @@ import {
   Database,
   FileSearch,
   Gavel,
+  HelpCircle,
   Loader2,
   Map as MapIcon,
   MessageSquare,
@@ -15,7 +16,8 @@ import {
   Play,
   Search,
   ShieldCheck,
-  Users
+  Users,
+  X
 } from "lucide-react";
 import type { ReactNode } from "react";
 import type {
@@ -38,6 +40,7 @@ import type {
 } from "@/lib/engine";
 import type { SuggestedAction } from "@/app/hooks/useDetectiveTownRuntime";
 import type { EvidenceImpact } from "@/app/hooks/useInvestigationActions";
+import type { GuidedTask, SelectionHighlight } from "@/app/hooks/useGuidedOnboarding";
 
 export type InspectorTabId = "events" | "investigation" | "logic" | "people" | "developer";
 
@@ -72,24 +75,35 @@ function locationIcon(tile: WorldMapTile) {
   const name = tile.locationName || "";
   if (tile.terrain === "water") return "≈";
   if (tile.terrain === "road") return "·";
-  if (name.includes("档案") || name.toLowerCase().includes("archive")) return "▣";
-  if (name.includes("钟") || name.toLowerCase().includes("clock")) return "⌂";
-  if (name.includes("诊") || name.toLowerCase().includes("clinic")) return "+";
-  if (name.includes("旅店") || name.toLowerCase().includes("hotel")) return "▤";
-  if (name.includes("剧院") || name.toLowerCase().includes("theater")) return "▥";
-  if (name.includes("市场") || name.toLowerCase().includes("market")) return "▦";
-  if (name.includes("广场") || name.toLowerCase().includes("square")) return "◇";
-  if (name.includes("码头") || name.toLowerCase().includes("dock")) return "≋";
+  if (name.includes("档案")) return "▣";
+  if (name.includes("钟")) return "⌂";
+  if (name.includes("诊")) return "+";
+  if (name.includes("旅店")) return "▤";
+  if (name.includes("剧院")) return "▥";
+  if (name.includes("市场")) return "▦";
+  if (name.includes("广场")) return "◇";
+  if (name.includes("码头")) return "≋";
   if (tile.locationId) return "⌂";
   return "";
 }
 
-export function PlayShell({ control, map, inspector }: { control: ReactNode; map: ReactNode; inspector: ReactNode }) {
+export function PlayShell({
+  control,
+  map,
+  inspector,
+  overlay
+}: {
+  control: ReactNode;
+  map: ReactNode;
+  inspector: ReactNode;
+  overlay?: ReactNode;
+}) {
   return (
     <main className="townShell">
       {control}
       {map}
       {inspector}
+      {overlay}
     </main>
   );
 }
@@ -125,6 +139,9 @@ export function ControlRail({
   status,
   suggestedAction,
   onSuggestedAction,
+  guidedTasks,
+  onGuidedTaskSelect,
+  reopenOnboarding,
   openAuthoring,
   switchRuntime
 }: {
@@ -158,6 +175,9 @@ export function ControlRail({
   status: string;
   suggestedAction: SuggestedAction;
   onSuggestedAction: () => void;
+  guidedTasks: GuidedTask[];
+  onGuidedTaskSelect: (task: GuidedTask) => void;
+  reopenOnboarding: () => void;
   openAuthoring: () => void;
   switchRuntime: (value: RuntimeMode) => void;
 }) {
@@ -198,6 +218,22 @@ export function ControlRail({
         <h2>{suggestedAction.title}</h2>
         <p>{suggestedAction.detail}</p>
         <button className="secondaryButton full" onClick={onSuggestedAction}>前往处理</button>
+      </section>
+
+      <section className="hudPanel guidedTaskPanel" data-testid="guided-task-list">
+        <div className="panelHeaderLine">
+          <span className="eyebrow">First Case Guide</span>
+          <button className="linkButton" type="button" onClick={reopenOnboarding}><HelpCircle size={14} /> 帮助</button>
+        </div>
+        <div className="guidedTaskList">
+          {guidedTasks.map((task, index) => (
+            <button key={task.id} type="button" className={`guidedTask ${task.state}`} onClick={() => onGuidedTaskSelect(task)}>
+              <span>{task.state === "complete" ? "✓" : index + 1}</span>
+              <strong>{task.title}</strong>
+              <small>{task.detail}</small>
+            </button>
+          ))}
+        </div>
       </section>
 
       <section className="progressPanel" data-testid="investigation-progress">
@@ -277,6 +313,7 @@ export function TownMapStage({
   highlightedEventId,
   selectedCharacterId,
   characterState,
+  selectionHighlight,
   onTileClick,
   onMarkerClick,
   onActorClick,
@@ -298,6 +335,7 @@ export function TownMapStage({
   highlightedEventId: string;
   selectedCharacterId?: string;
   characterState: CharacterState;
+  selectionHighlight?: SelectionHighlight;
   onTileClick: (locationId: string) => void;
   onMarkerClick: (marker: WorldMapMarker) => void;
   onActorClick: (actor: WorldMapActor) => void;
@@ -326,10 +364,11 @@ export function TownMapStage({
             const actors = actorsByTile.get(`${tile.x}:${tile.y}`) || [];
             const markers = markersByTile.get(`${tile.x}:${tile.y}`) || [];
             const selected = tile.locationId && tile.locationId === selectedSceneId;
+            const highlighted = tile.locationId && tile.locationId === selectionHighlight?.locationId;
             return (
               <button
                 key={tile.id}
-                className={`mapTile terrain-${tile.terrain} ${tile.searchable ? "searchable" : ""} ${selected ? "selected" : ""}`}
+                className={`mapTile terrain-${tile.terrain} ${tile.searchable ? "searchable" : ""} ${selected ? "selected" : ""} ${highlighted ? "spotlight" : ""}`}
                 title={tile.locationName || tile.terrain}
                 onClick={() => tile.locationId && onTileClick(tile.locationId)}
               >
@@ -341,7 +380,7 @@ export function TownMapStage({
                   return (
                     <span
                       key={marker.id}
-                      className={`marker marker-${marker.type} marker-${state} ${marker.eventId === highlightedEventId ? "hot" : ""}`}
+                      className={`marker marker-${marker.type} marker-${state} ${marker.eventId === highlightedEventId || marker.evidenceId === selectionHighlight?.evidenceId ? "hot" : ""}`}
                       title={marker.label}
                       onClick={(event) => { event.stopPropagation(); onMarkerClick(marker); }}
                     >
@@ -355,6 +394,7 @@ export function TownMapStage({
                       "actorPin",
                       `actor-${actor.status}`,
                       selectedCharacterId === actor.id ? "actor-current" : "",
+                      selectionHighlight?.characterId === actor.id ? "actor-spotlight" : "",
                       characterState.questionedIds.has(actor.id) ? "actor-questioned" : "",
                       characterState.contradictionIds.has(actor.id) ? "actor-contradiction" : "",
                       characterState.excludedIds.has(actor.id) ? "actor-excluded" : ""
@@ -373,6 +413,12 @@ export function TownMapStage({
       </section>
 
       <footer className="timelineScrubber">
+        <div className="mapLegend" data-testid="map-legend">
+          <span><b>?</b> 可搜索</span>
+          <span><b>◆</b> 已发现证据</span>
+          <span><b>!</b> 案发/矛盾</span>
+          <span><b>✓</b> 已完成线索</span>
+        </div>
         <div className="scrubLabels"><span>08:00</span><strong>24h 时间轴回放</strong><span>23:00</span></div>
         <button className="replayButton" onClick={() => setReplaying((value) => !value)}>
           {replaying ? <Pause size={14} /> : <Play size={14} />} {replaying ? "Pause Replay" : "Play Replay"}
@@ -391,11 +437,13 @@ export function TownMapStage({
 export function InspectorRail({
   activeTab,
   setActiveTab,
-  tabs
+  tabs,
+  summary
 }: {
   activeTab: InspectorTabId;
   setActiveTab: (value: InspectorTabId) => void;
   tabs: { id: InspectorTabId; label: string; content: ReactNode }[];
+  summary: { title: string; detail: string; tone?: string };
 }) {
   const current = tabs.find((tab) => tab.id === activeTab) || tabs[0];
   return (
@@ -405,6 +453,10 @@ export function InspectorRail({
           <button key={tab.id} className={tab.id === current.id ? "active" : ""} onClick={() => setActiveTab(tab.id)}>{tab.label}</button>
         ))}
       </nav>
+      <section className={`inspectorSummary ${summary.tone || ""}`} data-testid="inspector-summary">
+        <strong>{summary.title}</strong>
+        <span>{summary.detail}</span>
+      </section>
       <div className="inspectorContent">{current.content}</div>
     </aside>
   );
@@ -595,7 +647,7 @@ export function InvestigationPanel({
                 <strong>{discoveredIds.has(item.id) ? item.title : item.discoverable ? "未发现线索" : "公开现场记录"}</strong>
                 <span>{discoveredIds.has(item.id) ? item.visibleDescription : item.discoverable ? `${selectedSceneName} 中可能存在调查价值。` : item.visibleDescription}</span>
                 {discoveredIds.has(item.id) && impact && (
-                  <small className={`evidenceImpact impact-${impact.tone}`}>
+                  <small className={`evidenceImpact impact-${impact.tone}`} data-testid="evidence-use-hint">
                     {impact.label}：{impact.detail}
                   </small>
                 )}
@@ -660,7 +712,7 @@ export function InvestigationPanel({
           <div className={`judgement ${session.judgement.accepted ? "pass" : "fail"}`} data-testid="judgement-result">
             <strong>{session.judgement.accepted ? "推理成立" : "推理不成立"}</strong>
             {session.judgement.accepted ? <p>{session.judgement.explanation}</p> : (
-              <div className="gapHints">
+              <div className="gapHints" data-testid="theory-gap-cards">
                 <span>缺口类型：</span>
                 {judgementGaps.map((item) => <em key={item}>{item}</em>)}
               </div>
@@ -706,6 +758,48 @@ export function DeveloperPanel({
       </div>
       <button className="secondaryButton full" onClick={copyAgentApiExample}>Copy Agent API Example</button>
       <pre className="apiExample">{agentApiExample}</pre>
+    </section>
+  );
+}
+
+export function OnboardingOverlay({
+  open,
+  tasks,
+  onSelectTask,
+  onDismiss
+}: {
+  open: boolean;
+  tasks: GuidedTask[];
+  onSelectTask: (task: GuidedTask) => void;
+  onDismiss: () => void;
+}) {
+  if (!open) return null;
+  const current = tasks.find((task) => task.state === "current") || tasks[tasks.length - 1];
+  return (
+    <section className="onboardingOverlay" data-testid="onboarding-overlay" aria-label="First case onboarding">
+      <div className="onboardingCard">
+        <button className="iconButton closeButton" type="button" onClick={onDismiss} aria-label="关闭引导"><X size={16} /></button>
+        <span className="eyebrow">3 分钟破第一案</span>
+        <h2>跟随任务完成一次公平推理</h2>
+        <p>这个 Demo 不是让 AI 直接编故事，而是先模拟小镇事件，再用本地规则验证线索、证词和唯一凶手。</p>
+        <div className="onboardingCurrent">
+          <strong>{current.title}</strong>
+          <span>{current.detail}</span>
+        </div>
+        <div className="guidedTaskList">
+          {tasks.map((task, index) => (
+            <button key={task.id} type="button" className={`guidedTask ${task.state}`} onClick={() => onSelectTask(task)}>
+              <span>{task.state === "complete" ? "✓" : index + 1}</span>
+              <strong>{task.title}</strong>
+              <small>{task.detail}</small>
+            </button>
+          ))}
+        </div>
+        <div className="onboardingActions">
+          <button className="primaryButton" type="button" onClick={() => onSelectTask(current)}>开始当前步骤</button>
+          <button className="secondaryButton" type="button" onClick={onDismiss}>先自己探索</button>
+        </div>
+      </div>
     </section>
   );
 }

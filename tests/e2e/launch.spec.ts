@@ -8,7 +8,42 @@ async function clickInspectorTab(page: Page, name: string) {
   await page.getByTestId("inspector-rail").getByRole("button", { name, exact: true }).click();
 }
 
+async function dismissOnboarding(page: Page) {
+  const overlay = page.getByTestId("onboarding-overlay");
+  await overlay.waitFor({ state: "visible", timeout: 2_000 }).catch(() => undefined);
+  if (await overlay.isVisible()) {
+    await overlay.getByRole("button", { name: "关闭引导" }).dispatchEvent("click");
+    await expect(overlay).toBeHidden();
+  }
+  await page.evaluate(() => {
+    localStorage.setItem("detective-town-onboarding-v1", JSON.stringify({ dismissed: true, wrongTheorySubmitted: false }));
+  });
+}
+
+async function discoverArchiveEvidence(page: Page) {
+  await clickMapLocation(page, "旧剧院");
+  await expect(page.locator(".checkRow")).toHaveCount(1);
+  await clickMapLocation(page, "雨棚集市");
+  await expect(page.locator(".checkRow")).toHaveCount(2);
+  for (let index = 0; index < 4; index += 1) {
+    await clickMapLocation(page, "镇档案馆");
+    await expect(page.locator(".checkRow")).toHaveCount(index + 3);
+  }
+  await clickMapLocation(page, "雾灯广场");
+  await expect(page.locator(".checkRow")).toHaveCount(7);
+  await clickMapLocation(page, "黑松旅店");
+  await expect(page.locator(".checkRow")).toHaveCount(8);
+  await clickMapLocation(page, "钟楼");
+  await expect(page.locator(".checkRow")).toHaveCount(9);
+}
+
 test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    if (!sessionStorage.getItem("detective-town-e2e-initialized")) {
+      localStorage.removeItem("detective-town-onboarding-v1");
+      sessionStorage.setItem("detective-town-e2e-initialized", "true");
+    }
+  });
   await page.route("**/api/**", async (route) => {
     throw new Error(`Static demo attempted an API request: ${route.request().url()}`);
   });
@@ -16,12 +51,31 @@ test.beforeEach(async ({ page }) => {
   await expect(page.getByTestId("pixel-map").locator(".mapTile")).toHaveCount(504);
 });
 
-test("loads a playable premium town without server APIs", async ({ page }) => {
+test("guides a first-time player and persists dismissal", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "推理小镇" })).toBeVisible();
-  await expect(page.getByTestId("suggested-action")).toContainText("当前建议行动");
+  await expect(page.getByTestId("onboarding-overlay")).toBeVisible();
+  await expect(page.getByTestId("guided-task-list")).toContainText("观察案发窗口");
+  await expect(page.getByTestId("map-legend")).toContainText("可搜索");
+  await expect(page.getByTestId("inspector-summary")).toBeVisible();
   await expect(page.locator(".actorPin")).toHaveCount(8);
+
+  await page.getByTestId("onboarding-overlay").getByRole("button", { name: "开始当前步骤" }).click();
+  await expect(page.locator(".timeBadge")).toHaveText("21:47");
+  await expect(page.locator(".eventRow.selected")).toBeVisible();
+
+  await page.getByRole("button", { name: "关闭引导" }).click();
+  await expect(page.getByTestId("onboarding-overlay")).toBeHidden();
+  await page.reload();
+  await expect(page.getByTestId("onboarding-overlay")).toBeHidden();
+  await page.getByTestId("guided-task-list").getByRole("button", { name: /帮助/ }).dispatchEvent("click");
+  await expect(page.getByTestId("onboarding-overlay")).toBeVisible();
+});
+
+test("loads a playable premium town without server APIs", async ({ page }) => {
+  await dismissOnboarding(page);
+  await expect(page.getByTestId("suggested-action")).toContainText("当前建议行动");
   await expect(page.getByTestId("inspector-rail")).toBeVisible();
-  await expect(page.getByRole("button", { name: "事件" })).toHaveClass(/active/);
+  await expect(page.getByTestId("inspector-rail").getByRole("button", { name: "事件" })).toHaveClass(/active/);
   await clickInspectorTab(page, "逻辑");
   await expect(page.getByTestId("deduction-graph").locator('[data-node-type="evidence"].locked').first()).toBeVisible();
   await expect(page.getByTestId("causal-trace")).toContainText("Causal Trace");
@@ -29,6 +83,7 @@ test("loads a playable premium town without server APIs", async ({ page }) => {
 });
 
 test("case library switches all three static templates", async ({ page }) => {
+  await dismissOnboarding(page);
   await page.locator(".settingsDrawer summary").click();
   const select = page.getByTestId("case-template-select");
   await select.selectOption("archive-blunt");
@@ -50,37 +105,27 @@ test("case library switches all three static templates", async ({ page }) => {
 });
 
 test("search, interrogate and solve use the local rule engine", async ({ page }) => {
-  await clickMapLocation(page, "旧剧院");
-  await expect(page.locator(".checkRow")).toHaveCount(1);
-  await clickMapLocation(page, "雨棚集市");
-  await expect(page.locator(".checkRow")).toHaveCount(2);
-  for (let index = 0; index < 4; index += 1) {
-    await clickMapLocation(page, "镇档案馆");
-    await expect(page.locator(".checkRow")).toHaveCount(index + 3);
-  }
-  await clickMapLocation(page, "雾灯广场");
-  await expect(page.locator(".checkRow")).toHaveCount(7);
-  await clickMapLocation(page, "黑松旅店");
-  await expect(page.locator(".checkRow")).toHaveCount(8);
-  await clickMapLocation(page, "钟楼");
-  await expect(page.locator(".checkRow")).toHaveCount(9);
+  await dismissOnboarding(page);
+  await discoverArchiveEvidence(page);
 
   await expect(page.locator(".evidenceList button.found").first()).toBeVisible();
-  await expect(page.locator(".evidenceImpact").first()).toBeVisible();
+  await expect(page.getByTestId("evidence-use-hint").first()).toBeVisible();
+  await expect(page.getByTestId("evidence-use-hint").first()).toContainText(/质询|证词|证据链/);
   await clickInspectorTab(page, "逻辑");
   await expect(page.getByTestId("deduction-graph").locator('[data-node-type="evidence"].unlocked').first()).toBeVisible();
 
   await clickInspectorTab(page, "调查");
-  await page.getByRole("button", { name: "询问 NPC" }).click();
+  await page.getByTestId("inspector-rail").getByRole("button", { name: "询问 NPC" }).click();
   await expect(page.locator(".aiSafetyStrip").getByText("Prompt Safe: Yes")).toBeVisible();
   await expect(page.locator(".aiSafetyStrip")).toContainText("Contradiction:");
 
-  await page.locator('select').filter({ has: page.locator('option[value="npc-02"]') }).last().selectOption("npc-02");
+  await page.locator("select").filter({ has: page.locator('option[value="npc-02"]') }).last().selectOption("npc-02");
   await page.getByRole("button", { name: "判定推理" }).click();
   await expect(page.getByTestId("judgement-result")).toContainText("推理不成立");
-  await expect(page.locator(".gapHints")).toContainText("缺口类型");
+  await expect(page.getByTestId("theory-gap-cards")).toContainText("缺口类型");
+  await expect(page.getByTestId("theory-gap-cards")).not.toContainText("陆执");
 
-  await page.locator('select').filter({ has: page.locator('option[value="npc-06"]') }).last().selectOption("npc-06");
+  await page.locator("select").filter({ has: page.locator('option[value="npc-06"]') }).last().selectOption("npc-06");
   await page.getByPlaceholder("动机").fill("林澈准备公开旧剧院修缮款票据，陆执会失去剧院和名声。");
   await page.getByPlaceholder("手法").fill("陆执在镇档案馆用舞台配重锤击杀林澈，再伪装成灯架坠落事故。");
   for (const checkbox of await page.locator(".checkRow input").all()) await checkbox.check();
@@ -96,6 +141,7 @@ test("search, interrogate and solve use the local rule engine", async ({ page })
 });
 
 test("causal trace node jumps timeline and event selection", async ({ page }) => {
+  await dismissOnboarding(page);
   const badge = page.locator(".timeBadge");
   await expect(badge).toHaveText("08:00");
   await clickInspectorTab(page, "逻辑");
@@ -106,6 +152,7 @@ test("causal trace node jumps timeline and event selection", async ({ page }) =>
 });
 
 test("replay advances the 24h timeline", async ({ page }) => {
+  await dismissOnboarding(page);
   const badge = page.locator(".timeBadge");
   await expect(badge).toHaveText("08:00");
   await page.getByRole("button", { name: /Play Replay/ }).click();
@@ -113,15 +160,19 @@ test("replay advances the 24h timeline", async ({ page }) => {
   await page.getByRole("button", { name: /Pause Replay/ }).click();
 });
 
-test("authoring workbench validates, persists, exports and runs a draft", async ({ page }) => {
+test("authoring workbench explains validation blockers", async ({ page }) => {
+  await dismissOnboarding(page);
   await page.evaluate(() => localStorage.removeItem("detective-town-authoring-v1"));
   await page.reload();
+  await dismissOnboarding(page);
   await page.getByTestId("open-authoring").click();
   await expect(page.getByTestId("authoring-workbench")).toBeVisible();
   await expect(page.getByTestId("authoring-rule-report")).toContainText("Pass");
+  await expect(page.getByTestId("authoring-validation-checklist")).toContainText("Schema");
+  await expect(page.getByTestId("authoring-validation-checklist")).toContainText("Playable Runtime");
 
   await page.getByTestId("authoring-title").fill("雾灯镇：作者测试案");
-  await page.getByRole("button", { name: "Evidence" }).click();
+  await page.getByRole("button", { name: "Evidence", exact: true }).click();
   await page.getByTestId("authoring-evidence-description").fill("作者测试版证据描述，仍然保持原始逻辑链。");
   await expect(page.getByTestId("authoring-rule-report")).toContainText("Pass");
 
@@ -129,22 +180,33 @@ test("authoring workbench validates, persists, exports and runs a draft", async 
   await page.getByTestId("open-authoring").click();
   await expect(page.getByTestId("authoring-title")).toHaveValue("雾灯镇：作者测试案");
 
-  await page.getByRole("button", { name: "Evidence" }).click();
+  await page.getByRole("button", { name: "Evidence", exact: true }).click();
   await page.getByTestId("delete-authoring-evidence").click();
   await expect(page.getByTestId("authoring-rule-report")).toContainText("Fail");
   await expect(page.locator(".statusBox").last()).toContainText("仍被引用");
-  await page.locator(".issueItem.error").first().click();
+  await expect(page.locator(".runDraftBlocker")).toContainText("阻断原因");
+  await page.locator(".runDraftBlocker").click();
   await expect(page.getByRole("button", { name: "Evidence", exact: true })).toHaveClass(/active/);
   await expect(page.getByTestId("run-authoring-draft")).toBeDisabled();
 
   await page.getByRole("button", { name: "Load Premium Template" }).click();
   await expect(page.getByTestId("run-authoring-draft")).toBeEnabled();
-  await page.getByRole("button", { name: "Export JSON" }).click();
-  await expect(page.getByTestId("authoring-export-text")).toContainText("caseFromLog");
+  await page.getByRole("button", { name: "Export Markdown" }).click();
+  await expect(page.getByTestId("authoring-export-text")).toContainText("Playable Case Summary");
 
   await page.getByRole("button", { name: "Case" }).click();
   await page.getByTestId("authoring-title").fill("雾灯镇：作者测试案");
   await page.getByTestId("run-authoring-draft").click();
   await expect(page.getByTestId("pixel-map").locator(".mapTile")).toHaveCount(504);
   await expect(page.locator("body")).toContainText("雾灯镇：作者测试案");
+});
+
+test("mobile layout has no page-level horizontal overflow", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+  await dismissOnboarding(page);
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
+  await expect(page.getByTestId("pixel-map")).toBeVisible();
+  await expect(page.getByTestId("inspector-rail")).toBeVisible();
 });

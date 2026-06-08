@@ -12,11 +12,23 @@ DeepSeek is used only for NPC surface dialogue and optional solution prose. It d
 
 ## 30-Second Experience
 
-1. Open the app: the Premium Showcase, 8 NPCs, map, timeline, and case file are already loaded.
-2. Follow the current-action HUD: observe the crime window, join the investigation, then search a location.
-3. Search the archive, market, and theater; each discovered clue explains what it may support or contradict without revealing the culprit.
-4. Question an NPC, check Prompt Safe / memory scope, and challenge testimony with evidence.
-5. Submit a theory. Wrong theories show only gap types; correct theories unlock the final deduction node and source-locked solution.
+1. Open the app: the Premium Showcase, 8 NPCs, map, timeline, case file, and guided task queue are already loaded.
+2. Follow the first-case guide: observe the crime window, click a searchable location, question an NPC, then challenge testimony with evidence.
+3. Each discovered clue explains how it may be used: who to question, what type of testimony it may contradict, and whether it belongs in the evidence chain.
+4. Submit a deliberately wrong theory first. The UI shows only structured gap cards, not the answer.
+5. Submit the complete theory. The final deduction node, source-locked solution, and full causal trace unlock only after the local rule engine accepts it.
+
+See [docs/first-case-guide.md](docs/first-case-guide.md) for the guided first case flow.
+
+## Product Design Goal
+
+The product direction is **map-first investigation + explainable deduction + first-case completion**:
+
+- The map is the primary screen, not a debug panel.
+- The task queue tells a first-time visitor what to do next without hiding the underlying engine.
+- The Inspector follows context: selected location, NPC, evidence, event, and rule report.
+- Locked deduction nodes prevent spoiler leakage before the player earns the clue.
+- Static Demo mode must be playable in a public deployment with no API key and no writable SQLite directory.
 
 ## Why Not Just Ask An LLM?
 
