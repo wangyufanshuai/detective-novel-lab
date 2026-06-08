@@ -1820,6 +1820,191 @@ blockquote {
   padding: 0 3px;
 }
 
+.stageProgressBar {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(72px, 1fr));
+  gap: 6px;
+  padding: 10px 14px 0;
+}
+
+.stageProgressBar span {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+  padding: 8px 9px;
+  color: #9eb2c1;
+  background: rgba(7, 14, 20, 0.82);
+  border: 1px solid rgba(124, 157, 178, 0.24);
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+.stageProgressBar b {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  color: #071019;
+  background: #7d8993;
+  border-radius: 3px;
+  font-size: 10px;
+}
+
+.stageProgressBar span.complete {
+  color: #dffcf2;
+  border-color: rgba(101, 255, 196, 0.38);
+}
+
+.stageProgressBar span.complete b {
+  background: #65ffc4;
+}
+
+.stageProgressBar span.current {
+  color: #fff4ba;
+  border-color: rgba(255, 224, 106, 0.72);
+  box-shadow: 0 0 0 1px rgba(255, 224, 106, 0.14), 0 0 22px rgba(255, 224, 106, 0.12);
+}
+
+.stageProgressBar span.current b {
+  background: #ffe06a;
+}
+
+.toastStack {
+  position: fixed;
+  right: 372px;
+  bottom: 22px;
+  z-index: 70;
+  display: grid;
+  gap: 8px;
+  width: min(360px, calc(100vw - 28px));
+  pointer-events: none;
+}
+
+.investigationToast {
+  display: grid;
+  gap: 4px;
+  padding: 11px 12px;
+  color: #ecf7ff;
+  text-align: left;
+  pointer-events: none;
+  cursor: default;
+  background: rgba(8, 15, 22, 0.96);
+  border: 1px solid rgba(124, 157, 178, 0.38);
+  border-left: 4px solid var(--accent);
+  border-radius: 6px;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.38);
+}
+
+.investigationToast strong {
+  font-size: 13px;
+}
+
+.investigationToast span {
+  color: #b9c9d5;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.investigationToast.success {
+  border-left-color: #65ffc4;
+}
+
+.investigationToast.warning {
+  border-left-color: #ffe06a;
+}
+
+.investigationToast.danger {
+  border-left-color: #ff5f6a;
+}
+
+.npcPopoverCard {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  z-index: 9;
+  display: grid;
+  gap: 6px;
+  width: min(260px, calc(100% - 36px));
+  padding: 12px;
+  background: rgba(8, 15, 22, 0.94);
+  border: 1px solid rgba(101, 255, 196, 0.4);
+  border-radius: 6px;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.38);
+  pointer-events: none;
+}
+
+.npcPopoverCard strong {
+  color: #f7fbff;
+  font-size: 16px;
+}
+
+.npcPopoverCard p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.npcPopoverCard div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.npcPopoverCard div span {
+  padding: 4px 6px;
+  color: #d8e9f6;
+  background: rgba(124, 157, 178, 0.14);
+  border: 1px solid rgba(124, 157, 178, 0.24);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.nextStepAdvice {
+  display: grid;
+  gap: 5px;
+  margin-top: 10px;
+  padding: 10px;
+  background: rgba(255, 224, 106, 0.1);
+  border: 1px solid rgba(255, 224, 106, 0.34);
+  border-radius: 6px;
+}
+
+.nextStepAdvice strong {
+  color: #ffe06a;
+}
+
+.nextStepAdvice span {
+  color: #d8e9f6;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.eventMore,
+.causalDetails {
+  border: 1px solid rgba(124, 157, 178, 0.18);
+  border-radius: 6px;
+  background: rgba(7, 14, 20, 0.42);
+}
+
+.eventMore summary,
+.causalDetails summary {
+  padding: 9px 10px;
+  color: #b9c9d5;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.eventMore .eventList,
+.causalDetails .causalTraceRail {
+  padding: 0 10px 10px;
+}
+
 .mapLegend {
   display: flex;
   flex-wrap: wrap;
@@ -2014,23 +2199,23 @@ blockquote {
 
 .onboardingOverlay {
   position: fixed;
-  inset: 0;
+  right: 20px;
+  bottom: 20px;
   z-index: 60;
   display: grid;
-  place-items: center;
-  padding: 24px;
-  background: rgba(2, 6, 10, 0.72);
-  backdrop-filter: blur(6px);
+  width: min(390px, calc(100vw - 40px));
+  pointer-events: none;
 }
 
 .onboardingCard {
   position: relative;
   display: grid;
   gap: 14px;
-  width: min(620px, 100%);
-  max-height: min(760px, 92vh);
-  padding: 22px;
+  width: 100%;
+  max-height: min(560px, 78vh);
+  padding: 18px;
   overflow: auto;
+  pointer-events: auto;
   background:
     linear-gradient(180deg, rgba(18, 29, 40, 0.98), rgba(8, 14, 20, 0.98)),
     radial-gradient(circle at 15% 0%, rgba(255, 224, 106, 0.16), transparent 40%);
@@ -2048,7 +2233,7 @@ blockquote {
 .onboardingCard h2 {
   margin: 0;
   color: #f7fbff;
-  font-size: 24px;
+  font-size: 18px;
 }
 
 .onboardingCard p,
@@ -2234,6 +2419,11 @@ blockquote {
     grid-template-columns: 270px minmax(420px, 1fr);
   }
 
+  .toastStack {
+    right: 18px;
+    bottom: calc(min(72vh, 680px) + 18px);
+  }
+
   .inspectorRail {
     grid-column: 1 / -1;
     position: sticky;
@@ -2282,9 +2472,21 @@ blockquote {
     grid-template-columns: repeat(5, minmax(82px, 1fr));
   }
 
+  .stageProgressBar {
+    grid-template-columns: repeat(7, minmax(96px, 1fr));
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+
+  .toastStack {
+    right: 12px;
+    bottom: 12px;
+  }
+
   .onboardingOverlay {
-    align-items: end;
-    padding: 12px;
+    right: 12px;
+    bottom: 12px;
+    width: calc(100vw - 24px);
   }
 
   .onboardingCard {

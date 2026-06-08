@@ -97,6 +97,28 @@ export type LocationHoverInfo = {
   total: number;
   recentEvent?: string;
 };
+export type InvestigationStage = {
+  id: string;
+  label: string;
+  detail: string;
+  complete: boolean;
+  current: boolean;
+};
+export type InvestigationToast = {
+  id: string;
+  tone: "info" | "success" | "warning" | "danger";
+  title: string;
+  detail: string;
+};
+export type NpcPopoverState = {
+  characterId: string;
+  name: string;
+  role: string;
+  statusLabel: string;
+  questioned: boolean;
+  contradiction: boolean;
+  excluded: boolean;
+};
 
 const markerGlyph: Record<string, string> = {
   crime: "!",
@@ -130,12 +152,14 @@ export function PlayShell({
   control,
   map,
   inspector,
-  overlay
+  overlay,
+  toasts
 }: {
   control: ReactNode;
   map: ReactNode;
   inspector: ReactNode;
   overlay?: ReactNode;
+  toasts?: ReactNode;
 }) {
   return (
     <main className="townShell">
@@ -143,7 +167,35 @@ export function PlayShell({
       {map}
       {inspector}
       {overlay}
+      {toasts}
     </main>
+  );
+}
+
+export function ToastStack({ toasts, onDismiss }: { toasts: InvestigationToast[]; onDismiss: (id: string) => void }) {
+  if (!toasts.length) return null;
+  return (
+    <section className="toastStack" data-testid="toast-stack" aria-live="polite">
+      {toasts.map((toast) => (
+        <button key={toast.id} type="button" className={`investigationToast ${toast.tone}`} onClick={() => onDismiss(toast.id)}>
+          <strong>{toast.title}</strong>
+          <span>{toast.detail}</span>
+        </button>
+      ))}
+    </section>
+  );
+}
+
+export function InvestigationStageBar({ stages }: { stages: InvestigationStage[] }) {
+  return (
+    <nav className="stageProgressBar" data-testid="investigation-stage-bar" aria-label="调查阶段">
+      {stages.map((stage, index) => (
+        <span key={stage.id} className={`${stage.complete ? "complete" : ""} ${stage.current ? "current" : ""}`} title={stage.detail}>
+          <b>{stage.complete ? "✓" : index + 1}</b>
+          {stage.label}
+        </span>
+      ))}
+    </nav>
   );
 }
 
@@ -345,10 +397,12 @@ export function ControlRail({
 export function TownMapStage({
   caseFile,
   currentTime,
+  stages,
   snapshot,
   actorsByTile,
   markersByTile,
   hoverInfo,
+  npcPopover,
   selectedSceneId,
   highlightedEventId,
   selectedCharacterId,
@@ -369,10 +423,12 @@ export function TownMapStage({
 }: {
   caseFile: string;
   currentTime: string;
+  stages: InvestigationStage[];
   snapshot: WorldMapSnapshot | null;
   actorsByTile: Map<string, WorldMapActor[]>;
   markersByTile: Map<string, WorldMapMarker[]>;
   hoverInfo?: LocationHoverInfo | null;
+  npcPopover?: NpcPopoverState | null;
   selectedSceneId: string;
   highlightedEventId: string;
   selectedCharacterId?: string;
@@ -403,6 +459,7 @@ export function TownMapStage({
         </div>
         <div className="timeBadge">{currentTime}</div>
       </header>
+      <InvestigationStageBar stages={stages} />
 
       <section className="pixelMapWrap" data-testid="pixel-map">
         <div className="pixelMap" style={{ gridTemplateColumns: `repeat(${snapshot?.width || 28}, minmax(18px, 1fr))` }}>
@@ -466,6 +523,18 @@ export function TownMapStage({
             <small>{hoverInfo.recentEvent || "暂无当前时间附近公开事件。"}</small>
           </aside>
         )}
+        {npcPopover && (
+          <aside className="npcPopoverCard" data-testid="npc-popover-card">
+            <span className="eyebrow">{npcPopover.statusLabel}</span>
+            <strong>{npcPopover.name}</strong>
+            <p>{npcPopover.role}</p>
+            <div>
+              <span>{npcPopover.questioned ? "已询问" : "未询问"}</span>
+              <span>{npcPopover.contradiction ? "矛盾命中" : "暂无矛盾"}</span>
+              <span>{npcPopover.excluded ? "已排除" : "待判断"}</span>
+            </div>
+          </aside>
+        )}
       </section>
 
       <footer className="timelineScrubber">
@@ -520,17 +589,31 @@ export function InspectorRail({
 }
 
 export function EventLogPanel({ events, highlightedEventId, onSelect }: { events: WorldEvent[]; highlightedEventId: string; onSelect: (event: WorldEvent) => void }) {
+  const primaryEvents = events.slice(0, 5);
+  const moreEvents = events.slice(5);
   return (
     <section className="eventPanel">
       <h2><Clock size={16} /> WorldEvent Log</h2>
       <div className="eventList">
-        {events.map((event) => (
+        {primaryEvents.map((event) => (
           <button key={event.id} className={`eventRow ${event.id === highlightedEventId ? "selected" : ""}`} onClick={() => onSelect(event)}>
             <time>第{event.day}日 {event.time}</time>
             <strong>{event.publicSummary}</strong>
             <span>{event.type} / {event.locationId}</span>
           </button>
         ))}
+        {!!moreEvents.length && (
+          <details className="eventMore">
+            <summary>查看其余 {moreEvents.length} 条事件</summary>
+            {moreEvents.map((event) => (
+              <button key={event.id} className={`eventRow ${event.id === highlightedEventId ? "selected" : ""}`} onClick={() => onSelect(event)}>
+                <time>第{event.day}日 {event.time}</time>
+                <strong>{event.publicSummary}</strong>
+                <span>{event.type} / {event.locationId}</span>
+              </button>
+            ))}
+          </details>
+        )}
       </div>
     </section>
   );
@@ -621,18 +704,21 @@ export function CausalTracePanel({
     <section className="actionPanel causalTracePanel" data-testid="causal-trace">
       <h2><Clock size={16} /> Causal Trace</h2>
       <p>案件因果链：日程、秘密风险、手段准备、案发、伪装和反证。</p>
-      <div className="causalTraceRail">
-        {events.map((event, index) => {
-          const locked = event.hidden && !solved && !discoveredEvidenceIds.includes(event.evidenceId || "");
-          return (
-            <button key={event.id} className={locked ? "locked" : ""} onClick={() => onSelect(event, timeToMinutes(event.time))}>
-              <time>{event.time}</time>
-              <strong>{locked ? "未揭示的因果节点" : event.publicSummary}</strong>
-              <span>{index + 1}. {event.explanation || event.tags.join(", ")}</span>
-            </button>
-          );
-        })}
-      </div>
+      <details className="causalDetails">
+        <summary>展开因果链细节</summary>
+        <div className="causalTraceRail">
+          {events.map((event, index) => {
+            const locked = event.hidden && !solved && !discoveredEvidenceIds.includes(event.evidenceId || "");
+            return (
+              <button key={event.id} className={locked ? "locked" : ""} onClick={() => onSelect(event, timeToMinutes(event.time))}>
+                <time>{event.time}</time>
+                <strong>{locked ? "未揭示的因果节点" : event.publicSummary}</strong>
+                <span>{index + 1}. {event.explanation || event.tags.join(", ")}</span>
+              </button>
+            );
+          })}
+        </div>
+      </details>
     </section>
   );
 }
@@ -735,6 +821,7 @@ export function InvestigationPanel({
   judgementGaps,
   gapCards,
   onGapSelect,
+  nextStepAdvice,
   busy
 }: {
   selectedSceneName: string;
@@ -769,6 +856,7 @@ export function InvestigationPanel({
   judgementGaps: string[];
   gapCards: GapCard[];
   onGapSelect: (card: GapCard) => void;
+  nextStepAdvice?: string;
   busy: boolean;
 }) {
   return (
@@ -859,6 +947,12 @@ export function InvestigationPanel({
                 ))}
               </div>
             )}
+            {!session.judgement.accepted && nextStepAdvice && (
+              <article className="nextStepAdvice" data-testid="next-step-advice">
+                <strong>下一步建议</strong>
+                <span>{nextStepAdvice}</span>
+              </article>
+            )}
             <button className="secondaryButton" onClick={revealSolution} disabled={!session.judgement.accepted || busy}>生成解答篇</button>
           </div>
         )}
@@ -921,21 +1015,12 @@ export function OnboardingOverlay({
     <section className="onboardingOverlay" data-testid="onboarding-overlay" aria-label="First case onboarding">
       <div className="onboardingCard">
         <button className="iconButton closeButton" type="button" onClick={onDismiss} aria-label="关闭引导"><X size={16} /></button>
-        <span className="eyebrow">3 分钟破第一案</span>
-        <h2>跟随任务完成一次公平推理</h2>
-        <p>这个 Demo 不是让 AI 直接编故事，而是先模拟小镇事件，再用本地规则验证线索、证词和唯一凶手。</p>
+        <span className="eyebrow">任务提示</span>
+        <h2>当前目标：{current.title}</h2>
+        <p>{current.detail}</p>
         <div className="onboardingCurrent">
           <strong>{current.title}</strong>
-          <span>{current.detail}</span>
-        </div>
-        <div className="guidedTaskList">
-          {tasks.map((task, index) => (
-            <button key={task.id} type="button" className={`guidedTask ${task.state}`} onClick={() => onSelectTask(task)}>
-              <span>{task.state === "complete" ? "✓" : index + 1}</span>
-              <strong>{task.title}</strong>
-              <small>{task.detail}</small>
-            </button>
-          ))}
+          <span>点击任务会高亮地图或右侧面板中的目标区域。</span>
         </div>
         <div className="onboardingActions">
           <button className="primaryButton" type="button" onClick={() => onSelectTask(current)}>开始当前步骤</button>

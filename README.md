@@ -22,15 +22,17 @@ See [docs/first-case-guide.md](docs/first-case-guide.md) for the guided first ca
 
 ## Product Design Goal
 
-The product direction is **map-first investigation + explainable deduction + first-case completion**:
+The product direction is **immersive map-first investigation + explainable deduction + first-case completion**:
 
 - The map is the primary screen, not a debug panel.
-- The task queue tells a first-time visitor what to do next without hiding the underlying engine.
+- The investigation stage bar and task queue tell a first-time visitor what to do next without hiding the underlying engine.
+- Location and NPC popovers make the map feel like the main play surface, not a form launcher.
+- Search, interrogation, wrong theory, and solution actions produce short non-blocking feedback to keep the player oriented.
 - The Inspector follows context: selected location, NPC, evidence, event, and rule report.
 - Locked deduction nodes prevent spoiler leakage before the player earns the clue.
 - Static Demo mode must be playable in a public deployment with no API key and no writable SQLite directory.
 
-Current design focus: **Explainable deduction first, pixel immersion second**. The UI should make the case logic legible before it tries to feel like a full game. Evidence nodes explain their WorldEvent source, suspect rows explain exclusion status, wrong theories point to the missing reasoning area, and the final solution shows how discovered clues lead to the accepted conclusion.
+Current design focus: **Immersive investigation flow with explainable logic**. The UI should feel like a playable pixel mystery while still making the rules inspectable. Evidence nodes explain their WorldEvent source, suspect rows explain exclusion status, wrong theories point to the missing reasoning area, and the final solution shows how discovered clues lead to the accepted conclusion.
 
 ## Why Not Just Ask An LLM?
 

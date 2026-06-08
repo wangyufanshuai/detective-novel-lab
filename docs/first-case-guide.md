@@ -16,7 +16,7 @@ The first case is designed to demonstrate the core product loop in under three m
 
 ## Guided Task Queue
 
-On the first Static Demo visit, the app opens a dismissible onboarding layer and keeps a compact task queue in the left control rail. The guide state is stored in browser `localStorage` under:
+On the first Static Demo visit, the app opens a lightweight onboarding task card and keeps a compact task queue in the left control rail. It does not block the map. The guide state is stored in browser `localStorage` under:
 
 ```text
 detective-town-onboarding-v1
@@ -24,11 +24,22 @@ detective-town-onboarding-v1
 
 Closing the onboarding layer persists dismissal, but the guide can be reopened from the Help button.
 
+The top investigation stage bar shows the current loop:
+
+```text
+Observe scene -> Search evidence -> Question witness -> Challenge contradiction -> Organize theory -> Submit conclusion -> Review solution
+```
+
+Clicking a guided task highlights the relevant map target, time window, NPC, or reasoning panel.
+
 ## Investigation Feedback
 
 The app avoids giving away the answer before the player earns it:
 
 - Evidence cards explain how a clue can be used, but do not name the culprit.
+- Search, interrogation, wrong theory, and solution actions show short feedback toasts. The toasts are non-blocking and never contain the hidden answer.
+- Location hover cards show searchability, evidence progress, and the nearest public event.
+- NPC popovers show name, role, question status, contradiction status, and exclusion status without marking the true culprit before the case is solved.
 - Deduction Graph nodes explain why discovered evidence is valid, which WorldEvent created it, and what testimony or exclusion it can support.
 - Suspect Board rows show motive / means / opportunity status plus non-spoiler exclusion state.
 - NPC replies show `Prompt Safe`, memory count, discovered evidence count, and contradiction status.

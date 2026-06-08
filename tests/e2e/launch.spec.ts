@@ -56,12 +56,14 @@ test("guides a first-time player and persists dismissal", async ({ page }) => {
   await expect(page.getByTestId("onboarding-overlay")).toBeVisible();
   await expect(page.getByTestId("guided-task-list")).toContainText("观察案发窗口");
   await expect(page.getByTestId("map-legend")).toContainText("可搜索");
+  await expect(page.getByTestId("investigation-stage-bar")).toBeVisible();
   await expect(page.getByTestId("inspector-summary")).toBeVisible();
   await expect(page.locator(".actorPin")).toHaveCount(8);
 
   await page.getByTestId("onboarding-overlay").getByRole("button", { name: "开始当前步骤" }).click();
   await expect(page.locator(".timeBadge")).toHaveText("21:47");
   await expect(page.locator(".eventRow.selected")).toBeVisible();
+  await expect(page.locator(".mapTile.spotlight")).toBeVisible();
 
   await page.getByRole("button", { name: "关闭引导" }).click();
   await expect(page.getByTestId("onboarding-overlay")).toBeHidden();
@@ -76,10 +78,12 @@ test("loads a playable premium town without server APIs", async ({ page }) => {
   await expect(page.getByTestId("value-proposition")).toContainText("案件不是 AI 编的");
   await expect(page.getByTestId("suggested-action")).toContainText("当前建议行动");
   await expect(page.getByTestId("inspector-rail")).toBeVisible();
+  await expect(page.locator(".eventMore")).toBeVisible();
   await expect(page.getByTestId("inspector-rail").getByRole("button", { name: "事件" })).toHaveClass(/active/);
   await clickInspectorTab(page, "逻辑");
   await expect(page.getByTestId("deduction-graph").locator('[data-node-type="evidence"].locked').first()).toBeVisible();
   await expect(page.getByTestId("causal-trace")).toContainText("Causal Trace");
+  await expect(page.locator(".causalDetails")).toBeVisible();
   await expect(page.locator("body")).not.toHaveCSS("overflow-x", "scroll");
 });
 
@@ -108,6 +112,7 @@ test("case library switches all three static templates", async ({ page }) => {
 test("search, interrogate and solve use the local rule engine", async ({ page }) => {
   await dismissOnboarding(page);
   await discoverArchiveEvidence(page);
+  await expect(page.getByTestId("toast-stack")).toBeVisible();
 
   await expect(page.locator(".evidenceList button.found").first()).toBeVisible();
   await expect(page.getByTestId("evidence-use-hint").first()).toBeVisible();
@@ -125,11 +130,13 @@ test("search, interrogate and solve use the local rule engine", async ({ page })
   await clickInspectorTab(page, "调查");
   await page.getByTestId("inspector-rail").getByRole("button", { name: "询问 NPC" }).click();
   await expect(page.locator(".aiSafetyStrip").getByText("Prompt Safe: Yes")).toBeVisible();
+  await expect(page.getByTestId("toast-stack")).toBeVisible();
   await expect(page.locator(".aiSafetyStrip")).toContainText("Contradiction:");
 
   await page.locator("select").filter({ has: page.locator('option[value="npc-02"]') }).last().selectOption("npc-02");
   await page.getByRole("button", { name: "判定推理" }).click();
   await expect(page.getByTestId("judgement-result")).toContainText("推理不成立");
+  await expect(page.getByTestId("next-step-advice")).toBeVisible();
   await expect(page.getByTestId("theory-gap-cards")).toContainText("缺口类型");
   await expect(page.getByTestId("theory-gap-cards")).not.toContainText("陆执");
   await page.getByTestId("theory-gap-cards").locator(".gapCard").first().click();
@@ -140,7 +147,8 @@ test("search, interrogate and solve use the local rule engine", async ({ page })
   await page.getByPlaceholder("手法").fill("陆执在镇档案馆用舞台配重锤击杀林澈，再伪装成灯架坠落事故。");
   for (const checkbox of await page.locator(".checkRow input").all()) await checkbox.check();
   await page.getByRole("button", { name: "判定推理" }).click();
-  await expect(page.getByText("推理成立", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("toast-stack")).toBeVisible();
+  await expect(page.getByTestId("judgement-result").getByText("推理成立", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "生成解答篇" }).click();
   await expect(page.locator(".revealBox")).toContainText("凶手：陆执");
   await expect(page.getByTestId("deduction-graph").locator('[data-node-type="conclusion"]')).toBeVisible();
@@ -157,7 +165,10 @@ test("map hover card and NPC state markers explain investigation context", async
   await expect(page.getByTestId("location-hover-card")).toContainText("镇档案馆");
   await expect(page.getByTestId("location-hover-card")).toContainText("证据进度");
   await clickMapLocation(page, "镇档案馆");
+  await expect(page.getByTestId("toast-stack")).toBeVisible();
   await clickInspectorTab(page, "调查");
+  await page.locator(".actorPin").first().click();
+  await expect(page.getByTestId("npc-popover-card")).toBeVisible();
   await page.getByTestId("inspector-rail").getByRole("button", { name: "询问 NPC" }).click();
   await expect(page.locator(".actorPin.actor-questioned").first()).toBeVisible();
 });
@@ -167,6 +178,7 @@ test("causal trace node jumps timeline and event selection", async ({ page }) =>
   const badge = page.locator(".timeBadge");
   await expect(badge).toHaveText("08:00");
   await clickInspectorTab(page, "逻辑");
+  await page.locator(".causalDetails summary").click();
   await page.getByTestId("causal-trace").locator("button").filter({ hasText: "22:05" }).click();
   await expect(badge).toHaveText("22:05");
   await clickInspectorTab(page, "事件");

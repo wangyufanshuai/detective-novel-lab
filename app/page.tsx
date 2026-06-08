@@ -34,10 +34,14 @@ import {
   OnboardingOverlay,
   PlayShell,
   SuspectBoardPanel,
+  ToastStack,
   TownMapStage,
   type GapCard,
   type GraphNodeExplanation,
+  type InvestigationStage,
+  type InvestigationToast,
   type InspectorTabId,
+  type NpcPopoverState,
   type SuspectExplanation
 } from "@/app/components/DetectiveTownUI";
 import {
@@ -227,6 +231,7 @@ export default function Home() {
   const [selectedSuspectId, setSelectedSuspectId] = useState("");
   const [selectedGapType, setSelectedGapType] = useState("");
   const [hoveredLocationId, setHoveredLocationId] = useState("");
+  const [toasts, setToasts] = useState<InvestigationToast[]>([]);
   const [appMode, setAppMode] = useState<AppMode>("play");
   const [authoringDraft, setAuthoringDraft] = useState<AuthoringDraft>(() => createPremiumAuthoringDraft());
   const [authoringTab, setAuthoringTab] = useState<AuthoringTab>("case");
@@ -237,6 +242,15 @@ export default function Home() {
   const [authoringImportText, setAuthoringImportText] = useState("");
   const [authoringExportText, setAuthoringExportText] = useState("");
   const [authoringStatus, setAuthoringStatus] = useState("Authoring \u4f7f\u7528\u6d4f\u89c8\u5668\u672c\u5730\u72b6\u6001\uff0c\u4e0d\u8bf7\u6c42 DeepSeek\uff0c\u4e0d\u5199\u5165 SQLite\u3002");
+
+  function pushToast(toast: Omit<InvestigationToast, "id">) {
+    const id = `toast:${Date.now()}:${Math.random().toString(16).slice(2)}`;
+    setToasts((current) => [{ id, ...toast }, ...current].slice(0, 4));
+  }
+
+  function dismissToast(id: string) {
+    setToasts((current) => current.filter((toast) => toast.id !== id));
+  }
 
   const deductionCase = activeCase?.deductionCase || null;
   const scenes = deductionCase?.scenes || [];
@@ -269,6 +283,35 @@ export default function Home() {
   );
   const excludedCharacterIds = useMemo(() => new Set(suspectBoard.filter((row) => row.status === "eliminated").map((row) => row.characterId)), [suspectBoard]);
   const selectedNpcContradictionHit = hasContradictionHit(session, selectedCharacterId);
+  const investigationStages: InvestigationStage[] = useMemo(() => {
+    const interrogationCount = session?.interrogationLog.length || 0;
+    const accepted = Boolean(session?.judgement?.accepted);
+    const wrongSubmitted = Boolean(session?.judgement && !accepted);
+    const completeMap = {
+      observe: progress.observedCrimeWindow,
+      search: progress.discoveredEvidence && discoveredEvidence.length > 0,
+      question: interrogationCount > 0,
+      challenge: progress.challengedTestimony,
+      organize: discoveredEvidence.length >= 3 || wrongSubmitted || accepted,
+      submit: Boolean(session?.judgement),
+      reveal: Boolean(revealText)
+    };
+    const defs = [
+      { id: "observe", label: "观察现场", detail: "查看案发窗口和事件日志。" },
+      { id: "search", label: "搜索证据", detail: "点击地点或证据 marker。" },
+      { id: "question", label: "询问证人", detail: "选择 NPC 并提出问题。" },
+      { id: "challenge", label: "质询矛盾", detail: "出示已发现证据。" },
+      { id: "organize", label: "整理推理", detail: "选择关键证据链。" },
+      { id: "submit", label: "提交结论", detail: "判定凶手、动机和手法。" },
+      { id: "reveal", label: "复盘解答", detail: "查看最终图节点和解答篇。" }
+    ];
+    const firstPending = defs.find((item) => !completeMap[item.id as keyof typeof completeMap])?.id;
+    return defs.map((item) => ({
+      ...item,
+      complete: completeMap[item.id as keyof typeof completeMap],
+      current: item.id === firstPending || (!firstPending && item.id === "reveal")
+    }));
+  }, [discoveredEvidence.length, progress, revealText, session?.interrogationLog.length, session?.judgement]);
   const onboarding = useGuidedOnboarding({ runtimeMode, progress, session, revealText });
   const visibleEvents = snapshot?.visibleEvents || events.slice(-30).reverse();
   const selectedEvent = events.find((event) => event.id === highlightedEventId);
@@ -291,6 +334,21 @@ export default function Home() {
       recentEvent: recent ? `${recent.time} ${recent.publicSummary}` : undefined
     };
   }, [hoveredLocationId, selectedSceneId, snapshot?.tiles, visibleEvents]);
+  const selectedNpcPopover: NpcPopoverState | null = useMemo(() => {
+    if (!selectedCharacter) return null;
+    const questioned = questionedCharacterIds.has(selectedCharacter.id);
+    const contradiction = contradictedCharacterIds.has(selectedCharacter.id);
+    const excluded = excludedCharacterIds.has(selectedCharacter.id);
+    return {
+      characterId: selectedCharacter.id,
+      name: selectedCharacter.name,
+      role: selectedCharacter.role,
+      statusLabel: contradiction ? "证词矛盾命中" : excluded ? "已被排除" : questioned ? "已询问" : "未询问",
+      questioned,
+      contradiction,
+      excluded
+    };
+  }, [contradictedCharacterIds, excludedCharacterIds, questionedCharacterIds, selectedCharacter]);
   const graphExplanation: GraphNodeExplanation | null = useMemo(() => {
     if (!selectedGraphNode || !deductionCase) return null;
     const node = selectedGraphNode;
@@ -386,6 +444,16 @@ export default function Home() {
       return { id: `gap:${label}`, label, detail: detail[target], target };
     });
   }, [judgementGaps]);
+  const nextStepAdvice = useMemo(() => {
+    if (!session?.judgement || session.judgement.accepted) return "";
+    if (discoveredEvidence.length > 0 && !progress.challengedTestimony) {
+      return `先把已发现证据“${discoveredEvidence[0].title}”出示给相关 NPC，检查证词是否矛盾。`;
+    }
+    if (discoveredEvidence.length > 0) {
+      return `从已发现的 ${discoveredEvidence.length} 条证据里挑选能同时支撑动机、手法和机会的线索。`;
+    }
+    return selectedScene ? `继续搜索 ${selectedScene.name}，先建立证据链。` : "先点击地图上的可搜索地点，找到第一条证据。";
+  }, [discoveredEvidence, progress.challengedTestimony, selectedScene, session?.judgement]);
   const solutionChain = useMemo(() => {
     if (!session?.judgement?.accepted || !deductionCase) return [];
     const selectedTitles = theory.evidenceIds.filter((id) => discovered.has(id)).map((id) => evidenceTitleById.get(id) || id);
@@ -578,6 +646,14 @@ export default function Home() {
     return () => window.clearTimeout(timer);
   }, [selectionHighlight]);
 
+  useEffect(() => {
+    if (!toasts.length) return;
+    const timer = window.setTimeout(() => {
+      setToasts((current) => current.slice(0, -1));
+    }, 3800);
+    return () => window.clearTimeout(timer);
+  }, [toasts]);
+
   function highlightSelection(next: SelectionHighlight) {
     setSelectionHighlight(next);
   }
@@ -723,6 +799,7 @@ export default function Home() {
   }
 
   async function discoverEvidence(evidenceId: string) {
+    const evidenceTitle = deductionCase?.evidence.find((item) => item.id === evidenceId)?.title || evidenceId;
     if (!session) {
       setStatus("请先加入调查，再搜索证据。");
       return;
@@ -735,6 +812,7 @@ export default function Home() {
       const scene = scenes.find((item) => item.evidenceIds.includes(evidenceId));
       highlightSelection({ evidenceId, locationId: scene?.id });
       setInspectorTab("investigation");
+      pushToast({ tone: "success", title: "发现证据", detail: evidenceTitle });
       setStatus(`发现证据：${deductionCase?.evidence.find((item) => item.id === evidenceId)?.title || evidenceId}`);
       return;
     }
@@ -747,6 +825,7 @@ export default function Home() {
       const scene = scenes.find((item) => item.evidenceIds.includes(evidenceId));
       highlightSelection({ evidenceId, locationId: scene?.id });
       setInspectorTab("investigation");
+      pushToast({ tone: "success", title: "发现证据", detail: evidenceTitle });
       setStatus(`发现证据：${deductionCase?.evidence.find((item) => item.id === evidenceId)?.title || evidenceId}`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "搜索证据失败");
@@ -791,6 +870,11 @@ export default function Home() {
         safetyFlags: []
       });
       setInspectorTab("investigation");
+      pushToast({
+        tone: next.progress.challengedTestimony ? "warning" : "info",
+        title: next.progress.challengedTestimony ? "证词出现矛盾" : "NPC 已回答",
+        detail: next.progress.challengedTestimony ? "证据命中记忆范围内的矛盾点。" : "回答已限定在 NPC 记忆和已发现证据内。"
+      });
       setStatus(next.progress.challengedTestimony ? "证据命中矛盾，NPC 已修正证词。" : "NPC 已按自身记忆范围回答。");
       return;
     }
@@ -816,6 +900,11 @@ export default function Home() {
       setProgress((current) => ({ ...current, challengedTestimony: current.challengedTestimony || data.testimonyUpdated }));
       setLastAiSafety({ mock: data.mock, promptAudit: data.promptAudit, dialogueEval: data.dialogueEval, safetyFlags: data.safetyFlags, memoryCount: data.memoryCount, evidenceCount: data.evidenceCount });
       setInspectorTab("investigation");
+      pushToast({
+        tone: data.testimonyUpdated ? "warning" : "info",
+        title: data.testimonyUpdated ? "证词出现矛盾" : "NPC 已回答",
+        detail: data.testimonyUpdated ? "证据命中记忆范围内的矛盾点。" : "回答已限定在 NPC 记忆和已发现证据内。"
+      });
       setStatus(data.testimonyUpdated ? "证据击中矛盾，NPC 证词已被修正。" : "NPC 已按自身记忆回答。");
       if (activeCase) {
         const latestCase = await fetch(apiUrl(`/api/cases/${activeCase.id}`)).then((response) => response.json());
@@ -846,6 +935,11 @@ export default function Home() {
       hydrateStatic(next, false);
       onboarding.recordTheoryResult(Boolean(next.session.judgement?.accepted));
       setInspectorTab("investigation");
+      pushToast({
+        tone: next.session.judgement?.accepted ? "success" : "warning",
+        title: next.session.judgement?.accepted ? "推理成立" : "推理仍有缺口",
+        detail: next.session.judgement?.accepted ? "解答篇和最终图节点已解锁。" : `缺口类型：${next.session.judgement?.missing?.join("、") || "关键证据链"}`
+      });
       setStatus(next.session.judgement?.accepted ? "推理成立。最终结论与解答篇已解锁。" : `推理不成立：${next.session.judgement?.missing?.join("、") || "证据链不足"}`);
       return;
     }
@@ -856,6 +950,11 @@ export default function Home() {
       onboarding.recordTheoryResult(Boolean(data.judgement?.accepted));
       setProgress((current) => ({ ...current, submittedTheory: true, solvedCase: Boolean(data.judgement?.accepted) }));
       setInspectorTab("investigation");
+      pushToast({
+        tone: data.judgement?.accepted ? "success" : "warning",
+        title: data.judgement?.accepted ? "推理成立" : "推理仍有缺口",
+        detail: data.judgement?.accepted ? "可以生成解答篇。" : `缺口类型：${data.judgement?.missing?.join("、") || "关键证据链"}`
+      });
       setStatus(data.judgement?.accepted ? "推理成立。可以生成解答篇。" : `推理不成立：${data.judgement?.missing?.join("、") || "证据链不足"}`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "提交推理失败");
@@ -872,6 +971,7 @@ export default function Home() {
       const next = revealDemoSolution(state);
       hydrateStatic(next, false);
       setInspectorTab("logic");
+      pushToast({ tone: "success", title: "解答篇已解锁", detail: "现在可以查看证据如何推出最终结论。" });
       setStatus("解答篇已由本地事实锁生成，不调用 DeepSeek。");
       return;
     }
@@ -881,6 +981,7 @@ export default function Home() {
       setRevealText(data.content);
       setLastAiSafety((current) => ({ ...(current || {}), revealEval: data.revealEval, factContract: data.factContract, mock: data.mock }));
       setInspectorTab("logic");
+      pushToast({ tone: "success", title: "解答篇已生成", detail: "事实仍以本地规则和案件结构为准。" });
       setStatus("解答篇已生成，并按本地事实锁校验。");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "生成解答失败");
@@ -1489,14 +1590,17 @@ export default function Home() {
           switchRuntime={switchRuntime}
         />
       )}
+      toasts={<ToastStack toasts={toasts} onDismiss={dismissToast} />}
       map={(
         <TownMapStage
           caseFile={activeCase?.deductionCase.publicCaseFile || "\u521b\u5efa\u5c0f\u9547\u540e\uff0c\u6848\u4ef6\u4f1a\u4ece NPC \u65e5\u7a0b\u3001\u8bb0\u5fc6\u3001\u51b2\u7a81\u548c\u4e8b\u4ef6\u65e5\u5fd7\u4e2d\u6d8c\u73b0\u3002"}
           currentTime={snapshot?.time || minutesToTime(timeValue)}
+          stages={investigationStages}
           snapshot={snapshot}
           actorsByTile={mapActorsByTile}
           markersByTile={mapMarkersByTile}
           hoverInfo={hoveredLocationInfo}
+          npcPopover={selectedNpcPopover}
           selectedSceneId={selectedSceneId}
           highlightedEventId={highlightedEventId}
           selectedCharacterId={selectedCharacterId}
@@ -1580,6 +1684,7 @@ export default function Home() {
                   judgementGaps={judgementGaps}
                   gapCards={gapCards}
                   onGapSelect={handleGapCard}
+                  nextStepAdvice={nextStepAdvice}
                   busy={busy}
                 />
               )
