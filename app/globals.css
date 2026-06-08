@@ -1360,6 +1360,21 @@ blockquote {
   border-radius: 4px;
 }
 
+.nextActionPanel {
+  border-color: rgba(255, 224, 106, 0.5);
+  background:
+    linear-gradient(180deg, rgba(42, 34, 15, 0.92), rgba(12, 18, 24, 0.96)),
+    radial-gradient(circle at 12% 0%, rgba(255, 224, 106, 0.18), transparent 42%);
+}
+
+.nextActionPanel h2 {
+  color: #ffe06a;
+}
+
+.nextActionPanel .secondaryButton {
+  justify-content: center;
+}
+
 .metricsPanel {
   padding: 0;
   margin-top: 12px;
@@ -1440,6 +1455,17 @@ blockquote {
   transition: filter 0.12s ease, outline-color 0.12s ease, transform 0.12s ease;
 }
 
+.townShell .tileIcon {
+  position: absolute;
+  top: 4px;
+  left: 5px;
+  z-index: 1;
+  color: rgba(8, 15, 22, 0.72);
+  font-size: 13px;
+  font-weight: 900;
+  pointer-events: none;
+}
+
 .townShell .mapTile:hover {
   z-index: 3;
   filter: brightness(1.13) saturate(1.08);
@@ -1515,15 +1541,107 @@ blockquote {
   box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.35);
 }
 
+.townShell .actor-current {
+  color: #071019;
+  background: #ffe06a;
+  border-color: #fff7c1;
+  transform: translateY(-2px);
+}
+
+.townShell .actor-questioned {
+  box-shadow: 0 0 0 2px rgba(101, 255, 196, 0.65), 2px 2px 0 rgba(0, 0, 0, 0.35);
+}
+
+.townShell .actor-contradiction {
+  background: #ff8a5c;
+  box-shadow: 0 0 0 2px rgba(255, 95, 106, 0.7), 2px 2px 0 rgba(0, 0, 0, 0.35);
+}
+
+.townShell .actor-excluded {
+  opacity: 0.72;
+  filter: grayscale(0.55);
+}
+
 .townShell .marker {
+  display: inline-grid;
+  place-items: center;
+  min-width: 15px;
+  height: 15px;
+  margin: 1px;
+  padding: 0 2px;
   color: #ffe06a;
+  background: rgba(5, 10, 15, 0.72);
+  border: 1px solid rgba(255, 224, 106, 0.72);
+  border-radius: 2px;
+  font-size: 11px;
+  font-weight: 900;
   text-shadow: 0 0 8px rgba(255, 224, 106, 0.85);
+}
+
+.townShell .marker-searchable {
+  color: #111822;
+  background: #ffe06a;
+}
+
+.townShell .marker-discovered {
+  color: #071019;
+  background: #65ffc4;
+  border-color: #d6fff0;
+}
+
+.townShell .marker-crime {
+  color: #fff;
+  background: #ff5f6a;
+  border-color: #ffd2d6;
 }
 
 .townShell .marker-hot,
 .townShell .marker.hot {
   color: #ff5f6a;
   text-shadow: 0 0 12px rgba(255, 95, 106, 0.9);
+}
+
+.evidenceImpact,
+.challengeBadge {
+  display: block;
+  margin-top: 8px;
+  color: #d8e9f6;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.impact-key,
+.impact-support {
+  color: #65ffc4;
+}
+
+.impact-contradiction,
+.challengeBadge {
+  color: #ffe06a;
+}
+
+.dialogueLog article.challengeHit {
+  border-color: rgba(255, 224, 106, 0.45);
+  background: rgba(255, 224, 106, 0.07);
+}
+
+.gapHints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.gapHints em {
+  padding: 4px 7px;
+  color: #ffccd2;
+  font-style: normal;
+  font-weight: 900;
+  background: rgba(255, 95, 106, 0.12);
+  border: 1px solid rgba(255, 95, 106, 0.38);
+  border-radius: 4px;
 }
 
 .inspectorRail {

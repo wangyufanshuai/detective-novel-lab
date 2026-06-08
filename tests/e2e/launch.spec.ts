@@ -18,6 +18,7 @@ test.beforeEach(async ({ page }) => {
 
 test("loads a playable premium town without server APIs", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "推理小镇" })).toBeVisible();
+  await expect(page.getByTestId("suggested-action")).toContainText("当前建议行动");
   await expect(page.locator(".actorPin")).toHaveCount(8);
   await expect(page.getByTestId("inspector-rail")).toBeVisible();
   await expect(page.getByRole("button", { name: "事件" })).toHaveClass(/active/);
@@ -65,12 +66,19 @@ test("search, interrogate and solve use the local rule engine", async ({ page })
   await expect(page.locator(".checkRow")).toHaveCount(9);
 
   await expect(page.locator(".evidenceList button.found").first()).toBeVisible();
+  await expect(page.locator(".evidenceImpact").first()).toBeVisible();
   await clickInspectorTab(page, "逻辑");
   await expect(page.getByTestId("deduction-graph").locator('[data-node-type="evidence"].unlocked').first()).toBeVisible();
 
   await clickInspectorTab(page, "调查");
   await page.getByRole("button", { name: "询问 NPC" }).click();
   await expect(page.locator(".aiSafetyStrip").getByText("Prompt Safe: Yes")).toBeVisible();
+  await expect(page.locator(".aiSafetyStrip")).toContainText("Contradiction:");
+
+  await page.locator('select').filter({ has: page.locator('option[value="npc-02"]') }).last().selectOption("npc-02");
+  await page.getByRole("button", { name: "判定推理" }).click();
+  await expect(page.getByTestId("judgement-result")).toContainText("推理不成立");
+  await expect(page.locator(".gapHints")).toContainText("缺口类型");
 
   await page.locator('select').filter({ has: page.locator('option[value="npc-06"]') }).last().selectOption("npc-06");
   await page.getByPlaceholder("动机").fill("林澈准备公开旧剧院修缮款票据，陆执会失去剧院和名声。");
@@ -124,6 +132,9 @@ test("authoring workbench validates, persists, exports and runs a draft", async 
   await page.getByRole("button", { name: "Evidence" }).click();
   await page.getByTestId("delete-authoring-evidence").click();
   await expect(page.getByTestId("authoring-rule-report")).toContainText("Fail");
+  await expect(page.locator(".statusBox").last()).toContainText("仍被引用");
+  await page.locator(".issueItem.error").first().click();
+  await expect(page.getByRole("button", { name: "Evidence", exact: true })).toHaveClass(/active/);
   await expect(page.getByTestId("run-authoring-draft")).toBeDisabled();
 
   await page.getByRole("button", { name: "Load Premium Template" }).click();

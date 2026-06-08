@@ -19,6 +19,9 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import DeductionGraphView from "@/app/components/DeductionGraphView";
+import { useDetectiveTownRuntimeView } from "@/app/hooks/useDetectiveTownRuntime";
+import { hasContradictionHit, useInvestigationView } from "@/app/hooks/useInvestigationActions";
+import { useInspectorSelection } from "@/app/hooks/useInspectorSelection";
 import {
   CaseLogicPanel,
   CausalTracePanel,
@@ -114,7 +117,7 @@ const archetypeOptions: { value: MurderArchetype | "auto"; label: string }[] = [
   { value: "fall", label: "Fall" }
 ];
 const archetypeLabels: Record<string, string> = {
-  blade: "刀具伪装",
+  blade: "刀具伤害",
   poison: "药物投毒",
   blunt: "钝器误导",
   fall: "坠落机关"
@@ -193,15 +196,15 @@ export default function Home() {
   const [caseTemplateId, setCaseTemplateId] = useState<CaseTemplateId>("archive-blunt");
   const [caseArchetype, setCaseArchetype] = useState<MurderArchetype | "auto">("auto");
   const [mode, setMode] = useState<WorldMode>("showcase");
-  const [playerName, setPlayerName] = useState("调查员");
+  const [playerName, setPlayerName] = useState("\u8c03\u67e5\u5458");
   const [timeValue, setTimeValue] = useState(21 * 60 + 30);
   const [selectedSceneId, setSelectedSceneId] = useState("");
   const [selectedCharacterId, setSelectedCharacterId] = useState("");
   const [selectedEvidenceId, setSelectedEvidenceId] = useState("");
   const [highlightedEventId, setHighlightedEventId] = useState("");
-  const [question, setQuestion] = useState("案发窗口你在哪里？你记得哪些异常？");
+  const [question, setQuestion] = useState("\u6848\u53d1\u7a97\u53e3\u4f60\u5728\u54ea\u91cc\uff1f\u4f60\u8bb0\u5f97\u54ea\u4e9b\u5f02\u5e38\uff1f");
   const [theory, setTheory] = useState<PlayerTheory>({ culpritId: "", motive: "", method: "", evidenceIds: [] });
-  const [status, setStatus] = useState("创建一个 8 NPC / 24h Detective Town，小镇会先运行，再从事件日志中抽取案件。");
+  const [status, setStatus] = useState("\u5df2\u8f7d\u5165 8 NPC / 24h Detective Town\u3002\u5148\u89c2\u5bdf\u65f6\u95f4\u7ebf\uff0c\u518d\u641c\u7d22\u5730\u70b9\u548c\u8be2\u95ee NPC\u3002");
   const [revealText, setRevealText] = useState("");
   const [lastAiSafety, setLastAiSafety] = useState<AiSafetyState | null>(null);
   const [latestLiveEval, setLatestLiveEval] = useState<DeepSeekLiveEvalReport | null>(null);
@@ -213,7 +216,7 @@ export default function Home() {
   const [developerOpen, setDeveloperOpen] = useState(false);
   const [runtimeMode, setRuntimeMode] = useState<RuntimeMode>("server");
   const [progress, setProgress] = useState<InvestigationProgress>(initialProgress);
-  const [inspectorTab, setInspectorTab] = useState<InspectorTabId>("events");
+  const { inspectorTab, setInspectorTab, showEvents, showInvestigation, showLogic, showPeople } = useInspectorSelection("events");
   const [appMode, setAppMode] = useState<AppMode>("play");
   const [authoringDraft, setAuthoringDraft] = useState<AuthoringDraft>(() => createPremiumAuthoringDraft());
   const [authoringTab, setAuthoringTab] = useState<AuthoringTab>("case");
@@ -223,11 +226,11 @@ export default function Home() {
   const [authoringTimelineId, setAuthoringTimelineId] = useState("");
   const [authoringImportText, setAuthoringImportText] = useState("");
   const [authoringExportText, setAuthoringExportText] = useState("");
-  const [authoringStatus, setAuthoringStatus] = useState("Authoring 使用浏览器本地状态，不请求 DeepSeek，不写入 SQLite。");
+  const [authoringStatus, setAuthoringStatus] = useState("Authoring \u4f7f\u7528\u6d4f\u89c8\u5668\u672c\u5730\u72b6\u6001\uff0c\u4e0d\u8bf7\u6c42 DeepSeek\uff0c\u4e0d\u5199\u5165 SQLite\u3002");
 
   const deductionCase = activeCase?.deductionCase || null;
   const scenes = deductionCase?.scenes || [];
-  const characters = deductionCase?.characters.filter((character) => character.role !== "死者") || [];
+  const characters = deductionCase?.characters.filter((character) => character.role !== "\u6b7b\u8005") || [];
   const discovered = new Set(session?.discoveredEvidenceIds || []);
   const selectedScene = scenes.find((scene) => scene.id === selectedSceneId) || scenes[0];
   const selectedCharacter = characters.find((character) => character.id === selectedCharacterId);
@@ -237,6 +240,25 @@ export default function Home() {
   const selectedTestimony = activeCase?.testimonies?.find((item) => item.characterId === selectedCharacterId);
   const quality = activeCase?.qualityReport;
   const selectedNpcMemories = useMemo(() => (world?.memories || []).filter((memory) => memory.npcId === selectedCharacterId), [world?.memories, selectedCharacterId]);
+  const { suggestedAction } = useDetectiveTownRuntimeView({
+    progress,
+    session,
+    selectedSceneName: selectedScene?.name,
+    discoveredEvidenceCount: discoveredEvidence.length,
+    revealText
+  });
+  const { evidenceImpacts, judgementGaps } = useInvestigationView({
+    deductionCase,
+    discoveredEvidence,
+    session
+  });
+  const questionedCharacterIds = useMemo(() => new Set(session?.interrogationLog.map((entry) => entry.characterId) || []), [session?.interrogationLog]);
+  const contradictedCharacterIds = useMemo(
+    () => new Set(session?.interrogationLog.filter((entry) => entry.challenge?.hit).map((entry) => entry.characterId) || []),
+    [session?.interrogationLog]
+  );
+  const excludedCharacterIds = useMemo(() => new Set(suspectBoard.filter((row) => row.status === "eliminated").map((row) => row.characterId)), [suspectBoard]);
+  const selectedNpcContradictionHit = hasContradictionHit(session, selectedCharacterId);
   const visibleEvents = snapshot?.visibleEvents || events.slice(-30).reverse();
   const selectedEvent = events.find((event) => event.id === highlightedEventId);
   const causalTrace = activeCase?.causalTrace;
@@ -246,7 +268,7 @@ export default function Home() {
   );
   const authoringReport: AuthoringValidationReport = useMemo(() => validateAuthoringDraft(authoringDraft), [authoringDraft]);
   const authoringCase = authoringDraft.caseFromLog.deductionCase;
-  const authoringCharacters = authoringCase.characters.filter((character) => character.role !== "死者");
+  const authoringCharacters = authoringCase.characters.filter((character) => character.role !== "\u6b7b\u8005");
   const authoringCharacter = authoringCase.characters.find((character) => character.id === authoringCharacterId) || authoringCharacters[0] || authoringCase.characters[0];
   const authoringEvidence = authoringCase.evidence.find((item) => item.id === authoringEvidenceId) || authoringCase.evidence[0];
   const authoringScene = authoringCase.scenes.find((item) => item.id === authoringSceneId) || authoringCase.scenes[0];
@@ -402,7 +424,7 @@ export default function Home() {
     setRevealText(state.revealText);
     setWorldIdInput(state.world.id);
     setSelectedSceneId(state.activeCase.generationProfile.sceneLocationId);
-    const firstCharacter = state.activeCase.deductionCase.characters.find((item) => item.role !== "死者");
+    const firstCharacter = state.activeCase.deductionCase.characters.find((item) => item.role !== "\u6b7b\u8005");
     setSelectedCharacterId((current) => current || firstCharacter?.id || "");
     if (resetTime) setTimeValue(timeToMinutes("08:00"));
     setStatus("Premium Showcase 已载入。拖动时间轴观察案件发生，再搜索场景和质询证词。");
@@ -419,7 +441,7 @@ export default function Home() {
     if (data.activeCase) {
       setActiveCase(data.activeCase);
       setSelectedSceneId(data.activeCase.generationProfile.sceneLocationId);
-      const firstCharacter = data.activeCase.deductionCase.characters.find((item) => item.role !== "死者");
+      const firstCharacter = data.activeCase.deductionCase.characters.find((item) => item.role !== "\u6b7b\u8005");
       setSelectedCharacterId(firstCharacter?.id || data.activeCase.generationProfile.culpritId);
       setTheory({ culpritId: "", motive: "", method: "", evidenceIds: [] });
       setTimeValue(timeToMinutes("08:00"));
@@ -764,6 +786,53 @@ export default function Home() {
     setAuthoringDraft((current) => applyAuthoringPatch(current, { op: "set", path, value }));
   }
 
+  function focusAuthoringIssue(issue: AuthoringValidationReport["issues"][number]) {
+    const text = `${issue.path} ${issue.message}`;
+    if (text.includes("characters") || text.includes("characterId")) {
+      setAuthoringTab("characters");
+      const hit = authoringCase.characters.find((item) => text.includes(item.id) || text.includes(item.name));
+      if (hit) setAuthoringCharacterId(hit.id);
+      return;
+    }
+    if (text.includes("evidence")) {
+      setAuthoringTab("evidence");
+      const hit = authoringCase.evidence.find((item) => text.includes(item.id) || text.includes(item.title));
+      if (hit) setAuthoringEvidenceId(hit.id);
+      return;
+    }
+    if (text.includes("scenes") || text.includes("scene")) {
+      setAuthoringTab("scenes");
+      const hit = authoringCase.scenes.find((item) => text.includes(item.id) || text.includes(item.name));
+      if (hit) setAuthoringSceneId(hit.id);
+      return;
+    }
+    if (text.includes("timeline") || text.includes("trueTimeline") || text.includes("event")) {
+      setAuthoringTab("timeline");
+      const hit = authoringCase.truth.trueTimeline.find((item) => text.includes(item.id));
+      if (hit) setAuthoringTimelineId(hit.id);
+      return;
+    }
+    setAuthoringTab("logic");
+  }
+
+  function authoringEvidenceReferences(evidenceId: string) {
+    const refs: string[] = [];
+    for (const scene of authoringCase.scenes) {
+      if (scene.evidenceIds.includes(evidenceId)) refs.push(`\u573a\u666f\uff1a${scene.name}`);
+    }
+    for (const event of authoringCase.truth.trueTimeline) {
+      if (event.contradictedByEvidenceIds.includes(evidenceId)) refs.push(`\u65f6\u95f4\u7ebf\uff1a${event.time}`);
+    }
+    for (const row of authoringCase.logicPuzzle.suspectMatrix) {
+      if (row.excludedByEvidenceIds.includes(evidenceId)) refs.push(`\u6392\u9664\u77e9\u9635\uff1a${row.name}`);
+    }
+    for (const step of authoringCase.logicPuzzle.criticalReasoningChain) {
+      if (step.evidenceIds.includes(evidenceId)) refs.push(`\u63a8\u7406\u94fe\uff1a${step.id}`);
+    }
+    if (authoringCase.logicPuzzle.requiredClueOrder.includes(evidenceId)) refs.push("\u5fc5\u8981\u7ebf\u7d22\u987a\u5e8f");
+    return refs;
+  }
+
   function loadPremiumTemplate(templateId: CaseTemplateId = caseTemplateId) {
     const draft = createPremiumAuthoringDraft(templateId);
     setAuthoringDraft(draft);
@@ -774,14 +843,15 @@ export default function Home() {
     setAuthoringExportText("");
     setAuthoringImportText("");
     setCaseTemplateId(templateId);
-    setAuthoringStatus("已恢复案例模板，可继续编辑或直接 Run Draft。");
+    setAuthoringStatus("\u5df2\u6062\u590d\u6848\u4f8b\u6a21\u677f\uff0c\u53ef\u7ee7\u7eed\u7f16\u8f91\u6216\u76f4\u63a5 Run Draft\u3002");
   }
 
   function deleteAuthoringEvidence() {
     if (!authoringEvidence) return;
+    const refs = authoringEvidenceReferences(authoringEvidence.id);
     setAuthoringDraft((current) => applyAuthoringPatch(current, { op: "delete-array-item", path: "caseFromLog.deductionCase.evidence", id: authoringEvidence.id }));
     setAuthoringEvidenceId("");
-    setAuthoringStatus("证据已从草稿移除。若仍被场景、时间线或推理链引用，Rule Report 会阻断 Run Draft。");
+    setAuthoringStatus(refs.length ? `\u8bc1\u636e\u5df2\u5220\u9664\uff0c\u4f46\u4ecd\u88ab\u5f15\u7528\uff1a${refs.join("\uff1b")}\u3002Rule Report \u4f1a\u963b\u65ad Run Draft\u3002` : "\u8bc1\u636e\u5df2\u5220\u9664\uff0c\u672a\u53d1\u73b0\u6b8b\u7559\u5f15\u7528\u3002");
   }
 
   function importAuthoringJson() {
@@ -991,7 +1061,7 @@ export default function Home() {
                 return (
                   <button key={tile.id} className={`mapTile terrain-${tile.terrain} ${tile.searchable ? "searchable" : ""}`} title={tile.locationName || tile.terrain}>
                     {tile.locationName && <span className="placeName">{tile.locationName}</span>}
-                    {markers.slice(0, 2).map((marker) => <span key={marker.id} className={`marker marker-${marker.type}`}>●</span>)}
+                    {markers.slice(0, 2).map((marker) => <span key={marker.id} className={`marker marker-${marker.type}`}>?</span>)}
                     <span className="actorStack">{actors.slice(0, 3).map((actor) => <span key={actor.id} className={`actorPin actor-${actor.status}`}>{actorInitial(actor.name)}</span>)}</span>
                   </button>
                 );
@@ -1023,11 +1093,11 @@ export default function Home() {
               <div><strong>{authoringReport.errors.length}</strong><small>Errors</small></div>
             </div>
             <div className="issueList">
-              {(authoringReport.issues.length ? authoringReport.issues : [{ id: "ok", severity: "warning", source: "authoring", path: "$", message: "当前草稿通过 schema、世界来源、hard logic 和推理覆盖校验。" }]).slice(0, 12).map((item) => (
-                <div key={item.id} className={`issueItem ${item.severity}`}>
+              {(authoringReport.issues.length ? authoringReport.issues : [{ id: "ok", severity: "warning" as const, source: "authoring" as const, path: "$", message: "\u5f53\u524d\u8349\u7a3f\u901a\u8fc7 schema\u3001\u4e16\u754c\u6765\u6e90\u3001hard logic \u548c\u63a8\u7406\u8986\u76d6\u6821\u9a8c\u3002" }]).slice(0, 12).map((item) => (
+                <button key={item.id} type="button" className={`issueItem ${item.severity}`} onClick={() => focusAuthoringIssue(item)}>
                   <strong>{item.source} / {item.path}</strong>
                   <span>{item.message}</span>
-                </div>
+                </button>
               ))}
             </div>
           </section>
@@ -1047,7 +1117,7 @@ export default function Home() {
 
           <section className="authoringPanel">
             <h2>Import / Export</h2>
-            <label>模板
+            <label>\u6a21\u677f
               <select value={caseTemplateId} onChange={(event) => loadPremiumTemplate(event.target.value as CaseTemplateId)}>
                 {caseTemplates.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
               </select>
@@ -1107,9 +1177,9 @@ export default function Home() {
           setPlayerName={setPlayerName}
           joinCase={() => void joinCase()}
           tickWorld={() => void tickWorld()}
-          worldName={world?.name || "未创建小镇"}
+          worldName={world?.name || "\u672a\u521b\u5efa\u5c0f\u9547"}
           caseTitle={activeCase?.deductionCase.title || "Detective Town Showcase"}
-          caseSubtitle={activeCase ? archetypeLabels[activeCase.generationProfile.archetype] : "等待生成案件"}
+          caseSubtitle={activeCase ? archetypeLabels[activeCase.generationProfile.archetype] : "\u7b49\u5f85\u751f\u6210\u6848\u4ef6"}
           progress={progress}
           metrics={{
             quality: quality?.qualityScore ?? quality?.score ?? 0,
@@ -1120,19 +1190,28 @@ export default function Home() {
             aiEval: latestLiveEval?.passed === false ? "Fail" : latestLiveEval ? "Pass" : "Local"
           }}
           status={status}
+          suggestedAction={suggestedAction}
+          onSuggestedAction={() => setInspectorTab(suggestedAction.targetTab)}
           openAuthoring={() => setAppMode("authoring")}
           switchRuntime={switchRuntime}
         />
       )}
       map={(
         <TownMapStage
-          caseFile={activeCase?.deductionCase.publicCaseFile || "创建小镇后，案件会从 NPC 日程、记忆、冲突和事件日志中涌现。"}
+          caseFile={activeCase?.deductionCase.publicCaseFile || "\u521b\u5efa\u5c0f\u9547\u540e\uff0c\u6848\u4ef6\u4f1a\u4ece NPC \u65e5\u7a0b\u3001\u8bb0\u5fc6\u3001\u51b2\u7a81\u548c\u4e8b\u4ef6\u65e5\u5fd7\u4e2d\u6d8c\u73b0\u3002"}
           currentTime={snapshot?.time || minutesToTime(timeValue)}
           snapshot={snapshot}
           actorsByTile={mapActorsByTile}
           markersByTile={mapMarkersByTile}
           selectedSceneId={selectedSceneId}
           highlightedEventId={highlightedEventId}
+          selectedCharacterId={selectedCharacterId}
+          characterState={{
+            questionedIds: questionedCharacterIds,
+            contradictionIds: contradictedCharacterIds,
+            excludedIds: excludedCharacterIds,
+            currentCharacterId: selectedCharacterId
+          }}
           onTileClick={(locationId) => void discoverFirstSceneEvidence(locationId)}
           onMarkerClick={handleMarker}
           onActorClick={handleActor}
@@ -1153,7 +1232,7 @@ export default function Home() {
           tabs={[
             {
               id: "events",
-              label: "事件",
+              label: "\u4e8b\u4ef6",
               content: (
                 <EventLogPanel
                   events={visibleEvents}
@@ -1169,13 +1248,14 @@ export default function Home() {
             },
             {
               id: "investigation",
-              label: "调查",
+              label: "\u8c03\u67e5",
               content: (
                 <InvestigationPanel
-                  selectedSceneName={selectedScene?.name || "选择地图地点"}
+                  selectedSceneName={selectedScene?.name || "\u9009\u62e9\u5730\u56fe\u5730\u70b9"}
                   sceneEvidence={sceneEvidence}
                   discoveredEvidence={discoveredEvidence}
                   discoveredIds={discovered}
+                  evidenceImpacts={evidenceImpacts}
                   discoverEvidence={(evidenceId) => void discoverEvidence(evidenceId)}
                   session={session}
                   characters={characters}
@@ -1190,6 +1270,7 @@ export default function Home() {
                   aiSafety={lastAiSafety}
                   memoryCount={selectedNpcMemories.length}
                   evidenceCount={discoveredEvidence.length}
+                  contradictionHit={selectedNpcContradictionHit}
                   dialogueLog={session?.interrogationLog || []}
                   deductionCase={deductionCase}
                   theory={theory}
@@ -1199,13 +1280,14 @@ export default function Home() {
                   submitTheory={() => void submitTheory()}
                   revealSolution={() => void revealSolution()}
                   revealText={revealText}
+                  judgementGaps={judgementGaps}
                   busy={busy}
                 />
               )
             },
             {
               id: "logic",
-              label: "逻辑",
+              label: "\u903b\u8f91",
               content: (
                 <div className="stackedInspector">
                   <CaseLogicPanel
@@ -1234,7 +1316,7 @@ export default function Home() {
             },
             {
               id: "people",
-              label: "人物",
+              label: "\u4eba\u7269",
               content: (
                 <SuspectBoardPanel
                   rows={suspectBoard}
@@ -1248,7 +1330,7 @@ export default function Home() {
             },
             {
               id: "developer",
-              label: "开发者",
+              label: "\u5f00\u53d1\u8005",
               content: (
                 <DeveloperPanel
                   worldId={world?.id}

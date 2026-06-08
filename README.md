@@ -13,10 +13,22 @@ DeepSeek is used only for NPC surface dialogue and optional solution prose. It d
 ## 30-Second Experience
 
 1. Open the app: the Premium Showcase, 8 NPCs, map, timeline, and case file are already loaded.
-2. Replay the 24-hour timeline and inspect WorldEvents.
-3. Search the archive, market, and theater for evidence.
-4. Challenge an NPC testimony, then submit a theory.
-5. Unlock the final deduction node and source-locked solution.
+2. Follow the current-action HUD: observe the crime window, join the investigation, then search a location.
+3. Search the archive, market, and theater; each discovered clue explains what it may support or contradict without revealing the culprit.
+4. Question an NPC, check Prompt Safe / memory scope, and challenge testimony with evidence.
+5. Submit a theory. Wrong theories show only gap types; correct theories unlock the final deduction node and source-locked solution.
+
+## Why Not Just Ask An LLM?
+
+Direct LLM mystery generation is easy to demo but hard to trust: the model can invent clues after the fact, leak the culprit through dialogue, create multiple valid suspects, or rely on facts the player could never discover.
+
+Detective Town uses the LLM only as a surface language layer. The durable case logic is local and inspectable:
+
+- the town simulation produces `WorldEvent` records before the case file is written;
+- evidence must point back to those events;
+- NPC answers are constrained by their `MemoryRecord` scope and discovered evidence;
+- local rules validate unique culprit, motive / means / opportunity, alibis, exclusions, clue availability, and reasoning coverage;
+- the UI exposes the audit trail through the map, event log, Causal Trace, Deduction Graph, suspect board, and rule report.
 
 ## Why It Is Different
 

@@ -30,6 +30,7 @@ function layoutNodes(graph: DeductionGraph, discovered: Set<string>, solutionRev
     if (node.type === "conclusion" && !solutionRevealed) continue;
     groups.set(node.type, [...(groups.get(node.type) || []), node]);
   }
+
   const result: PositionedNode[] = [];
   for (const type of ["event", "evidence", "testimony", "elimination", "conclusion"] as const) {
     const nodes = groups.get(type) || [];
@@ -56,6 +57,7 @@ export default function DeductionGraphView({
   onSelectCharacter
 }: Props) {
   if (!graph) return <div className="graphEmpty">正在构建推理图...</div>;
+
   const discovered = new Set(discoveredEvidenceIds);
   const nodes = layoutNodes(graph, discovered, solutionRevealed);
   const byId = new Map(nodes.map((node) => [node.id, node]));

@@ -22,7 +22,6 @@ import type {
   CaseLogicReport,
   CaseTemplateId,
   DeductionCase,
-  DeductionGraph,
   Evidence,
   InvestigationProgress,
   MurderArchetype,
@@ -37,7 +36,8 @@ import type {
   WorldMapTile,
   WorldMode
 } from "@/lib/engine";
-import DeductionGraphView from "@/app/components/DeductionGraphView";
+import type { SuggestedAction } from "@/app/hooks/useDetectiveTownRuntime";
+import type { EvidenceImpact } from "@/app/hooks/useInvestigationActions";
 
 export type InspectorTabId = "events" | "investigation" | "logic" | "people" | "developer";
 
@@ -49,16 +49,42 @@ type AiSafetyView = {
   evidenceCount?: number;
   safetyFlags?: string[];
 };
+type CharacterState = {
+  questionedIds: Set<string>;
+  contradictionIds: Set<string>;
+  excludedIds: Set<string>;
+  currentCharacterId?: string;
+};
 
-export function PlayShell({
-  control,
-  map,
-  inspector
-}: {
-  control: ReactNode;
-  map: ReactNode;
-  inspector: ReactNode;
-}) {
+const markerGlyph: Record<string, string> = {
+  crime: "!",
+  evidence: "◆",
+  contradiction: "!",
+  event: "•",
+  highlight: "?"
+};
+
+function firstGlyph(name: string) {
+  return Array.from(name)[0] || "?";
+}
+
+function locationIcon(tile: WorldMapTile) {
+  const name = tile.locationName || "";
+  if (tile.terrain === "water") return "≈";
+  if (tile.terrain === "road") return "·";
+  if (name.includes("档案") || name.toLowerCase().includes("archive")) return "▣";
+  if (name.includes("钟") || name.toLowerCase().includes("clock")) return "⌂";
+  if (name.includes("诊") || name.toLowerCase().includes("clinic")) return "+";
+  if (name.includes("旅店") || name.toLowerCase().includes("hotel")) return "▤";
+  if (name.includes("剧院") || name.toLowerCase().includes("theater")) return "▥";
+  if (name.includes("市场") || name.toLowerCase().includes("market")) return "▦";
+  if (name.includes("广场") || name.toLowerCase().includes("square")) return "◇";
+  if (name.includes("码头") || name.toLowerCase().includes("dock")) return "≋";
+  if (tile.locationId) return "⌂";
+  return "";
+}
+
+export function PlayShell({ control, map, inspector }: { control: ReactNode; map: ReactNode; inspector: ReactNode }) {
   return (
     <main className="townShell">
       {control}
@@ -97,6 +123,8 @@ export function ControlRail({
   progress,
   metrics,
   status,
+  suggestedAction,
+  onSuggestedAction,
   openAuthoring,
   switchRuntime
 }: {
@@ -128,6 +156,8 @@ export function ControlRail({
   progress: InvestigationProgress;
   metrics: { quality: number; unique: boolean; logic: number; misdirect: number; evidence: string; aiEval: string };
   status: string;
+  suggestedAction: SuggestedAction;
+  onSuggestedAction: () => void;
   openAuthoring: () => void;
   switchRuntime: (value: RuntimeMode) => void;
 }) {
@@ -161,6 +191,13 @@ export function ControlRail({
         <h2>{caseTitle}</h2>
         <p>{caseSubtitle}</p>
         <div className="templateChip">{activeTemplate?.title || caseTemplateId}</div>
+      </section>
+
+      <section className="hudPanel nextActionPanel" data-testid="suggested-action">
+        <span className="eyebrow">当前建议行动 / {suggestedAction.phase}</span>
+        <h2>{suggestedAction.title}</h2>
+        <p>{suggestedAction.detail}</p>
+        <button className="secondaryButton full" onClick={onSuggestedAction}>前往处理</button>
       </section>
 
       <section className="progressPanel" data-testid="investigation-progress">
@@ -238,6 +275,8 @@ export function TownMapStage({
   markersByTile,
   selectedSceneId,
   highlightedEventId,
+  selectedCharacterId,
+  characterState,
   onTileClick,
   onMarkerClick,
   onActorClick,
@@ -257,6 +296,8 @@ export function TownMapStage({
   markersByTile: Map<string, WorldMapMarker[]>;
   selectedSceneId: string;
   highlightedEventId: string;
+  selectedCharacterId?: string;
+  characterState: CharacterState;
   onTileClick: (locationId: string) => void;
   onMarkerClick: (marker: WorldMapMarker) => void;
   onActorClick: (actor: WorldMapActor) => void;
@@ -292,15 +333,38 @@ export function TownMapStage({
                 title={tile.locationName || tile.terrain}
                 onClick={() => tile.locationId && onTileClick(tile.locationId)}
               >
+                <span className="tileIcon" aria-hidden="true">{locationIcon(tile)}</span>
                 {tile.locationName && <span className="placeName">{tile.locationName}</span>}
                 {tile.searchable && <span className="evidenceDot">{tile.discoveredEvidenceCount}/{tile.evidenceCount}</span>}
-                {markers.slice(0, 3).map((marker) => (
-                  <span key={marker.id} className={`marker marker-${marker.type} ${marker.eventId === highlightedEventId ? "hot" : ""}`} onClick={(event) => { event.stopPropagation(); onMarkerClick(marker); }}>◆</span>
-                ))}
+                {markers.slice(0, 3).map((marker) => {
+                  const state = marker.discovered ? "discovered" : marker.evidenceId ? "searchable" : "public";
+                  return (
+                    <span
+                      key={marker.id}
+                      className={`marker marker-${marker.type} marker-${state} ${marker.eventId === highlightedEventId ? "hot" : ""}`}
+                      title={marker.label}
+                      onClick={(event) => { event.stopPropagation(); onMarkerClick(marker); }}
+                    >
+                      {markerGlyph[marker.type] || "•"}
+                    </span>
+                  );
+                })}
                 <span className="actorStack">
-                  {actors.slice(0, 4).map((actor) => (
-                    <span key={actor.id} className={`actorPin actor-${actor.status}`} onClick={(event) => { event.stopPropagation(); onActorClick(actor); }}>{Array.from(actor.name)[0] || "?"}</span>
-                  ))}
+                  {actors.slice(0, 4).map((actor) => {
+                    const actorClasses = [
+                      "actorPin",
+                      `actor-${actor.status}`,
+                      selectedCharacterId === actor.id ? "actor-current" : "",
+                      characterState.questionedIds.has(actor.id) ? "actor-questioned" : "",
+                      characterState.contradictionIds.has(actor.id) ? "actor-contradiction" : "",
+                      characterState.excludedIds.has(actor.id) ? "actor-excluded" : ""
+                    ].filter(Boolean).join(" ");
+                    return (
+                      <span key={actor.id} className={actorClasses} title={`${actor.name} / ${actor.role}`} onClick={(event) => { event.stopPropagation(); onActorClick(actor); }}>
+                        {firstGlyph(actor.name)}
+                      </span>
+                    );
+                  })}
                 </span>
               </button>
             );
@@ -346,15 +410,7 @@ export function InspectorRail({
   );
 }
 
-export function EventLogPanel({
-  events,
-  highlightedEventId,
-  onSelect
-}: {
-  events: WorldEvent[];
-  highlightedEventId: string;
-  onSelect: (event: WorldEvent) => void;
-}) {
+export function EventLogPanel({ events, highlightedEventId, onSelect }: { events: WorldEvent[]; highlightedEventId: string; onSelect: (event: WorldEvent) => void }) {
   return (
     <section className="eventPanel">
       <h2><Clock size={16} /> WorldEvent Log</h2>
@@ -392,7 +448,7 @@ export function CaseLogicPanel({
     <div className="stackedInspector">
       <section className="actionPanel logicPanel">
         <h2><ShieldCheck size={16} /> Case Logic Report</h2>
-        <p>{accepted ? summary : "本案已通过本地公平推理校验。最终结论只会在玩家提交正确证据链后揭示。"}</p>
+        <p>{accepted ? summary : "本案已通过本地公平推理校验。最终结论只会在玩家提交正确证据链后展示。"}</p>
         <div className="logicBadges">
           <span>Graph: {logicReport?.deductionGraphComplete ? "Pass" : "Pending"}</span>
           <span>Unique: {logicReport?.uniqueCulprit ? "Yes" : "No"}</span>
@@ -444,15 +500,7 @@ export function CausalTracePanel({
   );
 }
 
-export function SuspectBoardPanel({
-  rows,
-  solved,
-  onSelect
-}: {
-  rows: SuspectBoardRow[];
-  solved: boolean;
-  onSelect: (characterId: string) => void;
-}) {
+export function SuspectBoardPanel({ rows, solved, onSelect }: { rows: SuspectBoardRow[]; solved: boolean; onSelect: (characterId: string) => void }) {
   return (
     <section className="actionPanel suspectBoardPanel">
       <h2><Users size={16} /> Suspect Board</h2>
@@ -474,6 +522,7 @@ export function InvestigationPanel({
   sceneEvidence,
   discoveredEvidence,
   discoveredIds,
+  evidenceImpacts,
   discoverEvidence,
   session,
   characters,
@@ -488,6 +537,7 @@ export function InvestigationPanel({
   aiSafety,
   memoryCount,
   evidenceCount,
+  contradictionHit,
   dialogueLog,
   deductionCase,
   theory,
@@ -497,12 +547,14 @@ export function InvestigationPanel({
   submitTheory,
   revealSolution,
   revealText,
+  judgementGaps,
   busy
 }: {
   selectedSceneName: string;
   sceneEvidence: Evidence[];
   discoveredEvidence: Evidence[];
   discoveredIds: Set<string>;
+  evidenceImpacts: Map<string, EvidenceImpact>;
   discoverEvidence: (evidenceId: string) => void;
   session: PlayerSession | null;
   characters: DeductionCase["characters"];
@@ -517,6 +569,7 @@ export function InvestigationPanel({
   aiSafety: AiSafetyView | null;
   memoryCount: number;
   evidenceCount: number;
+  contradictionHit: boolean;
   dialogueLog: PlayerSession["interrogationLog"];
   deductionCase: DeductionCase | null;
   theory: PlayerTheory;
@@ -526,6 +579,7 @@ export function InvestigationPanel({
   submitTheory: () => void;
   revealSolution: () => void;
   revealText: string;
+  judgementGaps: string[];
   busy: boolean;
 }) {
   return (
@@ -534,12 +588,20 @@ export function InvestigationPanel({
         <h2><FileSearch size={16} /> 地点与证据</h2>
         <p>{selectedSceneName || "选择地图地点"}</p>
         <div className="evidenceList">
-          {sceneEvidence.map((item) => (
-            <button key={item.id} className={discoveredIds.has(item.id) ? "found" : ""} onClick={() => discoverEvidence(item.id)} disabled={!session || !item.discoverable || discoveredIds.has(item.id) || busy}>
-              <strong>{discoveredIds.has(item.id) ? item.title : item.discoverable ? "未发现线索" : "公开现场记录"}</strong>
-              <span>{discoveredIds.has(item.id) ? item.visibleDescription : item.discoverable ? `${selectedSceneName} 中可能存在调查价值。` : item.visibleDescription}</span>
-            </button>
-          ))}
+          {sceneEvidence.map((item) => {
+            const impact = evidenceImpacts.get(item.id);
+            return (
+              <button key={item.id} className={discoveredIds.has(item.id) ? "found" : ""} onClick={() => discoverEvidence(item.id)} disabled={!session || !item.discoverable || discoveredIds.has(item.id) || busy}>
+                <strong>{discoveredIds.has(item.id) ? item.title : item.discoverable ? "未发现线索" : "公开现场记录"}</strong>
+                <span>{discoveredIds.has(item.id) ? item.visibleDescription : item.discoverable ? `${selectedSceneName} 中可能存在调查价值。` : item.visibleDescription}</span>
+                {discoveredIds.has(item.id) && impact && (
+                  <small className={`evidenceImpact impact-${impact.tone}`}>
+                    {impact.label}：{impact.detail}
+                  </small>
+                )}
+              </button>
+            );
+          })}
           {!sceneEvidence.length && <span className="emptyText">该地点暂无可发现证据。</span>}
         </div>
       </section>
@@ -564,12 +626,14 @@ export function InvestigationPanel({
           <span>Prompt Safe: {aiSafety?.promptAudit?.safe === false ? "No" : "Yes"}</span>
           <span>Memory: {aiSafety?.memoryCount ?? memoryCount}</span>
           <span>Evidence: {aiSafety?.evidenceCount ?? evidenceCount}</span>
+          <span>Contradiction: {contradictionHit ? "Hit" : "None"}</span>
           {!!aiSafety?.safetyFlags?.length && <span>Flags: {aiSafety.safetyFlags.join(", ")}</span>}
         </div>
         <div className="dialogueLog">
           {dialogueLog.slice(-2).reverse().map((entry) => (
-            <article key={entry.id}>
+            <article key={entry.id} className={entry.challenge?.hit ? "challengeHit" : ""}>
               <p><strong>{deductionCase?.characters.find((item) => item.id === entry.characterId)?.name || entry.characterId}</strong><span>{entry.evidenceId ? `出示 ${entry.evidenceId}` : "普通询问"}</span></p>
+              {entry.challenge?.hit && <small className="challengeBadge">命中证词矛盾：只暴露局部事实，不泄露真相</small>}
               <blockquote>{entry.answer}</blockquote>
             </article>
           ))}
@@ -592,7 +656,18 @@ export function InvestigationPanel({
           ))}
         </div>
         <button className="primaryButton full" onClick={submitTheory} disabled={!session || busy}><ShieldCheck size={16} /> 判定推理</button>
-        {session?.judgement && <div className={`judgement ${session.judgement.accepted ? "pass" : "fail"}`}><strong>{session.judgement.accepted ? "推理成立" : "推理不成立"}</strong><p>{session.judgement.explanation}</p><button className="secondaryButton" onClick={revealSolution} disabled={!session.judgement.accepted || busy}>生成解答篇</button></div>}
+        {session?.judgement && (
+          <div className={`judgement ${session.judgement.accepted ? "pass" : "fail"}`} data-testid="judgement-result">
+            <strong>{session.judgement.accepted ? "推理成立" : "推理不成立"}</strong>
+            {session.judgement.accepted ? <p>{session.judgement.explanation}</p> : (
+              <div className="gapHints">
+                <span>缺口类型：</span>
+                {judgementGaps.map((item) => <em key={item}>{item}</em>)}
+              </div>
+            )}
+            <button className="secondaryButton" onClick={revealSolution} disabled={!session.judgement.accepted || busy}>生成解答篇</button>
+          </div>
+        )}
         {revealText && <pre className="revealBox">{revealText}</pre>}
       </section>
     </div>
