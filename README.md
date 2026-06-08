@@ -30,6 +30,8 @@ The product direction is **map-first investigation + explainable deduction + fir
 - Locked deduction nodes prevent spoiler leakage before the player earns the clue.
 - Static Demo mode must be playable in a public deployment with no API key and no writable SQLite directory.
 
+Current design focus: **Explainable deduction first, pixel immersion second**. The UI should make the case logic legible before it tries to feel like a full game. Evidence nodes explain their WorldEvent source, suspect rows explain exclusion status, wrong theories point to the missing reasoning area, and the final solution shows how discovered clues lead to the accepted conclusion.
+
 ## Why Not Just Ask An LLM?
 
 Direct LLM mystery generation is easy to demo but hard to trust: the model can invent clues after the fact, leak the culprit through dialogue, create multiple valid suspects, or rely on facts the player could never discover.

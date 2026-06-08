@@ -1624,6 +1624,7 @@ blockquote {
 }
 
 .townShell .actorPin {
+  position: relative;
   width: 20px;
   height: 20px;
   color: #071019;
@@ -1741,6 +1742,84 @@ blockquote {
   border-radius: 4px;
 }
 
+.gapCard {
+  display: grid;
+  gap: 3px;
+  min-width: 138px;
+  padding: 8px 9px;
+  color: #ffccd2;
+  text-align: left;
+  background: rgba(255, 95, 106, 0.12);
+  border: 1px solid rgba(255, 95, 106, 0.38);
+  border-radius: 5px;
+}
+
+.gapCard:hover {
+  color: #fff;
+  border-color: rgba(255, 224, 106, 0.72);
+  transform: translateY(-1px);
+}
+
+.gapCard small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.valueProposition {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 7px;
+  color: #ffe06a;
+  font-size: 13px;
+  font-weight: 1000;
+}
+
+.valueProposition span {
+  color: #9fc2d7;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.locationHoverCard {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  z-index: 12;
+  display: grid;
+  gap: 5px;
+  width: min(260px, calc(100% - 36px));
+  padding: 12px;
+  color: #f7fbff;
+  background: rgba(7, 13, 20, 0.94);
+  border: 1px solid rgba(255, 224, 106, 0.42);
+  border-radius: 6px;
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+.locationHoverCard strong {
+  font-size: 15px;
+}
+
+.locationHoverCard p,
+.locationHoverCard small {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.legendNpc {
+  color: #071019 !important;
+  background: #f8fbff;
+  border: 1px solid #101820;
+  border-radius: 3px;
+  padding: 0 3px;
+}
+
 .mapLegend {
   display: flex;
   flex-wrap: wrap;
@@ -1765,6 +1844,153 @@ blockquote {
 
 .mapLegend b {
   color: #ffe06a;
+}
+
+.explainCard,
+.suspectExplainCard,
+.solutionChain {
+  display: grid;
+  gap: 9px;
+  margin-top: 12px;
+  padding: 12px;
+  background: rgba(9, 18, 28, 0.86);
+  border: 1px solid rgba(124, 157, 178, 0.28);
+  border-radius: 6px;
+}
+
+.explainCard.locked {
+  border-color: rgba(255, 224, 106, 0.4);
+  background: rgba(255, 224, 106, 0.06);
+}
+
+.explainCard h3,
+.suspectExplainCard h3,
+.solutionChain h3 {
+  margin: 0;
+  color: #f7fbff;
+  font-size: 15px;
+}
+
+.explainCard p,
+.suspectExplainCard p,
+.solutionChain p {
+  margin: 0;
+  color: #d8e9f6;
+  line-height: 1.55;
+}
+
+.explainCard small,
+.suspectExplainCard small {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.evidenceRefs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.evidenceRefs span {
+  padding: 4px 7px;
+  color: #65ffc4;
+  background: rgba(101, 255, 196, 0.09);
+  border: 1px solid rgba(101, 255, 196, 0.28);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.evidenceRefs .lockedRef {
+  color: #ffe06a;
+  background: rgba(255, 224, 106, 0.08);
+  border-color: rgba(255, 224, 106, 0.3);
+}
+
+.solutionChain article {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 8px;
+  align-items: start;
+}
+
+.solutionChain article span {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  color: #071019;
+  background: #65ffc4;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 1000;
+}
+
+.mmoBars {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.mmoBars span {
+  padding: 4px 5px;
+  color: #7995a8;
+  background: rgba(124, 157, 178, 0.1);
+  border: 1px solid rgba(124, 157, 178, 0.2);
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.mmoBars span.on {
+  color: #071019;
+  background: #ffe06a;
+  border-color: #fff1a8;
+}
+
+.mmoBars.wide span.on {
+  background: #65ffc4;
+  border-color: #d6fff0;
+}
+
+.suspectRow.selected {
+  border-color: rgba(255, 224, 106, 0.72);
+  box-shadow: inset 3px 0 0 #ffe06a;
+}
+
+.svgGraphNode.selected rect {
+  stroke: #ffe06a;
+  stroke-width: 3;
+  filter: drop-shadow(0 0 8px rgba(255, 224, 106, 0.45));
+}
+
+.townShell .actorPin::after {
+  content: "";
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 7px;
+  height: 7px;
+  background: #f8fbff;
+  border: 1px solid #101820;
+  border-radius: 2px;
+}
+
+.townShell .actor-questioned::after {
+  background: #65ffc4;
+}
+
+.townShell .actor-contradiction::after {
+  background: #ff5f6a;
+}
+
+.townShell .actor-excluded::after {
+  background: #7d8993;
+}
+
+.townShell .actor-victim::after {
+  background: #111820;
 }
 
 .inspectorSummary {

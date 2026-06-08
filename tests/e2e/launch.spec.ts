@@ -73,6 +73,7 @@ test("guides a first-time player and persists dismissal", async ({ page }) => {
 
 test("loads a playable premium town without server APIs", async ({ page }) => {
   await dismissOnboarding(page);
+  await expect(page.getByTestId("value-proposition")).toContainText("案件不是 AI 编的");
   await expect(page.getByTestId("suggested-action")).toContainText("当前建议行动");
   await expect(page.getByTestId("inspector-rail")).toBeVisible();
   await expect(page.getByTestId("inspector-rail").getByRole("button", { name: "事件" })).toHaveClass(/active/);
@@ -113,6 +114,13 @@ test("search, interrogate and solve use the local rule engine", async ({ page })
   await expect(page.getByTestId("evidence-use-hint").first()).toContainText(/质询|证词|证据链/);
   await clickInspectorTab(page, "逻辑");
   await expect(page.getByTestId("deduction-graph").locator('[data-node-type="evidence"].unlocked').first()).toBeVisible();
+  await page.getByTestId("deduction-graph").locator('[data-node-type="evidence"].unlocked').first().dispatchEvent("click");
+  await expect(page.getByTestId("graph-explanation-card")).toContainText("证据成立");
+  await expect(page.getByTestId("graph-explanation-card")).toContainText("来源事件");
+
+  await clickInspectorTab(page, "人物");
+  await page.locator(".suspectRow").first().click();
+  await expect(page.getByTestId("suspect-explanation-card")).toContainText(/已由|仍需发现排除证据/);
 
   await clickInspectorTab(page, "调查");
   await page.getByTestId("inspector-rail").getByRole("button", { name: "询问 NPC" }).click();
@@ -124,6 +132,8 @@ test("search, interrogate and solve use the local rule engine", async ({ page })
   await expect(page.getByTestId("judgement-result")).toContainText("推理不成立");
   await expect(page.getByTestId("theory-gap-cards")).toContainText("缺口类型");
   await expect(page.getByTestId("theory-gap-cards")).not.toContainText("陆执");
+  await page.getByTestId("theory-gap-cards").locator(".gapCard").first().click();
+  await expect(page.getByTestId("inspector-summary")).toBeVisible();
 
   await page.locator("select").filter({ has: page.locator('option[value="npc-06"]') }).last().selectOption("npc-06");
   await page.getByPlaceholder("动机").fill("林澈准备公开旧剧院修缮款票据，陆执会失去剧院和名声。");
@@ -134,10 +144,22 @@ test("search, interrogate and solve use the local rule engine", async ({ page })
   await page.getByRole("button", { name: "生成解答篇" }).click();
   await expect(page.locator(".revealBox")).toContainText("凶手：陆执");
   await expect(page.getByTestId("deduction-graph").locator('[data-node-type="conclusion"]')).toBeVisible();
+  await expect(page.getByTestId("solution-chain")).toContainText("已发现证据如何推出结论");
 
   await page.reload();
   await clickInspectorTab(page, "逻辑");
   await expect(page.locator(".revealBox")).toContainText("凶手：陆执");
+});
+
+test("map hover card and NPC state markers explain investigation context", async ({ page }) => {
+  await dismissOnboarding(page);
+  await page.locator('.mapTile[title="镇档案馆"]').first().hover();
+  await expect(page.getByTestId("location-hover-card")).toContainText("镇档案馆");
+  await expect(page.getByTestId("location-hover-card")).toContainText("证据进度");
+  await clickMapLocation(page, "镇档案馆");
+  await clickInspectorTab(page, "调查");
+  await page.getByTestId("inspector-rail").getByRole("button", { name: "询问 NPC" }).click();
+  await expect(page.locator(".actorPin.actor-questioned").first()).toBeVisible();
 });
 
 test("causal trace node jumps timeline and event selection", async ({ page }) => {

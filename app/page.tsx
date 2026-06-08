@@ -35,7 +35,10 @@ import {
   PlayShell,
   SuspectBoardPanel,
   TownMapStage,
-  type InspectorTabId
+  type GapCard,
+  type GraphNodeExplanation,
+  type InspectorTabId,
+  type SuspectExplanation
 } from "@/app/components/DetectiveTownUI";
 import {
   applyAuthoringPatch,
@@ -61,6 +64,7 @@ import type {
   CaseFromLog,
   CaseLogicReport,
   CaseTemplateId,
+  DeductionGraphNode,
   DeductionGraph,
   DemoRuntimeState,
   DeepSeekLiveEvalReport,
@@ -78,7 +82,6 @@ import type {
   WorldMapActor,
   WorldMapMarker,
   WorldMapSnapshot,
-  WorldMapTile,
   WorldMode,
   WorldState
 } from "@/lib/engine";
@@ -220,6 +223,10 @@ export default function Home() {
   const [progress, setProgress] = useState<InvestigationProgress>(initialProgress);
   const { inspectorTab, setInspectorTab, showEvents, showInvestigation, showLogic, showPeople } = useInspectorSelection("events");
   const [selectionHighlight, setSelectionHighlight] = useState<SelectionHighlight>({});
+  const [selectedGraphNode, setSelectedGraphNode] = useState<DeductionGraphNode | null>(null);
+  const [selectedSuspectId, setSelectedSuspectId] = useState("");
+  const [selectedGapType, setSelectedGapType] = useState("");
+  const [hoveredLocationId, setHoveredLocationId] = useState("");
   const [appMode, setAppMode] = useState<AppMode>("play");
   const [authoringDraft, setAuthoringDraft] = useState<AuthoringDraft>(() => createPremiumAuthoringDraft());
   const [authoringTab, setAuthoringTab] = useState<AuthoringTab>("case");
@@ -266,6 +273,130 @@ export default function Home() {
   const visibleEvents = snapshot?.visibleEvents || events.slice(-30).reverse();
   const selectedEvent = events.find((event) => event.id === highlightedEventId);
   const selectedEvidence = deductionCase?.evidence.find((item) => item.id === selectedEvidenceId);
+  const evidenceTitleById = useMemo(() => new Map((deductionCase?.evidence || []).map((item) => [item.id, item.title])), [deductionCase?.evidence]);
+  const eventById = useMemo(() => new Map(events.map((event) => [event.id, event])), [events]);
+  const characterById = useMemo(() => new Map((deductionCase?.characters || []).map((character) => [character.id, character])), [deductionCase?.characters]);
+  const hoveredLocationInfo = useMemo(() => {
+    const locationId = hoveredLocationId || selectedSceneId;
+    const tile = snapshot?.tiles.find((item) => item.locationId === locationId);
+    if (!locationId || !tile) return null;
+    const recent = visibleEvents.find((event) => event.locationId === locationId);
+    return {
+      locationId,
+      name: tile.locationName || locationId,
+      terrain: tile.terrain,
+      searchable: Boolean(tile.searchable),
+      discovered: tile.discoveredEvidenceCount || 0,
+      total: tile.evidenceCount || 0,
+      recentEvent: recent ? `${recent.time} ${recent.publicSummary}` : undefined
+    };
+  }, [hoveredLocationId, selectedSceneId, snapshot?.tiles, visibleEvents]);
+  const graphExplanation: GraphNodeExplanation | null = useMemo(() => {
+    if (!selectedGraphNode || !deductionCase) return null;
+    const node = selectedGraphNode;
+    const discoveredTitles = node.evidenceIds.filter((id) => discovered.has(id)).map((id) => evidenceTitleById.get(id) || id);
+    const hiddenCount = node.evidenceIds.filter((id) => !discovered.has(id)).length;
+    const sourceEvents = node.eventIds.map((id) => eventById.get(id)).filter((event): event is WorldEvent => Boolean(event));
+    const names = node.characterIds.map((id) => characterById.get(id)?.name || id);
+    const source = sourceEvents.length
+      ? `来源事件：${sourceEvents.map((event) => `${event.time} ${event.publicSummary}`).join(" / ")}`
+      : "来源：当前案件结构与本地规则校验。";
+    if (hiddenCount > 0 && node.type !== "conclusion") {
+      return {
+        node,
+        title: "未发现的推理节点",
+        status: "LOCKED / 严格不剧透",
+        body: "该节点需要玩家先找到对应证据。系统不会提前显示证据标题、真实含义或最终结论。",
+        source,
+        references: discoveredTitles,
+        spoilerSafe: false
+      };
+    }
+    const typeLabel: Record<string, string> = {
+      evidence: "证据成立",
+      event: "世界事件来源",
+      testimony: "证词矛盾",
+      elimination: "嫌疑人排除",
+      conclusion: "唯一结论"
+    };
+    return {
+      node,
+      title: node.label,
+      status: typeLabel[node.type] || node.type,
+      body: node.detail || "该节点由已发现证据和本地规则链支持。",
+      source,
+      references: [...discoveredTitles, ...names].slice(0, 6),
+      spoilerSafe: true
+    };
+  }, [characterById, deductionCase, discovered, eventById, evidenceTitleById, selectedGraphNode]);
+  const suspectExplanations = useMemo(() => {
+    const result = new Map<string, SuspectExplanation>();
+    for (const row of suspectBoard) {
+      const visibleEvidence = row.exclusionEvidenceIds.filter((id) => discovered.has(id)).map((id) => evidenceTitleById.get(id) || id);
+      const lockedEvidenceCount = row.exclusionEvidenceIds.filter((id) => !discovered.has(id)).length;
+      const sourceEventLabels = row.sourceEventIds
+        .map((id) => eventById.get(id))
+        .filter((event): event is WorldEvent => Boolean(event))
+        .filter((event) => row.exclusionEvidenceIds.some((evidenceId) => discovered.has(evidenceId)) || session?.judgement?.accepted)
+        .map((event) => `${event.time} ${event.publicSummary}`);
+      const solved = Boolean(session?.judgement?.accepted);
+      const isCulprit = row.status === "culprit";
+      const statusLabel = isCulprit ? (solved ? "最终唯一嫌疑人" : "未破案前不显示结论") : row.status === "red_herring" ? "强误导嫌疑人" : "已排除候选";
+      const exclusionStatus = isCulprit
+        ? (solved ? "动机、手段、机会和关键证据链均未被反证排除。" : "仍需完整证据链。未破案前不显示真凶结论。")
+        : visibleEvidence.length
+          ? `已由 ${visibleEvidence.join("、")} 排除。`
+          : "仍需发现排除证据；当前不泄露证据标题。";
+      result.set(row.characterId, {
+        characterId: row.characterId,
+        name: row.name,
+        role: row.role,
+        statusLabel,
+        motive: row.motive,
+        means: row.means,
+        opportunity: row.opportunity,
+        surfaceSuspicion: row.surfaceSuspicion,
+        exclusionStatus,
+        visibleEvidenceTitles: visibleEvidence,
+        lockedEvidenceCount: isCulprit ? 0 : lockedEvidenceCount,
+        sourceEventLabels
+      });
+    }
+    return result;
+  }, [discovered, eventById, evidenceTitleById, session?.judgement?.accepted, suspectBoard]);
+  const gapCards: GapCard[] = useMemo(() => {
+    const mapTarget = (label: string): GapCard["target"] => {
+      if (label.includes("凶手")) return "suspects";
+      if (label.includes("动机")) return "motive";
+      if (label.includes("手法")) return "method";
+      if (label.includes("证据")) return "evidence";
+      if (label.includes("排除")) return "exclusion";
+      return "logic";
+    };
+    return judgementGaps.map((label) => {
+      const target = mapTarget(label);
+      const detail: Record<GapCard["target"], string> = {
+        suspects: "查看嫌疑人矩阵，确认谁仍保留完整动机/手段/机会。",
+        motive: "回到推理表单，补充已发现证据能支持的动机说明。",
+        method: "回到推理表单，补充作案工具、动作和伪装方式。",
+        evidence: "检查已发现证据，选择能连成链条的关键线索。",
+        exclusion: "查看 Suspect Board，确认非凶手是否已有排除证据。",
+        logic: "查看推理图，补齐从证据到结论的缺口。"
+      };
+      return { id: `gap:${label}`, label, detail: detail[target], target };
+    });
+  }, [judgementGaps]);
+  const solutionChain = useMemo(() => {
+    if (!session?.judgement?.accepted || !deductionCase) return [];
+    const selectedTitles = theory.evidenceIds.filter((id) => discovered.has(id)).map((id) => evidenceTitleById.get(id) || id);
+    const eliminatedCount = suspectBoard.filter((row) => row.status !== "culprit").length;
+    return [
+      selectedTitles.length ? `玩家已提交 ${selectedTitles.length} 条已发现证据：${selectedTitles.slice(0, 4).join("、")}${selectedTitles.length > 4 ? " 等" : ""}。` : "玩家已提交的证据链通过本地规则校验。",
+      "这些证据分别支撑动机、手法、机会或证词矛盾，形成可复查的推理链。",
+      `Suspect Board 中 ${eliminatedCount} 名非凶手通过已发现或已验证的排除链离场。`,
+      "唯一仍保留完整动机、手段、机会且没有被反证排除的人，才会在最终结论节点出现。"
+    ];
+  }, [deductionCase, discovered, evidenceTitleById, session?.judgement?.accepted, suspectBoard, theory.evidenceIds]);
   const inspectorSummary = useMemo(() => {
     if (inspectorTab === "events") {
       return selectedEvent
@@ -780,9 +911,40 @@ export default function Home() {
 
   function handleActor(actor: WorldMapActor) {
     setSelectedCharacterId(actor.id);
+    setSelectedSuspectId(actor.id);
     setSelectedSceneId(actor.locationId);
     setQuestion(`${actor.name}，案发窗口你在哪里？你记得哪些异常？`);
     highlightSelection({ characterId: actor.id, locationId: actor.locationId });
+    setInspectorTab("investigation");
+  }
+
+  function handleGapCard(card: GapCard) {
+    setSelectedGapType(card.label);
+    if (card.target === "suspects" || card.target === "exclusion") {
+      const target = suspectBoard.find((row) => row.status !== "culprit") || suspectBoard[0];
+      if (target) {
+        setSelectedSuspectId(target.characterId);
+        setSelectedCharacterId(target.characterId);
+        highlightSelection({ characterId: target.characterId });
+      }
+      setInspectorTab("people");
+      return;
+    }
+    if (card.target === "evidence") {
+      const first = discoveredEvidence[0];
+      if (first) {
+        setSelectedEvidenceId(first.id);
+        const scene = scenes.find((item) => item.evidenceIds.includes(first.id));
+        if (scene) setSelectedSceneId(scene.id);
+        highlightSelection({ evidenceId: first.id, locationId: scene?.id });
+      }
+      setInspectorTab("investigation");
+      return;
+    }
+    if (card.target === "logic") {
+      setInspectorTab("logic");
+      return;
+    }
     setInspectorTab("investigation");
   }
 
@@ -1254,10 +1416,26 @@ export default function Home() {
       graph={deductionGraph}
       discoveredEvidenceIds={session?.discoveredEvidenceIds || []}
       solutionRevealed={Boolean(session?.judgement?.accepted && revealText)}
-      onSelectEvidence={selectGraphEvidence}
-      onSelectEvent={selectGraphEvent}
+      selectedNodeId={selectedGraphNode?.id}
+      onSelectNode={setSelectedGraphNode}
+      onSelectEvidence={(evidenceId) => {
+        setSelectedEvidenceId(evidenceId);
+        const scene = scenes.find((item) => item.evidenceIds.includes(evidenceId));
+        if (scene) setSelectedSceneId(scene.id);
+        highlightSelection({ evidenceId, locationId: scene?.id });
+      }}
+      onSelectEvent={(eventId) => {
+        const event = events.find((item) => item.id === eventId);
+        setHighlightedEventId(eventId);
+        if (event) {
+          setSelectedSceneId(event.locationId);
+          setTimeValue(timeToMinutes(event.time));
+          highlightSelection({ eventId, locationId: event.locationId });
+        }
+      }}
       onSelectCharacter={(characterId) => {
         setSelectedCharacterId(characterId);
+        setSelectedSuspectId(characterId);
         setInspectorTab("people");
       }}
     />
@@ -1318,6 +1496,7 @@ export default function Home() {
           snapshot={snapshot}
           actorsByTile={mapActorsByTile}
           markersByTile={mapMarkersByTile}
+          hoverInfo={hoveredLocationInfo}
           selectedSceneId={selectedSceneId}
           highlightedEventId={highlightedEventId}
           selectedCharacterId={selectedCharacterId}
@@ -1329,6 +1508,7 @@ export default function Home() {
             currentCharacterId: selectedCharacterId
           }}
           onTileClick={(locationId) => void discoverFirstSceneEvidence(locationId)}
+          onTileHover={setHoveredLocationId}
           onMarkerClick={handleMarker}
           onActorClick={handleActor}
           replaying={replaying}
@@ -1398,6 +1578,8 @@ export default function Home() {
                   revealSolution={() => void revealSolution()}
                   revealText={revealText}
                   judgementGaps={judgementGaps}
+                  gapCards={gapCards}
+                  onGapSelect={handleGapCard}
                   busy={busy}
                 />
               )
@@ -1414,6 +1596,8 @@ export default function Home() {
                     emergenceScore={quality?.emergenceScore ?? causalTrace?.emergenceScore ?? 0}
                     causalComplete={Boolean(quality?.causalTraceComplete || causalTrace?.complete)}
                     graph={graphView}
+                    selectedGraphExplanation={graphExplanation}
+                    solutionChain={solutionChain}
                     revealText={revealText}
                   />
                   <CausalTracePanel
@@ -1438,9 +1622,12 @@ export default function Home() {
                 <SuspectBoardPanel
                   rows={suspectBoard}
                   solved={Boolean(session?.judgement?.accepted)}
+                  selectedSuspectId={selectedSuspectId}
+                  explanations={suspectExplanations}
                   onSelect={(characterId) => {
+                    setSelectedSuspectId(characterId);
                     setSelectedCharacterId(characterId);
-                    setInspectorTab("investigation");
+                    highlightSelection({ characterId });
                   }}
                 />
               )

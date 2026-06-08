@@ -7,9 +7,11 @@ type Props = {
   graph: DeductionGraph | null;
   discoveredEvidenceIds: string[];
   solutionRevealed: boolean;
+  selectedNodeId?: string;
   onSelectEvidence: (evidenceId: string) => void;
   onSelectEvent: (eventId: string) => void;
   onSelectCharacter: (characterId: string) => void;
+  onSelectNode?: (node: DeductionGraphNode) => void;
 };
 
 type PositionedNode = DeductionGraphNode & { x: number; y: number; locked: boolean };
@@ -52,9 +54,11 @@ export default function DeductionGraphView({
   graph,
   discoveredEvidenceIds,
   solutionRevealed,
+  selectedNodeId,
   onSelectEvidence,
   onSelectEvent,
-  onSelectCharacter
+  onSelectCharacter,
+  onSelectNode
 }: Props) {
   if (!graph) return <div className="graphEmpty">正在构建推理图...</div>;
 
@@ -65,6 +69,7 @@ export default function DeductionGraphView({
 
   function selectNode(node: PositionedNode) {
     if (node.locked) return;
+    onSelectNode?.(node);
     if (node.evidenceIds[0]) onSelectEvidence(node.evidenceIds[0]);
     else if (node.eventIds[0]) onSelectEvent(node.eventIds[0]);
     else if (node.characterIds[0]) onSelectCharacter(node.characterIds[0]);
@@ -97,7 +102,7 @@ export default function DeductionGraphView({
           {nodes.map((node) => (
             <g
               key={node.id}
-              className={`svgGraphNode type-${node.type} ${node.locked ? "locked" : "unlocked"}`}
+              className={`svgGraphNode type-${node.type} ${node.locked ? "locked" : "unlocked"} ${selectedNodeId === node.id ? "selected" : ""}`}
               transform={`translate(${node.x - 68} ${node.y - 24})`}
               onClick={() => selectNode(node)}
               role="button"
