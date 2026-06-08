@@ -1302,3 +1302,384 @@ blockquote {
     grid-template-columns: 1fr;
   }
 }
+
+/* Launch polish UI: map-first Detective Town workbench */
+.townShell {
+  display: grid;
+  grid-template-columns: 288px minmax(640px, 1fr) 388px;
+  min-height: 100vh;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(86, 166, 255, 0.12), transparent 34%),
+    linear-gradient(180deg, #060a0f 0%, #0a1017 100%);
+}
+
+.hudPanel {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  margin-top: 12px;
+  background: linear-gradient(180deg, rgba(19, 30, 40, 0.96), rgba(10, 17, 24, 0.96));
+  border: 1px solid rgba(124, 157, 178, 0.26);
+  border-radius: 5px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.hudPanel h2,
+.currentCasePanel h2 {
+  margin: 0;
+  color: #f7fbff;
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.hudPanel p,
+.currentCasePanel p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.eyebrow,
+.templateChip {
+  color: #8cc7ff;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.templateChip {
+  display: inline-flex;
+  width: fit-content;
+  padding: 5px 8px;
+  color: #111822;
+  background: var(--accent-2);
+  border: 1px solid #ffe6a2;
+  border-radius: 4px;
+}
+
+.metricsPanel {
+  padding: 0;
+  margin-top: 12px;
+  background: transparent;
+}
+
+.stageHud {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  min-height: 92px;
+  padding: 18px;
+  background:
+    linear-gradient(180deg, rgba(9, 15, 22, 0.96), rgba(6, 10, 15, 0.94)),
+    linear-gradient(90deg, rgba(86, 166, 255, 0.1), transparent);
+  border-bottom: 1px solid rgba(124, 157, 178, 0.24);
+}
+
+.stageHud p {
+  margin: 0 0 5px;
+  color: #8cc7ff;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.stageHud h2 {
+  max-width: 980px;
+  margin: 0;
+  color: #f8fbff;
+  font-size: 18px;
+  line-height: 1.45;
+}
+
+.townShell .mapStage {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-height: 100vh;
+  overflow: hidden;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+    #05080d;
+  background-size: 18px 18px;
+}
+
+.townShell .pixelMapWrap {
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  padding: 22px;
+  overflow: auto;
+}
+
+.townShell .pixelMap {
+  width: min(100%, 1180px);
+  min-width: 860px;
+  aspect-ratio: 28 / 18;
+  padding: 5px;
+  background: #071019;
+  border: 1px solid #55718a;
+  box-shadow:
+    0 0 0 4px rgba(8, 14, 20, 0.9),
+    0 18px 60px rgba(0, 0, 0, 0.42),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+}
+
+.townShell .mapTile {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  image-rendering: pixelated;
+  border: 0;
+  border-radius: 0;
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.08);
+  transition: filter 0.12s ease, outline-color 0.12s ease, transform 0.12s ease;
+}
+
+.townShell .mapTile:hover {
+  z-index: 3;
+  filter: brightness(1.13) saturate(1.08);
+}
+
+.townShell .mapTile.selected {
+  z-index: 4;
+  outline: 2px solid #ffe06a;
+  outline-offset: -2px;
+}
+
+.townShell .terrain-water {
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.08) 12%, transparent 12% 50%, rgba(255,255,255,0.08) 50% 62%, transparent 62%),
+    #176b9c;
+}
+
+.townShell .terrain-road {
+  background:
+    linear-gradient(90deg, transparent 46%, rgba(255, 241, 177, 0.22) 46% 54%, transparent 54%),
+    #909a82;
+}
+
+.townShell .terrain-building {
+  background:
+    repeating-linear-gradient(45deg, rgba(0,0,0,0.12) 0 4px, transparent 4px 8px),
+    #b9825d;
+}
+
+.townShell .terrain-forest {
+  background:
+    radial-gradient(circle, rgba(64, 152, 77, 0.9) 0 34%, transparent 36%),
+    #1f6a3e;
+  background-size: 18px 18px;
+}
+
+.townShell .terrain-field {
+  background:
+    radial-gradient(circle, rgba(255,255,255,0.12) 1px, transparent 2px),
+    #6fb84a;
+  background-size: 18px 18px;
+}
+
+.townShell .placeName {
+  position: absolute;
+  top: 42%;
+  left: 50%;
+  z-index: 2;
+  max-width: 96px;
+  padding: 1px 4px;
+  overflow: hidden;
+  color: #071019;
+  background: rgba(255, 232, 122, 0.9);
+  border: 1px solid rgba(35, 25, 8, 0.55);
+  border-radius: 2px;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.townShell .actorPin {
+  width: 20px;
+  height: 20px;
+  color: #071019;
+  background: #f8fbff;
+  border: 2px solid #101820;
+  border-radius: 3px;
+  font-size: 11px;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.35);
+}
+
+.townShell .marker {
+  color: #ffe06a;
+  text-shadow: 0 0 8px rgba(255, 224, 106, 0.85);
+}
+
+.townShell .marker-hot,
+.townShell .marker.hot {
+  color: #ff5f6a;
+  text-shadow: 0 0 12px rgba(255, 95, 106, 0.9);
+}
+
+.inspectorRail {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100vh;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--rail), #0b1118);
+  border-left: 1px solid rgba(124, 157, 178, 0.24);
+}
+
+.inspectorTabs {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  padding: 12px;
+  background: rgba(5, 10, 15, 0.6);
+  border-bottom: 1px solid rgba(124, 157, 178, 0.22);
+}
+
+.inspectorTabs button {
+  min-height: 34px;
+  color: var(--muted);
+  background: #0c1219;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.inspectorTabs button.active {
+  color: #071019;
+  background: var(--accent);
+  border-color: #b8dcff;
+}
+
+.inspectorContent {
+  min-height: 0;
+  padding: 12px;
+  overflow: auto;
+}
+
+.stackedInspector {
+  display: grid;
+  gap: 12px;
+}
+
+.causalTraceRail {
+  position: relative;
+  display: grid;
+  gap: 9px;
+  max-height: 420px;
+  overflow: auto;
+  padding-left: 14px;
+}
+
+.causalTraceRail::before {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 5px;
+  width: 2px;
+  content: "";
+  background: linear-gradient(var(--accent), var(--accent-2));
+}
+
+.causalTraceRail button {
+  position: relative;
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 9px;
+  color: var(--soft);
+  text-align: left;
+  background: #0c1219;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+}
+
+.causalTraceRail button::before {
+  position: absolute;
+  top: 14px;
+  left: -14px;
+  width: 9px;
+  height: 9px;
+  content: "";
+  background: var(--accent-2);
+  border: 2px solid #071019;
+  border-radius: 50%;
+}
+
+.causalTraceRail button.locked {
+  color: var(--muted);
+  border-style: dashed;
+  opacity: 0.72;
+}
+
+.causalTraceRail time {
+  color: var(--accent-2);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.causalTraceRail span {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.developerPanel .apiExample {
+  max-height: 460px;
+}
+
+@media (max-width: 1180px) {
+  .townShell {
+    grid-template-columns: 270px minmax(420px, 1fr);
+  }
+
+  .inspectorRail {
+    grid-column: 1 / -1;
+    height: auto;
+    min-height: 520px;
+    border-top: 1px solid rgba(124, 157, 178, 0.24);
+    border-left: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .townShell {
+    display: block;
+    overflow-x: hidden;
+  }
+
+  .townShell .controlRail,
+  .townShell .mapStage,
+  .inspectorRail {
+    height: auto;
+    min-height: 0;
+  }
+
+  .stageHud {
+    grid-template-columns: 1fr;
+  }
+
+  .townShell .pixelMapWrap {
+    justify-content: start;
+    padding: 10px;
+  }
+
+  .townShell .pixelMap {
+    min-width: 820px;
+  }
+
+  .inspectorTabs {
+    position: sticky;
+    top: 0;
+    z-index: 8;
+  }
+}

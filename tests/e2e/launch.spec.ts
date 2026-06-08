@@ -4,6 +4,10 @@ async function clickMapLocation(page: Page, title: string) {
   await page.locator(`.mapTile[title="${title}"]`).evaluate((element) => (element as HTMLElement).click());
 }
 
+async function clickInspectorTab(page: Page, name: string) {
+  await page.getByTestId("inspector-rail").getByRole("button", { name, exact: true }).click();
+}
+
 test.beforeEach(async ({ page }) => {
   await page.route("**/api/**", async (route) => {
     throw new Error(`Static demo attempted an API request: ${route.request().url()}`);
@@ -15,6 +19,9 @@ test.beforeEach(async ({ page }) => {
 test("loads a playable premium town without server APIs", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "推理小镇" })).toBeVisible();
   await expect(page.locator(".actorPin")).toHaveCount(8);
+  await expect(page.getByTestId("inspector-rail")).toBeVisible();
+  await expect(page.getByRole("button", { name: "事件" })).toHaveClass(/active/);
+  await clickInspectorTab(page, "逻辑");
   await expect(page.getByTestId("deduction-graph").locator('[data-node-type="evidence"].locked').first()).toBeVisible();
   await expect(page.getByTestId("causal-trace")).toContainText("Causal Trace");
   await expect(page.locator("body")).not.toHaveCSS("overflow-x", "scroll");
@@ -25,6 +32,7 @@ test("case library switches all three static templates", async ({ page }) => {
   const select = page.getByTestId("case-template-select");
   await select.selectOption("archive-blunt");
   await expect(page.locator("body")).toContainText("档案馆钝器误导案");
+  await clickInspectorTab(page, "逻辑");
   await expect(page.getByTestId("causal-trace")).toContainText("未揭示的因果节点");
 
   await select.selectOption("clocktower-locked-room");
@@ -34,7 +42,9 @@ test("case library switches all three static templates", async ({ page }) => {
 
   await select.selectOption("clinic-poison");
   await expect(page.locator("body")).toContainText("诊所毒杀证词案");
+  await clickInspectorTab(page, "事件");
   await expect(page.locator(".eventRow")).not.toHaveCount(0);
+  await clickInspectorTab(page, "逻辑");
   await expect(page.getByTestId("causal-trace")).toContainText("案件因果链");
 });
 
@@ -55,8 +65,10 @@ test("search, interrogate and solve use the local rule engine", async ({ page })
   await expect(page.locator(".checkRow")).toHaveCount(9);
 
   await expect(page.locator(".evidenceList button.found").first()).toBeVisible();
+  await clickInspectorTab(page, "逻辑");
   await expect(page.getByTestId("deduction-graph").locator('[data-node-type="evidence"].unlocked').first()).toBeVisible();
 
+  await clickInspectorTab(page, "调查");
   await page.getByRole("button", { name: "询问 NPC" }).click();
   await expect(page.locator(".aiSafetyStrip").getByText("Prompt Safe: Yes")).toBeVisible();
 
@@ -71,14 +83,17 @@ test("search, interrogate and solve use the local rule engine", async ({ page })
   await expect(page.getByTestId("deduction-graph").locator('[data-node-type="conclusion"]')).toBeVisible();
 
   await page.reload();
+  await clickInspectorTab(page, "逻辑");
   await expect(page.locator(".revealBox")).toContainText("凶手：陆执");
 });
 
 test("causal trace node jumps timeline and event selection", async ({ page }) => {
   const badge = page.locator(".timeBadge");
   await expect(badge).toHaveText("08:00");
+  await clickInspectorTab(page, "逻辑");
   await page.getByTestId("causal-trace").locator("button").filter({ hasText: "22:05" }).click();
   await expect(badge).toHaveText("22:05");
+  await clickInspectorTab(page, "事件");
   await expect(page.locator(".eventRow.selected")).toBeVisible();
 });
 
