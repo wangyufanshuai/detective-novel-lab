@@ -75,12 +75,16 @@ test("guides a first-time player and persists dismissal", async ({ page }) => {
 
 test("loads a playable premium town without server APIs", async ({ page }) => {
   await dismissOnboarding(page);
-  await expect(page.getByTestId("value-proposition")).toContainText("案件不是 AI 编的");
+  await expect(page.getByTestId("value-proposition")).toContainText("AI");
   await expect(page.getByTestId("suggested-action")).toContainText("当前建议行动");
   await expect(page.getByTestId("inspector-rail")).toBeVisible();
-  await expect(page.locator(".eventMore")).toBeVisible();
-  await expect(page.getByTestId("inspector-rail").getByRole("button", { name: "事件" })).toHaveClass(/active/);
+  await expect(page.getByTestId("evidence-notebook")).toBeVisible();
+  await expect(page.getByTestId("inspector-rail").getByRole("button", { name: "调查", exact: true })).toHaveClass(/active/);
+  const ordinaryTileTabIndex = await page.locator('.mapTile[title="grass"]').first().getAttribute("tabindex");
+  expect(ordinaryTileTabIndex).toBe("-1");
   await clickInspectorTab(page, "逻辑");
+  await expect(page.getByTestId("proof-tour")).toBeVisible();
+  await expect(page.getByTestId("proof-tour")).toContainText("玩家证明");
   await expect(page.getByTestId("deduction-graph").locator('[data-node-type="evidence"].locked').first()).toBeVisible();
   await expect(page.getByTestId("emergence-proof")).toBeVisible();
   await expect(page.getByTestId("emergence-proof")).toContainText("Locked hidden world event");
@@ -118,9 +122,14 @@ test("search, interrogate and solve use the local rule engine", async ({ page })
   await expect(page.getByTestId("toast-stack")).toBeVisible();
 
   await expect(page.locator(".evidenceList button.found").first()).toBeVisible();
+  await expect(page.getByTestId("evidence-notebook")).toContainText("Evidence Notebook");
+  await expect(page.getByTestId("evidence-notebook").locator(".notebookCard:not(.locked)").first()).toBeVisible();
+  await page.getByTestId("evidence-notebook").locator(".notebookCard:not(.locked)").first().getByRole("button", { name: "加入推理链" }).click();
+  await expect(page.getByTestId("toast-stack")).toBeVisible();
   await expect(page.getByTestId("evidence-use-hint").first()).toBeVisible();
   await expect(page.getByTestId("evidence-use-hint").first()).toContainText(/质询|证词|证据链/);
   await clickInspectorTab(page, "逻辑");
+  await expect(page.getByTestId("proof-tour")).toContainText("玩家证明");
   await expect(page.getByTestId("deduction-graph").locator('[data-node-type="evidence"].unlocked').first()).toBeVisible();
   await page.getByTestId("deduction-graph").locator('[data-node-type="evidence"].unlocked').first().dispatchEvent("click");
   await expect(page.getByTestId("graph-explanation-card")).toContainText("证据成立");
@@ -157,6 +166,7 @@ test("search, interrogate and solve use the local rule engine", async ({ page })
   await expect(page.getByTestId("deduction-graph").locator('[data-node-type="conclusion"]')).toBeVisible();
   await clickInspectorTab(page, "逻辑");
   await expect(page.getByTestId("emergence-proof-metrics")).toContainText("Hard logic");
+  await expect(page.getByTestId("proof-tour")).toContainText("唯一结论");
   await expect(page.getByTestId("emergence-proof")).toContainText("Case extracted from world log");
   await expect(page.getByTestId("solution-chain")).toContainText("已发现证据如何推出结论");
 
@@ -170,11 +180,13 @@ test("map hover card and NPC state markers explain investigation context", async
   await page.locator('.mapTile[title="镇档案馆"]').first().hover();
   await expect(page.getByTestId("location-hover-card")).toContainText("镇档案馆");
   await expect(page.getByTestId("location-hover-card")).toContainText("证据进度");
+  await expect(page.getByTestId("location-hover-card").getByRole("button", { name: /搜索地点|查看地点/ })).toBeVisible();
   await clickMapLocation(page, "镇档案馆");
   await expect(page.getByTestId("toast-stack")).toBeVisible();
   await clickInspectorTab(page, "调查");
   await page.locator(".actorPin").first().click();
   await expect(page.getByTestId("npc-popover-card")).toBeVisible();
+  await expect(page.getByTestId("npc-popover-card").getByRole("button", { name: "询问 NPC" })).toBeVisible();
   await page.getByTestId("inspector-rail").getByRole("button", { name: "询问 NPC" }).click();
   await expect(page.locator(".actorPin.actor-questioned").first()).toBeVisible();
 });
@@ -210,6 +222,7 @@ test("authoring workbench explains validation blockers", async ({ page }) => {
   await expect(page.getByTestId("authoring-rule-report")).toContainText("Pass");
   await expect(page.getByTestId("authoring-validation-checklist")).toContainText("Schema");
   await expect(page.getByTestId("authoring-validation-checklist")).toContainText("Playable Runtime");
+  await expect(page.getByTestId("authoring-proof-audit")).toContainText("Proof Audit");
 
   await page.getByTestId("authoring-title").fill("雾灯镇：作者测试案");
   await page.getByRole("button", { name: "Evidence", exact: true }).click();

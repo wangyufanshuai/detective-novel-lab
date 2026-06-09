@@ -64,3 +64,12 @@ The proof trace is used by the UI and by the benchmark runner. Each node carries
 - hard logic validity;
 - causal trace completeness;
 - reasoning trace completeness.
+
+## Player Proof vs Developer Proof
+
+The UI exposes the same world model at two levels:
+
+- **Player proof** uses `buildPlayerProofTour`. It groups facts into event, memory, evidence, contradiction, elimination, conclusion, and validation steps. Locked steps hide undiscovered evidence titles and culprit-specific conclusions.
+- **Developer proof** uses `buildEmergenceProofTrace`. It keeps the lower-level source ids for NPC goals, intents, WorldEvents, MemoryRecords, evidence, case extraction, and validation.
+
+The Evidence Notebook is the bridge between investigation and proof. `buildEvidenceNotebook` derives discovered clue cards from the case, event log, and player session: source location, source event, challengeable NPCs, support/contradiction labels, and theory-chain actions.

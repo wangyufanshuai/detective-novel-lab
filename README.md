@@ -14,9 +14,9 @@ DeepSeek is used only for NPC surface dialogue and optional solution prose. It d
 
 1. Open the app: the Premium Showcase, 8 NPCs, map, timeline, case file, and guided task queue are already loaded.
 2. Follow the first-case guide: observe the crime window, click a searchable location, question an NPC, then challenge testimony with evidence.
-3. Each discovered clue explains how it may be used: who to question, what type of testimony it may contradict, and whether it belongs in the evidence chain.
+3. Use the **Evidence Notebook**: each discovered clue shows its source location, source event, suggested NPC challenge, and whether it belongs in the evidence chain.
 4. Submit a deliberately wrong theory first. The UI shows only structured gap cards, not the answer.
-5. Submit the complete theory. The final deduction node, source-locked solution, and full causal trace unlock only after the local rule engine accepts it.
+5. Submit the complete theory. The final deduction node, source-locked solution, and full **Proof Tour** unlock only after the local rule engine accepts it.
 
 See [docs/first-case-guide.md](docs/first-case-guide.md) for the guided first case flow.
 
@@ -32,7 +32,7 @@ The product direction is **immersive map-first investigation + explainable deduc
 - Locked deduction nodes prevent spoiler leakage before the player earns the clue.
 - Static Demo mode must be playable in a public deployment with no API key and no writable SQLite directory.
 
-Current design focus: **Immersive investigation flow with explainable logic**. The UI should feel like a playable pixel mystery while still making the rules inspectable. Evidence nodes explain their WorldEvent source, suspect rows explain exclusion status, wrong theories point to the missing reasoning area, and the final solution shows how discovered clues lead to the accepted conclusion.
+Current design focus: **Evidence Notebook + Playable Proof Tour**. The UI should feel like a playable pixel mystery while still making the rules inspectable. Evidence cards explain their WorldEvent source and practical use, Proof Tour turns emergence into a player-readable chain, suspect rows explain exclusion status, wrong theories point to the missing reasoning area, and the final solution shows how discovered clues lead to the accepted conclusion.
 
 ## Why Not Just Ask An LLM?
 
@@ -44,7 +44,7 @@ Detective Town uses the LLM only as a surface language layer. The durable case l
 - evidence must point back to those events;
 - NPC answers are constrained by their `MemoryRecord` scope and discovered evidence;
 - local rules validate unique culprit, motive / means / opportunity, alibis, exclusions, clue availability, and reasoning coverage;
-- the UI exposes the audit trail through the map, event log, Causal Trace, Deduction Graph, suspect board, and rule report.
+- the UI exposes the audit trail through the map, Evidence Notebook, Proof Tour, event log, Causal Trace, Deduction Graph, suspect board, and rule report.
 
 ## Why It Is Different
 
@@ -59,6 +59,8 @@ Detective Town uses the LLM only as a surface language layer. The durable case l
 ## Proof Of Emergence
 
 The latest build adds an explicit proof layer for the core claim: the mystery is not invented after the fact. The Inspector can show an **Emergence Proof** trace that connects NPC goals, intents, world events, memory records, evidence, case extraction, and local validation.
+
+The player-facing proof layer is **Proof Tour**. It converts the same source chain into playable steps: event, memory, evidence, contradiction, elimination, conclusion, and validation. Before the player solves the case, locked steps hide evidence titles and culprit-specific conclusions.
 
 The benchmark runner tests 20 deterministic seeds without calling DeepSeek:
 

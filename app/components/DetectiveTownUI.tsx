@@ -26,11 +26,15 @@ import type {
   DeductionCase,
   DeductionGraphNode,
   EmergenceProofTrace,
+  EvidenceNotebookItem,
   Evidence,
   InvestigationProgress,
+  MapInteractiveTarget,
   MurderArchetype,
   PlayerSession,
   PlayerTheory,
+  ProofTourStep,
+  ProofViewMode,
   RuntimeMode,
   SuspectBoardRow,
   WorldEvent,
@@ -120,6 +124,8 @@ export type NpcPopoverState = {
   contradiction: boolean;
   excluded: boolean;
 };
+
+type NotebookAction = "source" | "challenge" | "chain";
 
 const markerGlyph: Record<string, string> = {
   crime: "!",
@@ -409,10 +415,13 @@ export function TownMapStage({
   selectedCharacterId,
   characterState,
   selectionHighlight,
+  interactiveTargets,
   onTileClick,
   onTileHover,
   onMarkerClick,
   onActorClick,
+  onLocationAction,
+  onNpcAction,
   replaying,
   setReplaying,
   timeMin,
@@ -435,10 +444,13 @@ export function TownMapStage({
   selectedCharacterId?: string;
   characterState: CharacterState;
   selectionHighlight?: SelectionHighlight;
+  interactiveTargets: MapInteractiveTarget[];
   onTileClick: (locationId: string) => void;
   onTileHover: (locationId: string) => void;
   onMarkerClick: (marker: WorldMapMarker) => void;
   onActorClick: (actor: WorldMapActor) => void;
+  onLocationAction: (locationId: string) => void;
+  onNpcAction: (characterId: string) => void;
   replaying: boolean;
   setReplaying: (value: boolean | ((value: boolean) => boolean)) => void;
   timeMin: number;
@@ -448,6 +460,7 @@ export function TownMapStage({
   timeToMinutes: (time: string) => number;
   minutesToTime: (minutes: number) => string;
 }) {
+  const interactiveTargetIds = new Set(interactiveTargets.map((target) => `${target.kind}:${target.locationId || target.characterId || target.evidenceId || target.eventId}`));
   return (
     <section className="mapStage">
       <header className="stageHud">
@@ -455,7 +468,7 @@ export function TownMapStage({
           <p>WorldEvent sourced case simulation</p>
           <h2>{caseFile}</h2>
           <div className="valueProposition" data-testid="value-proposition">
-            案件不是 AI 编的，是从小镇事件里发生的。<span>WorldEvent evidence / Memory-scoped testimony / Local rule judgement</span>
+            案件从小镇事件中发生，AI 只负责表层对话。<span>WorldEvent evidence / Memory-scoped testimony / Local rule judgement</span>
           </div>
         </div>
         <div className="timeBadge">{currentTime}</div>
@@ -469,11 +482,16 @@ export function TownMapStage({
             const markers = markersByTile.get(`${tile.x}:${tile.y}`) || [];
             const selected = tile.locationId && tile.locationId === selectedSceneId;
             const highlighted = tile.locationId && tile.locationId === selectionHighlight?.locationId;
+            const interactive = Boolean(tile.locationId || actors.length || markers.length);
             return (
               <button
                 key={tile.id}
                 className={`mapTile terrain-${tile.terrain} ${tile.searchable ? "searchable" : ""} ${selected ? "selected" : ""} ${highlighted ? "spotlight" : ""}`}
                 title={tile.locationName || tile.terrain}
+                aria-label={interactive ? (tile.locationName || tile.terrain) : undefined}
+                aria-hidden={!interactive}
+                role={interactive ? "button" : "presentation"}
+                tabIndex={interactive ? 0 : -1}
                 onClick={() => tile.locationId && onTileClick(tile.locationId)}
                 onMouseEnter={() => tile.locationId && onTileHover(tile.locationId)}
                 onFocus={() => tile.locationId && onTileHover(tile.locationId)}
@@ -522,6 +540,10 @@ export function TownMapStage({
             <strong>{hoverInfo.name}</strong>
             <p>证据进度：{hoverInfo.discovered}/{hoverInfo.total}</p>
             <small>{hoverInfo.recentEvent || "暂无当前时间附近公开事件。"}</small>
+            <div className="popoverActions">
+              <button type="button" onClick={() => onLocationAction(hoverInfo.locationId)}>{hoverInfo.searchable ? "搜索地点" : "查看地点"}</button>
+              <span>{interactiveTargetIds.has(`location:${hoverInfo.locationId}`) ? "可交互" : "仅展示"}</span>
+            </div>
           </aside>
         )}
         {npcPopover && (
@@ -533,6 +555,10 @@ export function TownMapStage({
               <span>{npcPopover.questioned ? "已询问" : "未询问"}</span>
               <span>{npcPopover.contradiction ? "矛盾命中" : "暂无矛盾"}</span>
               <span>{npcPopover.excluded ? "已排除" : "待判断"}</span>
+            </div>
+            <div className="popoverActions">
+              <button type="button" onClick={() => onNpcAction(npcPopover.characterId)}>询问 NPC</button>
+              <span>{npcPopover.contradiction ? "矛盾命中" : "记忆约束"}</span>
             </div>
           </aside>
         )}
@@ -777,6 +803,44 @@ export function CausalTracePanel({
   );
 }
 
+export function ProofTourPanel({
+  steps,
+  viewMode,
+  setViewMode,
+  onSelectStep
+}: {
+  steps: ProofTourStep[];
+  viewMode: ProofViewMode;
+  setViewMode: (value: ProofViewMode) => void;
+  onSelectStep: (step: ProofTourStep) => void;
+}) {
+  const visibleSteps = viewMode === "developer" ? steps : steps.filter((step) => !step.locked || step.stage === "conclusion" || step.stage === "validation");
+  return (
+    <section className="actionPanel proofTourPanel" data-testid="proof-tour">
+      <div className="panelHeaderLine">
+        <h2><ShieldCheck size={16} /> Proof Tour</h2>
+        <div className="segmentedControl">
+          <button type="button" className={viewMode === "player" ? "active" : ""} onClick={() => setViewMode("player")}>玩家证明</button>
+          <button type="button" className={viewMode === "developer" ? "active" : ""} onClick={() => setViewMode("developer")}>开发者证明</button>
+        </div>
+      </div>
+      <p>按调查顺序查看：事件、记忆、证据、矛盾、排除链和最终结论。</p>
+      <div className="proofTourRail">
+        {visibleSteps.map((step, index) => (
+          <button key={step.id} type="button" className={`proofTourStep ${step.stage} ${step.locked ? "locked" : ""} ${step.complete ? "complete" : ""}`} onClick={() => onSelectStep(step)}>
+            <span>{step.locked ? "锁定" : `${index + 1}`}</span>
+            <strong>{step.title}</strong>
+            <small>{step.detail}</small>
+            {!![step.time, step.locationId, step.evidenceIds[0], step.eventIds[0]].filter(Boolean).length && (
+              <em>{[step.time, step.locationId, step.evidenceIds[0], step.eventIds[0]].filter(Boolean).join(" / ")}</em>
+            )}
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export function SuspectBoardPanel({
   rows,
   solved,
@@ -842,7 +906,55 @@ export function SuspectBoardPanel({
   );
 }
 
+export function EvidenceNotebookPanel({
+  items,
+  onAction
+}: {
+  items: EvidenceNotebookItem[];
+  onAction: (item: EvidenceNotebookItem, action: NotebookAction) => void;
+}) {
+  const discoveredCount = items.filter((item) => item.discovered).length;
+  return (
+    <section className="actionPanel evidenceNotebookPanel" data-testid="evidence-notebook">
+      <div className="panelHeaderLine">
+        <h2><FileSearch size={16} /> Evidence Notebook</h2>
+        <span>{discoveredCount}/{items.length}</span>
+      </div>
+      <p>笔记只展示玩家已发现线索的标题、来源和用途；锁定线索不剧透。</p>
+      <div className="notebookList">
+        {items.map((item) => (
+          <article key={item.evidenceId} className={`notebookCard ${item.locked ? "locked" : ""} ${item.isKey && item.discovered ? "keyEvidence" : ""}`}>
+            <span className="eyebrow">{item.locked ? "LOCKED" : item.isKey ? "关键线索" : "已发现"}</span>
+            <h3>{item.title}</h3>
+            <p>{item.useHint}</p>
+            {!item.locked && (
+              <>
+                <div className="notebookMeta">
+                  <span>{item.locationName}</span>
+                  {item.sourceEventLabel && <span>{item.sourceEventLabel}</span>}
+                  {!!item.challengeNpcNames.length && <span>可质询：{item.challengeNpcNames.slice(0, 2).join("、")}</span>}
+                </div>
+                <div className="notebookTags">
+                  {item.supports.slice(0, 3).map((label) => <span key={`s:${item.evidenceId}:${label}`}>支持：{label}</span>)}
+                  {item.contradicts.slice(0, 3).map((label) => <span key={`c:${item.evidenceId}:${label}`}>反驳：{label}</span>)}
+                </div>
+              </>
+            )}
+            <div className="notebookActions">
+              <button type="button" onClick={() => onAction(item, "source")}>{item.locked ? "前往地点" : "查看来源"}</button>
+              <button type="button" onClick={() => onAction(item, "challenge")} disabled={item.locked || !item.challengeNpcIds.length}>用于质询</button>
+              <button type="button" onClick={() => onAction(item, "chain")} disabled={item.locked}>加入推理链</button>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export function InvestigationPanel({
+  notebookItems,
+  onNotebookAction,
   selectedSceneName,
   sceneEvidence,
   discoveredEvidence,
@@ -878,6 +990,8 @@ export function InvestigationPanel({
   nextStepAdvice,
   busy
 }: {
+  notebookItems: EvidenceNotebookItem[];
+  onNotebookAction: (item: EvidenceNotebookItem, action: NotebookAction) => void;
   selectedSceneName: string;
   sceneEvidence: Evidence[];
   discoveredEvidence: Evidence[];
@@ -915,6 +1029,7 @@ export function InvestigationPanel({
 }) {
   return (
     <div className="stackedInspector">
+      <EvidenceNotebookPanel items={notebookItems} onAction={onNotebookAction} />
       <section className="actionPanel">
         <h2><FileSearch size={16} /> 地点与证据</h2>
         <p>{selectedSceneName || "选择地图地点"}</p>

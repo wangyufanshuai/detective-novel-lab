@@ -8,11 +8,12 @@ The first case is designed to demonstrate the core product loop in under three m
 
 1. Observe the crime window.
 2. Search locations for world-backed evidence.
-3. Question NPCs from memory-scoped testimony.
-4. Challenge testimony with discovered evidence.
-5. Submit a wrong theory and inspect non-spoiler gap cards.
-6. Submit the complete theory.
-7. Reveal the solution and final deduction graph node.
+3. Use the Evidence Notebook to understand source events, likely NPC challenges, and evidence-chain value.
+4. Question NPCs from memory-scoped testimony.
+5. Challenge testimony with discovered evidence.
+6. Submit a wrong theory and inspect non-spoiler gap cards.
+7. Submit the complete theory.
+8. Reveal the solution, final deduction graph node, and Proof Tour conclusion.
 
 ## Guided Task Queue
 
@@ -37,6 +38,7 @@ Clicking a guided task highlights the relevant map target, time window, NPC, or 
 The app avoids giving away the answer before the player earns it:
 
 - Evidence cards explain how a clue can be used, but do not name the culprit.
+- Evidence Notebook cards collect discovered clues, source locations, source events, suggested challenge targets, and evidence-chain actions.
 - Search, interrogation, wrong theory, and solution actions show short feedback toasts. The toasts are non-blocking and never contain the hidden answer.
 - Location hover cards show searchability, evidence progress, and the nearest public event.
 - NPC popovers show name, role, question status, contradiction status, and exclusion status without marking the true culprit before the case is solved.
@@ -46,12 +48,15 @@ The app avoids giving away the answer before the player earns it:
 - Wrong theories show gap categories: culprit, motive, method, key evidence chain, and exclusion chain.
 - Gap cards are clickable: they jump to the relevant board, form field, evidence list, or graph area without revealing the correct answer.
 - The final culprit conclusion in the Deduction Graph stays locked until the local rule engine accepts the theory.
+- Proof Tour stays player-safe: locked steps never expose hidden evidence titles or culprit-specific conclusions.
 
 ## Reading The Logic UI
 
 Use the right-side Inspector as a reasoning workspace:
 
 - **Graph explanation card**: click an unlocked graph node to see the public reason it exists and its source event.
+- **Evidence Notebook**: use `查看来源` to jump to the source location/event, `用于质询` to set up a memory-scoped NPC challenge, and `加入推理链` to add a discovered clue to the theory.
+- **Proof Tour**: read the player proof as event -> memory -> evidence -> contradiction -> elimination -> conclusion -> validation. Switch to the developer proof only when you want the full engine trace.
 - **Suspect explanation card**: click a suspect row to see surface suspicion, MMO status, visible exclusion evidence, and any still-locked evidence count.
 - **Wrong theory gap cards**: after a failed submission, click a gap card to jump to the area that needs work.
 - **Solution chain**: after a correct theory and reveal, read the discovered-evidence-to-conclusion sequence before the prose solution.

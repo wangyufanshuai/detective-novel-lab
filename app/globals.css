@@ -547,7 +547,7 @@ label {
   font-size: 11px;
   font-weight: 1000;
   box-shadow: 1px 1px 0 #000;
-  pointer-events: auto;
+  pointer-events: none;
 }
 
 .actor-victim {
@@ -2116,6 +2116,244 @@ blockquote {
 
 .proofIssues p {
   padding: 0 8px 8px;
+}
+
+.popoverActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 4px;
+  pointer-events: none;
+}
+
+.locationHoverCard > :not(.popoverActions),
+.npcPopoverCard > :not(.popoverActions),
+.popoverActions span {
+  pointer-events: none;
+}
+
+.popoverActions button {
+  pointer-events: auto;
+}
+
+.popoverActions button {
+  padding: 7px 9px;
+  color: #071019;
+  background: #ffe06a;
+  border: 0;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 1000;
+}
+
+.popoverActions span {
+  color: #9fc2d7;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.evidenceNotebookPanel {
+  border-color: rgba(93, 169, 255, 0.28);
+}
+
+.notebookList {
+  display: grid;
+  gap: 9px;
+  max-height: 430px;
+  overflow: auto;
+}
+
+.notebookCard {
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+  background: rgba(7, 14, 20, 0.72);
+  border: 1px solid rgba(124, 157, 178, 0.24);
+  border-radius: 6px;
+}
+
+.notebookCard.keyEvidence {
+  border-color: rgba(255, 224, 106, 0.44);
+  box-shadow: inset 3px 0 0 rgba(255, 224, 106, 0.7);
+}
+
+.notebookCard.locked {
+  color: #9eb2c1;
+  border-style: dashed;
+  opacity: 0.84;
+}
+
+.notebookCard h3 {
+  margin: 0;
+  color: #f7fbff;
+  font-size: 14px;
+}
+
+.notebookCard p,
+.notebookCard small {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.notebookMeta,
+.notebookTags,
+.notebookActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.notebookMeta span,
+.notebookTags span {
+  padding: 4px 6px;
+  color: #d8e9f6;
+  background: rgba(93, 169, 255, 0.1);
+  border: 1px solid rgba(93, 169, 255, 0.22);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.notebookTags span {
+  color: #fff4ba;
+  background: rgba(255, 224, 106, 0.08);
+  border-color: rgba(255, 224, 106, 0.2);
+}
+
+.notebookActions button {
+  padding: 7px 8px;
+  color: #d8e9f6;
+  background: rgba(8, 15, 22, 0.84);
+  border: 1px solid rgba(124, 157, 178, 0.28);
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.notebookActions button:not(:disabled):hover {
+  color: #071019;
+  background: #65ffc4;
+  border-color: #65ffc4;
+}
+
+.notebookActions button:disabled {
+  opacity: 0.45;
+}
+
+.proofTourPanel {
+  border-color: rgba(255, 224, 106, 0.28);
+}
+
+.segmentedControl {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  background: rgba(7, 14, 20, 0.72);
+  border: 1px solid rgba(124, 157, 178, 0.18);
+  border-radius: 6px;
+}
+
+.segmentedControl button {
+  padding: 6px 8px;
+  color: #9fc2d7;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.segmentedControl button.active {
+  color: #071019;
+  background: #ffe06a;
+}
+
+.proofTourRail {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.proofTourStep {
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  gap: 4px 9px;
+  padding: 10px;
+  color: #eaf6ff;
+  text-align: left;
+  background: rgba(7, 14, 20, 0.74);
+  border: 1px solid rgba(124, 157, 178, 0.24);
+  border-radius: 6px;
+}
+
+.proofTourStep > span {
+  grid-row: span 3;
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: #071019;
+  background: #8fb2ca;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 1000;
+}
+
+.proofTourStep.complete > span {
+  background: #65ffc4;
+}
+
+.proofTourStep.locked {
+  opacity: 0.72;
+  border-style: dashed;
+}
+
+.proofTourStep.locked > span {
+  color: #9eb2c1;
+  background: rgba(124, 157, 178, 0.15);
+}
+
+.proofTourStep strong {
+  font-size: 13px;
+}
+
+.proofTourStep small,
+.proofTourStep em {
+  color: var(--muted);
+  font-size: 11px;
+  font-style: normal;
+  line-height: 1.45;
+}
+
+.proofAuditCard {
+  display: grid;
+  gap: 4px;
+  margin-top: 10px;
+  padding: 10px;
+  background: rgba(7, 14, 20, 0.72);
+  border: 1px solid rgba(124, 157, 178, 0.24);
+  border-radius: 6px;
+}
+
+.proofAuditCard.pass {
+  border-color: rgba(101, 255, 196, 0.36);
+}
+
+.proofAuditCard.fail {
+  border-color: rgba(255, 95, 106, 0.36);
+}
+
+.proofAuditCard strong {
+  color: #f7fbff;
+}
+
+.proofAuditCard span,
+.proofAuditCard small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .mapLegend {

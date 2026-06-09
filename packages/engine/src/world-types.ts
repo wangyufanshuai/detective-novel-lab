@@ -414,6 +414,52 @@ export type EmergenceProofTrace = {
   links: EmergenceProofLink[];
 };
 
+export type ProofViewMode = "player" | "developer";
+
+export type EvidenceNotebookItem = {
+  evidenceId: string;
+  title: string;
+  locked: boolean;
+  discovered: boolean;
+  isKey: boolean;
+  locationId: string;
+  locationName: string;
+  sourceEventId?: string;
+  sourceEventLabel?: string;
+  challengeNpcIds: string[];
+  challengeNpcNames: string[];
+  supports: string[];
+  contradicts: string[];
+  useHint: string;
+};
+
+export type ProofTourStep = {
+  id: string;
+  stage: "event" | "memory" | "evidence" | "contradiction" | "elimination" | "conclusion" | "validation";
+  title: string;
+  detail: string;
+  locked: boolean;
+  complete: boolean;
+  time?: string;
+  locationId?: string;
+  characterIds: string[];
+  evidenceIds: string[];
+  eventIds: string[];
+  memoryIds: string[];
+};
+
+export type MapInteractiveTarget = {
+  id: string;
+  kind: "location" | "npc" | "evidence" | "event";
+  label: string;
+  locationId?: string;
+  characterId?: string;
+  evidenceId?: string;
+  eventId?: string;
+  time?: string;
+  enabled: boolean;
+};
+
 export type EmergenceSeedResult = {
   seed: string;
   worldId?: string;

@@ -34,6 +34,7 @@ import {
   InvestigationPanel,
   OnboardingOverlay,
   PlayShell,
+  ProofTourPanel,
   SuspectBoardPanel,
   ToastStack,
   TownMapStage,
@@ -49,10 +50,13 @@ import {
   applyAuthoringPatch,
   buildCaseLogicReport,
   buildDeductionGraph,
+  buildEvidenceNotebook,
   buildEmergenceProofTrace,
+  buildPlayerProofTour,
   buildWorldMapSnapshot,
   createPremiumAuthoringDraft,
   createStaticDemoRuntime,
+  deriveMapInteractiveTargets,
   deriveSuspectBoard,
   discoverDemoEvidence,
   exportAuthoringJson,
@@ -75,11 +79,15 @@ import type {
   DemoRuntimeState,
   DeepSeekLiveEvalReport,
   EmergenceProofTrace,
+  EvidenceNotebookItem,
   InvestigationProgress,
+  MapInteractiveTarget,
   MurderArchetype,
   NpcDialogueEvalReport,
   PlayerSession,
   PlayerTheory,
+  ProofTourStep,
+  ProofViewMode,
   PromptAuditReport,
   RevealEvalReport,
   RevealFactContract,
@@ -228,10 +236,11 @@ export default function Home() {
   const [developerOpen, setDeveloperOpen] = useState(false);
   const [runtimeMode, setRuntimeMode] = useState<RuntimeMode>("server");
   const [progress, setProgress] = useState<InvestigationProgress>(initialProgress);
-  const { inspectorTab, setInspectorTab, showEvents, showInvestigation, showLogic, showPeople } = useInspectorSelection("events");
+  const { inspectorTab, setInspectorTab, showEvents, showInvestigation, showLogic, showPeople } = useInspectorSelection("investigation");
   const [selectionHighlight, setSelectionHighlight] = useState<SelectionHighlight>({});
   const [selectedGraphNode, setSelectedGraphNode] = useState<DeductionGraphNode | null>(null);
   const [selectedSuspectId, setSelectedSuspectId] = useState("");
+  const [proofViewMode, setProofViewMode] = useState<ProofViewMode>("player");
   const [selectedGapType, setSelectedGapType] = useState("");
   const [hoveredLocationId, setHoveredLocationId] = useState("");
   const [toasts, setToasts] = useState<InvestigationToast[]>([]);
@@ -495,6 +504,18 @@ export default function Home() {
       discoveredEvidenceIds: session?.discoveredEvidenceIds || []
     });
   }, [activeCase, events, session?.discoveredEvidenceIds, session?.judgement?.accepted, world]);
+  const evidenceNotebook: EvidenceNotebookItem[] = useMemo(
+    () => (activeCase ? buildEvidenceNotebook(activeCase, events, session) : []),
+    [activeCase, events, session]
+  );
+  const proofTourSteps: ProofTourStep[] = useMemo(
+    () => (activeCase ? buildPlayerProofTour(activeCase, events, emergenceProofTrace, session) : []),
+    [activeCase, emergenceProofTrace, events, session]
+  );
+  const mapInteractiveTargets: MapInteractiveTarget[] = useMemo(
+    () => (world ? deriveMapInteractiveTargets(world, activeCase || undefined, events, session) : []),
+    [activeCase, events, session, world]
+  );
   const authoringReport: AuthoringValidationReport = useMemo(() => validateAuthoringDraft(authoringDraft), [authoringDraft]);
   const authoringCase = authoringDraft.caseFromLog.deductionCase;
   const authoringCharacters = authoringCase.characters.filter((character) => character.role !== "\u6b7b\u8005");
@@ -512,6 +533,29 @@ export default function Home() {
     ],
     [authoringDraft.caseFromLog.qualityReport.memoryScopedTestimony, authoringDraft.caseFromLog.qualityReport.worldBackedEvidence, authoringReport.hardLogicValid, authoringReport.schema.valid, authoringReport.valid]
   );
+  const authoringProofAudit = useMemo(() => {
+    const trace = buildEmergenceProofTrace(authoringDraft.world, authoringDraft.events, authoringDraft.caseFromLog, {
+      solved: true,
+      discoveredEvidenceIds: authoringDraft.caseFromLog.deductionCase.evidence.map((item) => item.id)
+    });
+    const tour = buildPlayerProofTour(authoringDraft.caseFromLog, authoringDraft.events, trace, {
+      id: "authoring-proof-audit",
+      worldId: authoringDraft.world.id,
+      caseId: authoringDraft.caseFromLog.id,
+      playerId: "author",
+      displayName: "Author",
+      discoveredEvidenceIds: authoringDraft.caseFromLog.deductionCase.evidence.map((item) => item.id),
+      interrogationLog: [],
+      judgement: { accepted: true, score: 100, missing: [], contradictions: [], explanation: "Authoring proof audit" },
+      createdAt: authoringDraft.updatedAt,
+      updatedAt: authoringDraft.updatedAt
+    });
+    return {
+      valid: trace.complete && trace.evaluation.proofComplete && tour.some((step) => step.stage === "conclusion" && step.complete),
+      trace,
+      tour
+    };
+  }, [authoringDraft]);
   const authoringBlocker = authoringReport.issues.find((item) => item.severity === "error");
   const authoringMapSnapshot = useMemo(
     () => buildWorldMapSnapshot(authoringDraft.world, authoringDraft.events, authoringDraft.caseFromLog, undefined, { day: 1, time: minutesToTime(timeValue) }),
@@ -1059,6 +1103,45 @@ export default function Home() {
     setInspectorTab("investigation");
   }
 
+  function handleNotebookAction(item: EvidenceNotebookItem, action: "source" | "challenge" | "chain") {
+    setSelectedEvidenceId(item.evidenceId);
+    setSelectedSceneId(item.locationId);
+    if (item.sourceEventId) setHighlightedEventId(item.sourceEventId);
+    if (item.sourceEventLabel) {
+      const source = events.find((event) => event.id === item.sourceEventId);
+      if (source) setTimeValue(timeToMinutes(source.time));
+    }
+    if (action === "challenge" && item.challengeNpcIds[0]) {
+      setSelectedCharacterId(item.challengeNpcIds[0]);
+      setQuestion(`请解释这条证据：${item.title}`);
+    }
+    if (action === "chain" && item.discovered) {
+      setTheory((current) => current.evidenceIds.includes(item.evidenceId) ? current : { ...current, evidenceIds: [...current.evidenceIds, item.evidenceId] });
+    }
+    highlightSelection({ evidenceId: item.evidenceId, locationId: item.locationId, eventId: item.sourceEventId, characterId: item.challengeNpcIds[0] });
+    setInspectorTab("investigation");
+    pushToast({
+      tone: item.locked ? "info" : action === "chain" ? "success" : "info",
+      title: action === "chain" ? "已加入推理链" : item.locked ? "前往线索地点" : "证据笔记已定位",
+      detail: item.locked ? `先搜索 ${item.locationName}。` : item.useHint
+    });
+  }
+
+  function handleProofTourStep(step: ProofTourStep) {
+    if (step.locationId) setSelectedSceneId(step.locationId);
+    if (step.time) setTimeValue(timeToMinutes(step.time));
+    if (step.eventIds[0]) setHighlightedEventId(step.eventIds[0]);
+    if (step.evidenceIds[0]) setSelectedEvidenceId(step.evidenceIds[0]);
+    if (step.characterIds[0]) {
+      setSelectedCharacterId(step.characterIds[0]);
+      setSelectedSuspectId(step.characterIds[0]);
+    }
+    highlightSelection({ locationId: step.locationId, eventId: step.eventIds[0], evidenceId: step.evidenceIds[0], characterId: step.characterIds[0] });
+    if (step.stage === "elimination") setInspectorTab("people");
+    else if (step.stage === "evidence" || step.stage === "memory" || step.stage === "contradiction") setInspectorTab("investigation");
+    else setInspectorTab("logic");
+  }
+
   function handleGuidedTask(task: GuidedTask) {
     setInspectorTab(task.targetTab);
     if (task.id === "observe") {
@@ -1477,6 +1560,11 @@ export default function Home() {
               <div><strong>{Math.round(authoringReport.reasoningCoverage.coverageRatio * 100)}%</strong><small>Coverage</small></div>
               <div><strong>{authoringReport.errors.length}</strong><small>Errors</small></div>
             </div>
+            <article className={`proofAuditCard ${authoringProofAudit.valid ? "pass" : "fail"}`} data-testid="authoring-proof-audit">
+              <strong>Proof Audit: {authoringProofAudit.valid ? "Pass" : "Fail"}</strong>
+              <span>{authoringProofAudit.tour.length} proof tour steps / emergence {authoringProofAudit.trace.evaluation.emergenceScore}</span>
+              <small>{authoringProofAudit.valid ? "当前草稿可以生成玩家证明导览。" : "当前草稿缺少完整涌现证明或最终结论步骤。"}</small>
+            </article>
             <div className="issueList">
               {(authoringReport.issues.length ? authoringReport.issues : [{ id: "ok", severity: "warning" as const, source: "authoring" as const, path: "$", message: "\u5f53\u524d\u8349\u7a3f\u901a\u8fc7 schema\u3001\u4e16\u754c\u6765\u6e90\u3001hard logic \u548c\u63a8\u7406\u8986\u76d6\u6821\u9a8c\u3002" }]).slice(0, 12).map((item) => (
                 <button key={item.id} type="button" className={`issueItem ${item.severity}`} onClick={() => focusAuthoringIssue(item)}>
@@ -1615,6 +1703,7 @@ export default function Home() {
           highlightedEventId={highlightedEventId}
           selectedCharacterId={selectedCharacterId}
           selectionHighlight={selectionHighlight}
+          interactiveTargets={mapInteractiveTargets}
           characterState={{
             questionedIds: questionedCharacterIds,
             contradictionIds: contradictedCharacterIds,
@@ -1625,6 +1714,13 @@ export default function Home() {
           onTileHover={setHoveredLocationId}
           onMarkerClick={handleMarker}
           onActorClick={handleActor}
+          onLocationAction={(locationId) => void discoverFirstSceneEvidence(locationId)}
+          onNpcAction={(characterId) => {
+            setSelectedCharacterId(characterId);
+            setQuestion("请说明案发窗口你在哪里，以及你记得哪些异常。");
+            setInspectorTab("investigation");
+            highlightSelection({ characterId });
+          }}
           replaying={replaying}
           setReplaying={setReplaying}
           timeMin={timeMin}
@@ -1662,6 +1758,8 @@ export default function Home() {
               label: "\u8c03\u67e5",
               content: (
                 <InvestigationPanel
+                  notebookItems={evidenceNotebook}
+                  onNotebookAction={handleNotebookAction}
                   selectedSceneName={selectedScene?.name || "\u9009\u62e9\u5730\u56fe\u5730\u70b9"}
                   sceneEvidence={sceneEvidence}
                   discoveredEvidence={discoveredEvidence}
@@ -1715,6 +1813,7 @@ export default function Home() {
                     solutionChain={solutionChain}
                     revealText={revealText}
                   />
+                  <ProofTourPanel steps={proofTourSteps} viewMode={proofViewMode} setViewMode={setProofViewMode} onSelectStep={handleProofTourStep} />
                   <EmergenceProofPanel trace={emergenceProofTrace} />
                   <CausalTracePanel
                     events={causalTraceEvents}
