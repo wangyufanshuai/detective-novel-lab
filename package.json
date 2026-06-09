@@ -17,7 +17,8 @@
     "test:e2e:update-screenshots": "playwright test --update-snapshots",
     "test": "npm run test:rules && npm run test:world && npm run test:ai && npm run test:encoding",
     "eval": "node scripts/run-eval.mjs",
-    "eval:report": "node scripts/run-eval.mjs"
+    "eval:report": "node scripts/run-eval.mjs",
+    "benchmark:emergence": "node scripts/run-emergence-benchmark.mjs"
   },
   "dependencies": {
     "@types/node": "^24.10.1",

@@ -25,6 +25,7 @@ import type {
   CaseTemplateId,
   DeductionCase,
   DeductionGraphNode,
+  EmergenceProofTrace,
   Evidence,
   InvestigationProgress,
   MurderArchetype,
@@ -684,6 +685,59 @@ export function CaseLogicPanel({
         {revealText && <pre className="revealBox">{revealText}</pre>}
       </section>
     </div>
+  );
+}
+
+export function EmergenceProofPanel({ trace }: { trace: EmergenceProofTrace | null }) {
+  if (!trace) return null;
+  const proofNodes = trace.nodes.filter((node) => node.visible || node.locked);
+  const requiredNodes = proofNodes.filter((node) => node.stage === "case-extraction" || node.stage === "validation");
+  const visibleNodes = [...proofNodes.slice(0, trace.solved ? 22 : 16), ...requiredNodes].filter(
+    (node, index, all) => all.findIndex((item) => item.id === node.id) === index
+  );
+  const metrics = [
+    ["Event-backed", trace.evaluation.worldBackedEvidence],
+    ["Memory-scoped", trace.evaluation.memoryScopedTestimony],
+    ["Unique culprit", trace.evaluation.uniqueCulprit],
+    ["Excluded", trace.evaluation.nonCulpritExcluded],
+    ["Hard logic", trace.evaluation.hardLogicValid]
+  ];
+  return (
+    <section className="actionPanel emergenceProofPanel" data-testid="emergence-proof">
+      <h2><ShieldCheck size={16} /> Emergence Proof</h2>
+      <p>World simulation proof: NPC goals, intents, events, memories, evidence, case extraction, and local validation.</p>
+      <div className="proofMetricGrid" data-testid="emergence-proof-metrics">
+        {metrics.map(([label, ok]) => (
+          <span key={label as string} className={ok ? "pass" : "fail"}>
+            <strong>{ok ? "Pass" : "Fail"}</strong>
+            <small>{label}</small>
+          </span>
+        ))}
+        <span className={trace.evaluation.proofComplete ? "pass" : "fail"}>
+          <strong>{trace.evaluation.emergenceScore}</strong>
+          <small>Emergence</small>
+        </span>
+      </div>
+      <div className="proofTimeline">
+        {visibleNodes.map((node) => (
+          <article key={node.id} className={`${node.locked ? "locked" : ""} proofStage-${node.stage}`}>
+            <span>{node.stage}</span>
+            <strong>{node.label}</strong>
+            <p>{node.detail}</p>
+            <small>
+              {[node.time, node.locationId, node.eventIds[0], node.memoryIds[0], node.evidenceIds[0]].filter(Boolean).join(" / ")}
+            </small>
+          </article>
+        ))}
+      </div>
+      {!trace.solved && <div className="proofSpoilerNote">Hidden causal and culprit-specific nodes stay locked until the theory is accepted.</div>}
+      {!!trace.evaluation.errors.length && (
+        <details className="proofIssues">
+          <summary>Validation issues</summary>
+          {trace.evaluation.errors.slice(0, 6).map((error) => <p key={error}>{error}</p>)}
+        </details>
+      )}
+    </section>
   );
 }
 

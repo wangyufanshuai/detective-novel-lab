@@ -4,6 +4,7 @@ export * from "./schema";
 export * from "./validators";
 export * from "./judgement";
 export * from "./eval";
+export * from "./emergence-benchmark";
 export * from "./world-types";
 export * from "./world-simulator";
 export * from "./world-case";

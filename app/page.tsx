@@ -28,6 +28,7 @@ import {
   CausalTracePanel,
   ControlRail,
   DeveloperPanel,
+  EmergenceProofPanel,
   EventLogPanel,
   InspectorRail,
   InvestigationPanel,
@@ -48,6 +49,7 @@ import {
   applyAuthoringPatch,
   buildCaseLogicReport,
   buildDeductionGraph,
+  buildEmergenceProofTrace,
   buildWorldMapSnapshot,
   createPremiumAuthoringDraft,
   createStaticDemoRuntime,
@@ -72,6 +74,7 @@ import type {
   DeductionGraph,
   DemoRuntimeState,
   DeepSeekLiveEvalReport,
+  EmergenceProofTrace,
   InvestigationProgress,
   MurderArchetype,
   NpcDialogueEvalReport,
@@ -485,6 +488,13 @@ export default function Home() {
     () => (causalTrace?.orderedEventIds || []).map((id) => events.find((event) => event.id === id)).filter((event): event is WorldEvent => Boolean(event)),
     [causalTrace?.orderedEventIds, events]
   );
+  const emergenceProofTrace: EmergenceProofTrace | null = useMemo(() => {
+    if (!world || !activeCase) return null;
+    return buildEmergenceProofTrace(world, events, activeCase, {
+      solved: Boolean(session?.judgement?.accepted),
+      discoveredEvidenceIds: session?.discoveredEvidenceIds || []
+    });
+  }, [activeCase, events, session?.discoveredEvidenceIds, session?.judgement?.accepted, world]);
   const authoringReport: AuthoringValidationReport = useMemo(() => validateAuthoringDraft(authoringDraft), [authoringDraft]);
   const authoringCase = authoringDraft.caseFromLog.deductionCase;
   const authoringCharacters = authoringCase.characters.filter((character) => character.role !== "\u6b7b\u8005");
@@ -1705,6 +1715,7 @@ export default function Home() {
                     solutionChain={solutionChain}
                     revealText={revealText}
                   />
+                  <EmergenceProofPanel trace={emergenceProofTrace} />
                   <CausalTracePanel
                     events={causalTraceEvents}
                     solved={Boolean(session?.judgement?.accepted)}

@@ -42,3 +42,25 @@ Current validation checks:
 - Decisive evidence events have either an intent or a cause link.
 - The quality report exposes `emergenceScore`, `causalTraceComplete`, and `intentBackedEvents`.
 - Before the player solves the case, the UI hides culprit-revealing causal nodes unless their evidence has been discovered.
+
+## Emergence Proof Trace
+
+`buildEmergenceProofTrace(world, events, caseFromLog, options)` turns the world model into a player-safe proof chain:
+
+```text
+NPC goals -> NPC intents -> WorldEvents -> MemoryRecords -> Evidence -> Case extraction -> Local validation
+```
+
+The proof trace is used by the UI and by the benchmark runner. Each node carries source ids for NPCs, events, memories, and evidence. Before the case is solved, hidden events and hidden memories are represented as locked nodes unless their evidence has already been discovered.
+
+`evaluateWorldEmergence` produces the boolean proof checks used in the UI:
+
+- generated case;
+- unique culprit;
+- world-backed evidence;
+- memory-scoped testimony;
+- non-culprit exclusions;
+- timeline consistency;
+- hard logic validity;
+- causal trace completeness;
+- reasoning trace completeness.

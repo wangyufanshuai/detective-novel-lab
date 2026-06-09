@@ -2005,6 +2005,119 @@ blockquote {
   padding: 0 10px 10px;
 }
 
+.emergenceProofPanel {
+  border-color: rgba(101, 255, 196, 0.26);
+}
+
+.proofMetricGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  margin: 10px 0;
+}
+
+.proofMetricGrid span {
+  display: grid;
+  gap: 2px;
+  padding: 8px;
+  background: rgba(8, 15, 22, 0.74);
+  border: 1px solid rgba(124, 157, 178, 0.22);
+  border-radius: 5px;
+}
+
+.proofMetricGrid span.pass {
+  border-color: rgba(101, 255, 196, 0.35);
+}
+
+.proofMetricGrid span.fail {
+  border-color: rgba(255, 224, 106, 0.4);
+}
+
+.proofMetricGrid strong {
+  color: #f7fbff;
+  font-size: 13px;
+}
+
+.proofMetricGrid small {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.proofTimeline {
+  display: grid;
+  gap: 8px;
+  max-height: 420px;
+  overflow: auto;
+  padding-left: 12px;
+  border-left: 2px solid rgba(101, 255, 196, 0.32);
+}
+
+.proofTimeline article {
+  display: grid;
+  gap: 4px;
+  padding: 9px;
+  background: rgba(7, 14, 20, 0.72);
+  border: 1px solid rgba(124, 157, 178, 0.22);
+  border-radius: 5px;
+}
+
+.proofTimeline article.locked {
+  color: var(--muted);
+  border-style: dashed;
+  opacity: 0.75;
+}
+
+.proofTimeline article > span {
+  color: #65ffc4;
+  font-size: 10px;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.proofTimeline strong {
+  color: #f7fbff;
+  font-size: 12px;
+}
+
+.proofTimeline p,
+.proofTimeline small,
+.proofSpoilerNote,
+.proofIssues p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.proofSpoilerNote {
+  margin-top: 9px;
+  padding: 8px;
+  color: #ffe06a;
+  background: rgba(255, 224, 106, 0.08);
+  border: 1px solid rgba(255, 224, 106, 0.22);
+  border-radius: 5px;
+}
+
+.proofIssues {
+  margin-top: 8px;
+  border: 1px solid rgba(255, 95, 106, 0.28);
+  border-radius: 5px;
+}
+
+.proofIssues summary {
+  padding: 8px;
+  color: #ffb3ba;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.proofIssues p {
+  padding: 0 8px 8px;
+}
+
 .mapLegend {
   display: flex;
   flex-wrap: wrap;

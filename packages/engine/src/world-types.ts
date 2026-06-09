@@ -354,6 +354,96 @@ export type CaseLogicReport = {
   warnings: string[];
 };
 
+export type EmergenceProofStage =
+  | "npc-goals"
+  | "npc-intents"
+  | "world-events"
+  | "memories"
+  | "conflict"
+  | "crime"
+  | "evidence"
+  | "case-extraction"
+  | "validation";
+
+export type EmergenceProofNode = {
+  id: string;
+  stage: EmergenceProofStage;
+  label: string;
+  detail: string;
+  time?: string;
+  locationId?: string;
+  npcIds: string[];
+  eventIds: string[];
+  memoryIds: string[];
+  evidenceIds: string[];
+  visible: boolean;
+  locked: boolean;
+};
+
+export type EmergenceProofLink = {
+  id: string;
+  from: string;
+  to: string;
+  label: string;
+};
+
+export type EmergenceEvaluation = {
+  caseId: string;
+  generatedCase: boolean;
+  uniqueCulprit: boolean;
+  worldBackedEvidence: boolean;
+  memoryScopedTestimony: boolean;
+  nonCulpritExcluded: boolean;
+  timelineConsistent: boolean;
+  hardLogicValid: boolean;
+  causalTraceComplete: boolean;
+  reasoningTraceComplete: boolean;
+  qualityScore: number;
+  emergenceScore: number;
+  proofComplete: boolean;
+  errors: string[];
+  warnings: string[];
+};
+
+export type EmergenceProofTrace = {
+  caseId: string;
+  solved: boolean;
+  complete: boolean;
+  evaluation: EmergenceEvaluation;
+  nodes: EmergenceProofNode[];
+  links: EmergenceProofLink[];
+};
+
+export type EmergenceSeedResult = {
+  seed: string;
+  worldId?: string;
+  caseId?: string;
+  generatedCase: boolean;
+  passed: boolean;
+  uniqueCulprit: boolean;
+  worldBackedEvidence: boolean;
+  memoryScopedTestimony: boolean;
+  nonCulpritExcluded: boolean;
+  timelineConsistent: boolean;
+  hardLogicValid: boolean;
+  qualityScore: number;
+  emergenceScore: number;
+  proofNodeCount: number;
+  errors: string[];
+  warnings: string[];
+};
+
+export type EmergenceBenchmarkReport = {
+  generatedAt: string;
+  seedCount: number;
+  passed: number;
+  failed: number;
+  averageQualityScore: number;
+  averageEmergenceScore: number;
+  passRate: number;
+  results: EmergenceSeedResult[];
+};
+
 export type DialogueSafetyFlag =
   | "prompt_contains_forbidden_truth"
   | "answer_mentions_culprit_before_reveal"

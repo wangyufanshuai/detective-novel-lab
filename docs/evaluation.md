@@ -39,3 +39,32 @@ The benchmark records:
 - Normalization hints for drifted fields.
 
 CI runs the benchmark as a smoke check. It does not call DeepSeek and does not require API keys.
+
+## Emergence Benchmark
+
+The emergence benchmark checks whether generated town cases can prove their origin from simulation data rather than model prose.
+
+Run:
+
+```powershell
+npm run benchmark:emergence
+```
+
+Outputs:
+
+- `outputs/emergence-benchmark.json`
+- `outputs/emergence-benchmark.md`
+
+These files are ignored by Git.
+
+It records, for each deterministic seed:
+
+- Case generation success.
+- Unique culprit status.
+- Whether decisive evidence is backed by `WorldEvent`.
+- Whether testimony is backed by `MemoryRecord`.
+- Whether every non-culprit has an explainable exclusion chain.
+- Timeline consistency.
+- Hard logic validation.
+- Quality score and emergence score.
+- Structured failure reasons when a seed fails.

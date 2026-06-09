@@ -82,6 +82,9 @@ test("loads a playable premium town without server APIs", async ({ page }) => {
   await expect(page.getByTestId("inspector-rail").getByRole("button", { name: "事件" })).toHaveClass(/active/);
   await clickInspectorTab(page, "逻辑");
   await expect(page.getByTestId("deduction-graph").locator('[data-node-type="evidence"].locked').first()).toBeVisible();
+  await expect(page.getByTestId("emergence-proof")).toBeVisible();
+  await expect(page.getByTestId("emergence-proof")).toContainText("Locked hidden world event");
+  await expect(page.getByTestId("emergence-proof")).not.toContainText("culpritId");
   await expect(page.getByTestId("causal-trace")).toContainText("Causal Trace");
   await expect(page.locator(".causalDetails")).toBeVisible();
   await expect(page.locator("body")).not.toHaveCSS("overflow-x", "scroll");
@@ -152,6 +155,9 @@ test("search, interrogate and solve use the local rule engine", async ({ page })
   await page.getByRole("button", { name: "生成解答篇" }).click();
   await expect(page.locator(".revealBox")).toContainText("凶手：陆执");
   await expect(page.getByTestId("deduction-graph").locator('[data-node-type="conclusion"]')).toBeVisible();
+  await clickInspectorTab(page, "逻辑");
+  await expect(page.getByTestId("emergence-proof-metrics")).toContainText("Hard logic");
+  await expect(page.getByTestId("emergence-proof")).toContainText("Case extracted from world log");
   await expect(page.getByTestId("solution-chain")).toContainText("已发现证据如何推出结论");
 
   await page.reload();

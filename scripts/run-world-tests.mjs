@@ -323,4 +323,27 @@ const engine = await loadEngine();
   assert.equal(driftReport.errors.some((item) => item.path.includes("knowledgeScope")), true, "field drift issue locates the missing field");
 }
 
+{
+  for (const template of engine.listCaseTemplates()) {
+    const premium = engine.createCaseTemplate(template.id);
+    const proof = engine.buildEmergenceProofTrace(premium.world, premium.events, premium.activeCase, { solved: true, discoveredEvidenceIds: premium.activeCase.deductionCase.evidence.map((item) => item.id) });
+    assert.equal(proof.complete, true, `${template.id} proof trace must be complete after solve`);
+    assert.equal(proof.evaluation.worldBackedEvidence, true, `${template.id} evidence must be backed by world events`);
+    assert.equal(proof.evaluation.memoryScopedTestimony, true, `${template.id} testimony must be backed by memory records`);
+    assert.equal(proof.evaluation.nonCulpritExcluded, true, `${template.id} must explainably exclude non-culprits`);
+    assert.equal(proof.nodes.some((node) => node.stage === "case-extraction"), true, `${template.id} proof trace includes case extraction`);
+    assert.equal(proof.nodes.some((node) => node.stage === "validation"), true, `${template.id} proof trace includes validation`);
+  }
+
+  const report = engine.runEmergenceBenchmark();
+  assert.equal(report.seedCount, 20, "emergence benchmark defaults to 20 deterministic seeds");
+  assert.equal(report.results.length, 20, "emergence benchmark reports every seed");
+  assert.equal(report.results.every((result) => typeof result.seed === "string" && result.errors), true, "every seed has structured status fields");
+  assert.equal(report.results.every((result) => result.generatedCase), true, "default benchmark seeds should generate cases");
+  assert.equal(report.passed + report.failed, 20, "benchmark summary accounts for every seed");
+  const markdown = engine.renderEmergenceBenchmarkMarkdown(report);
+  assert.equal(markdown.includes("Emergence Benchmark Report"), true, "benchmark markdown has a title");
+  assert.equal(markdown.includes("| Seed | Case |"), true, "benchmark markdown has a result table");
+}
+
 console.log("World simulation tests passed.");
