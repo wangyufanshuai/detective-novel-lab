@@ -6,6 +6,8 @@ export type ApiErrorCode =
   | "CASE_NOT_FOUND"
   | "SESSION_NOT_FOUND"
   | "EVIDENCE_NOT_FOUND"
+  | "NOVEL_PROJECT_NOT_FOUND"
+  | "NOVEL_SIMULATION_NOT_FOUND"
   | "INTERNAL_ERROR";
 
 export function ok<T>(data: T) {

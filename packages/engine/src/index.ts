@@ -16,3 +16,6 @@ export * from "./investigation-views";
 export * from "./premium-showcase";
 export * from "./demo-runtime";
 export * from "./authoring";
+export * from "./novel-world";
+export * from "./novel-simulation";
+export * from "./novel-game";

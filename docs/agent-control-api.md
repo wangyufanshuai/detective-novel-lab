@@ -1,6 +1,6 @@
 # Agent Control API
 
-`/api/v1/*` is the stable integration layer for external agents, scripts, and demos. It wraps the existing world, case, and investigation routes without changing legacy APIs.
+`/api/v1/*` is the stable integration layer for external agents, scripts, and demos. It wraps the existing world, case, investigation, and Living World Lab routes without changing legacy APIs.
 
 ## Response Shape
 
@@ -23,6 +23,9 @@ Failure:
 - `GET /api/v1/query/world/events?worldId=...`
 - `GET /api/v1/query/world/memories?worldId=...&npcId=...`
 - `GET /api/v1/query/case?caseId=...`
+- `GET /api/v1/query/novel/world-graph?projectId=...`
+- `GET /api/v1/query/novel/simulation?projectId=...&runId=...`
+- `GET /api/v1/query/novel/detail?type=entity|event|relationship|development|causal-claim|causal-edge&id=...`
 
 ## Command Endpoints
 
@@ -31,11 +34,38 @@ Failure:
 - `POST /api/v1/command/investigation/discover`
 - `POST /api/v1/command/investigation/interrogate`
 - `POST /api/v1/command/investigation/submit-theory`
+- `POST /api/v1/command/novel/import`
+- `POST /api/v1/command/novel/analyze`
+- `POST /api/v1/command/novel/evidence-index`
+- `POST /api/v1/command/novel/ask`
+- `POST /api/v1/command/novel/blueprint`
+- `POST /api/v1/command/novel/simulation/start`
+- `POST /api/v1/command/novel/simulation/advance`
+- `POST /api/v1/command/novel/simulation/intervene`
+- `POST /api/v1/command/novel/simulation/rewind`
+- `POST /api/v1/command/novel/simulation/explain`
+
+## Living World Agent Loop
+
+The novel/world endpoints expose the same loop used by agentic simulation projects:
+
+```text
+import text -> query world graph -> start replay -> advance -> intervene -> query changed branch
+```
+
+Minimal smoke flow:
+
+```powershell
+node scripts/run-novel-agent-api-smoke.mjs
+```
+
+The server keeps a lightweight in-memory runtime record for these endpoints. Browser workbench state still uses IndexedDB, and Detective Town server mode still uses SQLite.
 
 ## Smoke Test
 
 ```powershell
 node scripts/run-agent-api-smoke.mjs
+node scripts/run-novel-agent-api-smoke.mjs
 ```
 
 The script starts a temporary local server unless `AGENT_API_BASE_URL` is provided.

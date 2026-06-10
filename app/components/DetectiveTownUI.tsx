@@ -2,6 +2,7 @@
 
 import {
   AlertTriangle,
+  BookOpen,
   Bot,
   ChevronDown,
   Clock,
@@ -12,6 +13,7 @@ import {
   Loader2,
   Map as MapIcon,
   MessageSquare,
+  Network,
   Pause,
   Play,
   Search,
@@ -241,6 +243,7 @@ export function ControlRail({
   onGuidedTaskSelect,
   reopenOnboarding,
   openAuthoring,
+  openWorldGraph,
   switchRuntime
 }: {
   runtimeMode: RuntimeMode;
@@ -277,6 +280,7 @@ export function ControlRail({
   onGuidedTaskSelect: (task: GuidedTask) => void;
   reopenOnboarding: () => void;
   openAuthoring: () => void;
+  openWorldGraph: () => void;
   switchRuntime: (value: RuntimeMode) => void;
 }) {
   const steps: [string, boolean][] = [
@@ -302,10 +306,14 @@ export function ControlRail({
       <div className="modeSwitch">
         <button className="active">Play</button>
         <button data-testid="open-authoring" onClick={openAuthoring}>Authoring</button>
+        <button data-testid="open-world-graph" onClick={openWorldGraph}><Network size={14} /> Living World Lab</button>
       </div>
 
       <section className="hudPanel currentCasePanel">
-        <span className="eyebrow">{worldName}</span>
+        <div className="panelHeaderLine">
+          <span className="eyebrow">{worldName}</span>
+          <BookOpen size={15} />
+        </div>
         <h2>{caseTitle}</h2>
         <p>{caseSubtitle}</p>
         <div className="templateChip">{activeTemplate?.title || caseTemplateId}</div>

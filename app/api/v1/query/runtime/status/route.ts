@@ -9,6 +9,12 @@ export async function GET() {
     aiProvider: process.env.AI_PROVIDER || "deepseek",
     model: getAiModelName(),
     hasDeepSeekKey: Boolean(process.env.DEEPSEEK_API_KEY),
+    capabilities: {
+      detectiveTown: true,
+      livingWorldLab: true,
+      agentInterventionLoop: true,
+      staticDemo: true
+    },
     version: "v1"
   });
 }
