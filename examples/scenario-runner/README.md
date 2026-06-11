@@ -1,6 +1,6 @@
 # Scenario Runner Example
 
-Runs a baseline town simulation and one counterfactual branch through the Agent API.
+Runs a baseline town simulation and one counterfactual branch through the Agent API. It uses the shared SDK starter in `examples/sdk`.
 
 ```powershell
 node examples/scenario-runner/index.mjs

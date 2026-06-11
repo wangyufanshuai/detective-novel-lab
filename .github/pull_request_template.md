@@ -18,6 +18,7 @@ Describe what changed and why.
 - [ ] `node scripts/run-novel-agent-api-smoke.mjs`
 - [ ] `node scripts/run-persistent-town-api-smoke.mjs`
 - [ ] `node scripts/run-scenario-runner-api-smoke.mjs`
+- [ ] `node scripts/run-sdk-client-smoke.mjs`
 - [ ] Docker build/smoke when runtime, deployment, or dependency files changed.
 
 ## Safety

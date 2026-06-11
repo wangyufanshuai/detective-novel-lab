@@ -6,6 +6,8 @@
 
 The README keeps the public demo URL as a placeholder until a hosted deployment is connected. Use Vercel's project URL or a custom domain once the static demo is published.
 
+Detailed setup and browser QA: [static-demo-vercel.md](static-demo-vercel.md).
+
 ## Docker Server Mode
 
 Create `.env.local` when DeepSeek dialogue is required, then run:

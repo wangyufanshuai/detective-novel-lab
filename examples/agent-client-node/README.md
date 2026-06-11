@@ -1,6 +1,6 @@
 # Agent Client Node Example
 
-Minimal Node client for the Detective Town `/api/v1/*` Agent API.
+Minimal Node client for the Detective Town `/api/v1/*` Agent API. It uses the shared SDK starter in `examples/sdk`.
 
 ```powershell
 node examples/agent-client-node/index.mjs

@@ -16,6 +16,14 @@ Failure:
 { "ok": false, "error": { "code": "BAD_REQUEST", "message": "worldId is required" } }
 ```
 
+## OpenAPI And SDK
+
+- Static OpenAPI contract: `public/openapi.v1.json`, served as `/openapi.v1.json`.
+- Scope and compatibility notes: [api-v1-openapi.md](api-v1-openapi.md).
+- Zero-dependency Node SDK starter: `examples/sdk/detective-town-client.mjs`.
+
+The SDK is the executable reference for the stable external-agent subset. It is repo-local in v0.1.0 and is not published to npm.
+
 ## Query Endpoints
 
 - `GET /api/v1/query/runtime/status`
@@ -143,6 +151,7 @@ node scripts/run-agent-api-smoke.mjs
 node scripts/run-novel-agent-api-smoke.mjs
 node scripts/run-persistent-town-api-smoke.mjs
 node scripts/run-scenario-runner-api-smoke.mjs
+node scripts/run-sdk-client-smoke.mjs
 ```
 
 The script starts a temporary local server unless `AGENT_API_BASE_URL` is provided.

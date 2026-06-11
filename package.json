@@ -16,6 +16,7 @@
     "test:agent-api": "node scripts/run-agent-api-smoke.mjs",
     "test:novel-agent-api": "node scripts/run-novel-agent-api-smoke.mjs",
     "test:scenario-api": "node scripts/run-scenario-runner-api-smoke.mjs",
+    "test:sdk-client": "node scripts/run-sdk-client-smoke.mjs",
     "test:deepseek": "node scripts/run-deepseek-live-eval.mjs",
     "test:e2e": "playwright test",
     "test:e2e:update-screenshots": "playwright test --update-snapshots",

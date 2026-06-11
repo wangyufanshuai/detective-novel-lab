@@ -1,0 +1,48 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Engine and safety tests
+        run: npm run test
+
+      - name: Build
+        run: npm run build
+
+      - name: Emergence benchmark
+        run: npm run benchmark:emergence
+
+      - name: Scenario Agent API smoke
+        run: npm run test:scenario-api
+
+      - name: SDK Client smoke
+        run: npm run test:sdk-client
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file docs/v0.1.0-release-notes.md

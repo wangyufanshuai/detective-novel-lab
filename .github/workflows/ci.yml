@@ -36,6 +36,9 @@ jobs:
       - name: Scenario Agent API smoke
         run: npm run test:scenario-api
 
+      - name: SDK Client smoke
+        run: npm run test:sdk-client
+
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 

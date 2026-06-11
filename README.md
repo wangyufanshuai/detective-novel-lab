@@ -14,7 +14,14 @@ DeepSeek is used only for NPC surface dialogue and optional solution prose. It d
 
 ![Detective Town visual workbench](docs/assets/detective-town-workbench.png)
 
-**Online demo:** public deployment URL is not connected yet. Deploy with `vercel.json` to publish the browser-only Static Demo Runtime; it needs no API key and no writable database.
+**Online demo:** public deployment URL is not connected yet. Deploy the repository to Vercel and open `https://<project>.vercel.app/?runtime=static` for the browser-only Static Demo Runtime. It needs no API key, no SQLite write access, and no `/api/*` calls. See [docs/static-demo-vercel.md](docs/static-demo-vercel.md).
+
+## Release Status
+
+- Latest planned release: `v0.1.0`.
+- CI covers engine tests, build, emergence benchmark, Scenario API smoke, SDK smoke, and browser E2E.
+- Docker Smoke covers Server Runtime startup and static page loading.
+- Static Demo is public-demo ready; Persistent Agent Town, Scenario Runner, Time Machine, and Agent API require Server Runtime.
 
 ## Try In 3 Modes
 
@@ -25,7 +32,7 @@ npm run dev -- -p 3000
 
 - **Static Demo**: open `http://127.0.0.1:3000/?runtime=static` for the public, no-server Premium Showcase.
 - **Server Runtime**: open `http://127.0.0.1:3000/?runtime=server` for SQLite-backed worlds, Persistent Agent Town, Scenario Runner, Time Machine, and optional DeepSeek dialogue.
-- **Agent API**: run `node examples/agent-client-node/index.mjs` or `node examples/scenario-runner/index.mjs` against a running server to drive the world externally.
+- **Agent API**: run `node examples/agent-client-node/index.mjs` or `node examples/scenario-runner/index.mjs` against a running server, or reuse the SDK starter in `examples/sdk`.
 
 ## 30-Second Experience
 
@@ -238,6 +245,8 @@ API keys are read only on the server. Do not expose them in client code.
 
 Stable Agent Control API:
 
+OpenAPI contract: [`public/openapi.v1.json`](public/openapi.v1.json), served as `/openapi.v1.json` in a local or Vercel build. See [docs/api-v1-openapi.md](docs/api-v1-openapi.md).
+
 - `GET /api/v1/query/runtime/status`
 - `GET /api/v1/query/world/state?worldId=...`
 - `GET /api/v1/query/world/events?worldId=...`
@@ -250,6 +259,11 @@ Stable Agent Control API:
 - `GET /api/v1/query/town/agent?worldId=...&npcId=...`
 - `GET /api/v1/query/town/candidates?worldId=...`
 - `GET /api/v1/query/town/emergence-proof?worldId=...&candidateId=...`
+- `GET /api/v1/query/town/scenario?worldId=...&scenarioId=...`
+- `GET /api/v1/query/town/scenario/report?worldId=...&scenarioId=...`
+- `GET /api/v1/query/town/snapshots?worldId=...`
+- `GET /api/v1/query/town/snapshot/diff?worldId=...&from=...&to=...`
+- `GET /api/v1/query/benchmark/emergence`
 - `GET /api/v1/query/novel/world-graph?projectId=...`
 - `GET /api/v1/query/novel/audit?projectId=...`
 - `GET /api/v1/query/novel/corrections?projectId=...`
@@ -267,6 +281,8 @@ Stable Agent Control API:
 - `POST /api/v1/command/town/runtime/reset`
 - `POST /api/v1/command/town/agent/intervene`
 - `POST /api/v1/command/town/case/extract`
+- `POST /api/v1/command/town/scenario/run`
+- `POST /api/v1/command/town/snapshot/rollback`
 - `POST /api/v1/command/novel/import`
 - `POST /api/v1/command/novel/analyze`
 - `POST /api/v1/command/novel/evidence-index`
@@ -374,6 +390,7 @@ node scripts/run-agent-api-smoke.mjs
 node scripts/run-novel-agent-api-smoke.mjs
 node scripts/run-persistent-town-api-smoke.mjs
 node scripts/run-scenario-runner-api-smoke.mjs
+node scripts/run-sdk-client-smoke.mjs
 ```
 
 `npm run test:world` checks deterministic Showcase generation, all three premium templates, 8 NPC default mode, 24h timeline, event-backed evidence, memory-scoped testimony, unique culprit validation, non-culprit exclusions, causal traces, emergence proof traces, reasoning traces, authoring regression, and advanced 30 NPC regression. `npm run test:persistent-town` checks deterministic ticks, complete decision traces, action scoring fields, candidate validation, playable extraction, counterfactual interventions, scenarios, snapshots, diffs, and rollback. `npm run test:novel-world` checks chapter import, evidence indexing, world graph validation, causal chains, theme/character arcs, grounded replay, intervention branches, and Phaser scene state. `npm run benchmark:emergence` writes a 20-seed proof-of-emergence report under `outputs/`. `npm run test:encoding` fails on known mojibake markers in app, engine, and E2E source files.
@@ -382,6 +399,7 @@ node scripts/run-scenario-runner-api-smoke.mjs
 
 The `examples/` directory contains zero-dependency Node clients that use native `fetch`:
 
+- `examples/sdk`: reusable `DetectiveTownClient` starter for external agents.
 - `examples/agent-client-node`: create a town, start the persistent runtime, and inspect candidates.
 - `examples/scenario-runner`: run a deterministic baseline and counterfactual branch, then print the scenario report.
 - `examples/correction-bot`: import text into Living World Lab, inspect the audit, and request correction suggestions.
@@ -397,6 +415,7 @@ The live eval is intentionally not part of the default test command. It uses loc
 ## Docs
 
 - [Agent Control API](docs/agent-control-api.md)
+- [API v1 OpenAPI Contract](docs/api-v1-openapi.md)
 - [World Model](docs/world-model.md)
 - [Living World Lab](docs/living-world-lab.md)
 - [Persistent Agent Town](docs/persistent-agent-town.md)
@@ -405,6 +424,7 @@ The live eval is intentionally not part of the default test command. It uses loc
 - [Showcase Walkthrough](docs/showcase-walkthrough.md)
 - [Runtime Modes](docs/runtime-modes.md)
 - [Deployment](docs/deployment.md)
+- [Vercel Static Demo](docs/static-demo-vercel.md)
 - [Release Checklist](docs/release-checklist.md)
 
 ## Current Limits
