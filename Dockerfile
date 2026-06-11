@@ -4,6 +4,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends python3 make g+
 COPY package*.json ./
 RUN npm ci
 COPY . .
+RUN mkdir -p public
 RUN npm run build
 
 FROM node:22-bookworm-slim AS runtime

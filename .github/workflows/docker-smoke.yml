@@ -14,3 +14,32 @@ jobs:
 
       - name: Build Docker image
         run: docker build -t detective-town:smoke .
+
+      - name: Run Docker container
+        run: |
+          docker run -d --rm --name detective-town-smoke \
+            -p 3000:3000 \
+            -e AI_PROVIDER=mock \
+            -e DEEPSEEK_API_KEY= \
+            -e DATABASE_URL=file:./data/mystery-town.db \
+            -e NEXT_PUBLIC_DEMO_MODE=server \
+            detective-town:smoke
+
+      - name: Wait for health endpoint
+        run: |
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:3000/api/v1/query/runtime/status > /tmp/runtime-status.json; then
+              cat /tmp/runtime-status.json
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs detective-town-smoke
+          exit 1
+
+      - name: Smoke static page
+        run: curl -fsS "http://127.0.0.1:3000/?runtime=static" > /tmp/detective-town.html
+
+      - name: Stop Docker container
+        if: always()
+        run: docker stop detective-town-smoke || true

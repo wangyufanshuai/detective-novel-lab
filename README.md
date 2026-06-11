@@ -14,7 +14,18 @@ DeepSeek is used only for NPC surface dialogue and optional solution prose. It d
 
 ![Detective Town visual workbench](docs/assets/detective-town-workbench.png)
 
-**Online demo:** deployment URL placeholder. The hosted build uses the browser-only Static Demo Runtime, so it needs no API key or writable database.
+**Online demo:** public deployment URL is not connected yet. Deploy with `vercel.json` to publish the browser-only Static Demo Runtime; it needs no API key and no writable database.
+
+## Try In 3 Modes
+
+```powershell
+npm install
+npm run dev -- -p 3000
+```
+
+- **Static Demo**: open `http://127.0.0.1:3000/?runtime=static` for the public, no-server Premium Showcase.
+- **Server Runtime**: open `http://127.0.0.1:3000/?runtime=server` for SQLite-backed worlds, Persistent Agent Town, Scenario Runner, Time Machine, and optional DeepSeek dialogue.
+- **Agent API**: run `node examples/agent-client-node/index.mjs` or `node examples/scenario-runner/index.mjs` against a running server to drive the world externally.
 
 ## 30-Second Experience
 
@@ -338,7 +349,7 @@ Core exports are available from `packages/engine/src` and `lib/engine`:
 - World engine: `createInitialWorld`, `simulateDailyLife`, `simulateWorldTick`, `extractCaseFromWorld`, `validateWorldCase`, `buildNpcKnowledgeContext`, `makeRuleBoundInterrogation`, `updateTestimonyWithContradiction`, `buildTravelConstraint`, `analyzeReachability`, `buildCaseQualityReport`, `buildReasoningTrace`, `submitWorldTheory`.
 - Evaluation: `runEval`, `renderEvalMarkdown`.
 - Emergence proof: `buildEmergenceProofTrace`, `evaluateWorldEmergence`, `runEmergenceBenchmark`.
-- Persistent Agent Town: `createPersistentTownRuntime`, `advancePersistentTownTick`, `deriveNpcAgentState`, `scoreNpcActionCandidates`, `buildCaseCandidatesFromRuntime`, `validateCaseCandidate`, `extractPlayableCaseFromCandidate`, `buildAgentDecisionTrace`, `buildTownEmergenceQueue`.
+- Persistent Agent Town: `createPersistentTownRuntime`, `advancePersistentTownTick`, `deriveNpcAgentState`, `scoreNpcActionCandidates`, `buildCaseCandidatesFromRuntime`, `validateCaseCandidate`, `extractPlayableCaseFromCandidate`, `buildAgentDecisionTrace`, `buildTownEmergenceQueue`, `runTownScenario`, `createTownStateSnapshot`, `diffTownStateSnapshots`, `rollbackTownRuntimeToSnapshot`.
 - Static runtime: `createStaticDemoRuntime`, `discoverDemoEvidence`, `interrogateDemoNpc`, `submitDemoTheory`, `revealDemoSolution`.
 - Visual logic: `buildWorldMapSnapshot`, `buildDeductionGraph`, `deriveSuspectBoard`, `buildCaseLogicReport`, `validateHardCaseLogic`.
 - Case library and emergence: `createCaseLibrary`, `createCaseTemplate`, `listCaseTemplates`, `buildWorldCausalTrace`, `validateCausalTrace`, `deriveNpcIntentTimeline`.
@@ -362,9 +373,18 @@ npm run test:e2e
 node scripts/run-agent-api-smoke.mjs
 node scripts/run-novel-agent-api-smoke.mjs
 node scripts/run-persistent-town-api-smoke.mjs
+node scripts/run-scenario-runner-api-smoke.mjs
 ```
 
-`npm run test:world` checks deterministic Showcase generation, all three premium templates, 8 NPC default mode, 24h timeline, event-backed evidence, memory-scoped testimony, unique culprit validation, non-culprit exclusions, causal traces, emergence proof traces, reasoning traces, authoring regression, and advanced 30 NPC regression. `npm run test:persistent-town` checks deterministic ticks, complete decision traces, action scoring fields, candidate validation, playable extraction, and counterfactual interventions. `npm run test:novel-world` checks chapter import, evidence indexing, world graph validation, causal chains, theme/character arcs, grounded replay, intervention branches, and Phaser scene state. `npm run benchmark:emergence` writes a 20-seed proof-of-emergence report under `outputs/`. `npm run test:encoding` fails on known mojibake markers in app, engine, and E2E source files.
+`npm run test:world` checks deterministic Showcase generation, all three premium templates, 8 NPC default mode, 24h timeline, event-backed evidence, memory-scoped testimony, unique culprit validation, non-culprit exclusions, causal traces, emergence proof traces, reasoning traces, authoring regression, and advanced 30 NPC regression. `npm run test:persistent-town` checks deterministic ticks, complete decision traces, action scoring fields, candidate validation, playable extraction, counterfactual interventions, scenarios, snapshots, diffs, and rollback. `npm run test:novel-world` checks chapter import, evidence indexing, world graph validation, causal chains, theme/character arcs, grounded replay, intervention branches, and Phaser scene state. `npm run benchmark:emergence` writes a 20-seed proof-of-emergence report under `outputs/`. `npm run test:encoding` fails on known mojibake markers in app, engine, and E2E source files.
+
+## Agent API Examples
+
+The `examples/` directory contains zero-dependency Node clients that use native `fetch`:
+
+- `examples/agent-client-node`: create a town, start the persistent runtime, and inspect candidates.
+- `examples/scenario-runner`: run a deterministic baseline and counterfactual branch, then print the scenario report.
+- `examples/correction-bot`: import text into Living World Lab, inspect the audit, and request correction suggestions.
 
 Optional live DeepSeek eval:
 
@@ -385,6 +405,7 @@ The live eval is intentionally not part of the default test command. It uses loc
 - [Showcase Walkthrough](docs/showcase-walkthrough.md)
 - [Runtime Modes](docs/runtime-modes.md)
 - [Deployment](docs/deployment.md)
+- [Release Checklist](docs/release-checklist.md)
 
 ## Current Limits
 

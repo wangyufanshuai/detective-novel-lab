@@ -27,8 +27,14 @@ jobs:
       - name: Evaluation benchmark
         run: npm run eval
 
+      - name: Emergence benchmark
+        run: npm run benchmark:emergence
+
       - name: Build
         run: npm run build
+
+      - name: Scenario Agent API smoke
+        run: npm run test:scenario-api
 
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
