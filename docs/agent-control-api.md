@@ -28,6 +28,11 @@ Failure:
 - `GET /api/v1/query/town/agent?worldId=...&npcId=...`
 - `GET /api/v1/query/town/candidates?worldId=...`
 - `GET /api/v1/query/town/emergence-proof?worldId=...&candidateId=...`
+- `GET /api/v1/query/town/scenario?worldId=...&scenarioId=...`
+- `GET /api/v1/query/town/scenario/report?worldId=...&scenarioId=...`
+- `GET /api/v1/query/town/snapshots?worldId=...`
+- `GET /api/v1/query/town/snapshot/diff?worldId=...&from=...&to=...`
+- `GET /api/v1/query/benchmark/emergence`
 - `GET /api/v1/query/novel/world-graph?projectId=...`
 - `GET /api/v1/query/novel/audit?projectId=...`
 - `GET /api/v1/query/novel/corrections?projectId=...`
@@ -48,6 +53,8 @@ Failure:
 - `POST /api/v1/command/town/runtime/reset`
 - `POST /api/v1/command/town/agent/intervene`
 - `POST /api/v1/command/town/case/extract`
+- `POST /api/v1/command/town/scenario/run`
+- `POST /api/v1/command/town/snapshot/rollback`
 - `POST /api/v1/command/novel/import`
 - `POST /api/v1/command/novel/analyze`
 - `POST /api/v1/command/novel/evidence-index`
@@ -78,6 +85,24 @@ node scripts/run-persistent-town-api-smoke.mjs
 ```
 
 The runtime state is stored inside the persisted world JSON. New actions still become `WorldEvent` records, and extracted cases still use the existing fair-play validation and investigation APIs.
+
+## Scenario Runner And Time Machine
+
+Scenario endpoints turn Persistent Agent Town into a reproducible experimentation loop:
+
+```text
+create town -> run scenario -> inspect report -> compare snapshots -> rollback if needed
+```
+
+`POST /api/v1/command/town/scenario/run` accepts a `ScenarioConfig` with baseline steps, counterfactual branches, scheduled interventions, and pass criteria. The baseline branch is persisted to the runtime world. Counterfactual branches are compared in the report and do not overwrite original source facts.
+
+Time Machine snapshots capture tick, day/time, agent state, decision count, candidates, event ids, memory ids, and intervention ids. Public snapshot responses omit rollback checkpoints; rollback uses the server-side checkpoint stored inside the persisted world JSON.
+
+Minimal smoke flow:
+
+```powershell
+node scripts/run-scenario-runner-api-smoke.mjs
+```
 
 ## Living World Audit Loop
 
@@ -117,6 +142,7 @@ The server keeps a lightweight in-memory runtime record for these endpoints. Bro
 node scripts/run-agent-api-smoke.mjs
 node scripts/run-novel-agent-api-smoke.mjs
 node scripts/run-persistent-town-api-smoke.mjs
+node scripts/run-scenario-runner-api-smoke.mjs
 ```
 
 The script starts a temporary local server unless `AGENT_API_BASE_URL` is provided.

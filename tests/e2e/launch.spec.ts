@@ -700,6 +700,11 @@ test("persistent agent town runs, scores agents and extracts a playable case", a
 
   await expect(page.getByTestId("emergence-queue")).toContainText("Pressure", { timeout: 20_000 });
   await expect(page.getByTestId("emergence-queue")).toContainText("WorldEvent");
+  await expect(page.getByTestId("scenario-runner")).toBeVisible();
+  await page.getByTestId("scenario-runner").getByRole("button", { name: "Run default scenario" }).click();
+  await expect(page.getByTestId("scenario-runner")).toContainText("Selected agent resource branch", { timeout: 25_000 });
+  await expect(page.getByTestId("time-machine")).toContainText("Events +", { timeout: 20_000 });
+  await expect(page.getByTestId("benchmark-dashboard")).toBeVisible();
   await page.getByTestId("emergence-queue").getByRole("button", { name: "Extract playable case" }).first().click();
   await expect(page.getByTestId("status-line")).toContainText("Playable case extracted", { timeout: 20_000 });
   await expect(page.getByTestId("inspector-rail").locator("button.active")).toContainText("调查");

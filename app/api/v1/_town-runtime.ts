@@ -4,9 +4,14 @@ import {
   applyTownRuntimeIntervention,
   buildTownEmergenceQueue,
   createPersistentTownRuntime,
+  diffTownStateSnapshots,
   extractPlayableCaseFromCandidate,
+  rollbackTownRuntimeToSnapshot,
+  runTownScenario,
   type CaseCandidate,
   type PersistentTownRuntime,
+  type ScenarioConfig,
+  type TownStateSnapshot,
   type TownRuntimeIntervention,
   type WorldEvent,
   type WorldState
@@ -71,4 +76,57 @@ export function extractCase(world: RuntimeWorld, events: WorldEvent[], candidate
   persistRuntimeWorld(nextWorld, result.events.filter((event) => !events.some((existing) => existing.id === event.id)));
   worldRepository.saveCase(result.activeCase);
   return { ...result, world: nextWorld, queue: buildTownEmergenceQueue(nextWorld, result.events, nextWorld.persistentRuntime) };
+}
+
+export function runScenario(world: RuntimeWorld, events: WorldEvent[], config: ScenarioConfig) {
+  const result = runTownScenario(world, events, config);
+  const nextWorld = result.world as RuntimeWorld;
+  nextWorld.persistentRuntime = result.runtime;
+  persistRuntimeWorld(nextWorld, result.events);
+  return result;
+}
+
+export function findScenario(runtime: PersistentTownRuntime, scenarioId?: string | null) {
+  const runs = runtime.scenarioRuns || [];
+  if (!scenarioId) return runs[0] || null;
+  return runs.find((run) => run.id === scenarioId) || null;
+}
+
+export function findSnapshot(runtime: PersistentTownRuntime, snapshotId?: string | null) {
+  if (!snapshotId) return null;
+  return (runtime.snapshots || []).find((snapshot) => snapshot.id === snapshotId) || null;
+}
+
+export function publicSnapshot(snapshot: TownStateSnapshot) {
+  const { checkpoint: _checkpoint, ...visible } = snapshot;
+  return visible;
+}
+
+export function publicRuntime(runtime: PersistentTownRuntime) {
+  return {
+    ...runtime,
+    snapshots: (runtime.snapshots || []).map(publicSnapshot)
+  };
+}
+
+export function publicWorld(world: RuntimeWorld) {
+  return {
+    ...world,
+    persistentRuntime: world.persistentRuntime ? publicRuntime(world.persistentRuntime) : undefined
+  };
+}
+
+export function diffSnapshots(runtime: PersistentTownRuntime, fromId: string, toId: string) {
+  const from = findSnapshot(runtime, fromId);
+  const to = findSnapshot(runtime, toId);
+  if (!from || !to) return null;
+  return { from, to, diff: diffTownStateSnapshots(from, to) };
+}
+
+export function rollbackToSnapshot(world: RuntimeWorld, snapshot: TownStateSnapshot) {
+  const result = rollbackTownRuntimeToSnapshot(world, snapshot);
+  const nextWorld = result.world as RuntimeWorld;
+  nextWorld.persistentRuntime = result.runtime;
+  persistRuntimeWorld(nextWorld);
+  return { ...result, world: nextWorld };
 }

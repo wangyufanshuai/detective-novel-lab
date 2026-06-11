@@ -1,5 +1,5 @@
 import { errorResponse, fail, ok, readJson } from "@/app/api/v1/_utils";
-import { extractCase, getRuntimeCandidate, loadRuntimeWorld } from "@/app/api/v1/_town-runtime";
+import { extractCase, getRuntimeCandidate, loadRuntimeWorld, publicWorld } from "@/app/api/v1/_town-runtime";
 import { buildTownEmergenceQueue } from "@/lib/engine";
 
 export async function POST(request: Request) {
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
       null;
     if (!candidate) return fail("BAD_REQUEST", "No case candidate is available", 404);
     const result = extractCase(loaded.world, loaded.events, candidate);
-    return ok({ world: result.world, events: result.events, activeCase: result.activeCase, candidate: result.candidate, queue: result.queue });
+    return ok({ world: publicWorld(result.world), events: result.events, activeCase: result.activeCase, candidate: result.candidate, queue: result.queue });
   } catch (error) {
     return errorResponse(error);
   }

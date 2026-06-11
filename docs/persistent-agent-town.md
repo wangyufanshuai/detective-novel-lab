@@ -94,24 +94,38 @@ Main endpoints:
 - `GET /api/v1/query/town/agent?worldId=...&npcId=...`
 - `GET /api/v1/query/town/candidates?worldId=...`
 - `GET /api/v1/query/town/emergence-proof?worldId=...&candidateId=...`
+- `GET /api/v1/query/town/scenario?worldId=...&scenarioId=...`
+- `GET /api/v1/query/town/scenario/report?worldId=...&scenarioId=...`
+- `GET /api/v1/query/town/snapshots?worldId=...`
+- `GET /api/v1/query/town/snapshot/diff?worldId=...&from=...&to=...`
 - `POST /api/v1/command/town/runtime/start`
 - `POST /api/v1/command/town/runtime/pause`
 - `POST /api/v1/command/town/runtime/step`
 - `POST /api/v1/command/town/runtime/reset`
 - `POST /api/v1/command/town/agent/intervene`
 - `POST /api/v1/command/town/case/extract`
+- `POST /api/v1/command/town/scenario/run`
+- `POST /api/v1/command/town/snapshot/rollback`
 
 Smoke test:
 
 ```powershell
 node scripts/run-persistent-town-api-smoke.mjs
+node scripts/run-scenario-runner-api-smoke.mjs
 ```
+
+## Scenario Runner And Time Machine
+
+Scenario Runner stores reproducible `ScenarioRun` reports on the runtime. Each run records a baseline branch plus optional counterfactual branches with scheduled interventions. The report compares event growth, memory growth, candidate counts, hard-logic availability, and branch diffs.
+
+World State Time Machine stores tick snapshots on the runtime. Snapshot diffs show added events, added memories, changed agent fields, candidate status changes, and branch-only interventions. Rollback restores the runtime and world JSON checkpoint for a snapshot while leaving the SQLite event log as the durable audit trail.
 
 ## Tests
 
 ```powershell
 npm run test:persistent-town
 node scripts/run-persistent-town-api-smoke.mjs
+node scripts/run-scenario-runner-api-smoke.mjs
 ```
 
 The tests cover deterministic ticks, complete decision traces, action score fields, invalid-candidate failure reasons, playable extraction, and counterfactual intervention behavior.

@@ -98,4 +98,60 @@ const engine = await loadEngine();
   assert.equal(run.runtime.interventions.length, 0, "original runtime object is not mutated by intervention result");
 }
 
+{
+  const world = engine.createInitialWorld("scenario-persistent", { mode: "showcase", npcCount: 8, timelineHours: 24 });
+  const daily = engine.simulateDailyLife(world, 1, []);
+  const actorId = daily.world.npcs[0].id;
+  const scenarioA = engine.runTownScenario(daily.world, daily.events, {
+    id: "scenario-deterministic",
+    seed: "scenario-persistent-fixed",
+    baselineSteps: 4,
+    branches: [{
+      id: "resource-branch",
+      name: "Resource branch",
+      steps: 4,
+      interventions: [{ atTickOffset: 1, intervention: { actorId, kind: "resource", value: "resource:scenario-test" } }]
+    }],
+    passCriteria: { minEventGrowth: 1, minMemoryGrowth: 1, maxBlockedCandidates: 8 }
+  });
+  const worldB = engine.createInitialWorld("scenario-persistent", { mode: "showcase", npcCount: 8, timelineHours: 24 });
+  const dailyB = engine.simulateDailyLife(worldB, 1, []);
+  const scenarioB = engine.runTownScenario(dailyB.world, dailyB.events, {
+    id: "scenario-deterministic",
+    seed: "scenario-persistent-fixed",
+    baselineSteps: 4,
+    branches: [{
+      id: "resource-branch",
+      name: "Resource branch",
+      steps: 4,
+      interventions: [{ atTickOffset: 1, intervention: { actorId, kind: "resource", value: "resource:scenario-test" } }]
+    }],
+    passCriteria: { minEventGrowth: 1, minMemoryGrowth: 1, maxBlockedCandidates: 8 }
+  });
+  assert.equal(scenarioA.report.passed, true, "scenario report passes configured criteria");
+  assert.equal(scenarioA.report.branches.length, 1, "scenario includes a counterfactual branch");
+  assert.equal(scenarioA.report.branches[0].diffFromBaseline.branchOnlyInterventionIds.length > 0, true, "branch diff tracks counterfactual interventions");
+  assert.equal(scenarioA.report.baseline.eventGrowth, scenarioB.report.baseline.eventGrowth, "scenario baseline event growth is deterministic");
+  assert.equal(scenarioA.runtime.scenarioRuns.length, 1, "scenario run is stored on runtime");
+  assert.equal(scenarioA.runtime.snapshots.length >= 4, true, "scenario stores baseline and branch snapshots");
+}
+
+{
+  const world = engine.createInitialWorld("snapshot-persistent", { mode: "showcase", npcCount: 8, timelineHours: 24 });
+  const daily = engine.simulateDailyLife(world, 1, []);
+  const run = engine.advancePersistentTownTick(daily.world, daily.events, { steps: 2, status: "running" });
+  const start = engine.createTownStateSnapshot(daily.world, daily.events, { id: "snapshot-start", label: "Start" });
+  const end = engine.createTownStateSnapshot(run.world, [...daily.events, ...run.events], { id: "snapshot-end", label: "End" });
+  const diff = engine.diffTownStateSnapshots(start, end);
+  assert.equal(diff.addedEventIds.length >= 1, true, "snapshot diff reports added events");
+  assert.equal(diff.addedMemoryIds.length >= 1, true, "snapshot diff reports added memories");
+  assert.equal(diff.changedAgents.length >= 1, true, "snapshot diff reports changed agents");
+  const runtime = run.world.persistentRuntime;
+  runtime.snapshots = [start, end];
+  run.world.persistentRuntime = runtime;
+  const restored = engine.rollbackTownRuntimeToSnapshot(run.world, start);
+  assert.equal(restored.runtime.tick, start.tick, "rollback restores runtime tick");
+  assert.deepEqual(restored.runtime.agentStates.map((agent) => agent.locationId), start.agentStates.map((agent) => agent.locationId), "rollback restores agent locations");
+}
+
 console.log("Persistent town tests passed.");

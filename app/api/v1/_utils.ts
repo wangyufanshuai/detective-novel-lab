@@ -8,6 +8,8 @@ export type ApiErrorCode =
   | "EVIDENCE_NOT_FOUND"
   | "NOVEL_PROJECT_NOT_FOUND"
   | "NOVEL_SIMULATION_NOT_FOUND"
+  | "SCENARIO_NOT_FOUND"
+  | "SNAPSHOT_NOT_FOUND"
   | "INTERNAL_ERROR";
 
 export function ok<T>(data: T) {

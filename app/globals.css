@@ -2153,6 +2153,43 @@ blockquote {
   font-size: 10px;
 }
 
+.scenarioRunnerPanel,
+.timeMachinePanel,
+.benchmarkDashboardPanel {
+  border-color: rgba(101, 255, 196, 0.18);
+}
+
+.timeMachineControls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.timeMachineControls label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.timeMachineControls select {
+  width: 100%;
+  min-width: 0;
+  padding: 8px;
+  color: var(--soft);
+  background: #0c131b;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  font-size: 11px;
+}
+
+@media (max-width: 720px) {
+  .timeMachineControls {
+    grid-template-columns: 1fr;
+  }
+}
+
 .simulationExplanation {
   display: grid;
   gap: 6px;

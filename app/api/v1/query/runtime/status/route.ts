@@ -16,6 +16,9 @@ export async function GET() {
       agentInterventionLoop: true,
       persistentAgentTown: true,
       caseEmergenceFactory: true,
+      scenarioRunner: true,
+      worldStateTimeMachine: true,
+      benchmarkDashboard: true,
       staticDemo: true
     },
     version: "v1"

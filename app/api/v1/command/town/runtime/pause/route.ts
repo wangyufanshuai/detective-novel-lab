@@ -1,5 +1,5 @@
 import { errorResponse, fail, ok, readJson } from "@/app/api/v1/_utils";
-import { persistRuntimeWorld, loadRuntimeWorld } from "@/app/api/v1/_town-runtime";
+import { persistRuntimeWorld, loadRuntimeWorld, publicRuntime } from "@/app/api/v1/_town-runtime";
 
 export async function POST(request: Request) {
   try {
@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     loaded.runtime.updatedAt = new Date().toISOString();
     loaded.world.persistentRuntime = loaded.runtime;
     persistRuntimeWorld(loaded.world);
-    return ok({ runtime: loaded.runtime });
+    return ok({ runtime: publicRuntime(loaded.runtime) });
   } catch (error) {
     return errorResponse(error);
   }

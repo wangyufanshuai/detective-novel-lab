@@ -215,7 +215,11 @@ import type {
   RevealEvalReport,
   RevealFactContract,
   RuntimeMode,
+  ScenarioReport,
+  ScenarioRun,
   SuspectBoardRow,
+  TownStateDiff,
+  TownStateSnapshot,
   TownEmergenceQueue,
   WorldEvent,
   WorldMapActor,
@@ -2967,6 +2971,13 @@ export default function Home() {
   const [townQueue, setTownQueue] = useState<TownEmergenceQueue | null>(null);
   const [selectedAgentCandidates, setSelectedAgentCandidates] = useState<NpcActionCandidate[]>([]);
   const [townRuntimeBusy, setTownRuntimeBusy] = useState(false);
+  const [scenarioRun, setScenarioRun] = useState<ScenarioRun | null>(null);
+  const [scenarioReport, setScenarioReport] = useState<ScenarioReport | null>(null);
+  const [townSnapshots, setTownSnapshots] = useState<TownStateSnapshot[]>([]);
+  const [selectedSnapshotFromId, setSelectedSnapshotFromId] = useState("");
+  const [selectedSnapshotToId, setSelectedSnapshotToId] = useState("");
+  const [snapshotDiff, setSnapshotDiff] = useState<TownStateDiff | null>(null);
+  const [benchmarkSummary, setBenchmarkSummary] = useState<{ seedCount: number; passed: number; failed: number; passRate: number; averageQualityScore: number; averageEmergenceScore: number } | null>(null);
 
   function pushToast(toast: Omit<InvestigationToast, "id">) {
     const id = `toast:${Date.now()}:${Math.random().toString(16).slice(2)}`;
@@ -3585,11 +3596,47 @@ export default function Home() {
     const runtimeData = await getV1<{ runtime: PersistentTownRuntime; queue: TownEmergenceQueue }>(`/api/v1/query/town/runtime?worldId=${encodeURIComponent(targetWorldId)}`);
     setTownRuntime(runtimeData.runtime);
     setTownQueue(runtimeData.queue);
+    setScenarioRun(runtimeData.runtime.scenarioRuns?.[0] || null);
+    setScenarioReport(runtimeData.runtime.scenarioRuns?.[0]?.report || null);
+    setTownSnapshots(runtimeData.runtime.snapshots || []);
+    const latestSnapshots = runtimeData.runtime.snapshots || [];
+    if (!selectedSnapshotFromId && latestSnapshots.length >= 2) setSelectedSnapshotFromId(latestSnapshots[1].id);
+    if (!selectedSnapshotToId && latestSnapshots.length >= 1) setSelectedSnapshotToId(latestSnapshots[0].id);
     if (targetNpcId) {
       const agentData = await getV1<{ agent?: NpcAgentState; candidates: NpcActionCandidate[]; trace?: unknown }>(`/api/v1/query/town/agent?worldId=${encodeURIComponent(targetWorldId)}&npcId=${encodeURIComponent(targetNpcId)}`);
       setSelectedAgentCandidates(agentData.candidates || []);
     }
   }
+
+  useEffect(() => {
+    if (!world?.id || runtimeMode === "static-demo" || !selectedSnapshotFromId || !selectedSnapshotToId || selectedSnapshotFromId === selectedSnapshotToId) {
+      setSnapshotDiff(null);
+      return;
+    }
+    getV1<{ diff: TownStateDiff }>(`/api/v1/query/town/snapshot/diff?worldId=${encodeURIComponent(world.id)}&from=${encodeURIComponent(selectedSnapshotFromId)}&to=${encodeURIComponent(selectedSnapshotToId)}`)
+      .then((data) => setSnapshotDiff(data.diff))
+      .catch(() => setSnapshotDiff(null));
+  }, [runtimeMode, selectedSnapshotFromId, selectedSnapshotToId, world?.id]);
+
+  useEffect(() => {
+    if (runtimeMode === "static-demo" || appMode !== "persistent-town") {
+      setBenchmarkSummary(null);
+      return;
+    }
+    getV1<{ available: boolean; report: { seedCount: number; passed: number; failed: number; passRate: number; averageQualityScore: number; averageEmergenceScore: number } | null }>("/api/v1/query/benchmark/emergence")
+      .then((data) => {
+        if (!data.available || !data.report) return;
+        setBenchmarkSummary({
+          seedCount: data.report.seedCount || 0,
+          passed: data.report.passed || 0,
+          failed: data.report.failed || 0,
+          passRate: data.report.passRate || 0,
+          averageQualityScore: data.report.averageQualityScore || 0,
+          averageEmergenceScore: data.report.averageEmergenceScore || 0
+        });
+      })
+      .catch(() => setBenchmarkSummary(null));
+  }, [appMode, runtimeMode]);
 
   async function startPersistentTown() {
     if (!world) return;
@@ -3706,6 +3753,70 @@ export default function Home() {
       setStatus(`Playable case extracted from candidate ${data.candidate.id}. Join the investigation to play it.`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to extract playable case");
+    } finally {
+      setTownRuntimeBusy(false);
+    }
+  }
+
+  async function runDefaultTownScenario() {
+    if (!world) return;
+    if (runtimeMode === "static-demo") {
+      setStatus("Scenario Runner uses SQLite server runtime. Switch to Server Runtime first.");
+      return;
+    }
+    setTownRuntimeBusy(true);
+    try {
+      const actorId = selectedCharacterId || townRuntime?.agentStates[0]?.npcId || world.npcs[0]?.id;
+      const data = await postV1<{ world: WorldState; runtime: PersistentTownRuntime; events: WorldEvent[]; run: ScenarioRun; report: ScenarioReport; snapshots: TownStateSnapshot[] }>("/api/v1/command/town/scenario/run", {
+        worldId: world.id,
+        config: {
+          id: `scenario-${world.seed}`,
+          name: "Default counterfactual scenario",
+          seed: `${world.seed}-scenario`,
+          baselineSteps: 6,
+          branches: actorId ? [{
+            id: "selected-agent-resource",
+            name: "Selected agent resource branch",
+            steps: 6,
+            interventions: [{ atTickOffset: 1, intervention: { actorId, kind: "resource", value: "resource:scenario-ui" } }]
+          }] : [],
+          passCriteria: { minEventGrowth: 3, minMemoryGrowth: 3, maxBlockedCandidates: 8 }
+        }
+      });
+      setWorld(data.world);
+      setTownRuntime(data.runtime);
+      setTownQueue(null);
+      setScenarioRun(data.run);
+      setScenarioReport(data.report);
+      setTownSnapshots(data.snapshots);
+      setSelectedSnapshotFromId(data.report.baseline.startSnapshotId);
+      setSelectedSnapshotToId(data.report.baseline.endSnapshotId);
+      setEvents((items) => [...items, ...data.events.filter((event) => !items.some((existing) => existing.id === event.id))]);
+      setStatus(`Scenario ${data.run.status}: ${data.report.summary}`);
+      await refreshTownRuntime(data.world.id);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to run scenario");
+    } finally {
+      setTownRuntimeBusy(false);
+    }
+  }
+
+  async function rollbackTownSnapshot(snapshotId: string) {
+    if (!world || !snapshotId) return;
+    setTownRuntimeBusy(true);
+    try {
+      const data = await postV1<{ world: WorldState; runtime: PersistentTownRuntime; snapshot: TownStateSnapshot }>("/api/v1/command/town/snapshot/rollback", {
+        worldId: world.id,
+        snapshotId
+      });
+      setWorld(data.world);
+      setTownRuntime(data.runtime);
+      setTownSnapshots(data.runtime.snapshots || []);
+      setTimeValue(timeToMinutes(data.runtime.currentTime));
+      setStatus(`Rolled back runtime to ${data.snapshot.label} at tick ${data.snapshot.tick}.`);
+      await refreshTownRuntime(data.world.id);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to roll back snapshot");
     } finally {
       setTownRuntimeBusy(false);
     }
@@ -4717,6 +4828,17 @@ export default function Home() {
                   resetRuntime={() => void resetPersistentTown()}
                   interveneAgent={() => void intervenePersistentAgent()}
                   extractCase={(candidate) => void extractPersistentCandidate(candidate)}
+                  runScenario={() => void runDefaultTownScenario()}
+                  rollbackSnapshot={(snapshotId) => void rollbackTownSnapshot(snapshotId)}
+                  selectedScenarioRun={scenarioRun}
+                  scenarioReport={scenarioReport}
+                  snapshots={townSnapshots}
+                  selectedSnapshotFromId={selectedSnapshotFromId}
+                  selectedSnapshotToId={selectedSnapshotToId}
+                  setSelectedSnapshotFromId={setSelectedSnapshotFromId}
+                  setSelectedSnapshotToId={setSelectedSnapshotToId}
+                  snapshotDiff={snapshotDiff}
+                  benchmarkSummary={benchmarkSummary}
                 />
               )
             },
