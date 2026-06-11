@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Polished Persistent Agent Town's Agent panel into a compact Review Mode for technical evaluation.
+- Scenario Runner now surfaces checks, branch comparison, and copyable report JSON in the workbench.
+- Time Machine now shows a snapshot timeline, expanded diff details, baseline quick selection, and rollback confirmation.
+- Benchmark Dashboard now has clearer pass/fail/unavailable states.
+
 ## v0.1.0 - 2026-06-11
 
 First public release candidate for Detective Town / Living World Lab.

@@ -812,6 +812,185 @@ blockquote {
   font-weight: 800;
 }
 
+.runtimePill {
+  flex: 0 0 auto;
+  padding: 4px 7px;
+  color: var(--soft);
+  background: #0b121a;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.runtimePill.running,
+.runtimePill.passed,
+.runtimePill.pass {
+  color: #dff4db;
+  border-color: rgba(121, 200, 111, 0.42);
+}
+
+.runtimePill.failed,
+.runtimePill.fail {
+  color: #ffd6d8;
+  border-color: rgba(240, 91, 97, 0.52);
+}
+
+.runtimePill.paused,
+.runtimePill.pending {
+  color: #f3dca7;
+  border-color: rgba(243, 193, 91, 0.42);
+}
+
+.reviewSummaryPanel,
+.scenarioRunnerPanel,
+.timeMachinePanel,
+.benchmarkDashboardPanel {
+  min-width: 0;
+}
+
+.reviewMetricGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+  margin: 10px 0;
+}
+
+.reviewMetricGrid.compact {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.reviewMetricGrid span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 8px;
+  color: var(--muted);
+  background: #0b121a;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.reviewMetricGrid b {
+  overflow: hidden;
+  color: #f6fbff;
+  font-size: 15px;
+  text-overflow: ellipsis;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.reviewMetricGrid .pass,
+.scenarioCheckList .pass,
+.branchComparison .source {
+  border-color: rgba(121, 200, 111, 0.38);
+}
+
+.reviewMetricGrid .fail,
+.scenarioCheckList .fail,
+.branchComparison .gap {
+  border-color: rgba(240, 91, 97, 0.45);
+}
+
+.reviewMetricGrid .pending {
+  border-color: rgba(243, 193, 91, 0.38);
+}
+
+.reviewStack,
+.scenarioCheckList,
+.branchComparison,
+.snapshotTimeline,
+.snapshotDiffDetails {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.scenarioCheckList div,
+.branchComparison article,
+.snapshotDiffDetails div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 8px;
+  background: #0b121a;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+}
+
+.scenarioCheckList strong,
+.branchComparison strong,
+.snapshotDiffDetails strong {
+  color: #f6fbff;
+  font-size: 12px;
+}
+
+.scenarioCheckList span,
+.branchComparison span,
+.scenarioCheckList small,
+.branchComparison small,
+.snapshotDiffDetails span,
+.snapshotDiffDetails small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.branchComparison article {
+  grid-template-columns: minmax(120px, 1.4fr) repeat(5, minmax(0, 1fr));
+  align-items: center;
+}
+
+.branchComparison small {
+  grid-column: 1 / -1;
+}
+
+.snapshotTimeline {
+  max-height: 170px;
+  overflow: auto;
+}
+
+.snapshotTimeline button {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  min-width: 0;
+  padding: 8px;
+  text-align: left;
+  background: #0b121a;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+}
+
+.snapshotTimeline button.selected {
+  border-color: rgba(243, 193, 91, 0.62);
+}
+
+.snapshotTimeline strong {
+  color: #f6fbff;
+  font-size: 12px;
+}
+
+.snapshotTimeline span,
+.snapshotTimeline small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.snapshotDiffDetails {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.snapshotDiffDetails div:last-child {
+  grid-column: 1 / -1;
+}
+
 .graphRail,
 .suspectBoard {
   display: grid;
@@ -2187,6 +2366,20 @@ blockquote {
 @media (max-width: 720px) {
   .timeMachineControls {
     grid-template-columns: 1fr;
+  }
+
+  .reviewMetricGrid,
+  .reviewMetricGrid.compact,
+  .snapshotDiffDetails {
+    grid-template-columns: 1fr;
+  }
+
+  .branchComparison article {
+    grid-template-columns: 1fr;
+  }
+
+  .snapshotDiffDetails div:last-child {
+    grid-column: auto;
   }
 }
 

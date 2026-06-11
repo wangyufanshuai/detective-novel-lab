@@ -22,7 +22,7 @@ import {
   Users,
   X
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import type {
   CaseLogicReport,
   CaseTemplateId,
@@ -976,24 +976,67 @@ export function AgentControlPanel({
   snapshotDiff?: TownStateDiff | null;
   benchmarkSummary?: { seedCount: number; passed: number; failed: number; passRate: number; averageQualityScore: number; averageEmergenceScore: number } | null;
 }) {
+  const [copyStatus, setCopyStatus] = useState("");
   const candidates = queue?.candidates || [];
   const branchCount = scenarioReport?.branches.length || 0;
+  const passedChecks = scenarioReport?.checks.filter((check) => check.passed).length ?? 0;
+  const totalChecks = scenarioReport?.checks.length ?? 0;
   const snapshotFrom = snapshots.find((item) => item.id === selectedSnapshotFromId);
   const snapshotTo = snapshots.find((item) => item.id === selectedSnapshotToId);
+  const sortedSnapshots = [...snapshots].sort((a, b) => a.tick - b.tick || a.label.localeCompare(b.label));
+  const reviewStatus = scenarioReport ? (scenarioReport.passed ? "pass" : "fail") : "pending";
+  const benchmarkState = benchmarkSummary ? (benchmarkSummary.failed === 0 ? "pass" : "fail") : "pending";
+  const baselineStartId = scenarioReport?.baseline.startSnapshotId || "";
+  const baselineEndId = scenarioReport?.baseline.endSnapshotId || "";
+
+  async function copyScenarioReport() {
+    if (!scenarioReport) {
+      setCopyStatus("No scenario report to copy.");
+      return;
+    }
+    if (!navigator.clipboard?.writeText) {
+      setCopyStatus("Clipboard unavailable. Report JSON is visible in the panel.");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(scenarioReport, null, 2));
+      setCopyStatus("Scenario report JSON copied.");
+    } catch {
+      setCopyStatus("Clipboard blocked by the browser. Report JSON is visible in the panel.");
+    }
+  }
+
+  function confirmRollback() {
+    if (!selectedSnapshotFromId) return;
+    const label = snapshotFrom ? `${snapshotFrom.label} at tick ${snapshotFrom.tick}` : selectedSnapshotFromId;
+    if (window.confirm(`Roll back Persistent Agent Town to ${label}? This restores runtime state for review.`)) {
+      rollbackSnapshot(selectedSnapshotFromId);
+    }
+  }
+
+  function selectBaselineDiff() {
+    if (!baselineStartId || !baselineEndId) return;
+    setSelectedSnapshotFromId(baselineStartId);
+    setSelectedSnapshotToId(baselineEndId);
+  }
+
   return (
     <div className="stackedInspector persistentTownPanel" data-testid="persistent-town-panel">
-      <section className="actionPanel">
+      <section className="actionPanel reviewSummaryPanel" data-testid="review-summary">
         <div className="panelHeaderLine">
-          <h2><Network size={16} /> Persistent Agent Town</h2>
+          <h2><Network size={16} /> Review Summary</h2>
           <span className={`runtimePill ${runtime?.status || "paused"}`}>{runtime?.status || "not started"}</span>
         </div>
-        <p>NPCs observe, update memory, score legal actions, write WorldEvents, then generate case candidates.</p>
-        <div className="logicBadges">
-          <span>Tick: {runtime?.tick ?? 0}</span>
-          <span>Time: {runtime?.currentDay ?? 1} / {runtime?.currentTime || "--:--"}</span>
-          <span>Agents: {runtime?.agentStates.length ?? 0}</span>
-          <span>Candidates: {candidates.length}</span>
-          <span>Valid: {queue?.validCount ?? 0}</span>
+        <p>Compact review surface for runtime health, scenario evidence, Time Machine coverage, and benchmark confidence.</p>
+        <div className="reviewMetricGrid">
+          <span><b>{runtime?.tick ?? 0}</b>Tick</span>
+          <span><b>{runtime?.currentTime || "--:--"}</b>Day {runtime?.currentDay ?? 1}</span>
+          <span className={reviewStatus}><b>{scenarioReport ? (scenarioReport.passed ? "Pass" : "Fail") : "Pending"}</b>Scenario</span>
+          <span><b>{branchCount}</b>Branches</span>
+          <span><b>{snapshots.length}</b>Snapshots</span>
+          <span className={benchmarkState}><b>{benchmarkSummary ? `${benchmarkSummary.passRate}%` : "N/A"}</b>Benchmark</span>
+          <span><b>{queue?.validCount ?? 0}</b>Valid candidates</span>
+          <span><b>{runtime?.agentStates.length ?? 0}</b>Agents</span>
         </div>
         <div className="townRuntimeActions">
           <button type="button" className="primaryButton compact" onClick={startRuntime} disabled={runningBusy}>Start</button>
@@ -1002,6 +1045,129 @@ export function AgentControlPanel({
           <button type="button" onClick={resetRuntime} disabled={runningBusy || !runtime}>Reset</button>
         </div>
         <small>{queue?.nextAction || "Start the runtime to build an emergence queue."}</small>
+      </section>
+
+      <section className="actionPanel scenarioRunnerPanel" data-testid="scenario-runner">
+        <div className="panelHeaderLine">
+          <h2><GitBranch size={16} /> Scenario Runner</h2>
+          <span className={`runtimePill ${selectedScenarioRun?.status || "paused"}`}>{scenarioReport ? (scenarioReport.passed ? "passed" : "failed") : selectedScenarioRun?.status || "not run"}</span>
+        </div>
+        <p>Run a deterministic baseline and compare counterfactual branches without overwriting source facts.</p>
+        <div className="reviewMetricGrid compact">
+          <span className={reviewStatus}><b>{scenarioReport ? (scenarioReport.passed ? "Pass" : "Fail") : "-"}</b>Result</span>
+          <span><b>{scenarioReport?.baseline.eventGrowth ?? 0}</b>Baseline events</span>
+          <span><b>{scenarioReport?.baseline.memoryGrowth ?? 0}</b>Baseline memories</span>
+          <span><b>{scenarioReport?.baseline.validCandidateCount ?? 0}</b>Baseline valid</span>
+          <span><b>{branchCount}</b>Branches</span>
+          <span><b>{passedChecks}/{totalChecks}</b>Checks</span>
+        </div>
+        <div className="townRuntimeActions">
+          <button type="button" className="secondaryButton full" onClick={runScenario} disabled={runningBusy}>Run default scenario</button>
+          <button type="button" className="secondaryButton full" onClick={copyScenarioReport} disabled={!scenarioReport}>Copy report JSON</button>
+        </div>
+        {copyStatus && <small data-testid="scenario-copy-status">{copyStatus}</small>}
+        {scenarioReport ? (
+          <div className="reviewStack">
+            <div className="scenarioCheckList" data-testid="scenario-check-list">
+              {scenarioReport.checks.map((check) => (
+                <div key={check.id} className={check.passed ? "pass" : "fail"}>
+                  <strong>{check.passed ? "Pass" : "Fail"}</strong>
+                  <span>{check.label}</span>
+                  <small>actual {String(check.actual)} / expected {String(check.expected)}</small>
+                </div>
+              ))}
+            </div>
+            <div className="branchComparison" data-testid="branch-comparison">
+              {scenarioReport.branches.map((branch) => (
+                <article key={branch.id} className={branch.status === "completed" ? "source" : "gap"}>
+                  <strong>{branch.name}</strong>
+                  <span>{branch.status}</span>
+                  <span>{branch.eventGrowth} events</span>
+                  <span>{branch.memoryGrowth} memories</span>
+                  <span>{branch.validCandidateCount} valid</span>
+                  <span>{branch.diffFromBaseline.changedAgents.length} agents changed</span>
+                  <small>{branch.diffFromBaseline.branchOnlyInterventionIds.length} branch-only interventions</small>
+                </article>
+              ))}
+            </div>
+            <pre className="apiExample">{scenarioReport.summary}</pre>
+          </div>
+        ) : <small>No scenario report yet.</small>}
+      </section>
+
+      <section className="actionPanel timeMachinePanel" data-testid="time-machine">
+        <div className="panelHeaderLine">
+          <h2><Clock size={16} /> World State Time Machine</h2>
+          <span>{snapshots.length} snapshots</span>
+        </div>
+        <p>Compare ticks, agent state, memory growth, interventions, and candidate status changes.</p>
+        <div className="timeMachineControls">
+          <label>
+            From
+            <select value={selectedSnapshotFromId} onChange={(event) => setSelectedSnapshotFromId(event.target.value)}>
+              <option value="">Select snapshot</option>
+              {snapshots.map((snapshot) => <option key={snapshot.id} value={snapshot.id}>{snapshot.label} / {snapshot.time}</option>)}
+            </select>
+          </label>
+          <label>
+            To
+            <select value={selectedSnapshotToId} onChange={(event) => setSelectedSnapshotToId(event.target.value)}>
+              <option value="">Select snapshot</option>
+              {snapshots.map((snapshot) => <option key={snapshot.id} value={snapshot.id}>{snapshot.label} / {snapshot.time}</option>)}
+            </select>
+          </label>
+        </div>
+        <div className="townRuntimeActions">
+          <button type="button" className="secondaryButton full" onClick={selectBaselineDiff} disabled={!baselineStartId || !baselineEndId}>Use baseline diff</button>
+          <button type="button" onClick={() => baselineStartId && setSelectedSnapshotFromId(baselineStartId)} disabled={!baselineStartId}>Set From baseline</button>
+          <button type="button" onClick={() => baselineEndId && setSelectedSnapshotToId(baselineEndId)} disabled={!baselineEndId}>Set To baseline</button>
+        </div>
+        <div className="logicBadges">
+          <span>From: {snapshotFrom?.tick ?? "-"}</span>
+          <span>To: {snapshotTo?.tick ?? "-"}</span>
+          <span>Events +{snapshotDiff?.addedEventIds.length ?? 0}</span>
+          <span>Memories +{snapshotDiff?.addedMemoryIds.length ?? 0}</span>
+        </div>
+        {!!sortedSnapshots.length && (
+          <div className="snapshotTimeline" data-testid="snapshot-timeline">
+            {sortedSnapshots.map((snapshot) => (
+              <button key={snapshot.id} type="button" className={snapshot.id === selectedSnapshotFromId || snapshot.id === selectedSnapshotToId ? "selected" : ""} onClick={() => setSelectedSnapshotToId(snapshot.id)}>
+                <strong>{snapshot.label}</strong>
+                <span>Tick {snapshot.tick} / {snapshot.time}</span>
+                <small>{snapshot.eventIds.length} events / {snapshot.memoryIds.length} memories / {snapshot.candidateSummaries.length} candidates</small>
+              </button>
+            ))}
+          </div>
+        )}
+        {snapshotDiff ? (
+          <div className="snapshotDiffDetails" data-testid="snapshot-diff-details">
+            <div><strong>Added events</strong><span>{snapshotDiff.addedEventIds.length}</span><small>{snapshotDiff.addedEventIds.slice(0, 3).join(" / ") || "none"}</small></div>
+            <div><strong>Added memories</strong><span>{snapshotDiff.addedMemoryIds.length}</span><small>{snapshotDiff.addedMemoryIds.slice(0, 3).join(" / ") || "none"}</small></div>
+            <div><strong>Changed agents</strong><span>{snapshotDiff.changedAgents.length}</span><small>{snapshotDiff.changedAgents.slice(0, 3).map((agent) => `${agent.npcId}:${agent.changedFields.join(",")}`).join(" / ") || "none"}</small></div>
+            <div><strong>Candidate status changes</strong><span>{snapshotDiff.candidateStatusChanges.length}</span><small>{snapshotDiff.candidateStatusChanges.slice(0, 3).map((candidate) => `${candidate.candidateId}:${candidate.beforeStatus || "new"}->${candidate.afterStatus || "removed"}`).join(" / ") || "none"}</small></div>
+            <div><strong>Branch-only interventions</strong><span>{snapshotDiff.branchOnlyInterventionIds.length}</span><small>{snapshotDiff.branchOnlyInterventionIds.slice(0, 3).join(" / ") || "none"}</small></div>
+          </div>
+        ) : <small>Select two snapshots to inspect a diff.</small>}
+        <button type="button" className="secondaryButton full" onClick={confirmRollback} disabled={runningBusy || !selectedSnapshotFromId}>
+          Roll back to From snapshot
+        </button>
+      </section>
+
+      <section className="actionPanel benchmarkDashboardPanel" data-testid="benchmark-dashboard">
+        <div className="panelHeaderLine">
+          <h2><ShieldCheck size={16} /> Benchmark Dashboard</h2>
+          <span className={`runtimePill ${benchmarkState}`}>{benchmarkSummary ? (benchmarkSummary.failed === 0 ? "pass" : "fail") : "unavailable"}</span>
+        </div>
+        {benchmarkSummary ? (
+          <div className="reviewMetricGrid compact">
+            <span><b>{benchmarkSummary.passRate}%</b>Pass rate</span>
+            <span><b>{benchmarkSummary.seedCount}</b>Seeds</span>
+            <span><b>{benchmarkSummary.averageQualityScore}</b>Quality</span>
+            <span><b>{benchmarkSummary.averageEmergenceScore}</b>Emergence</span>
+            <span className={benchmarkSummary.failed === 0 ? "pass" : "fail"}><b>{benchmarkSummary.failed}</b>Failed seeds</span>
+            <span><b>{benchmarkSummary.passed}</b>Passed seeds</span>
+          </div>
+        ) : <p>No benchmark report found. Run <code>npm run benchmark:emergence</code> to populate <code>outputs/emergence-benchmark.json</code>. The report is intentionally ignored by Git.</p>}
       </section>
 
       <section className="actionPanel agentStatePanel" data-testid="agent-state-panel">
@@ -1055,89 +1221,6 @@ export function AgentControlPanel({
             </button>
           </article>
         ))}
-      </section>
-
-      <section className="actionPanel scenarioRunnerPanel" data-testid="scenario-runner">
-        <div className="panelHeaderLine">
-          <h2><GitBranch size={16} /> Scenario Runner</h2>
-          <span className={`runtimePill ${selectedScenarioRun?.status || "paused"}`}>{selectedScenarioRun?.status || "not run"}</span>
-        </div>
-        <p>Run a deterministic baseline and compare counterfactual branches without overwriting source facts.</p>
-        <div className="logicBadges">
-          <span>Baseline events: {scenarioReport?.baseline.eventGrowth ?? 0}</span>
-          <span>Baseline memories: {scenarioReport?.baseline.memoryGrowth ?? 0}</span>
-          <span>Branches: {branchCount}</span>
-          <span>Checks: {scenarioReport?.checks.filter((check) => check.passed).length ?? 0}/{scenarioReport?.checks.length ?? 0}</span>
-        </div>
-        <button type="button" className="secondaryButton full" onClick={runScenario} disabled={runningBusy}>Run default scenario</button>
-        {scenarioReport ? (
-          <div className="simulationCandidateList">
-            {scenarioReport.branches.map((branch) => (
-              <article key={branch.id} className={branch.status === "completed" ? "source" : "gap"}>
-                <strong>{branch.name}: {branch.status}</strong>
-                <span>{branch.eventGrowth} events / {branch.memoryGrowth} memories / {branch.validCandidateCount} valid candidates</span>
-                <small>{branch.diffFromBaseline.changedAgents.length} changed agents; {branch.diffFromBaseline.branchOnlyInterventionIds.length} branch interventions</small>
-              </article>
-            ))}
-            <pre className="apiExample">{scenarioReport.summary}</pre>
-          </div>
-        ) : <small>No scenario report yet.</small>}
-      </section>
-
-      <section className="actionPanel timeMachinePanel" data-testid="time-machine">
-        <div className="panelHeaderLine">
-          <h2><Clock size={16} /> World State Time Machine</h2>
-          <span>{snapshots.length} snapshots</span>
-        </div>
-        <p>Compare ticks, agent state, memory growth, interventions, and candidate status changes.</p>
-        <div className="timeMachineControls">
-          <label>
-            From
-            <select value={selectedSnapshotFromId} onChange={(event) => setSelectedSnapshotFromId(event.target.value)}>
-              <option value="">Select snapshot</option>
-              {snapshots.map((snapshot) => <option key={snapshot.id} value={snapshot.id}>{snapshot.label} / {snapshot.time}</option>)}
-            </select>
-          </label>
-          <label>
-            To
-            <select value={selectedSnapshotToId} onChange={(event) => setSelectedSnapshotToId(event.target.value)}>
-              <option value="">Select snapshot</option>
-              {snapshots.map((snapshot) => <option key={snapshot.id} value={snapshot.id}>{snapshot.label} / {snapshot.time}</option>)}
-            </select>
-          </label>
-        </div>
-        <div className="logicBadges">
-          <span>From: {snapshotFrom?.tick ?? "-"}</span>
-          <span>To: {snapshotTo?.tick ?? "-"}</span>
-          <span>Events +{snapshotDiff?.addedEventIds.length ?? 0}</span>
-          <span>Memories +{snapshotDiff?.addedMemoryIds.length ?? 0}</span>
-        </div>
-        {snapshotDiff ? (
-          <div className="simulationCandidateList">
-            <article className="source">
-              <strong>{snapshotDiff.changedAgents.length} agent changes</strong>
-              <span>{snapshotDiff.candidateStatusChanges.length} candidate status changes</span>
-              <small>{snapshotDiff.changedAgents.slice(0, 3).map((agent) => `${agent.npcId}:${agent.changedFields.join(",")}`).join(" / ") || "No agent field changes"}</small>
-            </article>
-          </div>
-        ) : <small>Select two snapshots to inspect a diff.</small>}
-        <button type="button" className="secondaryButton full" onClick={() => selectedSnapshotFromId && rollbackSnapshot(selectedSnapshotFromId)} disabled={runningBusy || !selectedSnapshotFromId}>
-          Roll back to From snapshot
-        </button>
-      </section>
-
-      <section className="actionPanel benchmarkDashboardPanel" data-testid="benchmark-dashboard">
-        <h2><ShieldCheck size={16} /> Benchmark Dashboard</h2>
-        {benchmarkSummary ? (
-          <div className="logicBadges">
-            <span>Seeds: {benchmarkSummary.seedCount}</span>
-            <span>Pass: {benchmarkSummary.passed}</span>
-            <span>Fail: {benchmarkSummary.failed}</span>
-            <span>Rate: {benchmarkSummary.passRate}%</span>
-            <span>Quality: {benchmarkSummary.averageQualityScore}</span>
-            <span>Emergence: {benchmarkSummary.averageEmergenceScore}</span>
-          </div>
-        ) : <p>No benchmark report found. Run npm run benchmark:emergence to populate outputs/emergence-benchmark.json.</p>}
       </section>
     </div>
   );

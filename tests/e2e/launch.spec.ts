@@ -690,7 +690,7 @@ test("persistent agent town runs, scores agents and extracts a playable case", a
 
   await page.getByTestId("open-persistent-town").click();
   await expect(page.getByTestId("persistent-town-panel")).toBeVisible();
-  await page.getByTestId("persistent-town-panel").getByRole("button", { name: "Start" }).click();
+  await page.getByTestId("persistent-town-panel").getByRole("button", { name: "Start", exact: true }).click();
   await expect(page.getByTestId("agent-state-panel")).toContainText("Agent State", { timeout: 20_000 });
   await expect(page.getByTestId("agent-action-candidates")).toContainText("Score", { timeout: 20_000 });
 
@@ -702,9 +702,27 @@ test("persistent agent town runs, scores agents and extracts a playable case", a
   await expect(page.getByTestId("emergence-queue")).toContainText("WorldEvent");
   await expect(page.getByTestId("scenario-runner")).toBeVisible();
   await page.getByTestId("scenario-runner").getByRole("button", { name: "Run default scenario" }).click();
+  await expect(page.getByTestId("review-summary")).toContainText("Review Summary", { timeout: 20_000 });
+  await expect(page.getByTestId("review-summary")).toContainText("Scenario", { timeout: 20_000 });
   await expect(page.getByTestId("scenario-runner")).toContainText("Selected agent resource branch", { timeout: 25_000 });
+  await expect(page.getByTestId("scenario-check-list")).toContainText("Pass", { timeout: 20_000 });
+  await expect(page.getByTestId("branch-comparison")).toContainText("agents changed", { timeout: 20_000 });
   await expect(page.getByTestId("time-machine")).toContainText("Events +", { timeout: 20_000 });
+  await expect(page.getByTestId("snapshot-timeline")).toContainText("Tick", { timeout: 20_000 });
+  await expect(page.getByTestId("snapshot-diff-details")).toContainText("Changed agents", { timeout: 20_000 });
   await expect(page.getByTestId("benchmark-dashboard")).toBeVisible();
+  await expect(page.getByTestId("benchmark-dashboard")).toContainText(/Pass rate|benchmark report/);
+
+  let rollbackDialogMessage = "";
+  page.once("dialog", async (dialog) => {
+    rollbackDialogMessage = dialog.message();
+    await dialog.dismiss();
+  });
+  await page.getByTestId("time-machine").getByRole("button", { name: "Roll back to From snapshot" }).click();
+  expect(rollbackDialogMessage).toContain("Roll back");
+
+  const agentPanelOverflow = await page.getByTestId("persistent-town-panel").evaluate((element) => element.scrollWidth - element.clientWidth);
+  expect(agentPanelOverflow).toBeLessThanOrEqual(1);
   await page.getByTestId("emergence-queue").getByRole("button", { name: "Extract playable case" }).first().click();
   await expect(page.getByTestId("status-line")).toContainText("Playable case extracted", { timeout: 20_000 });
   await expect(page.getByTestId("inspector-rail").locator("button.active")).toContainText("调查");

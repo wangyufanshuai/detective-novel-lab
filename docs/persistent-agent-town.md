@@ -20,6 +20,8 @@ DeepSeek is not used for action legality, event creation, culprit selection, evi
 
 ## Agent State
 
+The Agent tab now opens with Review Mode: a compact summary of runtime health, scenario status, branch count, snapshot count, benchmark pass rate, and valid candidate count before the detailed agent cards.
+
 Each NPC receives a persisted `NpcAgentState`:
 
 - current goal and priority;
@@ -115,6 +117,8 @@ node scripts/run-scenario-runner-api-smoke.mjs
 ```
 
 ## Scenario Runner And Time Machine
+
+The Agent workbench presents Scenario Runner and Time Machine results as a review surface: pass/fail checks, branch comparison, copyable report JSON, snapshot timeline, baseline diff quick selection, expanded diff rows, and rollback confirmation.
 
 Scenario Runner stores reproducible `ScenarioRun` reports on the runtime. Each run records a baseline branch plus optional counterfactual branches with scheduled interventions. The report compares event growth, memory growth, candidate counts, hard-logic availability, and branch diffs.
 

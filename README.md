@@ -58,6 +58,8 @@ The product direction is **immersive map-first investigation + explainable deduc
 
 Current design focus: **Evidence Notebook + Playable Proof Tour**. The UI should feel like a playable pixel mystery while still making the rules inspectable. Evidence cards explain their WorldEvent source and practical use, Proof Tour turns emergence into a player-readable chain, suspect rows explain exclusion status, wrong theories point to the missing reasoning area, and the final solution shows how discovered clues lead to the accepted conclusion.
 
+Current Agent workbench focus: **Review Mode**. The Persistent Agent Town `Agent` panel should let a technical evaluator quickly scan runtime health, scenario checks, counterfactual branch comparison, Time Machine diffs, and benchmark status without leaving the existing investigative UI.
+
 ## Why Not Just Ask An LLM?
 
 Direct LLM mystery generation is easy to demo but hard to trust: the model can invent clues after the fact, leak the culprit through dialogue, create multiple valid suspects, or rely on facts the player could never discover.
