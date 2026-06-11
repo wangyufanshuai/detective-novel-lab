@@ -4,6 +4,10 @@ import assert from "node:assert/strict";
 const port = Number(process.env.SCENARIO_RUNNER_API_SMOKE_PORT || 3103);
 let baseUrl = process.env.SCENARIO_RUNNER_API_BASE_URL || `http://127.0.0.1:${port}`;
 const serverOutput = [];
+const smokeTimeout = setTimeout(() => {
+  console.error(`Scenario runner Agent API smoke test timed out at ${baseUrl}.`);
+  process.exit(1);
+}, 180_000);
 
 async function sleep(ms) {
   await new Promise((resolve) => setTimeout(resolve, ms));
@@ -51,6 +55,7 @@ const server = process.env.SCENARIO_RUNNER_API_BASE_URL || baseUrl === "http://1
   ? null
   : spawn(process.platform === "win32" ? process.env.ComSpec || "cmd.exe" : "npm", process.platform === "win32" ? ["/c", "npm", "run", "dev", "--", "-p", String(port)] : ["run", "dev", "--", "-p", String(port)], {
       stdio: ["ignore", "pipe", "pipe"],
+      detached: process.platform !== "win32",
       env: { ...process.env, PORT: String(port), AI_PROVIDER: "mock", DEEPSEEK_API_KEY: "", SILICONFLOW_API_KEY: "" }
     });
 
@@ -121,11 +126,16 @@ try {
 
   console.log("Scenario runner Agent API smoke test passed.");
 } finally {
+  clearTimeout(smokeTimeout);
   if (server) {
     if (process.platform === "win32") {
       spawnSync("taskkill", ["/PID", String(server.pid), "/T", "/F"], { stdio: "ignore" });
     } else {
-      server.kill();
+      try {
+        process.kill(-server.pid, "SIGTERM");
+      } catch {
+        server.kill("SIGTERM");
+      }
     }
   }
 }
