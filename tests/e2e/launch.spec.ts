@@ -153,7 +153,8 @@ test("novel world graph analyzes three chapters, merges changes and restores loc
     const extraEntity = chapterNumber >= 2
       ? [
           { id: "faction-qingyun", kind: "faction", name: "Qingyun Sect", role: "Local sect", summary: "Orders the city sealed.", traits: ["powerful"], x: 70, y: 30, tension: 81, evidence: [sourceEvidence] },
-          { id: "char-mei", kind: "character", name: "Mei", role: "Market witness", summary: "Tracks the public effect of the lockdown.", traits: ["observant"], x: 62, y: 68, tension: 55, evidence: [sourceEvidence] }
+          { id: "char-mei", kind: "character", name: "Mei", role: "Market witness", summary: "Tracks the public effect of the lockdown.", traits: ["observant"], x: 62, y: 68, tension: 55, evidence: [sourceEvidence] },
+          { id: "concept-lin-yao-rumor", kind: "concept", name: "Lin Yao", role: "Public rumor", summary: "A public name duplicate used for audit merge review.", traits: ["rumor"], x: 66, y: 72, tension: 42, evidence: [sourceEvidence] }
         ]
       : [];
     const extraEvent = chapterNumber >= 3
@@ -469,6 +470,29 @@ test("novel world graph analyzes three chapters, merges changes and restores loc
   await expect(page.getByTestId("batch-chapter-list")).toContainText("ready", { timeout: 20_000 });
   await page.getByTestId("run-next-batch").click();
   await expect(page.getByTestId("batch-chapter-list")).toContainText("ready", { timeout: 20_000 });
+  await expect(page.getByTestId("audit-view")).toBeVisible();
+  await expect(page.getByTestId("audit-view")).toContainText("Trust Score");
+  await expect(page.getByTestId("correction-mode-pill")).toContainText("Original Extracted Graph");
+  await expect(page.getByTestId("audit-metrics")).toContainText("Evidence coverage");
+  await expect(page.getByTestId("audit-issue-queue")).toBeVisible();
+  await page.getByTestId("quick-rename-entity").click();
+  await expect(page.getByTestId("correction-inspector")).toContainText("rename-entity");
+  await expect(page.getByTestId("correction-mode-pill")).toContainText("Corrected View");
+  await expect(page.getByTestId("audit-applied-corrections")).toContainText("rename-entity");
+  await page.getByTestId("world-view-tabs").getByRole("button", { name: "Map" }).click();
+  await expect(page.getByTestId("novel-world-canvas")).toContainText("(Corrected)");
+  await page.getByTestId("world-view-tabs").getByRole("button", { name: "Audit" }).click();
+  await page.getByTestId("quick-replace-evidence").click();
+  await expect(page.getByTestId("correction-inspector")).toContainText("replace-evidence");
+  await page.getByTestId("quick-hide-causal").click();
+  await expect(page.getByTestId("correction-inspector")).toContainText("hide-object");
+  await page.getByTestId("quick-merge-entity").click();
+  await expect(page.getByTestId("correction-inspector")).toContainText("merge-entities");
+  await page.locator('[data-testid^="applied-correction-manual-rename-"]').first().click();
+  await page.getByTestId("correction-revert-selected").click();
+  await page.getByTestId("world-view-tabs").getByRole("button", { name: "Map" }).click();
+  await expect(page.getByTestId("novel-world-canvas")).not.toContainText("(Corrected)");
+  await page.getByTestId("world-view-tabs").getByRole("button", { name: "Game" }).click();
   await expect(page.getByTestId("novel-game-view")).toBeVisible();
   await expect(page.getByTestId("novel-game-canvas").locator("canvas")).toBeVisible();
   await expect(page.getByTestId("novel-game-legend")).toContainText("locations");

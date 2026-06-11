@@ -378,6 +378,92 @@ export type NovelWorldProject = {
   updatedAt: string;
 };
 
+export type NovelCorrectionObjectKind = "entity" | "relationship" | "event" | "development" | "character-state" | "theme-signal" | "causal-claim";
+
+export type NovelCorrectionTarget =
+  | { kind: "entity"; id: string }
+  | { kind: "relationship"; id: string }
+  | { kind: "event"; id: string }
+  | { kind: "development"; id: string }
+  | { kind: "character-state"; id: string }
+  | { kind: "theme-signal"; id: string }
+  | { kind: "causal-claim"; id: string }
+  | { kind: "evidence"; id: string; ownerKind: NovelCorrectionObjectKind; ownerId: string };
+
+export type NovelCorrectionOperation =
+  | { type: "rename-entity"; name: string }
+  | { type: "merge-entities"; sourceEntityId: string; targetEntityId: string }
+  | { type: "change-entity-kind"; kind: NovelEntityKind }
+  | { type: "edit-entity-fields"; role?: string; summary?: string; traits?: string[] }
+  | { type: "replace-evidence"; evidence: NovelEvidenceSnippet[] }
+  | { type: "add-evidence"; evidence: NovelEvidenceSnippet[] }
+  | { type: "remove-evidence"; evidenceIds: string[] }
+  | { type: "hide-object"; reason: string }
+  | { type: "restore-object" };
+
+export type NovelCorrectionAuditTrail = {
+  at: string;
+  action: "created" | "applied" | "reverted" | "dismissed";
+  note: string;
+};
+
+export type NovelCorrectionPatch = {
+  id: string;
+  target: NovelCorrectionTarget;
+  operation: NovelCorrectionOperation;
+  status: "suggested" | "applied" | "dismissed" | "reverted";
+  reason: string;
+  createdAt: string;
+  updatedAt: string;
+  auditTrail: NovelCorrectionAuditTrail[];
+};
+
+export type NovelCorrectionSet = {
+  version: 1;
+  projectId: string;
+  patches: NovelCorrectionPatch[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type NovelQualityIssue = {
+  id: string;
+  severity: "blocking" | "high" | "medium" | "info";
+  category: "evidence" | "entity" | "relationship" | "event" | "character" | "theme" | "causality" | "replay-readiness" | "conflict";
+  target?: NovelCorrectionTarget;
+  title: string;
+  detail: string;
+  suggestedPatchId?: string;
+};
+
+export type NovelQualityMetric = {
+  id: "evidenceCoverage" | "referenceIntegrity" | "unresolvedConflicts" | "confidence" | "correctionCompletion";
+  label: string;
+  score: number;
+  weight: number;
+  detail: string;
+};
+
+export type NovelQualityScoreBreakdown = {
+  total: number;
+  evidenceCoverage: number;
+  referenceIntegrity: number;
+  unresolvedConflicts: number;
+  confidence: number;
+  correctionCompletion: number;
+};
+
+export type NovelQualityAuditReport = {
+  id: string;
+  projectId: string;
+  score: number;
+  metrics: NovelQualityMetric[];
+  breakdown: NovelQualityScoreBreakdown;
+  issues: NovelQualityIssue[];
+  suggestedPatches: NovelCorrectionPatch[];
+  generatedAt: string;
+};
+
 export type NovelBlueprintOptions = {
   wordCountRange: string;
   narrativePerspective: string;
@@ -1321,6 +1407,312 @@ export function collectGraphEvidence(graph: NovelWorldGraph): NovelEvidenceSnipp
     ...graph.events.flatMap((event) => event.evidence || []),
     ...graph.development.flatMap((step) => step.evidence || [])
   ];
+}
+
+function cloneProject(project: NovelWorldProject): NovelWorldProject {
+  return JSON.parse(JSON.stringify(project)) as NovelWorldProject;
+}
+
+function normalizeCorrectionTarget(input: unknown): NovelCorrectionTarget {
+  const raw = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
+  const kind = text(raw.kind);
+  const id = text(raw.id);
+  if (kind === "evidence") {
+    const ownerKind = text(raw.ownerKind);
+    return {
+      kind,
+      id,
+      ownerKind: ["entity", "relationship", "event", "development", "character-state", "theme-signal", "causal-claim"].includes(ownerKind) ? ownerKind as NovelCorrectionObjectKind : "entity",
+      ownerId: text(raw.ownerId)
+    };
+  }
+  if (["entity", "relationship", "event", "development", "character-state", "theme-signal", "causal-claim"].includes(kind)) {
+    return { kind: kind as NovelCorrectionObjectKind, id } as NovelCorrectionTarget;
+  }
+  return { kind: "entity", id };
+}
+
+function normalizeCorrectionOperation(input: unknown): NovelCorrectionOperation {
+  const raw = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
+  const type = text(raw.type);
+  if (type === "rename-entity") return { type, name: text(raw.name) };
+  if (type === "merge-entities") return { type, sourceEntityId: text(raw.sourceEntityId), targetEntityId: text(raw.targetEntityId) };
+  if (type === "change-entity-kind") return { type, kind: entityKinds.has(raw.kind as NovelEntityKind) ? raw.kind as NovelEntityKind : "concept" };
+  if (type === "edit-entity-fields") return { type, role: text(raw.role) || undefined, summary: text(raw.summary) || undefined, traits: raw.traits === undefined ? undefined : stringArray(raw.traits) };
+  if (type === "replace-evidence") return { type, evidence: evidenceArray(raw.evidence) };
+  if (type === "add-evidence") return { type, evidence: evidenceArray(raw.evidence) };
+  if (type === "remove-evidence") return { type, evidenceIds: stringArray(raw.evidenceIds) };
+  if (type === "restore-object") return { type };
+  return { type: "hide-object", reason: text(raw.reason) || "Rejected by manual correction." };
+}
+
+export function createNovelCorrectionSet(project: Pick<NovelWorldProject, "id">): NovelCorrectionSet {
+  const at = nowIso();
+  return { version: 1, projectId: project.id, patches: [], createdAt: at, updatedAt: at };
+}
+
+export function normalizeNovelCorrectionPatch(input: unknown, index = 0): NovelCorrectionPatch {
+  const raw = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
+  const at = text(raw.createdAt) || nowIso();
+  const status = ["suggested", "applied", "dismissed", "reverted"].includes(text(raw.status)) ? text(raw.status) as NovelCorrectionPatch["status"] : "suggested";
+  return {
+    id: text(raw.id) || stableId("correction", `${JSON.stringify(raw.target || {})}-${JSON.stringify(raw.operation || {})}`, index),
+    target: normalizeCorrectionTarget(raw.target),
+    operation: normalizeCorrectionOperation(raw.operation),
+    status,
+    reason: text(raw.reason) || "Quality audit suggestion.",
+    createdAt: at,
+    updatedAt: text(raw.updatedAt) || at,
+    auditTrail: Array.isArray(raw.auditTrail)
+      ? raw.auditTrail.map((item) => {
+          const entry = (item && typeof item === "object" ? item : {}) as Record<string, unknown>;
+          const action = ["created", "applied", "reverted", "dismissed"].includes(text(entry.action)) ? text(entry.action) as NovelCorrectionAuditTrail["action"] : "created";
+          return { at: text(entry.at) || at, action, note: text(entry.note) || action };
+        })
+      : [{ at, action: "created", note: "Patch created." }]
+  };
+}
+
+export function normalizeNovelCorrectionSet(input: unknown, project: Pick<NovelWorldProject, "id">): NovelCorrectionSet {
+  const raw = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
+  const at = text(raw.createdAt) || nowIso();
+  return {
+    version: 1,
+    projectId: text(raw.projectId) || project.id,
+    patches: Array.isArray(raw.patches) ? raw.patches.map((patch, index) => normalizeNovelCorrectionPatch(patch, index)) : [],
+    createdAt: at,
+    updatedAt: text(raw.updatedAt) || at
+  };
+}
+
+function evidenceForTarget(project: NovelWorldProject, target: NovelCorrectionTarget): NovelEvidenceSnippet[] | undefined {
+  if (target.kind === "entity") return project.mergedGraph.entities.find((item) => item.id === target.id)?.evidence;
+  if (target.kind === "relationship") return project.mergedGraph.relationships.find((item) => item.id === target.id)?.evidenceSnippets;
+  if (target.kind === "event") return project.mergedGraph.events.find((item) => item.id === target.id)?.evidence;
+  if (target.kind === "development") return project.mergedGraph.development.find((item) => item.id === target.id)?.evidence;
+  if (target.kind === "character-state") return project.chapters.flatMap((chapter) => chapter.characterStates || []).find((item) => item.id === target.id)?.evidence;
+  if (target.kind === "theme-signal") return project.chapters.flatMap((chapter) => chapter.themeSignals || []).find((item) => item.id === target.id)?.evidence;
+  return undefined;
+}
+
+function setEvidenceForTarget(project: NovelWorldProject, target: NovelCorrectionTarget, updater: (evidence: NovelEvidenceSnippet[]) => NovelEvidenceSnippet[]) {
+  const update = (current?: NovelEvidenceSnippet[]) => updater(current || []);
+  if (target.kind === "entity") project.mergedGraph.entities = project.mergedGraph.entities.map((item) => item.id === target.id ? { ...item, evidence: update(item.evidence) } : item);
+  if (target.kind === "relationship") project.mergedGraph.relationships = project.mergedGraph.relationships.map((item) => item.id === target.id ? { ...item, evidenceSnippets: update(item.evidenceSnippets) } : item);
+  if (target.kind === "event") project.mergedGraph.events = project.mergedGraph.events.map((item) => item.id === target.id ? { ...item, evidence: update(item.evidence) } : item);
+  if (target.kind === "development") project.mergedGraph.development = project.mergedGraph.development.map((item) => item.id === target.id ? { ...item, evidence: update(item.evidence) } : item);
+  project.chapters = project.chapters.map((chapter) => ({
+    ...chapter,
+    characterStates: (chapter.characterStates || []).map((item) => target.kind === "character-state" && item.id === target.id ? { ...item, evidence: update(item.evidence) } : item),
+    themeSignals: (chapter.themeSignals || []).map((item) => target.kind === "theme-signal" && item.id === target.id ? { ...item, evidence: update(item.evidence) } : item)
+  }));
+}
+
+function remapEntityRefs(project: NovelWorldProject, sourceId: string, targetId: string) {
+  const mapId = (id: string) => id === sourceId ? targetId : id;
+  project.mergedGraph.relationships = project.mergedGraph.relationships
+    .map((relationship) => ({ ...relationship, fromEntityId: mapId(relationship.fromEntityId), toEntityId: mapId(relationship.toEntityId) }))
+    .filter((relationship) => relationship.fromEntityId !== relationship.toEntityId);
+  project.mergedGraph.events = project.mergedGraph.events.map((event) => ({
+    ...event,
+    locationEntityId: event.locationEntityId ? mapId(event.locationEntityId) : undefined,
+    participantEntityIds: unique(event.participantEntityIds.map(mapId))
+  }));
+  project.mergedGraph.development = project.mergedGraph.development.map((step) => ({ ...step, involvedEntityIds: unique(step.involvedEntityIds.map(mapId)) }));
+  project.chapters = project.chapters.map((chapter) => ({
+    ...chapter,
+    characterStates: (chapter.characterStates || []).map((point) => ({ ...point, characterEntityId: mapId(point.characterEntityId) })),
+    themeSignals: (chapter.themeSignals || []).map((signal) => ({
+      ...signal,
+      relatedCharacterIds: unique(signal.relatedCharacterIds.map(mapId)),
+      relatedFactionIds: unique(signal.relatedFactionIds.map(mapId))
+    }))
+  }));
+}
+
+export function applyNovelCorrectionOverlay(project: NovelWorldProject, correctionSet?: NovelCorrectionSet | null): NovelWorldProject {
+  const corrected = cloneProject(project);
+  const applied = (correctionSet?.patches || []).filter((patch) => patch.status === "applied");
+  const hidden = new Map<string, Set<string>>();
+  const hide = (kind: string, id: string) => hidden.set(kind, new Set([...(hidden.get(kind) || []), id]));
+  const isHidden = (kind: string, id: string) => hidden.get(kind)?.has(id);
+
+  for (const patch of applied) {
+    const op = patch.operation;
+    if (op.type === "hide-object") hide(patch.target.kind, patch.target.id);
+    if (op.type === "restore-object") hidden.get(patch.target.kind)?.delete(patch.target.id);
+    if (patch.target.kind === "entity") {
+      if (op.type === "rename-entity") corrected.mergedGraph.entities = corrected.mergedGraph.entities.map((entity) => entity.id === patch.target.id ? { ...entity, name: op.name || entity.name } : entity);
+      if (op.type === "change-entity-kind") corrected.mergedGraph.entities = corrected.mergedGraph.entities.map((entity) => entity.id === patch.target.id ? { ...entity, kind: op.kind } : entity);
+      if (op.type === "edit-entity-fields") corrected.mergedGraph.entities = corrected.mergedGraph.entities.map((entity) => entity.id === patch.target.id ? { ...entity, role: op.role ?? entity.role, summary: op.summary ?? entity.summary, traits: op.traits ?? entity.traits } : entity);
+    }
+    if (op.type === "merge-entities" && op.sourceEntityId && op.targetEntityId && op.sourceEntityId !== op.targetEntityId) {
+      const source = corrected.mergedGraph.entities.find((entity) => entity.id === op.sourceEntityId);
+      corrected.mergedGraph.entities = corrected.mergedGraph.entities
+        .map((entity) => entity.id === op.targetEntityId && source ? { ...entity, traits: unique([...entity.traits, ...source.traits]), evidence: [...(entity.evidence || []), ...(source.evidence || [])] } : entity)
+        .filter((entity) => entity.id !== op.sourceEntityId);
+      remapEntityRefs(corrected, op.sourceEntityId, op.targetEntityId);
+      hide("entity", op.sourceEntityId);
+    }
+    if (op.type === "replace-evidence") setEvidenceForTarget(corrected, patch.target, () => op.evidence);
+    if (op.type === "add-evidence") setEvidenceForTarget(corrected, patch.target, (evidence) => [...evidence, ...op.evidence]);
+    if (op.type === "remove-evidence") setEvidenceForTarget(corrected, patch.target, (evidence) => evidence.filter((item) => !op.evidenceIds.includes(item.id)));
+  }
+
+  corrected.mergedGraph.entities = corrected.mergedGraph.entities.filter((item) => !isHidden("entity", item.id));
+  corrected.mergedGraph.relationships = corrected.mergedGraph.relationships.filter((item) => !isHidden("relationship", item.id));
+  corrected.mergedGraph.events = corrected.mergedGraph.events.filter((item) => !isHidden("event", item.id));
+  corrected.mergedGraph.development = corrected.mergedGraph.development.filter((item) => !isHidden("development", item.id));
+  corrected.chapters = corrected.chapters.map((chapter) => ({
+    ...chapter,
+    characterStates: (chapter.characterStates || []).filter((item) => !isHidden("character-state", item.id)),
+    themeSignals: (chapter.themeSignals || []).filter((item) => !isHidden("theme-signal", item.id))
+  }));
+  return corrected;
+}
+
+export function revertNovelCorrectionPatch(correctionSet: NovelCorrectionSet, patchId: string): NovelCorrectionSet {
+  const at = nowIso();
+  return {
+    ...correctionSet,
+    patches: correctionSet.patches.map((patch) => patch.id === patchId ? { ...patch, status: "reverted", updatedAt: at, auditTrail: [...patch.auditTrail, { at, action: "reverted", note: "Patch reverted." }] } : patch),
+    updatedAt: at
+  };
+}
+
+function targetExists(project: NovelWorldProject, target: NovelCorrectionTarget) {
+  if (target.kind === "entity") return project.mergedGraph.entities.some((item) => item.id === target.id);
+  if (target.kind === "relationship") return project.mergedGraph.relationships.some((item) => item.id === target.id);
+  if (target.kind === "event") return project.mergedGraph.events.some((item) => item.id === target.id);
+  if (target.kind === "development") return project.mergedGraph.development.some((item) => item.id === target.id);
+  if (target.kind === "character-state") return project.chapters.some((chapter) => (chapter.characterStates || []).some((item) => item.id === target.id));
+  if (target.kind === "theme-signal") return project.chapters.some((chapter) => (chapter.themeSignals || []).some((item) => item.id === target.id));
+  if (target.kind === "causal-claim") return true;
+  if (target.kind === "evidence") return Boolean(evidenceForTarget(project, { kind: target.ownerKind, id: target.ownerId } as NovelCorrectionTarget)?.some((item) => item.id === target.id));
+  return false;
+}
+
+export function validateNovelCorrectionSet(correctionSet: NovelCorrectionSet, project: NovelWorldProject, chapters: NovelLongChapterText[] = []): NovelWorldValidationReport {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  if (correctionSet.version !== 1) errors.push("correction set version must be 1.");
+  if (correctionSet.projectId !== project.id) errors.push("correction set projectId does not match project.");
+  const ids = new Set<string>();
+  for (const patch of correctionSet.patches) {
+    if (ids.has(patch.id)) errors.push(`duplicate correction patch id: ${patch.id}`);
+    ids.add(patch.id);
+    if (!targetExists(project, patch.target) && patch.operation.type !== "merge-entities") warnings.push(`correction ${patch.id} targets a missing object ${patch.target.kind}/${patch.target.id}.`);
+    if (patch.operation.type === "rename-entity" && !patch.operation.name.trim()) errors.push(`correction ${patch.id} has an empty entity name.`);
+    if (patch.operation.type === "merge-entities") {
+      const operation = patch.operation;
+      if (!project.mergedGraph.entities.some((entity) => entity.id === operation.sourceEntityId)) errors.push(`correction ${patch.id} merge source is missing.`);
+      if (!project.mergedGraph.entities.some((entity) => entity.id === operation.targetEntityId)) errors.push(`correction ${patch.id} merge target is missing.`);
+    }
+    const evidence = patch.operation.type === "replace-evidence" || patch.operation.type === "add-evidence" ? patch.operation.evidence : [];
+    if (chapters.length && evidence.length) {
+      const report = validateEvidenceSnippets(evidence, chapters);
+      errors.push(...report.errors.map((error) => `correction ${patch.id}: ${error}`));
+      warnings.push(...report.warnings.map((warning) => `correction ${patch.id}: ${warning}`));
+    }
+  }
+  return { valid: errors.length === 0, errors, warnings };
+}
+
+export function rankNovelQualityIssues(issues: NovelQualityIssue[]): NovelQualityIssue[] {
+  const order = { blocking: 0, high: 1, medium: 2, info: 3 };
+  return issues.slice().sort((a, b) => order[a.severity] - order[b.severity] || a.category.localeCompare(b.category));
+}
+
+export function createSuggestedNovelCorrectionPatches(project: NovelWorldProject, issues: NovelQualityIssue[]): NovelCorrectionPatch[] {
+  const at = nowIso();
+  return issues.filter((issue) => issue.target).slice(0, 12).map((issue, index) => {
+    const operation: NovelCorrectionOperation = issue.category === "entity" && issue.target?.kind === "entity"
+      ? { type: "edit-entity-fields", summary: `Needs manual review: ${issue.detail}` }
+      : { type: "hide-object", reason: issue.detail };
+    return {
+      id: `suggested-${stableSlug(issue.id)}-${index + 1}`,
+      target: issue.target!,
+      operation,
+      status: "suggested",
+      reason: issue.title,
+      createdAt: at,
+      updatedAt: at,
+      auditTrail: [{ at, action: "created", note: `Suggested by quality audit for ${project.title}.` }]
+    };
+  });
+}
+
+export function buildNovelQualityAuditReport(project: NovelWorldProject, correctionSet?: NovelCorrectionSet | null, chapters: NovelLongChapterText[] = []): NovelQualityAuditReport {
+  const issues: NovelQualityIssue[] = [];
+  const graph = project.mergedGraph;
+  const entityIds = new Set(graph.entities.map((entity) => entity.id));
+  const eventIds = new Set(graph.events.map((event) => event.id));
+  const evidenceItems = [
+    ...graph.entities.map((item) => ({ kind: "entity" as const, id: item.id, label: item.name, evidence: item.evidence || [] })),
+    ...graph.relationships.map((item) => ({ kind: "relationship" as const, id: item.id, label: item.label, evidence: item.evidenceSnippets || [] })),
+    ...graph.events.map((item) => ({ kind: "event" as const, id: item.id, label: item.title, evidence: item.evidence || [] })),
+    ...graph.development.map((item) => ({ kind: "development" as const, id: item.id, label: item.title, evidence: item.evidence || [] })),
+    ...project.chapters.flatMap((chapter) => (chapter.characterStates || []).map((item) => ({ kind: "character-state" as const, id: item.id, label: item.summary, evidence: item.evidence }))),
+    ...project.chapters.flatMap((chapter) => (chapter.themeSignals || []).map((item) => ({ kind: "theme-signal" as const, id: item.id, label: item.summary, evidence: item.evidence })))
+  ];
+  for (const item of evidenceItems) {
+    if (!item.evidence.length) issues.push({ id: `missing-evidence-${item.kind}-${item.id}`, severity: item.kind === "entity" ? "medium" : "high", category: "evidence", target: { kind: item.kind, id: item.id } as NovelCorrectionTarget, title: "Missing evidence", detail: `${item.label} has no paragraph evidence.` });
+  }
+  for (const relationship of graph.relationships) {
+    if (!entityIds.has(relationship.fromEntityId) || !entityIds.has(relationship.toEntityId)) issues.push({ id: `dangling-relationship-${relationship.id}`, severity: "blocking", category: "relationship", target: { kind: "relationship", id: relationship.id }, title: "Dangling relationship reference", detail: `${relationship.label} references a missing entity.` });
+  }
+  for (const event of graph.events) {
+    const missing = [event.locationEntityId, ...event.participantEntityIds].filter((id): id is string => typeof id === "string" && id.length > 0 && !entityIds.has(id));
+    if (missing.length) issues.push({ id: `dangling-event-${event.id}`, severity: "blocking", category: "event", target: { kind: "event", id: event.id }, title: "Dangling event reference", detail: `${event.title} references missing object(s): ${missing.join(", ")}.` });
+  }
+  const entitiesByName = new Map<string, NovelEntity[]>();
+  for (const entity of graph.entities) {
+    const key = `${entity.kind}:${entity.name.toLowerCase()}`;
+    entitiesByName.set(key, [...(entitiesByName.get(key) || []), entity]);
+  }
+  for (const [name, entities] of entitiesByName) {
+    if (entities.length > 1) {
+      const [first, second] = entities;
+      if (first && second) issues.push({ id: `duplicate-entity-${stableSlug(name)}`, severity: "medium", category: "entity", target: { kind: "entity", id: second.id }, title: "Possible duplicate entity", detail: `${first.name} appears more than once as ${first.kind}.` });
+    }
+  }
+  for (const conflict of project.mergeReport.conflicts) {
+    issues.push({ id: `merge-conflict-${conflict.id}`, severity: "high", category: "conflict", target: { kind: conflict.kind, id: conflict.targetId } as NovelCorrectionTarget, title: "Unresolved merge conflict", detail: conflict.message });
+  }
+  const uncertaintyItems = [
+    ...project.chapters.flatMap((chapter) => (chapter.characterStates || []).map((item) => ({ kind: "character-state" as const, id: item.id, value: item.uncertainty, label: item.summary }))),
+    ...project.chapters.flatMap((chapter) => (chapter.themeSignals || []).map((item) => ({ kind: "theme-signal" as const, id: item.id, value: item.uncertainty, label: item.summary })))
+  ];
+  for (const item of uncertaintyItems.filter((item) => item.value >= 0.45)) {
+    issues.push({ id: `low-confidence-${item.kind}-${item.id}`, severity: "medium", category: item.kind === "theme-signal" ? "theme" : "character", target: { kind: item.kind, id: item.id }, title: "Low confidence extraction", detail: `${item.label} has high uncertainty (${Math.round(item.value * 100)}%).` });
+  }
+  const evidenceReport = chapters.length ? validateEvidenceSnippets(evidenceItems.flatMap((item) => item.evidence), chapters) : { valid: true, errors: [], warnings: [] };
+  for (const [index, error] of evidenceReport.errors.entries()) issues.push({ id: `evidence-ref-${index + 1}`, severity: "blocking", category: "evidence", title: "Invalid evidence reference", detail: error });
+  const applied = correctionSet?.patches.filter((patch) => patch.status === "applied").length || 0;
+  const pending = correctionSet?.patches.filter((patch) => patch.status === "suggested").length || 0;
+  const evidenceCoverage = evidenceItems.length ? Math.round((evidenceItems.filter((item) => item.evidence.length).length / evidenceItems.length) * 100) : 100;
+  const referenceIntegrity = Math.max(0, 100 - issues.filter((issue) => issue.severity === "blocking").length * 18);
+  const unresolvedConflicts = Math.max(0, 100 - project.mergeReport.conflicts.length * 18);
+  const confidence = uncertaintyItems.length ? Math.round((1 - uncertaintyItems.reduce((sum, item) => sum + item.value, 0) / uncertaintyItems.length) * 100) : 100;
+  const correctionCompletion = applied + pending ? Math.round((applied / (applied + pending)) * 100) : 100;
+  const breakdown: NovelQualityScoreBreakdown = {
+    evidenceCoverage,
+    referenceIntegrity,
+    unresolvedConflicts,
+    confidence,
+    correctionCompletion,
+    total: Math.round(evidenceCoverage * 0.3 + referenceIntegrity * 0.25 + unresolvedConflicts * 0.15 + confidence * 0.15 + correctionCompletion * 0.15)
+  };
+  const metrics: NovelQualityMetric[] = [
+    { id: "evidenceCoverage", label: "Evidence coverage", score: evidenceCoverage, weight: 30, detail: `${evidenceItems.filter((item) => item.evidence.length).length}/${evidenceItems.length} objects have evidence.` },
+    { id: "referenceIntegrity", label: "Reference integrity", score: referenceIntegrity, weight: 25, detail: `${issues.filter((issue) => issue.severity === "blocking").length} blocking reference issue(s).` },
+    { id: "unresolvedConflicts", label: "Unresolved conflicts", score: unresolvedConflicts, weight: 15, detail: `${project.mergeReport.conflicts.length} merge conflict(s).` },
+    { id: "confidence", label: "Confidence", score: confidence, weight: 15, detail: `${uncertaintyItems.filter((item) => item.value >= 0.45).length} low-confidence extraction(s).` },
+    { id: "correctionCompletion", label: "Correction completion", score: correctionCompletion, weight: 15, detail: `${applied} applied / ${pending} suggested.` }
+  ];
+  const ranked = rankNovelQualityIssues(issues);
+  const suggestedPatches = createSuggestedNovelCorrectionPatches(project, ranked);
+  return { id: `quality-${project.id}`, projectId: project.id, score: breakdown.total, metrics, breakdown, issues: ranked, suggestedPatches, generatedAt: nowIso() };
 }
 
 export function validateEvidenceAwareNovelWorldGraph(graph: NovelWorldGraph, chapters: NovelLongChapterText[]): NovelWorldValidationReport {

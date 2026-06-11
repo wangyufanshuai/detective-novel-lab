@@ -4,7 +4,7 @@ This project now has three complementary simulation layers:
 
 - **Detective Town**: a hard-logic murder mystery engine. It simulates NPC life, extracts a case from `WorldEvent` logs, and validates fair-play deduction.
 - **Persistent Agent Town**: a server-runtime loop where NPCs carry persistent goals, memories, plans, pressure, resources, and decision traces across ticks.
-- **Living World Lab**: a broader observer workbench. It extracts a world graph from chapter text, replays source-backed actor decisions, and supports bounded interventions.
+- **Living World Lab**: a broader observer workbench. It extracts a world graph from chapter text, audits extraction quality, applies local correction overlays, replays source-backed actor decisions, and supports bounded interventions.
 
 ## Local Rules Before Language
 
@@ -26,7 +26,17 @@ Living World Lab validates:
 - character state points tied to character entities;
 - theme signals tied to known themes and chapter evidence;
 - causal claims and chains with evidence;
+- correction patches against their target objects and paragraph references;
 - simulation steps with legal action candidates and provenance.
+
+Audit Studio evaluates:
+
+- evidence coverage;
+- reference integrity;
+- unresolved merge conflicts;
+- extraction confidence;
+- correction completion;
+- whether corrected views remain valid without mutating original extraction results.
 
 Persistent Agent Town validates:
 
@@ -61,6 +71,16 @@ Every Living World replay step has one of four provenance values:
 | `gap` | The engine stopped because evidence or legal action support was missing. |
 
 This makes failures useful. A `gap` is not hidden; it tells the author where the source model lacks enough support.
+
+## Correction Overlay Boundary
+
+Living World corrections are overlays, not source rewrites:
+
+- original chapter text stays unchanged;
+- original paragraph evidence indexes stay unchanged;
+- original extracted graph remains queryable through `/api/v1/query/novel/world-graph`;
+- corrected output is queryable through `/api/v1/query/novel/corrected-world-graph`;
+- every patch keeps an audit trail with created, applied, dismissed, or reverted status.
 
 ## Agent Intervention Boundary
 

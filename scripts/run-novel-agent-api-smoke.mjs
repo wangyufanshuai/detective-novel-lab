@@ -34,6 +34,17 @@ async function request(method, url, body) {
   return data.data;
 }
 
+async function requestFailure(method, url, body) {
+  const response = await fetch(`${baseUrl}${url}`, {
+    method,
+    headers: body ? { "Content-Type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined
+  });
+  const data = await response.json();
+  assert.equal(data.ok, false, `${method} ${url} should fail`);
+  return { status: response.status, error: data.error };
+}
+
 async function isReady(url) {
   try {
     const response = await fetch(`${url}/api/v1/query/runtime/status`);
@@ -81,6 +92,61 @@ try {
   const worldGraph = await request("GET", `/api/v1/query/novel/world-graph?projectId=${encodeURIComponent(imported.project.id)}`);
   assert.equal(worldGraph.project.id, imported.project.id);
   assert.ok(worldGraph.graph.entities.length >= 2);
+
+  const audit = await request("GET", `/api/v1/query/novel/audit?projectId=${encodeURIComponent(imported.project.id)}`);
+  assert.equal(audit.projectId, imported.project.id);
+  assert.ok(audit.auditReport.metrics.length >= 5, "audit exposes weighted metrics");
+
+  const suggestions = await request("POST", "/api/v1/command/novel/correction/suggest", {
+    projectId: imported.project.id,
+    limit: 5
+  });
+  assert.ok(Array.isArray(suggestions.suggestedPatches), "suggest returns patch candidates");
+
+  const targetEntity = worldGraph.graph.entities[0];
+  const correctedName = `${targetEntity.name} API Corrected`;
+  const applied = await request("POST", "/api/v1/command/novel/correction/apply", {
+    projectId: imported.project.id,
+    patch: {
+      id: "api-smoke-rename-entity",
+      target: { kind: "entity", id: targetEntity.id },
+      operation: { type: "rename-entity", name: correctedName },
+      reason: "API smoke rename correction"
+    }
+  });
+  assert.equal(applied.patch.status, "applied");
+
+  const corrected = await request("GET", `/api/v1/query/novel/corrected-world-graph?projectId=${encodeURIComponent(imported.project.id)}`);
+  assert.equal(corrected.mode, "corrected");
+  assert.equal(corrected.graph.entities.find((entity) => entity.id === targetEntity.id)?.name, correctedName);
+
+  const originalAfterCorrection = await request("GET", `/api/v1/query/novel/world-graph?projectId=${encodeURIComponent(imported.project.id)}`);
+  assert.equal(originalAfterCorrection.graph.entities.find((entity) => entity.id === targetEntity.id)?.name, targetEntity.name, "original graph remains unchanged");
+
+  const corrections = await request("GET", `/api/v1/query/novel/corrections?projectId=${encodeURIComponent(imported.project.id)}`);
+  assert.equal(corrections.applied.some((patch) => patch.id === "api-smoke-rename-entity"), true);
+
+  await requestFailure("POST", "/api/v1/command/novel/correction/apply", {
+    projectId: imported.project.id,
+    patch: {
+      id: "api-smoke-invalid-evidence",
+      target: { kind: "entity", id: targetEntity.id },
+      operation: {
+        type: "replace-evidence",
+        evidence: [{ id: "bad-ref", source: { chapterId: "missing", paragraphId: "missing", quote: "bad", summary: "bad", confidence: 0.9 }, keywords: [] }]
+      },
+      reason: "invalid dangling evidence"
+    }
+  });
+
+  const revertedCorrection = await request("POST", "/api/v1/command/novel/correction/revert", {
+    projectId: imported.project.id,
+    patchId: "api-smoke-rename-entity"
+  });
+  assert.equal(revertedCorrection.correctionSet.patches.find((patch) => patch.id === "api-smoke-rename-entity")?.status, "reverted");
+
+  const correctedAfterRevert = await request("GET", `/api/v1/query/novel/corrected-world-graph?projectId=${encodeURIComponent(imported.project.id)}`);
+  assert.equal(correctedAfterRevert.graph.entities.find((entity) => entity.id === targetEntity.id)?.name, targetEntity.name);
 
   const started = await request("POST", "/api/v1/command/novel/simulation/start", {
     projectId: imported.project.id,

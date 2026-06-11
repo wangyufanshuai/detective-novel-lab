@@ -5,13 +5,16 @@ import {
   createFallbackNovelCharacterStates,
   createFallbackNovelThemeSignals,
   createFallbackNovelWorldGraph,
+  createNovelCorrectionSet,
   createNovelLongChapterText,
   createNovelSimulationRun,
   createNovelWorldProject,
   normalizeNovelBatchQueue,
+  normalizeNovelCorrectionSet,
   validateNovelWorldGraph,
   type NovelBatchQueueState,
   type NovelChapterAnalysis,
+  type NovelCorrectionSet,
   type NovelEvidenceIndex,
   type NovelLongChapterText,
   type NovelSimulationRun,
@@ -23,6 +26,7 @@ export type NovelRuntimeRecord = {
   chapters: NovelLongChapterText[];
   evidenceIndexes: Record<string, NovelEvidenceIndex>;
   simulationRuns: NovelSimulationRun[];
+  correctionSet: NovelCorrectionSet;
   batchQueue?: NovelBatchQueueState;
   updatedAt: string;
 };
@@ -81,6 +85,7 @@ function createDemoProject(): NovelRuntimeRecord {
     chapters: [chapter],
     evidenceIndexes: { [chapter.chapterId]: evidenceIndex },
     simulationRuns: [run],
+    correctionSet: createNovelCorrectionSet(project),
     batchQueue: normalizeNovelBatchQueue(project),
     updatedAt: nowIso()
   };
@@ -89,7 +94,12 @@ function createDemoProject(): NovelRuntimeRecord {
 export function getNovelRuntimeRecord(projectId?: string | null) {
   const runtime = store();
   const id = projectId || runtime.latestProjectId;
-  if (id && runtime.records.has(id)) return runtime.records.get(id) || null;
+  if (id && runtime.records.has(id)) {
+    const record = runtime.records.get(id) || null;
+    if (!record) return null;
+    if (!record.correctionSet) return saveNovelRuntimeRecord({ ...record, correctionSet: createNovelCorrectionSet(record.project) });
+    return record;
+  }
   if (!runtime.latestProjectId) {
     const demo = createDemoProject();
     saveNovelRuntimeRecord(demo);
@@ -100,7 +110,7 @@ export function getNovelRuntimeRecord(projectId?: string | null) {
 
 export function saveNovelRuntimeRecord(record: NovelRuntimeRecord) {
   const runtime = store();
-  const next = { ...record, updatedAt: nowIso() };
+  const next = { ...record, correctionSet: normalizeNovelCorrectionSet(record.correctionSet, record.project), updatedAt: nowIso() };
   runtime.records.set(next.project.id, next);
   runtime.latestProjectId = next.project.id;
   return next;
@@ -123,6 +133,7 @@ export function createNovelRuntimeFromProject(
     chapters,
     evidenceIndexes,
     simulationRuns: [run],
+    correctionSet: createNovelCorrectionSet(project),
     batchQueue: normalizeNovelBatchQueue(project),
     updatedAt: nowIso()
   });

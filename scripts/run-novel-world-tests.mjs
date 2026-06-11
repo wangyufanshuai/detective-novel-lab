@@ -33,11 +33,14 @@ await fs.writeFile(gameRuntimeFile, gameCompiled, "utf8");
 const {
   addNovelChapterAnalysis,
   attachFallbackEvidenceToGraph,
+  applyNovelCorrectionOverlay,
   buildNovelAskQueryPlan,
   buildNovelCausalityReport,
+  buildNovelQualityAuditReport,
   collectGraphEvidence,
   commitNovelImportDraftToProject,
   createNovelBatchQueue,
+  createNovelCorrectionSet,
   createDefaultNovelThemeDefinitions,
   createFallbackEvidenceIndex,
   createFallbackNovelAskAnswer,
@@ -61,6 +64,7 @@ const {
   normalizeNovelBatchQueue,
   normalizeNovelImportDraft,
   normalizeNovelChapterBlueprint,
+  normalizeNovelCorrectionPatch,
   normalizeNovelThemeRegistry,
   normalizeNovelThemeSignals,
   normalizeNovelWorldGraph,
@@ -68,6 +72,7 @@ const {
   rankNovelCausalChains,
   rankNovelThemeArcs,
   remapNovelThemeSignals,
+  revertNovelCorrectionPatch,
   searchNovelAskEvidence,
   splitNovelChapterParagraphs,
   splitWholeNovelIntoChapterCandidates,
@@ -76,6 +81,7 @@ const {
   validateEvidenceSnippets,
   validateNovelAskAnswer,
   validateNovelCharacterStatePoints,
+  validateNovelCorrectionSet,
   validateNovelImportDraft,
   validateNovelChapterBlueprint,
   validateNovelCausalityReport,
@@ -480,6 +486,122 @@ assert.equal(unsupportedAnswer.status, "refused", "unsupported ask questions sho
 
 const insufficientAskAnswer = createFallbackNovelAskAnswer(themeProject, "Where is the hidden spaceship evidence?", [], buildNovelAskQueryPlan(themeProject, "Where is the hidden spaceship evidence?"));
 assert.equal(insufficientAskAnswer.status, "insufficient-evidence", "ask fallback should not invent answers without evidence");
+
+const emptyCorrectionSet = createNovelCorrectionSet(themeProject);
+assert.equal(JSON.stringify(applyNovelCorrectionOverlay(themeProject, emptyCorrectionSet)), JSON.stringify(themeProject), "empty correction set should not change a project view");
+assert.equal(validateNovelCorrectionSet(emptyCorrectionSet, themeProject, [arcChapterOne, arcChapterTwo]).valid, true, "empty correction set should validate");
+
+const renamePatch = normalizeNovelCorrectionPatch({
+  id: "rename-lin",
+  target: { kind: "entity", id: "char-lin" },
+  operation: { type: "rename-entity", name: "Lin Corrected" },
+  status: "applied",
+  reason: "manual rename"
+});
+const kindPatch = normalizeNovelCorrectionPatch({
+  id: "kind-concept",
+  target: { kind: "entity", id: "concept-lin" },
+  operation: { type: "change-entity-kind", kind: "item" },
+  status: "applied",
+  reason: "manual kind correction"
+});
+const editPatch = normalizeNovelCorrectionPatch({
+  id: "edit-lin",
+  target: { kind: "entity", id: "char-lin" },
+  operation: { type: "edit-entity-fields", role: "audited protagonist", summary: "Corrected summary", traits: ["audited"] },
+  status: "applied",
+  reason: "manual field correction"
+});
+const mergePatch = normalizeNovelCorrectionPatch({
+  id: "merge-concept-into-lin",
+  target: { kind: "entity", id: "concept-lin" },
+  operation: { type: "merge-entities", sourceEntityId: "concept-lin", targetEntityId: "char-lin" },
+  status: "applied",
+  reason: "manual duplicate merge"
+});
+const hideThemePatch = normalizeNovelCorrectionPatch({
+  id: "hide-theme",
+  target: { kind: "theme-signal", id: "theme-c1-will" },
+  operation: { type: "hide-object", reason: "rejected theme signal" },
+  status: "applied",
+  reason: "manual hide"
+});
+const replaceEvidencePatch = normalizeNovelCorrectionPatch({
+  id: "replace-lin-evidence",
+  target: { kind: "entity", id: "char-lin" },
+  operation: { type: "replace-evidence", evidence: [arcEvidenceTwo] },
+  status: "applied",
+  reason: "manual evidence replacement"
+});
+const correctionSet = {
+  ...emptyCorrectionSet,
+  patches: [renamePatch, kindPatch, editPatch, mergePatch, hideThemePatch, replaceEvidencePatch],
+  updatedAt: new Date().toISOString()
+};
+assert.equal(validateNovelCorrectionSet(correctionSet, themeProject, [arcChapterOne, arcChapterTwo]).valid, true, "valid correction overlay should validate");
+const correctedThemeProject = applyNovelCorrectionOverlay(themeProject, correctionSet);
+const correctedLin = correctedThemeProject.mergedGraph.entities.find((entity) => entity.id === "char-lin");
+assert.equal(correctedLin.name, "Lin Corrected", "rename correction should affect corrected view");
+assert.equal(correctedLin.role, "audited protagonist", "edit correction should affect entity role");
+assert.deepEqual(correctedLin.traits, ["audited", "public"], "merge and edit corrections should create a stable corrected trait view");
+assert.equal(correctedLin.evidence[0].source.chapterId, "c2", "replace evidence should affect corrected view");
+assert.equal(correctedThemeProject.mergedGraph.entities.some((entity) => entity.id === "concept-lin"), false, "merge correction should hide source duplicate entity");
+assert.equal(correctedThemeProject.chapters.flatMap((chapter) => chapter.themeSignals || []).some((signal) => signal.id === "theme-c1-will"), false, "hide correction should remove rejected theme signal from corrected view");
+assert.equal(correctedThemeProject.mergedGraph.events.some((event) => event.participantEntityIds.includes("concept-lin")), false, "merge correction should remap event participants");
+assert.equal(correctedThemeProject.chapters.flatMap((chapter) => chapter.themeSignals || []).some((signal) => signal.relatedCharacterIds.includes("concept-lin") || signal.relatedFactionIds.includes("concept-lin")), false, "merge correction should remap theme references");
+
+const badEvidencePatch = normalizeNovelCorrectionPatch({
+  id: "bad-replace-evidence",
+  target: { kind: "entity", id: "char-lin" },
+  operation: { type: "replace-evidence", evidence: [{ ...arcEvidenceOne, source: { ...arcEvidenceOne.source, paragraphId: "missing-paragraph" } }] },
+  status: "applied",
+  reason: "bad evidence"
+});
+assert.equal(validateNovelCorrectionSet({ ...emptyCorrectionSet, patches: [badEvidencePatch] }, themeProject, [arcChapterOne, arcChapterTwo]).valid, false, "replace evidence should reject dangling paragraph refs");
+const revertedCorrectionSet = revertNovelCorrectionPatch(correctionSet, "rename-lin");
+assert.equal(applyNovelCorrectionOverlay(themeProject, revertedCorrectionSet).mergedGraph.entities.find((entity) => entity.id === "char-lin").name, "Lin", "reverted patch should restore overlay-before view for that operation");
+
+const auditGraph = {
+  ...themeProject.mergedGraph,
+  entities: [
+    ...themeProject.mergedGraph.entities,
+    { ...themeProject.mergedGraph.entities.find((entity) => entity.id === "char-lin"), id: "char-lin-duplicate", evidence: [] }
+  ],
+  relationships: [
+    ...themeProject.mergedGraph.relationships,
+    { ...themeProject.mergedGraph.relationships[0], id: "rel-dangling", fromEntityId: "missing-entity" }
+  ],
+  events: [
+    ...themeProject.mergedGraph.events,
+    { ...themeProject.mergedGraph.events[0], id: "ev-dangling", participantEntityIds: ["missing-entity"], evidence: [] }
+  ]
+};
+const auditProject = {
+  ...themeProject,
+  chapters: themeProject.chapters.map((chapter, index) => index === 0
+    ? {
+        ...chapter,
+        characterStates: (chapter.characterStates || []).map((state, stateIndex) => stateIndex === 0 ? { ...state, uncertainty: 0.62 } : state)
+      }
+    : chapter),
+  mergedGraph: auditGraph,
+  mergeReport: {
+    ...themeProject.mergeReport,
+    conflicts: [
+      ...themeProject.mergeReport.conflicts,
+      { id: "conflict-audit", kind: "relationship", targetId: "rel-dangling", message: "audit conflict", chapterIds: ["c1", "c2"] }
+    ]
+  }
+};
+const auditReport = buildNovelQualityAuditReport(auditProject, emptyCorrectionSet, [arcChapterOne, arcChapterTwo]);
+assert.equal(auditReport.metrics.length, 5, "quality audit should expose five weighted metrics");
+assert.equal(auditReport.issues.some((issue) => issue.id.startsWith("dangling-relationship")), true, "quality audit should detect dangling relationship refs");
+assert.equal(auditReport.issues.some((issue) => issue.id.startsWith("duplicate-entity")), true, "quality audit should detect duplicate candidates");
+assert.equal(auditReport.issues.some((issue) => issue.id.startsWith("merge-conflict")), true, "quality audit should surface unresolved merge conflicts");
+assert.equal(auditReport.issues.some((issue) => issue.id.startsWith("missing-evidence")), true, "quality audit should detect low evidence objects");
+assert.equal(auditReport.issues.some((issue) => issue.id.startsWith("low-confidence")), true, "quality audit should detect high uncertainty items");
+assert.equal(auditReport.score < 100, true, "blocking and high issues should lower trust score");
+assert.equal(auditReport.suggestedPatches.length > 0, true, "quality audit should generate suggested local patches");
 
 const simulationGraphOne = attachFallbackEvidenceToGraph(chapterOneGraph, arcChapterOne);
 const simulationGraphTwo = attachFallbackEvidenceToGraph(chapterTwoGraph, arcChapterTwo);

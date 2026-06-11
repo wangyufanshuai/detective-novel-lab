@@ -7,7 +7,7 @@ Detective Town is a local-first mystery engine for fair-play detective games. It
 The project now also includes two advanced labs:
 
 - **Persistent Agent Town**: a SQLite-backed runtime where NPCs keep goals, plans, memories, pressure, resources, and action scores across ticks until playable case candidates emerge.
-- **Living World Lab**: a novel/world observer workbench for extracting a world graph from chapters, replaying source-backed character actions, applying bounded interventions, and exposing the same observe -> decide -> intervene -> observe loop through `/api/v1/*`.
+- **Living World Lab + Audit Studio**: a novel/world observer workbench for extracting a world graph from chapters, auditing extraction quality, applying local correction overlays, replaying source-backed character actions, and exposing the same observe -> decide -> intervene -> observe loop through `/api/v1/*`.
 
 DeepSeek is used only for NPC surface dialogue and optional solution prose. It does not decide the culprit, method, evidence, or timeline.
 
@@ -59,6 +59,7 @@ Detective Town uses the LLM only as a surface language layer. The durable case l
 - **Explainable emergence**: goals, intents, and causal links show how the case came out of simulated life events.
 - **Persistent agent runtime**: NPCs observe, update memory, score actions locally, write new events, and surface case candidates with validation failures or playable extraction.
 - **Living World Lab**: imported chapters become observable entities, relationships, events, evidence spans, causal chains, and replayable simulations.
+- **Audit Studio**: extracted novel worlds get a trust score, issue queue, suggested fixes, applied correction patches, and a corrected view without mutating the original source graph.
 - **Agent intervention loop**: scripts can query the world, start a replay, intervene in actor state, then query the changed branch.
 - **Symbolic culprit validation**: local rules verify motive, means, opportunity, exclusions, and reasoning coverage.
 - **Playable investigation**: search scenes, question NPCs, challenge testimony with evidence, submit a theory, and reveal the solution.
@@ -76,6 +77,18 @@ Living World Lab is the world-simulation side of the project. It is designed to 
 - Use the Phaser observer canvas to see actors, locations, event markers, replay paths, evidence heat, and branch effects.
 
 This is not a replacement for Detective Town. It is the larger world-simulation lab that demonstrates how cases and narratives can emerge from observable state instead of raw LLM prose.
+
+## Living World Audit Studio
+
+Audit Studio turns Living World Lab into a correction workflow instead of a one-shot extractor.
+
+- **Trust Score** summarizes evidence coverage, reference integrity, unresolved conflicts, extraction confidence, and correction completion.
+- **Issue Queue** surfaces missing evidence, low-confidence state points, duplicate entities, dangling references, merge conflicts, causality gaps, and replay-readiness problems.
+- **Suggested Fixes** and manual quick actions create `NovelCorrectionPatch` records.
+- **Corrected View** applies patches as a local overlay. Original chapters, paragraph evidence indexes, and the original extracted graph stay unchanged.
+- **Agent API** can query audits, apply/dismiss/revert patches, and export the corrected graph for external tools.
+
+This is the main step toward a world simulator that is not only observable and intervenable, but also auditable and repairable.
 
 ## Persistent Agent Town
 
@@ -225,6 +238,9 @@ Stable Agent Control API:
 - `GET /api/v1/query/town/candidates?worldId=...`
 - `GET /api/v1/query/town/emergence-proof?worldId=...&candidateId=...`
 - `GET /api/v1/query/novel/world-graph?projectId=...`
+- `GET /api/v1/query/novel/audit?projectId=...`
+- `GET /api/v1/query/novel/corrections?projectId=...`
+- `GET /api/v1/query/novel/corrected-world-graph?projectId=...`
 - `GET /api/v1/query/novel/simulation?projectId=...&runId=...`
 - `GET /api/v1/query/novel/detail?type=entity|event|relationship|development|causal-claim|causal-edge&id=...`
 - `POST /api/v1/command/town/create`
@@ -243,6 +259,10 @@ Stable Agent Control API:
 - `POST /api/v1/command/novel/evidence-index`
 - `POST /api/v1/command/novel/ask`
 - `POST /api/v1/command/novel/blueprint`
+- `POST /api/v1/command/novel/correction/suggest`
+- `POST /api/v1/command/novel/correction/apply`
+- `POST /api/v1/command/novel/correction/dismiss`
+- `POST /api/v1/command/novel/correction/revert`
 - `POST /api/v1/command/novel/simulation/start`
 - `POST /api/v1/command/novel/simulation/advance`
 - `POST /api/v1/command/novel/simulation/intervene`
@@ -322,6 +342,7 @@ Core exports are available from `packages/engine/src` and `lib/engine`:
 - Case library and emergence: `createCaseLibrary`, `createCaseTemplate`, `listCaseTemplates`, `buildWorldCausalTrace`, `validateCausalTrace`, `deriveNpcIntentTimeline`.
 - Authoring: `createAuthoringDraftFromCase`, `createPremiumAuthoringDraft`, `validateAuthoringDraft`, `applyAuthoringPatch`, `exportAuthoringJson`, `exportAuthoringMarkdown`.
 - Living World Lab: `compileNovelSimulationState`, `advanceNovelSimulation`, `rewindNovelSimulation`, `applyNovelSimulationIntervention`, `scoreNovelActionCandidates`, `createNovelGameSceneState`, `validateNovelGameSceneState`, `createNovelGameVisualProfile`, `compareNovelReplayToSource`.
+- Living World Audit Studio: `buildNovelQualityAuditReport`, `createNovelCorrectionSet`, `normalizeNovelCorrectionPatch`, `normalizeNovelCorrectionSet`, `applyNovelCorrectionOverlay`, `validateNovelCorrectionSet`, `createSuggestedNovelCorrectionPatches`, `revertNovelCorrectionPatch`.
 
 ## Tests
 

@@ -29,6 +29,9 @@ Failure:
 - `GET /api/v1/query/town/candidates?worldId=...`
 - `GET /api/v1/query/town/emergence-proof?worldId=...&candidateId=...`
 - `GET /api/v1/query/novel/world-graph?projectId=...`
+- `GET /api/v1/query/novel/audit?projectId=...`
+- `GET /api/v1/query/novel/corrections?projectId=...`
+- `GET /api/v1/query/novel/corrected-world-graph?projectId=...`
 - `GET /api/v1/query/novel/simulation?projectId=...&runId=...`
 - `GET /api/v1/query/novel/detail?type=entity|event|relationship|development|causal-claim|causal-edge&id=...`
 
@@ -50,6 +53,10 @@ Failure:
 - `POST /api/v1/command/novel/evidence-index`
 - `POST /api/v1/command/novel/ask`
 - `POST /api/v1/command/novel/blueprint`
+- `POST /api/v1/command/novel/correction/suggest`
+- `POST /api/v1/command/novel/correction/apply`
+- `POST /api/v1/command/novel/correction/dismiss`
+- `POST /api/v1/command/novel/correction/revert`
 - `POST /api/v1/command/novel/simulation/start`
 - `POST /api/v1/command/novel/simulation/advance`
 - `POST /api/v1/command/novel/simulation/intervene`
@@ -71,6 +78,22 @@ node scripts/run-persistent-town-api-smoke.mjs
 ```
 
 The runtime state is stored inside the persisted world JSON. New actions still become `WorldEvent` records, and extracted cases still use the existing fair-play validation and investigation APIs.
+
+## Living World Audit Loop
+
+Audit endpoints expose an external correction loop:
+
+```text
+import text -> query audit -> suggest corrections -> apply patch -> query corrected graph -> revert if needed
+```
+
+Minimal smoke flow:
+
+```powershell
+node scripts/run-novel-agent-api-smoke.mjs
+```
+
+Correction commands update only the runtime `correctionSet`. They do not mutate original chapter text, original paragraph evidence indexes, or the original extracted graph.
 
 ## Living World Agent Loop
 

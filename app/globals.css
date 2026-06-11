@@ -1159,6 +1159,269 @@ blockquote {
   gap: 12px;
 }
 
+.auditWorkbench {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.auditHero,
+.auditIssueQueue,
+.auditSuggestedFixes,
+.auditAppliedCorrections,
+.correctionScopeList {
+  min-width: 0;
+  padding: 14px;
+  background: rgba(9, 15, 22, 0.92);
+  border: 1px solid rgba(124, 157, 178, 0.28);
+  border-radius: 6px;
+}
+
+.auditHero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  background:
+    linear-gradient(135deg, rgba(140, 199, 255, 0.16), transparent 44%),
+    linear-gradient(315deg, rgba(255, 224, 106, 0.08), transparent 48%),
+    rgba(9, 15, 22, 0.95);
+}
+
+.auditHero h3,
+.auditIssueQueue h3,
+.auditSuggestedFixes h3,
+.auditAppliedCorrections h3,
+.correctionScopeList h3 {
+  margin: 0;
+  color: #f7fbff;
+}
+
+.auditHero p,
+.auditIssue p,
+.correctionPatchDetail p,
+.auditIssueDetail p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.trustScoreDial {
+  display: grid;
+  place-items: center;
+  width: 96px;
+  height: 96px;
+  color: #071019;
+  background: conic-gradient(#65ffc4 calc(var(--score) * 1%), rgba(124, 157, 178, 0.26) 0);
+  border: 2px solid rgba(247, 251, 255, 0.16);
+  border-radius: 50%;
+  box-shadow: 0 0 0 8px rgba(8, 15, 22, 0.88) inset;
+}
+
+.trustScoreDial strong {
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  color: #f7fbff;
+  background: #081017;
+  border-radius: 50%;
+  font-size: 22px;
+}
+
+.auditQuickActions,
+.auditFilterBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.correctionModePill {
+  display: grid;
+  gap: 2px;
+  min-width: 170px;
+  padding: 8px 10px;
+  color: var(--soft);
+  background: rgba(12, 18, 25, 0.92);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.correctionModePill strong {
+  color: #f7fbff;
+  font-size: 12px;
+  letter-spacing: 0;
+}
+
+.correctionModePill span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.correctionModePill.corrected {
+  color: #071019;
+  background: linear-gradient(135deg, rgba(101, 255, 196, 0.95), rgba(140, 199, 255, 0.78));
+  border-color: rgba(198, 229, 255, 0.85);
+}
+
+.correctionModePill.corrected strong,
+.correctionModePill.corrected span {
+  color: #071019;
+}
+
+.auditQuickActions button,
+.auditFilterBar button,
+.auditIssueQueue button,
+.auditSuggestedFixes button,
+.auditAppliedCorrections button,
+.correctionScopeList button {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 8px 10px;
+  color: var(--soft);
+  text-align: left;
+  background: #0c1219;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+}
+
+.auditQuickActions button,
+.auditFilterBar button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  font-weight: 900;
+}
+
+.auditFilterBar button.active,
+.auditIssueQueue button.selected,
+.auditSuggestedFixes button.selected,
+.auditAppliedCorrections button.selected,
+.correctionScopeList button.selected {
+  color: #071019;
+  background: #8cc7ff;
+  border-color: #c6e5ff;
+}
+
+.auditMetricGrid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+.auditMetricGrid article {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 11px;
+  background: rgba(12, 18, 25, 0.95);
+  border: 1px solid rgba(124, 157, 178, 0.25);
+  border-radius: 6px;
+}
+
+.auditMetricGrid strong {
+  color: #f7fbff;
+  font-size: 20px;
+}
+
+.auditMetricGrid span {
+  color: var(--soft);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.auditMetricGrid small {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.auditColumns {
+  display: grid;
+  grid-template-columns: 1.1fr minmax(230px, 0.85fr) minmax(230px, 0.85fr);
+  gap: 12px;
+  min-width: 0;
+}
+
+.auditIssueQueue,
+.auditSuggestedFixes,
+.auditAppliedCorrections {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  max-height: 520px;
+  overflow: auto;
+}
+
+.auditIssueQueue button,
+.auditSuggestedFixes button,
+.auditAppliedCorrections button,
+.correctionScopeList button {
+  width: 100%;
+}
+
+.auditIssue.blocking,
+.auditIssueDetail.blocking {
+  border-color: rgba(255, 99, 99, 0.66);
+}
+
+.auditIssue.high,
+.auditIssueDetail.high {
+  border-color: rgba(255, 160, 88, 0.6);
+}
+
+.auditIssue.medium,
+.auditIssueDetail.medium {
+  border-color: rgba(255, 224, 106, 0.48);
+}
+
+.auditIssue.info,
+.auditIssueDetail.info {
+  border-color: rgba(140, 199, 255, 0.42);
+}
+
+.auditIssue strong,
+.auditSuggestedFixes strong,
+.auditAppliedCorrections strong,
+.correctionScopeList strong {
+  overflow: hidden;
+  color: #f7fbff;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.auditIssue span,
+.auditSuggestedFixes span,
+.auditAppliedCorrections span,
+.correctionScopeList span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compactJson {
+  max-height: 180px;
+  padding: 9px;
+  overflow: auto;
+  color: #d8e9f6;
+  background: #070b10;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  font-size: 11px;
+  white-space: pre-wrap;
+}
+
+.correctionInspectorPanel,
+.correctionScopeList {
+  display: grid;
+  gap: 10px;
+}
+
 .worldCanvasWrap {
   min-height: 0;
   padding: 18px;
@@ -4828,6 +5091,14 @@ blockquote {
     border-left: 0;
   }
 
+  .auditMetricGrid {
+    grid-template-columns: repeat(3, minmax(140px, 1fr));
+  }
+
+  .auditColumns {
+    grid-template-columns: 1fr;
+  }
+
   .toastStack {
     right: 18px;
     bottom: calc(min(72vh, 680px) + 18px);
@@ -4897,6 +5168,28 @@ blockquote {
 
   .worldViewTabs button {
     font-size: 11px;
+  }
+
+  .auditHero {
+    grid-template-columns: 1fr;
+  }
+
+  .trustScoreDial {
+    justify-self: start;
+  }
+
+  .auditMetricGrid {
+    grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  }
+
+  .auditColumns {
+    grid-template-columns: 1fr;
+  }
+
+  .auditIssueQueue,
+  .auditSuggestedFixes,
+  .auditAppliedCorrections {
+    max-height: none;
   }
 
   .arcChapterTrack {

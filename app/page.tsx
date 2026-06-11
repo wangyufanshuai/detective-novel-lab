@@ -80,10 +80,13 @@ import {
   markDemoCrimeObserved,
   addNovelChapterAnalysis,
   attachFallbackEvidenceToGraph,
+  applyNovelCorrectionOverlay,
+  buildNovelQualityAuditReport,
   collectBlueprintEvidence,
   collectGraphEvidence,
   commitNovelImportDraftToProject,
   createNovelBatchQueue,
+  createNovelCorrectionSet,
   createFallbackNovelAskAnswer,
   createFallbackNovelCharacterStates,
   createFallbackEvidenceIndex,
@@ -92,6 +95,7 @@ import {
   createFallbackNovelWorldGraph,
   createNovelGameSceneState,
   createNovelGameVisualProfile,
+  createSuggestedNovelCorrectionPatches,
   createNovelLongChapterText,
   createNovelSimulationRun,
   createNovelWorldProject,
@@ -107,6 +111,8 @@ import {
   normalizeNovelBatchQueue,
   normalizeNovelImportDraft,
   normalizeNovelChapterBlueprint,
+  normalizeNovelCorrectionPatch,
+  normalizeNovelCorrectionSet,
   normalizeNovelThemeRegistry,
   normalizeNovelThemeSignals,
   normalizeNovelWorldGraph,
@@ -115,6 +121,7 @@ import {
   revealDemoSolution,
   rankNovelCharacterArcs,
   remapNovelThemeSignals,
+  revertNovelCorrectionPatch,
   searchNovelAskEvidence,
   rewindNovelSimulation,
   splitNovelChapterParagraphs,
@@ -124,6 +131,7 @@ import {
   validateEvidenceAwareNovelChapterBlueprint,
   validateEvidenceAwareNovelWorldGraph,
   validateNovelAskAnswer,
+  validateNovelCorrectionSet,
   validateNovelGameSceneState,
   validateNovelGameVisualProfile,
   validateNovelSimulationRun,
@@ -166,6 +174,8 @@ import type {
   NovelChapterBlueprint,
   NovelCharacterArc,
   NovelCharacterStatePoint,
+  NovelCorrectionPatch,
+  NovelCorrectionSet,
   NovelThemeArc,
   NovelThemeDefinition,
   NovelThemeSignal,
@@ -194,6 +204,7 @@ import type {
   NovelWorldDevelopmentStep,
   NovelWorldGraph,
   NovelWorldValidationReport,
+  NovelQualityIssue,
   NovelWritingRisk,
   NpcDialogueEvalReport,
   PlayerSession,
@@ -337,6 +348,8 @@ type NovelSelection =
   | { type: "causal-claim"; id: string }
   | { type: "causal-edge"; id: string }
   | { type: "causal-gap"; id: string }
+  | { type: "quality-issue"; id: string }
+  | { type: "correction"; id: string }
   | { type: "relationship"; id: string }
   | { type: "event"; id: string }
   | { type: "development"; id: string }
@@ -357,9 +370,11 @@ const novelIndexedBatchQueueKey = "batch-queue";
 const novelIndexedArcPreferencesKey = "character-arc-preferences";
 const novelIndexedAskHistoryKey = "ask-history";
 const novelIndexedSimulationRunsKey = "simulation-runs";
+const novelIndexedCorrectionSetKey = "correction-set";
 
-type NovelWorldView = "game" | "replay" | "ask" | "causality" | "theme" | "arc" | "map" | "events";
-type NovelInspectorTab = "inspector" | "simulation" | "writer";
+type NovelWorldView = "audit" | "game" | "replay" | "ask" | "causality" | "theme" | "arc" | "map" | "events";
+type NovelInspectorTab = "inspector" | "simulation" | "writer" | "correction";
+type NovelAuditFilter = "all" | "evidence" | "entity" | "relationship" | "event" | "character" | "theme" | "causality" | "replay-readiness";
 const defaultNovelGameVisualPreferences: NovelGameVisualPreferences = {
   labels: "all",
   evidenceHeat: true,
@@ -566,8 +581,10 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
   const [wholeBookText, setWholeBookText] = useState("");
   const [importDraft, setImportDraft] = useState<NovelWholeBookImportDraft | null>(null);
   const [batchQueue, setBatchQueue] = useState<NovelBatchQueueState>(() => createNovelBatchQueue(loadInitialNovelProject(), 3));
-  const [worldView, setWorldView] = useState<NovelWorldView>("game");
+  const [worldView, setWorldView] = useState<NovelWorldView>("audit");
   const [inspectorTab, setInspectorTab] = useState<NovelInspectorTab>("inspector");
+  const [correctionSet, setCorrectionSet] = useState<NovelCorrectionSet>(() => createNovelCorrectionSet(loadInitialNovelProject()));
+  const [auditFilter, setAuditFilter] = useState<NovelAuditFilter>("all");
   const [pinnedCharacterIds, setPinnedCharacterIds] = useState<string[]>([]);
   const [pinnedCausalChainIds, setPinnedCausalChainIds] = useState<string[]>([]);
   const [pinnedThemeIds, setPinnedThemeIds] = useState<string[]>([]);
@@ -597,9 +614,12 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
         const indexedArcPreferences = await readNovelIndexedValue<NovelArcPreferences>(novelIndexedArcPreferencesKey);
         const indexedAskHistory = await readNovelIndexedValue<NovelAskHistoryItem[]>(novelIndexedAskHistoryKey);
         const indexedSimulationRuns = await readNovelIndexedValue<NovelSimulationRunRecord[]>(novelIndexedSimulationRunsKey);
+        const indexedCorrectionSet = await readNovelIndexedValue<NovelCorrectionSet>(novelIndexedCorrectionSetKey);
         if (cancelled) return;
+        let loadedProject = projectRef.current;
         if (indexedProject?.version === 2) {
           setProject(indexedProject);
+          loadedProject = indexedProject;
           setActiveChapterId(indexedProject.chapters[0]?.input.id || "chapter-1");
           setSelected({ type: "entity", id: indexedProject.mergedGraph.entities[0]?.id || "char-lin-yao" });
           setBatchQueue(normalizeNovelBatchQueue(indexedProject, indexedQueue));
@@ -608,6 +628,7 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
           const localProject = loadLocal<NovelWorldProject | null>(novelProjectStorageKey, null);
           if (localProject?.version === 2) {
             setProject(localProject);
+            loadedProject = localProject;
             await writeNovelIndexedValue(novelIndexedProjectKey, localProject);
             setBatchQueue(createNovelBatchQueue(localProject, 3));
             setEvidenceStatus("Migrated localStorage project into IndexedDB.");
@@ -622,11 +643,12 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
         setActiveAskId(Array.isArray(indexedAskHistory) && indexedAskHistory[0] ? indexedAskHistory[0].id : "");
         setSimulationRuns(Array.isArray(indexedSimulationRuns) ? indexedSimulationRuns.slice(0, 10) : []);
         setActiveSimulationRunId(Array.isArray(indexedSimulationRuns) && indexedSimulationRuns[0] ? indexedSimulationRuns[0].run.id : "");
+        setCorrectionSet(normalizeNovelCorrectionSet(indexedCorrectionSet, loadedProject));
         if (indexedArcPreferences) {
           setPinnedCharacterIds(Array.isArray(indexedArcPreferences.pinnedCharacterIds) ? indexedArcPreferences.pinnedCharacterIds.slice(0, 3) : []);
           setPinnedCausalChainIds(Array.isArray(indexedArcPreferences.pinnedCausalChainIds) ? indexedArcPreferences.pinnedCausalChainIds.slice(0, 3) : []);
           setPinnedThemeIds(Array.isArray(indexedArcPreferences.pinnedThemeIds) ? indexedArcPreferences.pinnedThemeIds.slice(0, 4) : []);
-          setWorldView(indexedArcPreferences.worldView || "game");
+          setWorldView(indexedArcPreferences.worldView || "audit");
           setInspectorTab(indexedArcPreferences.inspectorTab || "inspector");
           setGameVisualPreferences({
             labels: indexedArcPreferences.gameVisualPreferences?.labels === "focus" || indexedArcPreferences.gameVisualPreferences?.labels === "off" ? indexedArcPreferences.gameVisualPreferences.labels : "all",
@@ -690,8 +712,23 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
     void writeNovelIndexedValue(novelIndexedSimulationRunsKey, simulationRuns.slice(0, 10)).catch((error) => setEvidenceStatus(`IndexedDB simulation save failed: ${error instanceof Error ? error.message : "unknown error"}`));
   }, [simulationRuns, storageReady]);
 
-  const graph = project.mergedGraph.entities.length ? project.mergedGraph : createFallbackNovelWorldGraph(project.title, project.genreTone);
-  const validation = useMemo(() => validateNovelWorldProject(project), [project]);
+  useEffect(() => {
+    if (!storageReady || typeof window === "undefined") return;
+    void writeNovelIndexedValue(novelIndexedCorrectionSetKey, correctionSet).catch((error) => setEvidenceStatus(`IndexedDB correction save failed: ${error instanceof Error ? error.message : "unknown error"}`));
+  }, [correctionSet, storageReady]);
+
+  const correctionValidation = useMemo(() => validateNovelCorrectionSet(correctionSet, project, chapterTexts), [chapterTexts, correctionSet, project]);
+  const correctedProject = useMemo(() => applyNovelCorrectionOverlay(project, correctionSet), [correctionSet, project]);
+  const auditReport = useMemo(() => buildNovelQualityAuditReport(correctedProject, correctionSet, chapterTexts), [chapterTexts, correctedProject, correctionSet]);
+  const suggestedCorrectionPatches = useMemo(() => {
+    const appliedOrDismissed = new Set(correctionSet.patches.map((patch) => patch.id));
+    return createSuggestedNovelCorrectionPatches(correctedProject, auditReport.issues).filter((patch) => !appliedOrDismissed.has(patch.id));
+  }, [auditReport.issues, correctedProject, correctionSet.patches]);
+  const filteredAuditIssues = useMemo(() => auditReport.issues.filter((issue) => auditFilter === "all" || issue.category === auditFilter), [auditFilter, auditReport.issues]);
+  const appliedCorrections = useMemo(() => correctionSet.patches.filter((patch) => patch.status === "applied"), [correctionSet.patches]);
+  const correctionModeLabel = appliedCorrections.length ? "Corrected View" : "Original Extracted Graph";
+  const graph = correctedProject.mergedGraph.entities.length ? correctedProject.mergedGraph : createFallbackNovelWorldGraph(correctedProject.title, correctedProject.genreTone);
+  const validation = useMemo(() => validateNovelWorldProject(correctedProject), [correctedProject]);
   const activeSimulationRecord = simulationRuns.find((record) => record.run.id === activeSimulationRunId) || simulationRuns[0] || null;
   const activeSimulationRun = activeSimulationRecord?.run || null;
   const gameSelection = selected.type === "game-actor"
@@ -705,19 +742,38 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
   const gameSceneValidation = useMemo(() => validateNovelGameSceneState(gameSceneState), [gameSceneState]);
   const gameVisualProfile: NovelGameVisualProfile = useMemo(() => createNovelGameVisualProfile(gameSceneState, graph, gameVisualPreferences), [gameSceneState, gameVisualPreferences, graph]);
   const gameVisualValidation = useMemo(() => validateNovelGameVisualProfile(gameVisualProfile, gameSceneState), [gameSceneState, gameVisualProfile]);
-  const activeChapter = project.chapters.find((chapter) => chapter.input.id === activeChapterId) || project.chapters[0];
+  const activeChapter = correctedProject.chapters.find((chapter) => chapter.input.id === activeChapterId) || correctedProject.chapters[0];
   const activeChapterText = chapterTexts.find((chapter) => chapter.chapterId === activeChapter?.input.id);
   const visibleEvents = chapterFilter === "all" ? graph.events : graph.events.filter((event) => event.sourceChapterId === chapterFilter);
-  const visibleChanges = chapterFilter === "all" ? project.mergeReport.changes : project.mergeReport.changes.filter((change) => change.chapterId === chapterFilter);
-  const characterArcs = useMemo(() => mergeNovelCharacterArcs(project), [project]);
+  const visibleChanges = chapterFilter === "all" ? correctedProject.mergeReport.changes : correctedProject.mergeReport.changes.filter((change) => change.chapterId === chapterFilter);
+  const characterArcs = useMemo(() => mergeNovelCharacterArcs(correctedProject), [correctedProject]);
   const rankedCharacterArcs = useMemo(() => rankNovelCharacterArcs(characterArcs), [characterArcs]);
   const validPinnedCharacterIds = useMemo(() => normalizePinnedNovelCharacterIds(pinnedCharacterIds, characterArcs), [characterArcs, pinnedCharacterIds]);
-  const themeRegistry = useMemo(() => normalizeNovelThemeRegistry(project.themeRegistry), [project.themeRegistry]);
-  const themeArcs = useMemo(() => mergeNovelThemeArcs({ ...project, themeRegistry }), [project, themeRegistry]);
+  const themeRegistry = useMemo(() => normalizeNovelThemeRegistry(correctedProject.themeRegistry), [correctedProject.themeRegistry]);
+  const themeArcs = useMemo(() => mergeNovelThemeArcs({ ...correctedProject, themeRegistry }), [correctedProject, themeRegistry]);
   const rankedThemeArcs = useMemo(() => rankNovelThemeArcs(themeArcs), [themeArcs]);
   const validPinnedThemeIds = useMemo(() => normalizePinnedNovelThemeIds(pinnedThemeIds, themeArcs), [pinnedThemeIds, themeArcs]);
-  const causalityReport = useMemo(() => buildNovelCausalityReport(project), [project]);
-  const causalityValidation = useMemo(() => validateNovelCausalityReport(causalityReport, project, chapterTexts), [causalityReport, chapterTexts, project]);
+  const hiddenCausalClaimIds = useMemo(() => new Set(correctionSet.patches
+    .filter((patch) => patch.status === "applied" && patch.target.kind === "causal-claim" && patch.operation.type === "hide-object")
+    .map((patch) => patch.target.id)), [correctionSet.patches]);
+  const causalityReport = useMemo(() => {
+    const report = buildNovelCausalityReport(correctedProject);
+    if (!hiddenCausalClaimIds.size) return report;
+    const claims = report.claims.filter((claim) => !hiddenCausalClaimIds.has(claim.id));
+    const claimIds = new Set(claims.map((claim) => claim.id));
+    const edges = report.edges.filter((edge) => claimIds.has(edge.claimId));
+    const edgeIds = new Set(edges.map((edge) => edge.id));
+    const chains = report.chains
+      .map((chain) => ({
+        ...chain,
+        claimIds: chain.claimIds.filter((id) => claimIds.has(id)),
+        edgeIds: chain.edgeIds.filter((id) => edgeIds.has(id)),
+        contestedClaimIds: chain.contestedClaimIds.filter((id) => claimIds.has(id))
+      }))
+      .filter((chain) => chain.claimIds.length || chain.edgeIds.length);
+    return { ...report, claims, edges, chains, warnings: [...report.warnings, `${hiddenCausalClaimIds.size} causal claim correction(s) hidden in corrected view.`] };
+  }, [correctedProject, hiddenCausalClaimIds]);
+  const causalityValidation = useMemo(() => validateNovelCausalityReport(causalityReport, correctedProject, chapterTexts), [causalityReport, chapterTexts, correctedProject]);
   const rankedCausalChains = useMemo(() => rankNovelCausalChains(causalityReport.chains), [causalityReport.chains]);
   const validPinnedCausalChainIds = useMemo(() => normalizePinnedNovelCausalChainIds(pinnedCausalChainIds, causalityReport.chains), [causalityReport.chains, pinnedCausalChainIds]);
   const displayedCausalChains = useMemo(() => {
@@ -779,7 +835,9 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
   const selectedRelationship = selected.type === "relationship" ? graph.relationships.find((item) => item.id === selected.id) : null;
   const selectedEvent = selected.type === "event" ? graph.events.find((item) => item.id === selected.id) : null;
   const selectedDevelopment = selected.type === "development" ? graph.development.find((item) => item.id === selected.id) : null;
-  const selectedChange = selected.type === "change" ? project.mergeReport.changes.find((item) => item.id === selected.id) : null;
+  const selectedChange = selected.type === "change" ? correctedProject.mergeReport.changes.find((item) => item.id === selected.id) : null;
+  const selectedQualityIssue = selected.type === "quality-issue" ? auditReport.issues.find((item) => item.id === selected.id) || null : null;
+  const selectedCorrectionPatch = selected.type === "correction" ? correctionSet.patches.find((item) => item.id === selected.id) || suggestedCorrectionPatches.find((item) => item.id === selected.id) || null : null;
   const selectedBeat = writerSelection?.type === "beat" ? blueprint?.sceneBeats.find((item) => item.id === writerSelection.id) : null;
   const selectedPayoff = writerSelection?.type === "payoff" ? blueprint?.foreshadowingPayoffs.find((item) => item.id === writerSelection.id) : null;
   const selectedRisk = writerSelection?.type === "risk" ? blueprint?.writingRisks.find((item) => item.id === writerSelection.id) : null;
@@ -788,10 +846,10 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
   const activeEvidenceIndex = activeChapter ? evidenceIndexes[activeChapter.input.id] : undefined;
   const evidenceCoverage = chapterTexts.length ? Math.round((Object.keys(evidenceIndexes).length / chapterTexts.length) * 100) : 0;
   const importValidation = importDraft ? validateNovelImportDraft(importDraft) : null;
-  const analyzedCount = project.chapters.filter((chapter) => chapter.status === "ready").length;
-  const indexedCount = project.chapters.filter((chapter) => evidenceIndexes[chapter.input.id]).length;
-  const failedCount = project.chapters.filter((chapter) => chapter.status === "error" || batchQueue.chapterStatuses[chapter.input.id] === "error").length;
-  const skippedCount = project.chapters.filter((chapter) => batchQueue.chapterStatuses[chapter.input.id] === "skipped").length;
+  const analyzedCount = correctedProject.chapters.filter((chapter) => chapter.status === "ready").length;
+  const indexedCount = correctedProject.chapters.filter((chapter) => evidenceIndexes[chapter.input.id]).length;
+  const failedCount = correctedProject.chapters.filter((chapter) => chapter.status === "error" || batchQueue.chapterStatuses[chapter.input.id] === "error").length;
+  const skippedCount = correctedProject.chapters.filter((chapter) => batchQueue.chapterStatuses[chapter.input.id] === "skipped").length;
   const nextBatchIds = getNextNovelBatchChapterIds(project, batchQueue);
   const progressGrowth = {
     entities: graph.entities.length,
@@ -813,7 +871,7 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
   useEffect(() => {
     if (!simulationPlaying || !activeSimulationRun || activeSimulationRun.status === "complete" || activeSimulationRun.status === "blocked") return;
     const timer = window.setTimeout(() => {
-      const next = advanceNovelSimulation(projectRef.current, activeSimulationRun);
+      const next = advanceNovelSimulation(applyNovelCorrectionOverlay(projectRef.current, correctionSet), activeSimulationRun);
       setSimulationRuns((records) => [
         {
           run: next,
@@ -829,10 +887,10 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
       if (next.status === "complete" || next.status === "blocked") setSimulationPlaying(false);
     }, Math.round(1200 / simulationSpeed));
     return () => window.clearTimeout(timer);
-  }, [activeSimulationRun, simulationPlaying, simulationSpeed]);
+  }, [activeSimulationRun, correctionSet, simulationPlaying, simulationSpeed]);
 
   function chapterTitle(chapterId?: string) {
-    return project.chapters.find((chapter) => chapter.input.id === chapterId)?.input.title || chapterId || "n/a";
+    return correctedProject.chapters.find((chapter) => chapter.input.id === chapterId)?.input.title || chapterId || "n/a";
   }
 
   function updateActiveChapter(patch: Partial<NovelChapterInput>) {
@@ -1081,7 +1139,9 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
     setSimulationRuns([]);
     setActiveSimulationRunId("");
     setSimulationPlaying(false);
-    setWorldView("game");
+    setCorrectionSet(createNovelCorrectionSet(committed.project));
+    setWorldView("audit");
+    setInspectorTab("correction");
     setStatus(`Imported ${committed.chapters.length} chapter(s). Run batches to build evidence and graph analysis.`);
     setEvidenceStatus("Whole-book chapters saved to IndexedDB; localStorage keeps only a compact backup.");
   }
@@ -1210,7 +1270,8 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
     setPinnedCharacterIds([]);
     setPinnedCausalChainIds([]);
     setPinnedThemeIds([]);
-    setWorldView("game");
+    setCorrectionSet(createNovelCorrectionSet(next));
+    setWorldView("audit");
     setInspectorTab("inspector");
     setImportDraft(null);
     setBatchQueue(createNovelBatchQueue(next, 3));
@@ -1220,17 +1281,24 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
   }
 
   function exportProject() {
-    setExportText(JSON.stringify(project, null, 2));
+    setExportText(JSON.stringify({ project, correctionSet }, null, 2));
     setStatus("Project JSON exported.");
   }
 
   function importProject() {
     try {
-      const parsed = JSON.parse(exportText) as NovelWorldProject;
+      const payload = JSON.parse(exportText) as NovelWorldProject | { project?: NovelWorldProject; correctionSet?: NovelCorrectionSet };
+      const parsed = "project" in payload && payload.project ? payload.project : payload as NovelWorldProject;
       if (parsed.version !== 2) throw new Error("Project JSON must be version 2.");
       const report = validateNovelWorldProject(parsed);
       if (!report.valid) throw new Error(report.errors.join("; "));
+      const importedCorrectionSet = "correctionSet" in payload && payload.correctionSet
+        ? normalizeNovelCorrectionSet(payload.correctionSet, parsed)
+        : createNovelCorrectionSet(parsed);
+      const correctionReport = validateNovelCorrectionSet(importedCorrectionSet, parsed, chapterTexts);
+      if (!correctionReport.valid) throw new Error(correctionReport.errors.join("; "));
       setProject(parsed);
+      setCorrectionSet(importedCorrectionSet);
       setActiveChapterId(parsed.chapters[0]?.input.id || "");
       setSelected({ type: "entity", id: parsed.mergedGraph.entities[0]?.id || "" });
       setBatchQueue(createNovelBatchQueue(parsed, batchQueue.batchSize));
@@ -1308,8 +1376,8 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
 
   function createSimulationReplay() {
     const throughChapterId = chapterFilter === "all" ? undefined : chapterFilter;
-    const run = createNovelSimulationRun(project, {
-      seed: `${project.id}:${throughChapterId || "all"}:grounded-replay`,
+    const run = createNovelSimulationRun(correctedProject, {
+      seed: `${correctedProject.id}:${throughChapterId || "all"}:grounded-replay:${correctionSet.updatedAt}`,
       mode: "grounded-replay",
       throughChapterId,
       branchStepLimit: 1
@@ -1327,7 +1395,7 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
       createSimulationReplay();
       return;
     }
-    const next = advanceNovelSimulation(project, activeSimulationRun);
+    const next = advanceNovelSimulation(correctedProject, activeSimulationRun);
     replaceSimulationRun(next);
     const latest = next.steps[next.steps.length - 1];
     if (latest) selectWorldItem({ type: "simulation-step", id: latest.id });
@@ -1337,7 +1405,7 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
 
   function rewindSimulationReplay() {
     if (!activeSimulationRun) return;
-    const next = rewindNovelSimulation(project, activeSimulationRun);
+    const next = rewindNovelSimulation(correctedProject, activeSimulationRun);
     replaceSimulationRun(next);
     const latest = next.steps[next.steps.length - 1];
     if (latest) selectWorldItem({ type: "simulation-step", id: latest.id });
@@ -1350,7 +1418,7 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
       createSimulationReplay();
       return;
     }
-    const next = createNovelSimulationRun(project, {
+    const next = createNovelSimulationRun(correctedProject, {
       seed: activeSimulationRun.seed,
       mode: "grounded-replay",
       throughChapterId: activeSimulationRun.throughChapterId,
@@ -1369,7 +1437,7 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
     let value: string | number | boolean = simulationInterventionValue;
     if (simulationInterventionKind === "relationship-pressure" || simulationInterventionKind === "body-capability") value = Number(simulationInterventionValue);
     if (simulationInterventionKind === "knowledge") value = simulationInterventionValue !== "false";
-    const next = applyNovelSimulationIntervention(project, activeSimulationRun, {
+    const next = applyNovelSimulationIntervention(correctedProject, activeSimulationRun, {
       kind: simulationInterventionKind,
       actorEntityId: simulationInterventionActorId,
       value
@@ -1414,7 +1482,7 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
       const response = await fetch(apiUrl("/api/v1/command/novel/ask"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ project, chapters: chapterTexts, question, throughChapterId })
+        body: JSON.stringify({ project: correctedProject, chapters: chapterTexts, question, throughChapterId })
       });
       const payload = (await response.json()) as V1Result<{
         mock: boolean;
@@ -1442,9 +1510,9 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
       setWorldView("ask");
       setAskStatus(payload.data.mock ? "Answered with local evidence fallback." : payload.data.repaired ? "Answered after model repair." : "Answered from constrained evidence.");
     } catch (error) {
-      const queryPlan = buildNovelAskQueryPlan(project, question, throughChapterId);
-      const { evidenceHits } = searchNovelAskEvidence(project, chapterTexts, queryPlan, throughChapterId);
-      const answer = createFallbackNovelAskAnswer(project, question, evidenceHits, queryPlan);
+      const queryPlan = buildNovelAskQueryPlan(correctedProject, question, throughChapterId);
+      const { evidenceHits } = searchNovelAskEvidence(correctedProject, chapterTexts, queryPlan, throughChapterId);
+      const answer = createFallbackNovelAskAnswer(correctedProject, question, evidenceHits, queryPlan);
       const item: NovelAskHistoryItem = {
         id: `ask:${Date.now()}`,
         question,
@@ -1473,14 +1541,14 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
   }
 
   async function generateBlueprint() {
-    const afterChapterId = blueprintTargetChapter(project, activeChapterId, blueprintTargetMode);
+    const afterChapterId = blueprintTargetChapter(correctedProject, activeChapterId, blueprintTargetMode);
     setBlueprintBusy(true);
     setBlueprintStatus("Generating read-only chapter blueprint...");
     try {
       const response = await fetch(apiUrl("/api/v1/command/novel/blueprint"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ project, chapters: chapterTexts, afterChapterId, options: blueprintOptions })
+        body: JSON.stringify({ project: correctedProject, chapters: chapterTexts, afterChapterId, options: blueprintOptions })
       });
       const payload = (await response.json()) as V1Result<{
         mock: boolean;
@@ -1491,15 +1559,15 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
       if (!payload.ok || !payload.data) throw new Error(payload.error?.message || "Blueprint generation failed");
       const nextBlueprint = normalizeNovelChapterBlueprint(payload.data.blueprint);
       const nextValidation = chapterTexts.length
-        ? validateEvidenceAwareNovelChapterBlueprint(nextBlueprint, project, chapterTexts)
-        : validateNovelChapterBlueprint(nextBlueprint, project);
+        ? validateEvidenceAwareNovelChapterBlueprint(nextBlueprint, correctedProject, chapterTexts)
+        : validateNovelChapterBlueprint(nextBlueprint, correctedProject);
       if (!nextValidation.valid) throw new Error(nextValidation.errors.join("; "));
       setBlueprint(nextBlueprint);
       setBlueprintExportText("");
       setWriterSelection(nextBlueprint.sceneBeats[0] ? { type: "beat", id: nextBlueprint.sceneBeats[0].id } : null);
       setBlueprintStatus(payload.data.mock ? "Blueprint generated with local fallback." : payload.data.repaired ? "Blueprint generated after model repair." : "Blueprint generated.");
     } catch (error) {
-      const fallback = createFallbackNovelChapterBlueprint(project, afterChapterId, blueprintOptions);
+      const fallback = createFallbackNovelChapterBlueprint(correctedProject, afterChapterId, blueprintOptions);
       setBlueprint(fallback);
       setBlueprintExportText("");
       setWriterSelection(fallback.sceneBeats[0] ? { type: "beat", id: fallback.sceneBeats[0].id } : null);
@@ -1510,10 +1578,122 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
   }
 
   function runStateSimulation() {
-    const throughChapterId = blueprintTargetChapter(project, activeChapterId, "latest");
-    const simulation = createNovelStateSimulation(project, chapterTexts, throughChapterId);
+    const throughChapterId = blueprintTargetChapter(correctedProject, activeChapterId, "latest");
+    const simulation = createNovelStateSimulation(correctedProject, chapterTexts, throughChapterId);
     setStateSimulation(simulation);
     setEvidenceStatus(simulation.summary);
+  }
+
+  function upsertCorrectionPatch(patch: NovelCorrectionPatch, status: NovelCorrectionPatch["status"] = "applied") {
+    const at = new Date().toISOString();
+    const nextPatch: NovelCorrectionPatch = {
+      ...patch,
+      status,
+      updatedAt: at,
+      auditTrail: [...patch.auditTrail, { at, action: status === "applied" ? "applied" : status === "dismissed" ? "dismissed" : "created", note: `Patch ${status}.` }]
+    };
+    setCorrectionSet((current) => ({
+      ...current,
+      patches: [nextPatch, ...current.patches.filter((item) => item.id !== patch.id)].slice(0, 80),
+      updatedAt: at
+    }));
+    setInspectorTab("correction");
+    setSelected({ type: "correction", id: patch.id });
+    setEvidenceStatus(`Correction ${status}: ${patch.reason}`);
+  }
+
+  function applySuggestedCorrection(patch: NovelCorrectionPatch) {
+    upsertCorrectionPatch(patch, "applied");
+  }
+
+  function dismissSuggestedCorrection(patch: NovelCorrectionPatch) {
+    upsertCorrectionPatch(patch, "dismissed");
+  }
+
+  function revertCorrection(patchId: string) {
+    setCorrectionSet((current) => revertNovelCorrectionPatch(current, patchId));
+    setInspectorTab("correction");
+    setSelected({ type: "correction", id: patchId });
+    setEvidenceStatus("Correction reverted.");
+  }
+
+  function createManualCorrectionPatch(input: Omit<NovelCorrectionPatch, "createdAt" | "updatedAt" | "auditTrail" | "status">) {
+    const at = new Date().toISOString();
+    return normalizeNovelCorrectionPatch({
+      ...input,
+      status: "applied",
+      createdAt: at,
+      updatedAt: at,
+      auditTrail: [{ at, action: "created", note: "Manual correction created." }]
+    });
+  }
+
+  function quickRenameFirstEntity() {
+    const entity = graph.entities.find((item) => item.kind === "character") || graph.entities[0];
+    if (!entity) return;
+    const baseName = entity.name.replace(/\s*\(Corrected\)\s*$/i, "");
+    applySuggestedCorrection(createManualCorrectionPatch({
+      id: `manual-rename-${entity.id}`,
+      target: { kind: "entity", id: entity.id },
+      operation: { type: "rename-entity", name: `${baseName} (Corrected)` },
+      reason: `Rename ${baseName} for review.`
+    }));
+  }
+
+  function quickMergeDuplicateEntity() {
+    const duplicateKey = (value: string) => value.replace(/\s*\(Corrected\)\s*$/i, "").trim().toLowerCase();
+    const pair = graph.entities.flatMap((source, sourceIndex) => graph.entities.slice(sourceIndex + 1)
+      .filter((target) => duplicateKey(source.name) === duplicateKey(target.name))
+      .map((target) => [source, target] as const))[0];
+    if (!pair) {
+      setEvidenceStatus("No same-name duplicate candidate is available for quick merge.");
+      return;
+    }
+    const [first, second] = pair[0].kind === "character" ? pair : [pair[1], pair[0]];
+    applySuggestedCorrection(createManualCorrectionPatch({
+      id: `manual-merge-${second.id}-into-${first.id}`,
+      target: { kind: "entity", id: second.id },
+      operation: { type: "merge-entities", sourceEntityId: second.id, targetEntityId: first.id },
+      reason: `Merge possible duplicate ${second.name} into ${first.name}.`
+    }));
+  }
+
+  function quickReplaceEvidence() {
+    const entity = graph.entities.find((item) => item.evidence?.length) || graph.entities[0];
+    const snippet = Object.values(evidenceIndexes).flatMap((index) => index.snippets)[0] || entity?.evidence?.[0];
+    if (!entity || !snippet) return;
+    applySuggestedCorrection(createManualCorrectionPatch({
+      id: `manual-evidence-${entity.id}`,
+      target: { kind: "entity", id: entity.id },
+      operation: { type: "replace-evidence", evidence: [snippet] },
+      reason: `Replace evidence for ${entity.name}.`
+    }));
+  }
+
+  function quickHideCausalClaim() {
+    const claim = causalityReport.claims[0];
+    if (!claim) return;
+    applySuggestedCorrection(createManualCorrectionPatch({
+      id: `manual-hide-${claim.id}`,
+      target: { kind: "causal-claim", id: claim.id },
+      operation: { type: "hide-object", reason: "Rejected by manual audit." },
+      reason: `Hide causal claim ${claim.id}.`
+    }));
+  }
+
+  function correctionTargetLabel(target?: NovelCorrectionPatch["target"] | NovelQualityIssue["target"]) {
+    if (!target) return "Project-level audit";
+    if (target.kind === "entity") return `Entity: ${entityById.get(target.id)?.name || target.id}`;
+    if (target.kind === "relationship") {
+      const relationship = graph.relationships.find((item) => item.id === target.id);
+      return relationship ? `Relationship: ${entityById.get(relationship.fromEntityId)?.name || relationship.fromEntityId} / ${entityById.get(relationship.toEntityId)?.name || relationship.toEntityId}` : `Relationship: ${target.id}`;
+    }
+    if (target.kind === "event") return `Event: ${graph.events.find((item) => item.id === target.id)?.title || target.id}`;
+    if (target.kind === "development") return `Development: ${graph.development.find((item) => item.id === target.id)?.title || target.id}`;
+    if (target.kind === "character-state") return `Character state: ${characterArcs.flatMap((arc) => arc.points).find((item) => item.id === target.id)?.summary || target.id}`;
+    if (target.kind === "theme-signal") return `Theme signal: ${themeArcs.flatMap((arc) => arc.signals).find((item) => item.id === target.id)?.summary || target.id}`;
+    if (target.kind === "causal-claim") return `Causal claim: ${causalityReport.claims.find((item) => item.id === target.id)?.summary || target.id}`;
+    return `Evidence: ${target.ownerKind}/${target.ownerId}`;
   }
 
   function exportBlueprint() {
@@ -1858,6 +2038,10 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
             <div className="valueProposition">{graph.premise}<span>{graph.observerBrief}</span></div>
           </div>
           <div className="worldStageControls">
+            <div className={`correctionModePill ${appliedCorrections.length ? "corrected" : "original"}`} data-testid="correction-mode-pill">
+              <strong>{correctionModeLabel}</strong>
+              <span>{appliedCorrections.length ? `${appliedCorrections.length} overlay patch(es) active` : "Raw extraction is preserved"}</span>
+            </div>
             <select data-testid="chapter-filter" value={chapterFilter} onChange={(event) => setChapterFilter(event.target.value)}>
               <option value="all">All chapters</option>
               {project.chapters.map((chapter) => <option key={chapter.input.id} value={chapter.input.id}>{chapter.input.title}</option>)}
@@ -1866,6 +2050,7 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
           </div>
         </header>
         <nav className="worldViewTabs" data-testid="world-view-tabs">
+          <button type="button" className={worldView === "audit" ? "active" : ""} onClick={() => setWorldView("audit")}><ShieldCheck size={15} /> Audit</button>
           <button type="button" className={worldView === "game" ? "active" : ""} onClick={() => setWorldView("game")}><Play size={15} /> Game</button>
           <button type="button" className={worldView === "replay" ? "active" : ""} onClick={() => setWorldView("replay")}><Play size={15} /> Replay</button>
           <button type="button" className={worldView === "ask" ? "active" : ""} onClick={() => setWorldView("ask")}><MessageSquare size={15} /> Ask</button>
@@ -1876,6 +2061,88 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
           <button type="button" className={worldView === "events" ? "active" : ""} onClick={() => setWorldView("events")}><ListTree size={15} /> Events</button>
         </nav>
         <div className="worldCanvasWrap">
+          {worldView === "audit" && (
+            <section className="auditWorkbench" data-testid="audit-view">
+              <div className="auditHero">
+                <div>
+                  <span className="eyebrow">Evidence Correction & Quality Audit</span>
+                  <h3>Trust Score {auditReport.score}</h3>
+                  <small>{auditReport.issues.length} issue(s), {appliedCorrections.length} applied correction(s), {correctionModeLabel}</small>
+                </div>
+                <div className="auditQuickActions">
+                  <button data-testid="quick-rename-entity" type="button" onClick={quickRenameFirstEntity}>Rename entity</button>
+                  <button data-testid="quick-merge-entity" type="button" onClick={quickMergeDuplicateEntity}>Merge duplicate</button>
+                  <button data-testid="quick-replace-evidence" type="button" onClick={quickReplaceEvidence}>Replace evidence</button>
+                  <button data-testid="quick-hide-causal" type="button" onClick={quickHideCausalClaim}>Hide causal claim</button>
+                </div>
+              </div>
+              <div className="auditMetricGrid" data-testid="audit-metrics">
+                {auditReport.metrics.map((metric) => (
+                  <article key={metric.id}>
+                    <strong>{metric.score}</strong>
+                    <span>{metric.label}</span>
+                    <small>{metric.weight}% / {metric.detail}</small>
+                  </article>
+                ))}
+              </div>
+              <div className="auditFilterBar" data-testid="audit-filter-bar">
+                {(["all", "evidence", "entity", "relationship", "event", "character", "theme", "causality", "replay-readiness"] as NovelAuditFilter[]).map((filter) => (
+                  <button key={filter} type="button" className={auditFilter === filter ? "active" : ""} onClick={() => setAuditFilter(filter)}>{filter}</button>
+                ))}
+              </div>
+              <div className="auditColumns">
+                <section className="auditIssueQueue" data-testid="audit-issue-queue">
+                  <div className="panelHeaderLine"><h3>Issue Queue</h3><small>{filteredAuditIssues.length}</small></div>
+                  {filteredAuditIssues.length === 0 && <p className="evidenceNote">No issues for this filter.</p>}
+                  {filteredAuditIssues.slice(0, 30).map((issue) => (
+                    <button key={issue.id} type="button" className={`auditIssue ${issue.severity} ${selected.type === "quality-issue" && selected.id === issue.id ? "selected" : ""}`} onClick={() => {
+                      setSelected({ type: "quality-issue", id: issue.id });
+                      setInspectorTab("correction");
+                    }}>
+                      <span>{issue.severity} / {issue.category}</span>
+                      <strong>{issue.title}</strong>
+                      <small>{issue.detail}</small>
+                    </button>
+                  ))}
+                </section>
+                <section className="auditSuggestedFixes" data-testid="audit-suggested-fixes">
+                  <div className="panelHeaderLine"><h3>Suggested Fixes</h3><small>{suggestedCorrectionPatches.length}</small></div>
+                  {suggestedCorrectionPatches.slice(0, 12).map((patch) => (
+                    <article key={patch.id}>
+                      <button type="button" data-testid={`suggested-correction-${patch.id}`} onClick={() => {
+                        setSelected({ type: "correction", id: patch.id });
+                        setInspectorTab("correction");
+                      }}>
+                        <strong>{patch.reason}</strong>
+                        <span>{patch.target.kind} / {patch.operation.type}</span>
+                      </button>
+                      <div>
+                        <button type="button" data-testid={`apply-correction-${patch.id}`} onClick={() => applySuggestedCorrection(patch)}>Apply</button>
+                        <button type="button" onClick={() => dismissSuggestedCorrection(patch)}>Dismiss</button>
+                      </div>
+                    </article>
+                  ))}
+                </section>
+                <section className="auditAppliedCorrections" data-testid="audit-applied-corrections">
+                  <div className="panelHeaderLine"><h3>Applied Corrections</h3><small>{appliedCorrections.length}</small></div>
+                  {!appliedCorrections.length && <p className="evidenceNote">No overlay patch is active. Apply a suggested fix or quick correction to switch into Corrected View.</p>}
+                  {appliedCorrections.map((patch) => (
+                    <article key={patch.id}>
+                      <button type="button" data-testid={`applied-correction-${patch.id}`} onClick={() => {
+                        setSelected({ type: "correction", id: patch.id });
+                        setInspectorTab("correction");
+                      }}>
+                        <strong>{patch.reason}</strong>
+                        <span>{patch.target.kind} / {patch.operation.type}</span>
+                      </button>
+                      <button type="button" data-testid={`revert-correction-${patch.id}`} onClick={() => revertCorrection(patch.id)}>Revert</button>
+                    </article>
+                  ))}
+                </section>
+              </div>
+              {!correctionValidation.valid && <p className="evidenceNote">Correction validation: {correctionValidation.errors[0]}</p>}
+            </section>
+          )}
           {worldView === "game" && (
             <section className="novelGameView" data-testid="novel-game-view">
               <div className="gameHudBar">
@@ -2305,6 +2572,7 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
           <button type="button" className={inspectorTab === "inspector" ? "active" : ""} onClick={() => setInspectorTab("inspector")}>Inspector</button>
           <button type="button" className={inspectorTab === "simulation" ? "active" : ""} onClick={() => setInspectorTab("simulation")}>Simulation</button>
           <button type="button" className={inspectorTab === "writer" ? "active" : ""} onClick={() => setInspectorTab("writer")}>Writer</button>
+          <button type="button" className={inspectorTab === "correction" ? "active" : ""} onClick={() => setInspectorTab("correction")}>Correction</button>
         </nav>
 
         {inspectorTab === "inspector" && (
@@ -2573,6 +2841,70 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
               <div className="authoringActions"><button type="button" onClick={() => void copyBlueprint()}>Copy</button><button type="button" onClick={exportBlueprint}>Export</button></div>
               <textarea data-testid="blueprint-export" value={blueprintExportText} onChange={(event) => setBlueprintExportText(event.target.value)} />
             </div>}
+          </section>
+        )}
+
+        {inspectorTab === "correction" && (
+          <section className="actionPanel correctionInspectorPanel" data-testid="correction-inspector">
+            <div className="panelHeaderLine">
+              <h2><ShieldCheck size={16} /> Correction</h2>
+              <small>{auditReport.score}% trust</small>
+            </div>
+            <p className="evidenceNote">Corrections are a local overlay. Original extracted chapters, evidence indexes, and merged graph stay unchanged.</p>
+            {selectedQualityIssue && (
+              <article className={`worldInspectCard compact auditIssueDetail ${selectedQualityIssue.severity}`} data-testid="quality-issue-inspector">
+                <span className="eyebrow">{selectedQualityIssue.severity} / {selectedQualityIssue.category}</span>
+                <h3>{selectedQualityIssue.title}</h3>
+                <p>{selectedQualityIssue.detail}</p>
+                <div className="themeSignalMeta">
+                  <span>Target: {correctionTargetLabel(selectedQualityIssue.target)}</span>
+                  <span>Issue id: {selectedQualityIssue.id}</span>
+                </div>
+              </article>
+            )}
+            {selectedCorrectionPatch ? (
+              <article className="worldInspectCard compact correctionPatchDetail" data-testid="correction-patch-inspector">
+                <span className="eyebrow">{selectedCorrectionPatch.status} / {selectedCorrectionPatch.operation.type}</span>
+                <h3>{correctionTargetLabel(selectedCorrectionPatch.target)}</h3>
+                <p>{selectedCorrectionPatch.reason}</p>
+                <div className="themeSignalMeta">
+                  <span>Patch: {selectedCorrectionPatch.id}</span>
+                  <span>Operation: {selectedCorrectionPatch.operation.type}</span>
+                  <span>Target id: {selectedCorrectionPatch.target.id}</span>
+                  <span>Audit trail: {selectedCorrectionPatch.auditTrail.length}</span>
+                </div>
+                <pre className="compactJson">{JSON.stringify(selectedCorrectionPatch.operation, null, 2)}</pre>
+                {selectedCorrectionPatch.operation.type === "replace-evidence" && renderEvidenceList(selectedCorrectionPatch.operation.evidence, "Replacement evidence")}
+                {selectedCorrectionPatch.operation.type === "add-evidence" && renderEvidenceList(selectedCorrectionPatch.operation.evidence, "Added evidence")}
+                <div className="authoringActions">
+                  {selectedCorrectionPatch.status === "suggested" && (
+                    <>
+                      <button data-testid="correction-apply-selected" type="button" onClick={() => applySuggestedCorrection(selectedCorrectionPatch)}>Apply</button>
+                      <button type="button" onClick={() => dismissSuggestedCorrection(selectedCorrectionPatch)}>Dismiss</button>
+                    </>
+                  )}
+                  {selectedCorrectionPatch.status === "applied" && <button data-testid="correction-revert-selected" type="button" onClick={() => revertCorrection(selectedCorrectionPatch.id)}>Revert</button>}
+                  {selectedCorrectionPatch.status === "reverted" && <span>Reverted. Corrected view no longer uses this patch.</span>}
+                  {selectedCorrectionPatch.status === "dismissed" && <span>Dismissed. It remains out of the corrected view.</span>}
+                </div>
+              </article>
+            ) : (
+              <article className="worldInspectCard compact">
+                <span className="eyebrow">No patch selected</span>
+                <h3>Audit queue ready</h3>
+                <p>Select an issue, suggested fix, or applied correction to inspect the overlay impact.</p>
+              </article>
+            )}
+            <section className="correctionScopeList">
+              <div className="panelHeaderLine"><h3>Overlay Scope</h3><small>{appliedCorrections.length} active</small></div>
+              {!appliedCorrections.length && <p className="evidenceNote">Original graph mode. Corrections remain local until a patch is applied.</p>}
+              {appliedCorrections.slice(0, 8).map((patch) => (
+                <button key={patch.id} type="button" className={selectedCorrectionPatch?.id === patch.id ? "selected" : ""} onClick={() => selectWorldItem({ type: "correction", id: patch.id })}>
+                  <strong>{patch.operation.type}</strong>
+                  <span>{correctionTargetLabel(patch.target)}</span>
+                </button>
+              ))}
+            </section>
           </section>
         )}
       </aside>

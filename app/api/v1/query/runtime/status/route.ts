@@ -12,6 +12,7 @@ export async function GET() {
     capabilities: {
       detectiveTown: true,
       livingWorldLab: true,
+      livingWorldAuditStudio: true,
       agentInterventionLoop: true,
       persistentAgentTown: true,
       caseEmergenceFactory: true,
