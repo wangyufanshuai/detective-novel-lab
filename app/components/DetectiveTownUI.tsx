@@ -9,6 +9,7 @@ import {
   Database,
   FileSearch,
   Gavel,
+  GitBranch,
   HelpCircle,
   Loader2,
   Map as MapIcon,
@@ -25,6 +26,7 @@ import type { ReactNode } from "react";
 import type {
   CaseLogicReport,
   CaseTemplateId,
+  CaseCandidate,
   DeductionCase,
   DeductionGraphNode,
   EmergenceProofTrace,
@@ -33,12 +35,16 @@ import type {
   InvestigationProgress,
   MapInteractiveTarget,
   MurderArchetype,
+  NpcActionCandidate,
+  NpcAgentState,
   PlayerSession,
   PlayerTheory,
+  PersistentTownRuntime,
   ProofTourStep,
   ProofViewMode,
   RuntimeMode,
   SuspectBoardRow,
+  TownEmergenceQueue,
   WorldEvent,
   WorldMapActor,
   WorldMapMarker,
@@ -50,7 +56,7 @@ import type { SuggestedAction } from "@/app/hooks/useDetectiveTownRuntime";
 import type { EvidenceImpact } from "@/app/hooks/useInvestigationActions";
 import type { GuidedTask, SelectionHighlight } from "@/app/hooks/useGuidedOnboarding";
 
-export type InspectorTabId = "events" | "investigation" | "logic" | "people" | "developer";
+export type InspectorTabId = "events" | "investigation" | "logic" | "agent" | "people" | "developer";
 
 type CaseTemplateOption = { id: CaseTemplateId; title: string; description?: string };
 type CaseMode = "premium" | "generated";
@@ -244,6 +250,7 @@ export function ControlRail({
   reopenOnboarding,
   openAuthoring,
   openWorldGraph,
+  openPersistentTown,
   switchRuntime
 }: {
   runtimeMode: RuntimeMode;
@@ -281,6 +288,7 @@ export function ControlRail({
   reopenOnboarding: () => void;
   openAuthoring: () => void;
   openWorldGraph: () => void;
+  openPersistentTown: () => void;
   switchRuntime: (value: RuntimeMode) => void;
 }) {
   const steps: [string, boolean][] = [
@@ -307,6 +315,7 @@ export function ControlRail({
         <button className="active">Play</button>
         <button data-testid="open-authoring" onClick={openAuthoring}>Authoring</button>
         <button data-testid="open-world-graph" onClick={openWorldGraph}><Network size={14} /> Living World Lab</button>
+        <button data-testid="open-persistent-town" onClick={openPersistentTown}><Clock size={14} /> 持续小镇</button>
       </div>
 
       <section className="hudPanel currentCasePanel">
@@ -404,7 +413,7 @@ export function ControlRail({
         </div>
       </details>
 
-      <div className="statusBox"><AlertTriangle size={16} /><span>{status}</span></div>
+      <div className="statusBox" data-testid="status-line"><AlertTriangle size={16} /><span>{status}</span></div>
     </aside>
   );
 }
@@ -911,6 +920,114 @@ export function SuspectBoardPanel({
         </article>
       )}
     </section>
+  );
+}
+
+export function AgentControlPanel({
+  runtime,
+  queue,
+  selectedAgent,
+  selectedAgentCandidates,
+  runningBusy,
+  selectedCharacterName,
+  startRuntime,
+  pauseRuntime,
+  stepRuntime,
+  resetRuntime,
+  interveneAgent,
+  extractCase
+}: {
+  runtime: PersistentTownRuntime | null;
+  queue: TownEmergenceQueue | null;
+  selectedAgent?: NpcAgentState | null;
+  selectedAgentCandidates: NpcActionCandidate[];
+  runningBusy: boolean;
+  selectedCharacterName?: string;
+  startRuntime: () => void;
+  pauseRuntime: () => void;
+  stepRuntime: () => void;
+  resetRuntime: () => void;
+  interveneAgent: () => void;
+  extractCase: (candidate: CaseCandidate) => void;
+}) {
+  const candidates = queue?.candidates || [];
+  return (
+    <div className="stackedInspector persistentTownPanel" data-testid="persistent-town-panel">
+      <section className="actionPanel">
+        <div className="panelHeaderLine">
+          <h2><Network size={16} /> Persistent Agent Town</h2>
+          <span className={`runtimePill ${runtime?.status || "paused"}`}>{runtime?.status || "not started"}</span>
+        </div>
+        <p>NPCs observe, update memory, score legal actions, write WorldEvents, then generate case candidates.</p>
+        <div className="logicBadges">
+          <span>Tick: {runtime?.tick ?? 0}</span>
+          <span>Time: {runtime?.currentDay ?? 1} / {runtime?.currentTime || "--:--"}</span>
+          <span>Agents: {runtime?.agentStates.length ?? 0}</span>
+          <span>Candidates: {candidates.length}</span>
+          <span>Valid: {queue?.validCount ?? 0}</span>
+        </div>
+        <div className="townRuntimeActions">
+          <button type="button" className="primaryButton compact" onClick={startRuntime} disabled={runningBusy}>Start</button>
+          <button type="button" onClick={pauseRuntime} disabled={runningBusy || !runtime}>Pause</button>
+          <button type="button" onClick={stepRuntime} disabled={runningBusy || !runtime}>Step</button>
+          <button type="button" onClick={resetRuntime} disabled={runningBusy || !runtime}>Reset</button>
+        </div>
+        <small>{queue?.nextAction || "Start the runtime to build an emergence queue."}</small>
+      </section>
+
+      <section className="actionPanel agentStatePanel" data-testid="agent-state-panel">
+        <h2><Users size={16} /> Agent State</h2>
+        {selectedAgent ? (
+          <article className="worldInspectCard compact">
+            <span className="eyebrow">{selectedCharacterName || selectedAgent.npcId}</span>
+            <h3>{selectedAgent.currentGoal}</h3>
+            <p>{selectedAgent.currentPlan.join(" -> ")}</p>
+            <div className="logicBadges">
+              <span>Priority: {selectedAgent.goalPriority}</span>
+              <span>Pressure: {selectedAgent.relationshipPressure}</span>
+              <span>Secret risk: {selectedAgent.secretRisk}</span>
+              <span>Alert: {selectedAgent.alertness}</span>
+              <span>Location: {selectedAgent.locationId}</span>
+            </div>
+            <small>Known facts: {selectedAgent.knownFactIds.slice(-4).join(" / ") || "none"}</small>
+            <button type="button" className="secondaryButton full" onClick={interveneAgent} disabled={runningBusy}>Apply resource intervention</button>
+          </article>
+        ) : <p>Select an NPC on the map or suspect board to inspect agent state.</p>}
+        <div className="simulationCandidateList" data-testid="agent-action-candidates">
+          {selectedAgentCandidates.slice(0, 5).map((candidate) => (
+            <article key={candidate.id} className={candidate.legal ? "source" : "gap"}>
+              <strong>{candidate.kind}: {candidate.description}</strong>
+              <span>Score {candidate.score.total} / target {candidate.targetLocationId}</span>
+              <small>{candidate.legal ? candidate.score.reasons.join(" / ") || "legal action" : candidate.blockedReason || "blocked by local rules"}</small>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="actionPanel emergenceQueuePanel" data-testid="emergence-queue">
+        <h2><GitBranch size={16} /> Emergence Queue</h2>
+        {!candidates.length && <p>No case candidates yet. Step the runtime until pressure chains form.</p>}
+        {candidates.slice(0, 5).map((candidate) => (
+          <article key={candidate.id} className={`candidateCard ${candidate.validation.valid ? "pass" : "fail"}`}>
+            <div className="panelHeaderLine">
+              <strong>{candidate.culpritId} {"->"} {candidate.victimId}</strong>
+              <span>{candidate.status}</span>
+            </div>
+            <p>Pressure {candidate.pressureScore}; events {candidate.riskChainEventIds.length}; memories {candidate.memoryIds.length}</p>
+            <div className="logicBadges">
+              <span>WorldEvent: {candidate.validation.worldBackedEvidence ? "Yes" : "No"}</span>
+              <span>Memory: {candidate.validation.memoryScopedTestimony ? "Yes" : "No"}</span>
+              <span>Timeline: {candidate.validation.timelineClosed ? "Yes" : "No"}</span>
+              <span>Hard logic: {candidate.validation.hardLogicValid ? "Pass" : "Pending"}</span>
+            </div>
+            {!!candidate.validation.errors.length && <small>{candidate.validation.errors.slice(0, 2).join(" / ")}</small>}
+            <button type="button" className="secondaryButton full" onClick={() => extractCase(candidate)} disabled={runningBusy}>
+              Extract playable case
+            </button>
+          </article>
+        ))}
+      </section>
+    </div>
   );
 }
 

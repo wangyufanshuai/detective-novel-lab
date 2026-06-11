@@ -4,7 +4,10 @@
 
 Detective Town is a local-first mystery engine for fair-play detective games. It does not ask an LLM to invent the culprit or write a mystery from scratch. The engine first simulates a town: NPC schedules, relationships, secrets, memories, conflicts, movements, evidence, and testimony. A case is then extracted from the world event log and validated by local TypeScript rules.
 
-The project now also includes **Living World Lab**: a novel/world observer workbench for extracting a world graph from chapters, replaying source-backed character actions, applying bounded interventions, and exposing the same observe -> decide -> intervene -> observe loop through `/api/v1/*`.
+The project now also includes two advanced labs:
+
+- **Persistent Agent Town**: a SQLite-backed runtime where NPCs keep goals, plans, memories, pressure, resources, and action scores across ticks until playable case candidates emerge.
+- **Living World Lab**: a novel/world observer workbench for extracting a world graph from chapters, replaying source-backed character actions, applying bounded interventions, and exposing the same observe -> decide -> intervene -> observe loop through `/api/v1/*`.
 
 DeepSeek is used only for NPC surface dialogue and optional solution prose. It does not decide the culprit, method, evidence, or timeline.
 
@@ -54,6 +57,7 @@ Detective Town uses the LLM only as a surface language layer. The durable case l
 - **Event-sourced evidence**: decisive clues must come from `WorldEvent` records.
 - **Memory-scoped testimony**: NPCs can only answer from visible memories and discovered evidence.
 - **Explainable emergence**: goals, intents, and causal links show how the case came out of simulated life events.
+- **Persistent agent runtime**: NPCs observe, update memory, score actions locally, write new events, and surface case candidates with validation failures or playable extraction.
 - **Living World Lab**: imported chapters become observable entities, relationships, events, evidence spans, causal chains, and replayable simulations.
 - **Agent intervention loop**: scripts can query the world, start a replay, intervene in actor state, then query the changed branch.
 - **Symbolic culprit validation**: local rules verify motive, means, opportunity, exclusions, and reasoning coverage.
@@ -72,6 +76,27 @@ Living World Lab is the world-simulation side of the project. It is designed to 
 - Use the Phaser observer canvas to see actors, locations, event markers, replay paths, evidence heat, and branch effects.
 
 This is not a replacement for Detective Town. It is the larger world-simulation lab that demonstrates how cases and narratives can emerge from observable state instead of raw LLM prose.
+
+## Persistent Agent Town
+
+Persistent Agent Town is the runtime side of Detective Town. It keeps agent state inside the persisted `WorldState.data` JSON while continuing to write durable `WorldEvent` and `MemoryRecord` records through the existing SQLite repository.
+
+Each tick follows a fixed local loop:
+
+```text
+observe events -> update memories and beliefs -> generate legal actions -> score locally -> execute -> write events -> build case candidates
+```
+
+Action scoring is deterministic and inspectable. The score includes goal priority, known information, relationship pressure, resource availability, location reachability, risk, evidence consistency, and case impact. DeepSeek is not used for action legality, culprit choice, evidence placement, candidate validation, or player judgement.
+
+The UI exposes this through **持续小镇 / Persistent Agent Town**:
+
+- `Agent` tab: current NPC goal, short-term plan, known facts, risk, alertness, resources, and action candidate scores.
+- `Emergence Queue`: candidate culprit/victim chains, source event count, memory count, validation status, and failure reasons.
+- bounded intervention: changing an NPC resource creates a counterfactual branch without overwriting original world facts.
+- extraction: a valid candidate can be converted into the existing playable investigation flow.
+
+See [docs/persistent-agent-town.md](docs/persistent-agent-town.md).
 
 ## Proof Of Emergence
 
@@ -140,14 +165,14 @@ Advanced mode keeps the larger 30 NPC multi-day simulation for development and s
 flowchart LR
   A["Seed"] --> B["NPC schedules"]
   B --> C["NPC goals and intents"]
-  C --> D["World events"]
-  D --> E["NPC memories"]
-  E --> F["Social pressure"]
-  F --> G["Causal trace"]
-  G --> H["Murder event"]
-  H --> I["Evidence placement"]
-  I --> J["Case extraction"]
-  J --> K["Rule validation"]
+  C --> D["Persistent agent runtime"]
+  D --> E["Action candidates and scores"]
+  E --> F["World events"]
+  F --> G["NPC memories"]
+  G --> H["Social pressure and causal trace"]
+  H --> I["Case candidates"]
+  I --> J["Candidate validation"]
+  J --> K["Playable case extraction"]
   K --> L["Playable investigation"]
   L --> M["Theory judgement"]
 ```
@@ -194,6 +219,11 @@ Stable Agent Control API:
 - `GET /api/v1/query/world/map?worldId=...&caseId=...&sessionId=...&day=1&time=21:30`
 - `GET /api/v1/query/case?caseId=...`
 - `GET /api/v1/query/case/deduction-graph?caseId=...`
+- `GET /api/v1/query/town/runtime?worldId=...`
+- `GET /api/v1/query/town/agents?worldId=...`
+- `GET /api/v1/query/town/agent?worldId=...&npcId=...`
+- `GET /api/v1/query/town/candidates?worldId=...`
+- `GET /api/v1/query/town/emergence-proof?worldId=...&candidateId=...`
 - `GET /api/v1/query/novel/world-graph?projectId=...`
 - `GET /api/v1/query/novel/simulation?projectId=...&runId=...`
 - `GET /api/v1/query/novel/detail?type=entity|event|relationship|development|causal-claim|causal-edge&id=...`
@@ -202,6 +232,12 @@ Stable Agent Control API:
 - `POST /api/v1/command/investigation/discover`
 - `POST /api/v1/command/investigation/interrogate`
 - `POST /api/v1/command/investigation/submit-theory`
+- `POST /api/v1/command/town/runtime/start`
+- `POST /api/v1/command/town/runtime/pause`
+- `POST /api/v1/command/town/runtime/step`
+- `POST /api/v1/command/town/runtime/reset`
+- `POST /api/v1/command/town/agent/intervene`
+- `POST /api/v1/command/town/case/extract`
 - `POST /api/v1/command/novel/import`
 - `POST /api/v1/command/novel/analyze`
 - `POST /api/v1/command/novel/evidence-index`
@@ -280,6 +316,7 @@ Core exports are available from `packages/engine/src` and `lib/engine`:
 - World engine: `createInitialWorld`, `simulateDailyLife`, `simulateWorldTick`, `extractCaseFromWorld`, `validateWorldCase`, `buildNpcKnowledgeContext`, `makeRuleBoundInterrogation`, `updateTestimonyWithContradiction`, `buildTravelConstraint`, `analyzeReachability`, `buildCaseQualityReport`, `buildReasoningTrace`, `submitWorldTheory`.
 - Evaluation: `runEval`, `renderEvalMarkdown`.
 - Emergence proof: `buildEmergenceProofTrace`, `evaluateWorldEmergence`, `runEmergenceBenchmark`.
+- Persistent Agent Town: `createPersistentTownRuntime`, `advancePersistentTownTick`, `deriveNpcAgentState`, `scoreNpcActionCandidates`, `buildCaseCandidatesFromRuntime`, `validateCaseCandidate`, `extractPlayableCaseFromCandidate`, `buildAgentDecisionTrace`, `buildTownEmergenceQueue`.
 - Static runtime: `createStaticDemoRuntime`, `discoverDemoEvidence`, `interrogateDemoNpc`, `submitDemoTheory`, `revealDemoSolution`.
 - Visual logic: `buildWorldMapSnapshot`, `buildDeductionGraph`, `deriveSuspectBoard`, `buildCaseLogicReport`, `validateHardCaseLogic`.
 - Case library and emergence: `createCaseLibrary`, `createCaseTemplate`, `listCaseTemplates`, `buildWorldCausalTrace`, `validateCausalTrace`, `deriveNpcIntentTimeline`.
@@ -292,6 +329,7 @@ Core exports are available from `packages/engine/src` and `lib/engine`:
 npm run build
 npm run test:rules
 npm run test:world
+npm run test:persistent-town
 npm run test:ai
 npm run test:encoding
 npm run test
@@ -300,9 +338,10 @@ npm run benchmark:emergence
 npm run test:e2e
 node scripts/run-agent-api-smoke.mjs
 node scripts/run-novel-agent-api-smoke.mjs
+node scripts/run-persistent-town-api-smoke.mjs
 ```
 
-`npm run test:world` checks deterministic Showcase generation, all three premium templates, 8 NPC default mode, 24h timeline, event-backed evidence, memory-scoped testimony, unique culprit validation, non-culprit exclusions, causal traces, emergence proof traces, reasoning traces, authoring regression, and advanced 30 NPC regression. `npm run test:novel-world` checks chapter import, evidence indexing, world graph validation, causal chains, theme/character arcs, grounded replay, intervention branches, and Phaser scene state. `npm run benchmark:emergence` writes a 20-seed proof-of-emergence report under `outputs/`. `npm run test:encoding` fails on known mojibake markers in app, engine, and E2E source files.
+`npm run test:world` checks deterministic Showcase generation, all three premium templates, 8 NPC default mode, 24h timeline, event-backed evidence, memory-scoped testimony, unique culprit validation, non-culprit exclusions, causal traces, emergence proof traces, reasoning traces, authoring regression, and advanced 30 NPC regression. `npm run test:persistent-town` checks deterministic ticks, complete decision traces, action scoring fields, candidate validation, playable extraction, and counterfactual interventions. `npm run test:novel-world` checks chapter import, evidence indexing, world graph validation, causal chains, theme/character arcs, grounded replay, intervention branches, and Phaser scene state. `npm run benchmark:emergence` writes a 20-seed proof-of-emergence report under `outputs/`. `npm run test:encoding` fails on known mojibake markers in app, engine, and E2E source files.
 
 Optional live DeepSeek eval:
 
@@ -317,6 +356,7 @@ The live eval is intentionally not part of the default test command. It uses loc
 - [Agent Control API](docs/agent-control-api.md)
 - [World Model](docs/world-model.md)
 - [Living World Lab](docs/living-world-lab.md)
+- [Persistent Agent Town](docs/persistent-agent-town.md)
 - [World Simulation Depth](docs/world-simulation-depth.md)
 - [AI Safety](docs/ai-safety.md)
 - [Showcase Walkthrough](docs/showcase-walkthrough.md)

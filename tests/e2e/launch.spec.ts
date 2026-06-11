@@ -48,13 +48,14 @@ async function discoverArchiveEvidence(page: Page) {
 }
 
 test.beforeEach(async ({ page }, testInfo) => {
+  const usesServerApis = testInfo.title.includes("novel world graph") || testInfo.title.includes("persistent agent town");
   await page.addInitScript(() => {
     if (!sessionStorage.getItem("detective-town-e2e-initialized")) {
       localStorage.removeItem("detective-town-onboarding-v1");
       sessionStorage.setItem("detective-town-e2e-initialized", "true");
     }
   });
-  if (!testInfo.title.includes("novel world graph")) {
+  if (!usesServerApis) {
     await page.route("**/api/**", async (route) => {
       throw new Error(`Static demo attempted an API request: ${route.request().url()}`);
     });
@@ -67,10 +68,11 @@ test.beforeEach(async ({ page }, testInfo) => {
       }
     });
   }
-  await page.goto("/");
+  await page.goto(usesServerApis ? "/" : "/?runtime=static");
 });
 
 test("novel world graph analyzes three chapters, merges changes and restores local project", async ({ page }) => {
+  test.setTimeout(90_000);
   await page.goto("/");
   await page.evaluate(async () => {
     localStorage.removeItem("detective-town-novel-world-project-v2");
@@ -650,6 +652,33 @@ test("novel world graph analyzes three chapters, merges changes and restores loc
   await expect(page.getByTestId("blueprint-result")).toHaveCount(0);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
+});
+
+test("persistent agent town runs, scores agents and extracts a playable case", async ({ page }, testInfo) => {
+  test.setTimeout(60_000);
+  await page.goto("/?runtime=server");
+  await dismissOnboarding(page);
+  await page.locator(".settingsDrawer summary").click();
+  await page.getByLabel("Seed").fill(`persistent-e2e-${testInfo.project.name}`);
+  await page.getByRole("button", { name: /Reset \/ Create Town/ }).click();
+  await expect(page.getByTestId("pixel-map")).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator(".actorPin")).toHaveCount(8, { timeout: 20_000 });
+
+  await page.getByTestId("open-persistent-town").click();
+  await expect(page.getByTestId("persistent-town-panel")).toBeVisible();
+  await page.getByTestId("persistent-town-panel").getByRole("button", { name: "Start" }).click();
+  await expect(page.getByTestId("agent-state-panel")).toContainText("Agent State", { timeout: 20_000 });
+  await expect(page.getByTestId("agent-action-candidates")).toContainText("Score", { timeout: 20_000 });
+
+  for (let index = 0; index < 3; index += 1) {
+    await page.getByTestId("persistent-town-panel").getByRole("button", { name: "Step" }).click();
+  }
+
+  await expect(page.getByTestId("emergence-queue")).toContainText("Pressure", { timeout: 20_000 });
+  await expect(page.getByTestId("emergence-queue")).toContainText("WorldEvent");
+  await page.getByTestId("emergence-queue").getByRole("button", { name: "Extract playable case" }).first().click();
+  await expect(page.getByTestId("status-line")).toContainText("Playable case extracted", { timeout: 20_000 });
+  await expect(page.getByTestId("inspector-rail").locator("button.active")).toContainText("调查");
 });
 
 test("guides a first-time player and persists dismissal", async ({ page }) => {

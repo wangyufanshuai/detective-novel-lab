@@ -41,6 +41,7 @@ import {
   EventLogPanel,
   InspectorRail,
   InvestigationPanel,
+  AgentControlPanel,
   OnboardingOverlay,
   PlayShell,
   ProofTourPanel,
@@ -150,6 +151,10 @@ import type {
   InvestigationProgress,
   MapInteractiveTarget,
   MurderArchetype,
+  CaseCandidate,
+  NpcActionCandidate,
+  NpcAgentState,
+  PersistentTownRuntime,
   NovelBatchQueueState,
   NovelAskAnswer,
   NovelAskEvidenceHit,
@@ -200,6 +205,7 @@ import type {
   RevealFactContract,
   RuntimeMode,
   SuspectBoardRow,
+  TownEmergenceQueue,
   WorldEvent,
   WorldMapActor,
   WorldMapMarker,
@@ -221,7 +227,7 @@ type AiSafetyState = {
   evidenceCount?: number;
 };
 type CaseMode = "premium" | "generated";
-type AppMode = "play" | "authoring" | "world-graph";
+type AppMode = "play" | "authoring" | "world-graph" | "persistent-town";
 type AuthoringTab = "case" | "characters" | "evidence" | "scenes" | "timeline" | "logic";
 
 const storageKey = "detective-town-launch-v1";
@@ -292,6 +298,17 @@ async function postJson<T>(url: string, body: unknown) {
 
 async function getV1<T>(url: string) {
   const response = await fetch(apiUrl(url));
+  const data = (await response.json()) as V1Result<T>;
+  if (!data.ok || !data.data) throw new Error(data.error?.message || "Request failed");
+  return data.data;
+}
+
+async function postV1<T>(url: string, body: unknown) {
+  const response = await fetch(apiUrl(url), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
   const data = (await response.json()) as V1Result<T>;
   if (!data.ok || !data.data) throw new Error(data.error?.message || "Request failed");
   return data.data;
@@ -2614,6 +2631,10 @@ export default function Home() {
   const [authoringImportText, setAuthoringImportText] = useState("");
   const [authoringExportText, setAuthoringExportText] = useState("");
   const [authoringStatus, setAuthoringStatus] = useState("Authoring \u4f7f\u7528\u6d4f\u89c8\u5668\u672c\u5730\u72b6\u6001\uff0c\u4e0d\u8bf7\u6c42 DeepSeek\uff0c\u4e0d\u5199\u5165 SQLite\u3002");
+  const [townRuntime, setTownRuntime] = useState<PersistentTownRuntime | null>(null);
+  const [townQueue, setTownQueue] = useState<TownEmergenceQueue | null>(null);
+  const [selectedAgentCandidates, setSelectedAgentCandidates] = useState<NpcActionCandidate[]>([]);
+  const [townRuntimeBusy, setTownRuntimeBusy] = useState(false);
 
   function pushToast(toast: Omit<InvestigationToast, "id">) {
     const id = `toast:${Date.now()}:${Math.random().toString(16).slice(2)}`;
@@ -2721,6 +2742,10 @@ export default function Home() {
       excluded
     };
   }, [contradictedCharacterIds, excludedCharacterIds, questionedCharacterIds, selectedCharacter]);
+  const selectedAgent = useMemo(
+    () => townRuntime?.agentStates.find((agent) => agent.npcId === selectedCharacterId) || null,
+    [selectedCharacterId, townRuntime?.agentStates]
+  );
   const graphExplanation: GraphNodeExplanation | null = useMemo(() => {
     if (!selectedGraphNode || !deductionCase) return null;
     const node = selectedGraphNode;
@@ -2849,9 +2874,10 @@ export default function Home() {
       return { title: `Location: ${selectedScene?.name || "None selected"}`, detail: "Search locations, question NPCs, and submit theory.", tone: "investigation" };
     }
     if (inspectorTab === "logic") return { title: "Case logic", detail: "Deduction graph, causal chain, and answer review unlock after correct reasoning.", tone: "logic" };
+    if (inspectorTab === "agent") return { title: "Persistent Agent Town", detail: selectedAgent ? `${selectedAgent.currentGoal} / ${selectedAgent.locationId}` : "Inspect NPC goals, action scores, and case candidates.", tone: "logic" };
     if (inspectorTab === "people") return { title: "Suspect matrix", detail: "Review motive, means, opportunity, and exclusion evidence.", tone: "people" };
     return { title: "Developer API", detail: "Inspect Agent API, worldId, caseId, and sessionId.", tone: "developer" };
-  }, [inspectorTab, selectedCharacter, selectedEvent, selectedEvidence, selectedScene?.name]);
+  }, [inspectorTab, selectedAgent, selectedCharacter, selectedEvent, selectedEvidence, selectedScene?.name]);
   const causalTrace = activeCase?.causalTrace;
   const causalTraceEvents = useMemo(
     () => (causalTrace?.orderedEventIds || []).map((id) => events.find((event) => event.id === id)).filter((event): event is WorldEvent => Boolean(event)),
@@ -3029,6 +3055,12 @@ export default function Home() {
   }, [activeCase, events, runtimeMode, world]);
 
   useEffect(() => {
+    if (appMode !== "persistent-town" || runtimeMode === "static-demo" || !world?.id) return;
+    void refreshTownRuntime(world.id, selectedCharacterId).catch((error) => setStatus(error instanceof Error ? error.message : "Failed to refresh persistent town"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appMode, runtimeMode, selectedCharacterId, world?.id]);
+
+  useEffect(() => {
     if (runtimeMode !== "static-demo" || !world || !activeCase || !session) return;
     const runtimeState: DemoRuntimeState = { mode: "static-demo", world, events, activeCase, session, progress, revealText };
     localStorage.setItem(storageKey, JSON.stringify({ worldId: world.id, sessionId: session.id, runtimeState }));
@@ -3099,6 +3131,7 @@ export default function Home() {
 
   function hydrateCase(data: { world: WorldState; events?: WorldEvent[]; activeCase?: CaseFromLog; sessions?: PlayerSession[] }) {
     setWorld(data.world);
+    setTownRuntime((data.world as WorldState & { persistentRuntime?: PersistentTownRuntime }).persistentRuntime || null);
     if (data.events) setEvents(data.events);
     if (data.activeCase) {
       setActiveCase(data.activeCase);
@@ -3141,6 +3174,9 @@ export default function Home() {
       setReplaying(false);
       persist(data.world.id, "");
       setStatus("Detective Town created: map, events, memories, and evidence were generated from the simulated world.");
+      setTownRuntime(null);
+      setTownQueue(null);
+      setSelectedAgentCandidates([]);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to create town");
     } finally {
@@ -3209,6 +3245,137 @@ export default function Home() {
       setStatus(error instanceof Error ? error.message : "Failed to advance town");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function refreshTownRuntime(targetWorldId = world?.id, targetNpcId = selectedCharacterId) {
+    if (!targetWorldId || runtimeMode === "static-demo") return;
+    const runtimeData = await getV1<{ runtime: PersistentTownRuntime; queue: TownEmergenceQueue }>(`/api/v1/query/town/runtime?worldId=${encodeURIComponent(targetWorldId)}`);
+    setTownRuntime(runtimeData.runtime);
+    setTownQueue(runtimeData.queue);
+    if (targetNpcId) {
+      const agentData = await getV1<{ agent?: NpcAgentState; candidates: NpcActionCandidate[]; trace?: unknown }>(`/api/v1/query/town/agent?worldId=${encodeURIComponent(targetWorldId)}&npcId=${encodeURIComponent(targetNpcId)}`);
+      setSelectedAgentCandidates(agentData.candidates || []);
+    }
+  }
+
+  async function startPersistentTown() {
+    if (!world) return;
+    if (runtimeMode === "static-demo") {
+      setStatus("Persistent Agent Town uses SQLite server runtime. Switch to Server Runtime first.");
+      return;
+    }
+    setTownRuntimeBusy(true);
+    try {
+      const data = await postV1<{ runtime: PersistentTownRuntime; events: WorldEvent[]; queue: TownEmergenceQueue; world: WorldState }>("/api/v1/command/town/runtime/start", { worldId: world.id, steps: 1 });
+      setTownRuntime(data.runtime);
+      setTownQueue(data.queue);
+      setWorld(data.world);
+      setEvents((items) => [...items, ...data.events]);
+      setInspectorTab("agent");
+      setAppMode("persistent-town");
+      setStatus("Persistent Agent Town started. NPC decisions are now writing WorldEvents.");
+      await refreshTownRuntime(data.world.id);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to start Persistent Agent Town");
+    } finally {
+      setTownRuntimeBusy(false);
+    }
+  }
+
+  async function pausePersistentTown() {
+    if (!world) return;
+    setTownRuntimeBusy(true);
+    try {
+      const data = await postV1<{ runtime: PersistentTownRuntime }>("/api/v1/command/town/runtime/pause", { worldId: world.id });
+      setTownRuntime(data.runtime);
+      setStatus("Persistent Agent Town paused.");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to pause runtime");
+    } finally {
+      setTownRuntimeBusy(false);
+    }
+  }
+
+  async function stepPersistentTown() {
+    if (!world) return;
+    if (runtimeMode === "static-demo") {
+      setStatus("Persistent Agent Town uses SQLite server runtime. Switch to Server Runtime first.");
+      return;
+    }
+    setTownRuntimeBusy(true);
+    try {
+      const data = await postV1<{ runtime: PersistentTownRuntime; events: WorldEvent[]; queue: TownEmergenceQueue; world: WorldState }>("/api/v1/command/town/runtime/step", { worldId: world.id, steps: 1 });
+      setTownRuntime(data.runtime);
+      setTownQueue(data.queue);
+      setWorld(data.world);
+      setEvents((items) => [...items, ...data.events]);
+      setTimeValue(timeToMinutes(data.runtime.currentTime));
+      setInspectorTab("agent");
+      setAppMode("persistent-town");
+      setStatus(`Persistent tick ${data.runtime.tick}: ${data.events.length} WorldEvents added, ${data.queue.candidates.length} candidates in queue.`);
+      await refreshTownRuntime(data.world.id);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to step runtime");
+    } finally {
+      setTownRuntimeBusy(false);
+    }
+  }
+
+  async function resetPersistentTown() {
+    if (!world) return;
+    setTownRuntimeBusy(true);
+    try {
+      const data = await postV1<{ runtime: PersistentTownRuntime }>("/api/v1/command/town/runtime/reset", { worldId: world.id });
+      setTownRuntime(data.runtime);
+      setTownQueue(null);
+      setSelectedAgentCandidates([]);
+      setStatus("Persistent Agent Town runtime reset.");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to reset runtime");
+    } finally {
+      setTownRuntimeBusy(false);
+    }
+  }
+
+  async function intervenePersistentAgent() {
+    if (!world || !selectedCharacterId) return;
+    setTownRuntimeBusy(true);
+    try {
+      const data = await postV1<{ runtime: PersistentTownRuntime; intervention: unknown; world: WorldState }>("/api/v1/command/town/agent/intervene", {
+        worldId: world.id,
+        intervention: { actorId: selectedCharacterId, kind: "resource", value: "resource:player-intervention" }
+      });
+      setTownRuntime(data.runtime);
+      setWorld(data.world);
+      setStatus("Counterfactual resource intervention applied to selected NPC.");
+      await refreshTownRuntime(data.world.id);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to apply intervention");
+    } finally {
+      setTownRuntimeBusy(false);
+    }
+  }
+
+  async function extractPersistentCandidate(candidate: CaseCandidate) {
+    if (!world) return;
+    setTownRuntimeBusy(true);
+    try {
+      const data = await postV1<{ world: WorldState; events: WorldEvent[]; activeCase: CaseFromLog; candidate: CaseCandidate; queue: TownEmergenceQueue }>("/api/v1/command/town/case/extract", {
+        worldId: world.id,
+        candidateId: candidate.id
+      });
+      hydrateCase({ world: data.world, activeCase: data.activeCase, events: data.events });
+      setTownQueue(data.queue);
+      setSession(null);
+      setRevealText("");
+      setInspectorTab("investigation");
+      setAppMode("play");
+      setStatus(`Playable case extracted from candidate ${data.candidate.id}. Join the investigation to play it.`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to extract playable case");
+    } finally {
+      setTownRuntimeBusy(false);
     }
   }
 
@@ -3430,7 +3597,7 @@ export default function Home() {
     setSelectedSceneId(actor.locationId);
     setQuestion(`${actor.name}, where were you during the crime window, and what unusual details do you remember?`);
     highlightSelection({ characterId: actor.id, locationId: actor.locationId });
-    setInspectorTab("investigation");
+    setInspectorTab(appMode === "persistent-town" ? "agent" : "investigation");
   }
 
   function handleGapCard(card: GapCard) {
@@ -4051,6 +4218,11 @@ export default function Home() {
           reopenOnboarding={onboarding.reopen}
           openAuthoring={() => setAppMode("authoring")}
           openWorldGraph={() => setAppMode("world-graph")}
+          openPersistentTown={() => {
+            setAppMode("persistent-town");
+            setInspectorTab("agent");
+            void refreshTownRuntime();
+          }}
           switchRuntime={switchRuntime}
         />
       )}
@@ -4084,7 +4256,7 @@ export default function Home() {
           onNpcAction={(characterId) => {
             setSelectedCharacterId(characterId);
             setQuestion("Where were you during the crime window, and what unusual details do you remember?");
-            setInspectorTab("investigation");
+            setInspectorTab(appMode === "persistent-town" ? "agent" : "investigation");
             highlightSelection({ characterId });
           }}
           replaying={replaying}
@@ -4194,6 +4366,26 @@ export default function Home() {
                     }}
                   />
                 </div>
+              )
+            },
+            {
+              id: "agent",
+              label: "Agent",
+              content: (
+                <AgentControlPanel
+                  runtime={townRuntime}
+                  queue={townQueue}
+                  selectedAgent={selectedAgent}
+                  selectedAgentCandidates={selectedAgentCandidates}
+                  runningBusy={townRuntimeBusy}
+                  selectedCharacterName={selectedCharacter?.name}
+                  startRuntime={() => void startPersistentTown()}
+                  pauseRuntime={() => void pausePersistentTown()}
+                  stepRuntime={() => void stepPersistentTown()}
+                  resetRuntime={() => void resetPersistentTown()}
+                  interveneAgent={() => void intervenePersistentAgent()}
+                  extractCase={(candidate) => void extractPersistentCandidate(candidate)}
+                />
               )
             },
             {

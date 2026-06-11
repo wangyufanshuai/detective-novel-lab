@@ -19,3 +19,4 @@ export * from "./authoring";
 export * from "./novel-world";
 export * from "./novel-simulation";
 export * from "./novel-game";
+export * from "./persistent-town";

@@ -4,36 +4,22 @@ import path from "node:path";
 const roots = ["app", "packages/engine/src", "tests/e2e"];
 const extensions = new Set([".ts", ".tsx", ".mjs", ".md"]);
 
-const mojibakeCodepoints = [
-  0x93ba, // 鎺
-  0x748b, // 璋
-  0x95ab, // 閫
-  0x941e, // 鐞
-  0x9366, // 鍦
-  0x93c3, // 鏃
-  0x9342, // 鍒
-  0x9422, // 鐢
-  0x6d63, // 浣
-  0x6d93, // 涓
-  0x7039, // 瀹
-  0x95c2, // 闂
-  0x95b8, // 閸
-  0x9351, // 鍑
-  0x935d, // 鍝
-  0x704f // 瀏
+const mojibakeMarkers = [
+  "鎺", "璋", "閫", "鐞", "鍦", "鏃", "鍂", "鐢", "浣", "涓", "瀹", "闂", "閸", "鍑", "鍝", "灏",
+  "瑙", "褰", "寤", "琛", "鍓", "澶", "妗", "彂", "煡", "瘝", "悊", "磋", "晣", "绗", "閿", "墽",
+  "戠", "勭", "叧", "佸", "枃", "鉁"
 ];
 
-const mojibakeMarkers = mojibakeCodepoints.map((value) => String.fromCodePoint(value));
 const allowQuestionRuns = [
-  /\\?runtime=/,
+  /\?runtime=/,
   /new URLSearchParams/,
-  /[A-Za-z0-9_]\\?\\./,
-  /[A-Za-z0-9_]\\?\\?/,
-  /\\? :/,
-  /\\? "/,
-  /"\\?"/,
-  /\\?;/,
-  /\\?:/,
+  /[A-Za-z0-9_]\?\./,
+  /[A-Za-z0-9_]\?\?/,
+  /\? :/,
+  /\? "/,
+  /"\?"/,
+  /\?;/,
+  /\?:/,
   /\?\)/
 ];
 
@@ -55,7 +41,7 @@ for (const root of roots) {
     const lines = text.split(/\r?\n/);
     lines.forEach((line, index) => {
       const hit = mojibakeMarkers.find((item) => line.includes(item));
-      if (hit) failures.push(`${file}:${index + 1}: contains mojibake codepoint U+${hit.codePointAt(0).toString(16).toUpperCase()}`);
+      if (hit) failures.push(`${file}:${index + 1}: contains mojibake marker ${hit}`);
       if (/\?{3,}/.test(line) && !allowQuestionRuns.some((pattern) => pattern.test(line))) {
         failures.push(`${file}:${index + 1}: contains suspicious repeated question marks`);
       }

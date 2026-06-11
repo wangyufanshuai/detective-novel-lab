@@ -13,6 +13,8 @@ export async function GET() {
       detectiveTown: true,
       livingWorldLab: true,
       agentInterventionLoop: true,
+      persistentAgentTown: true,
+      caseEmergenceFactory: true,
       staticDemo: true
     },
     version: "v1"

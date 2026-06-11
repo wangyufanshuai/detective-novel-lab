@@ -47,9 +47,11 @@ const existingBaseUrl = process.env.AGENT_API_BASE_URL ? baseUrl : null;
 
 if (existingBaseUrl) {
   baseUrl = existingBaseUrl;
+} else if (await isReady("http://127.0.0.1:3000")) {
+  baseUrl = "http://127.0.0.1:3000";
 }
 
-const server = process.env.AGENT_API_BASE_URL || existingBaseUrl
+const server = process.env.AGENT_API_BASE_URL || existingBaseUrl || baseUrl === "http://127.0.0.1:3000"
   ? null
   : spawn(process.platform === "win32" ? process.env.ComSpec || "cmd.exe" : "npm", process.platform === "win32" ? ["/c", "npm", "run", "dev", "--", "-p", String(port)] : ["run", "dev", "--", "-p", String(port)], {
       cwd: process.cwd(),

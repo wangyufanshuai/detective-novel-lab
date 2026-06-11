@@ -34,7 +34,20 @@ async function request(method, url, body) {
   return data.data;
 }
 
-const server = process.env.NOVEL_AGENT_API_BASE_URL
+async function isReady(url) {
+  try {
+    const response = await fetch(`${url}/api/v1/query/runtime/status`);
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+if (!process.env.NOVEL_AGENT_API_BASE_URL && await isReady("http://127.0.0.1:3000")) {
+  baseUrl = "http://127.0.0.1:3000";
+}
+
+const server = process.env.NOVEL_AGENT_API_BASE_URL || baseUrl === "http://127.0.0.1:3000"
   ? null
   : spawn(process.platform === "win32" ? process.env.ComSpec || "cmd.exe" : "npm", process.platform === "win32" ? ["/c", "npm", "run", "dev", "--", "-p", String(port)] : ["run", "dev", "--", "-p", String(port)], {
       cwd: process.cwd(),

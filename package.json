@@ -9,6 +9,7 @@
     "lint": "next lint",
     "test:rules": "node scripts/run-rule-tests.mjs",
     "test:world": "node scripts/run-world-tests.mjs",
+    "test:persistent-town": "node scripts/run-persistent-town-tests.mjs",
     "test:novel-world": "node scripts/run-novel-world-tests.mjs",
     "test:ai": "node scripts/run-ai-safety-tests.mjs",
     "test:encoding": "node scripts/run-encoding-tests.mjs",
@@ -17,7 +18,7 @@
     "test:deepseek": "node scripts/run-deepseek-live-eval.mjs",
     "test:e2e": "playwright test",
     "test:e2e:update-screenshots": "playwright test --update-snapshots",
-    "test": "npm run test:rules && npm run test:world && npm run test:novel-world && npm run test:ai && npm run test:encoding",
+    "test": "npm run test:rules && npm run test:world && npm run test:persistent-town && npm run test:novel-world && npm run test:ai && npm run test:encoding",
     "eval": "node scripts/run-eval.mjs",
     "eval:report": "node scripts/run-eval.mjs",
     "benchmark:emergence": "node scripts/run-emergence-benchmark.mjs"

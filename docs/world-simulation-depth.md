@@ -1,8 +1,9 @@
 # World Simulation Depth
 
-This project now has two complementary simulation layers:
+This project now has three complementary simulation layers:
 
 - **Detective Town**: a hard-logic murder mystery engine. It simulates NPC life, extracts a case from `WorldEvent` logs, and validates fair-play deduction.
+- **Persistent Agent Town**: a server-runtime loop where NPCs carry persistent goals, memories, plans, pressure, resources, and decision traces across ticks.
 - **Living World Lab**: a broader observer workbench. It extracts a world graph from chapter text, replays source-backed actor decisions, and supports bounded interventions.
 
 ## Local Rules Before Language
@@ -26,6 +27,27 @@ Living World Lab validates:
 - theme signals tied to known themes and chapter evidence;
 - causal claims and chains with evidence;
 - simulation steps with legal action candidates and provenance.
+
+Persistent Agent Town validates:
+
+- per-tick agent decision traces;
+- complete action score fields;
+- blocked action reasons for illegal choices;
+- event and memory provenance for case candidates;
+- candidate failure reasons before extraction;
+- fair-play validation after a candidate becomes a playable case.
+
+## Persistent Runtime Loop
+
+Persistent Agent Town adds a long-running form of Detective Town:
+
+```text
+NPC state -> legal candidate actions -> local scoring -> WorldEvent -> MemoryRecord -> CaseCandidate -> validation
+```
+
+The runtime is deliberately stored inside existing world JSON instead of a new graph database. That keeps the project deployable as a local SQLite app while still making the agent loop observable through `/api/v1/query/town/*`.
+
+Decision traces are first-class output. A failed or blocked candidate should answer "why did this not become a fair mystery?" instead of returning only `false`.
 
 ## Replay Provenance
 
