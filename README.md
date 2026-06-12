@@ -96,10 +96,12 @@ Detective Town uses the LLM only as a surface language layer. The durable case l
 Living World Lab is the world-simulation side of the project. It is designed to make the system closer to an open-ended simulation engine while keeping Detective Town's local validation discipline.
 
 - Paste a chapter, a long text, or a whole-book excerpt.
+- Load the built-in Rain Gate sample to open a five-chapter analyzed project with evidence, audit, replay, and game view ready.
 - Build a `NovelWorldProject` with entities, locations, factions, items, relationships, events, development steps, character state points, theme pressure signals, and paragraph evidence.
+- Track total, ready, queued, error, and skipped chapters, plus next-batch and merged-graph summaries.
 - Run a grounded replay. Local rules generate and score action candidates before any prose explanation is produced.
 - Apply a short-branch intervention to actor knowledge, location, resources, relationship pressure, or body capability.
-- Inspect every step as `source`, `inferred`, `counterfactual`, or `gap`.
+- Inspect replay fidelity, matched source events, replay gaps, and every step as `source`, `inferred`, `counterfactual`, or `gap`.
 - Use the Phaser observer canvas to see actors, locations, event markers, replay paths, evidence heat, and branch effects.
 
 This is not a replacement for Detective Town. It is the larger world-simulation lab that demonstrates how cases and narratives can emerge from observable state instead of raw LLM prose.
@@ -109,6 +111,7 @@ This is not a replacement for Detective Town. It is the larger world-simulation 
 Audit Studio turns Living World Lab into a correction workflow instead of a one-shot extractor.
 
 - **Trust Score** summarizes evidence coverage, reference integrity, unresolved conflicts, extraction confidence, and correction completion.
+- **Issue Queue -> Suggested Fixes -> Applied Corrections -> Corrected View** is shown as a visible repair flow.
 - **Issue Queue** surfaces missing evidence, low-confidence state points, duplicate entities, dangling references, merge conflicts, causality gaps, and replay-readiness problems.
 - **Suggested Fixes** and manual quick actions create `NovelCorrectionPatch` records.
 - **Corrected View** applies patches as a local overlay. Original chapters, paragraph evidence indexes, and the original extracted graph stay unchanged.
@@ -408,7 +411,7 @@ node scripts/run-scenario-runner-api-smoke.mjs
 node scripts/run-sdk-client-smoke.mjs
 ```
 
-`npm run test:world` checks deterministic Showcase generation, all three premium templates, 8 NPC default mode, 24h timeline, event-backed evidence, memory-scoped testimony, unique culprit validation, non-culprit exclusions, causal traces, emergence proof traces, reasoning traces, authoring regression, and advanced 30 NPC regression. `npm run test:persistent-town` checks deterministic ticks, complete decision traces, action scoring fields, candidate validation, playable extraction, counterfactual interventions, scenarios, snapshots, diffs, and rollback. `npm run test:novel-world` checks chapter import, evidence indexing, world graph validation, causal chains, theme/character arcs, grounded replay, intervention branches, and Phaser scene state. `npm run benchmark:emergence` writes a 20-seed proof-of-emergence report under `outputs/`. `npm run test:encoding` fails on known mojibake markers in app, engine, and E2E source files.
+`npm run test:world` checks deterministic Showcase generation, all four premium templates, 8 NPC default mode, 24h timeline, event-backed evidence, memory-scoped testimony, unique culprit validation, non-culprit exclusions, causal traces, emergence proof traces, reasoning traces, authoring regression, and advanced 30 NPC regression. `npm run test:persistent-town` checks deterministic ticks, complete decision traces, action scoring fields, candidate validation, playable extraction, counterfactual interventions, scenarios, snapshots, diffs, and rollback. `npm run test:novel-world` checks chapter import, evidence indexing, world graph validation, causal chains, theme/character arcs, grounded replay, intervention branches, and Phaser scene state. `npm run test:e2e` covers the Living World sample, queue summaries, audit flow, replay provenance, Phaser canvas visibility, and mobile overflow. `npm run benchmark:emergence` writes a 20-seed proof-of-emergence report under `outputs/`. `npm run test:encoding` fails on known mojibake markers in app, engine, and E2E source files.
 
 ## Agent API Examples
 
@@ -452,6 +455,6 @@ The live eval is intentionally not part of the default test command. It uses loc
 ## Roadmap
 
 - Public hosted Static Demo.
-- Additional authored Premium cases beyond the built-in three.
+- Additional authored Premium cases beyond the built-in four.
 - Optional solver integration for stricter travel and opportunity constraints.
 - Community case gallery.

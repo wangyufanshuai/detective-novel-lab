@@ -71,6 +71,39 @@ test.beforeEach(async ({ page }, testInfo) => {
   await page.goto(usesServerApis ? "/" : "/?runtime=static");
 });
 
+test("novel world graph sample project opens a complete workbench", async ({ page }) => {
+  test.setTimeout(45_000);
+  await page.evaluate(async () => {
+    localStorage.removeItem("detective-town-novel-world-project-v2");
+    await new Promise<void>((resolve) => {
+      const request = indexedDB.deleteDatabase("detective-town-novel-workbench-v4");
+      request.onsuccess = () => resolve();
+      request.onerror = () => resolve();
+      request.onblocked = () => resolve();
+    });
+  });
+  await page.reload();
+  await dismissOnboarding(page);
+  await page.getByTestId("open-world-graph").click();
+  await expect(page.getByTestId("sample-project-panel")).toContainText("Rain Gate Sample");
+  await page.getByTestId("load-sample-novel").click();
+  await expect(page.getByTestId("chapter-queue-summary")).toContainText("5");
+  await expect(page.getByTestId("chapter-queue-summary")).toContainText("ready");
+  await expect(page.getByTestId("workbench-summary")).toContainText("Merged graph");
+  await expect(page.getByTestId("audit-flow")).toContainText("Issue Queue");
+  await expect(page.getByTestId("audit-flow")).toContainText("View Mode");
+  await expect(page.getByTestId("replay-state-summary")).toContainText("fidelity");
+  await page.getByTestId("world-view-tabs").getByRole("button", { name: "Replay" }).click();
+  await expect(page.getByTestId("replay-provenance-summary")).toContainText("source");
+  await expect(page.getByTestId("replay-provenance-summary")).toContainText("replay gaps");
+  await page.getByTestId("world-view-tabs").getByRole("button", { name: "Game" }).click();
+  await expect(page.getByTestId("novel-game-canvas").locator("canvas")).toBeVisible();
+  await expect(page.getByTestId("novel-game-legend")).toContainText("actors");
+  await page.setViewportSize({ width: 390, height: 844 });
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
+});
+
 test("novel world graph analyzes three chapters, merges changes and restores local project", async ({ page }) => {
   test.setTimeout(90_000);
   await page.goto("/");

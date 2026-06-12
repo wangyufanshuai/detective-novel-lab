@@ -1302,6 +1302,76 @@ blockquote {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.sampleProjectPanel {
+  display: grid;
+  gap: 10px;
+  border-color: rgba(140, 199, 255, 0.32);
+}
+
+.sampleProjectPanel h2,
+.sampleProjectPanel p {
+  margin: 0;
+}
+
+.sampleProjectPanel p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.sampleFlow,
+.queueSummary,
+.replayStateSummary,
+.replayProvenanceSummary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  min-width: 0;
+}
+
+.sampleFlow span,
+.queueSummary span,
+.replayStateSummary span,
+.replayProvenanceSummary span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 7px;
+  color: var(--muted);
+  text-align: center;
+  background: #0b121a;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.queueSummary,
+.replayStateSummary {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin-bottom: 9px;
+}
+
+.replayStateSummary {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.queueSummary strong,
+.replayStateSummary strong,
+.replayProvenanceSummary strong {
+  color: #f7fbff;
+  font-size: 14px;
+}
+
+.queueSummary small,
+.replayStateSummary small,
+.replayProvenanceSummary small {
+  color: var(--muted);
+  font-size: 9px;
+  text-transform: uppercase;
+}
+
 .worldGraphStage {
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
@@ -1407,6 +1477,49 @@ blockquote {
   margin: 0;
   color: var(--muted);
   line-height: 1.45;
+}
+
+.auditFlow,
+.workbenchSummary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+.workbenchSummary {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 10px;
+}
+
+.auditFlow article,
+.workbenchSummary article {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 10px;
+  background: rgba(12, 18, 25, 0.95);
+  border: 1px solid rgba(124, 157, 178, 0.25);
+  border-radius: 6px;
+}
+
+.auditFlow article.corrected {
+  border-color: rgba(101, 255, 196, 0.45);
+}
+
+.auditFlow strong,
+.workbenchSummary strong {
+  color: #f7fbff;
+  font-size: 12px;
+}
+
+.auditFlow span,
+.workbenchSummary span {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .trustScoreDial {
@@ -2136,6 +2249,27 @@ blockquote {
   color: var(--muted);
   font-size: 9px;
   text-transform: uppercase;
+}
+
+.replayProvenanceSummary {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  margin: 10px 0;
+}
+
+.replayProvenanceSummary .source {
+  border-color: rgba(101, 255, 196, 0.42);
+}
+
+.replayProvenanceSummary .inferred {
+  border-color: rgba(140, 199, 255, 0.42);
+}
+
+.replayProvenanceSummary .counterfactual {
+  border-color: rgba(255, 224, 106, 0.5);
+}
+
+.replayProvenanceSummary .gap {
+  border-color: rgba(240, 91, 97, 0.5);
 }
 
 .replayCheckpointLane,
@@ -5593,6 +5727,15 @@ blockquote {
     grid-template-columns: 1fr;
   }
 
+  .sampleFlow,
+  .queueSummary,
+  .replayStateSummary,
+  .replayProvenanceSummary,
+  .auditFlow,
+  .workbenchSummary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .trustScoreDial {
     justify-self: start;
   }
@@ -5658,6 +5801,10 @@ blockquote {
 
   .replayMetrics {
     grid-template-columns: repeat(3, minmax(80px, 1fr));
+  }
+
+  .replayProvenanceSummary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .replayCheckpointTrack {

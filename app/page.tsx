@@ -538,6 +538,67 @@ function createDefaultNovelProject() {
   return project;
 }
 
+const sampleNovelChapters: Array<Pick<NovelChapterInput, "title" | "fragment">> = [
+  {
+    title: "Chapter 1 - Rain Gate",
+    fragment: "Lin Yao enters Rain Gate City with a cracked jade slip while old formation lines glow under the rain. Shen Qiu stops him at the sealed gate and recognizes the same pattern from a cold missing-person file."
+  },
+  {
+    title: "Chapter 2 - Sect Order",
+    fragment: "Qingyun Sect orders the city sealed before midnight and demands that all outsiders be surrendered. Shen Qiu hides the jade slip registry because the official order contradicts the old file."
+  },
+  {
+    title: "Chapter 3 - Underground Lines",
+    fragment: "The jade slip resonates below the market. Old formation lines wake under the stalls, panic spreads, and witnesses argue whether the sect protects the city or controls it."
+  },
+  {
+    title: "Chapter 4 - Market Oath",
+    fragment: "A public oath scene forces Lin Yao and Shen Qiu to choose whether to expose the registry. The city warden delays an arrest after seeing that the jade slip points to a buried succession dispute."
+  },
+  {
+    title: "Chapter 5 - Warden Choice",
+    fragment: "Shen Qiu refuses to destroy the registry and moves Lin Yao to the archive tunnels. The choice splits the city guard, raises relationship pressure, and leaves a clear evidence trail for replay."
+  }
+];
+
+function createSampleNovelRuntime() {
+  let project = createNovelWorldProject({ id: "living-world-lab-sample-rain-gate", title: "Rain Gate Sample", genreTone: "Eastern fantasy / mystery" });
+  const chapters = sampleNovelChapters.map((chapter, index) => createNovelLongChapterText({
+    chapterId: `sample-chapter-${index + 1}`,
+    order: index + 1,
+    title: chapter.title,
+    rawText: chapter.fragment
+  }));
+  const evidenceIndexes: Record<string, NovelEvidenceIndex> = {};
+  for (const chapter of chapters) {
+    const evidenceIndex = createFallbackEvidenceIndex(chapter);
+    evidenceIndexes[chapter.chapterId] = evidenceIndex;
+    const graph = attachFallbackEvidenceToGraph(createFallbackNovelWorldGraph(chapter.title, project.genreTone, chapter.rawText), chapter, evidenceIndex);
+    const characterStates = createFallbackNovelCharacterStates(graph, chapter, evidenceIndex);
+    const themeSignals = createFallbackNovelThemeSignals(graph, characterStates, chapter, evidenceIndex, project.themeRegistry);
+    project = addNovelChapterAnalysis(project, {
+      input: { id: chapter.chapterId, order: chapter.order, title: chapter.title, fragment: chapter.rawText, genreTone: project.genreTone },
+      status: "ready",
+      graph,
+      characterStates,
+      themeSignals,
+      validation: validateEvidenceAwareNovelWorldGraph(graph, [chapter]),
+      analyzedAt: new Date().toISOString()
+    });
+  }
+  let batchQueue = createNovelBatchQueue(project, 3);
+  for (const chapter of chapters) {
+    batchQueue = updateNovelBatchChapterStatus(batchQueue, chapter.chapterId, "ready");
+  }
+  const correctionSet = createNovelCorrectionSet(project);
+  const run = createNovelSimulationRun(project, {
+    seed: "living-world-lab-sample-rain-gate",
+    mode: "grounded-replay",
+    branchStepLimit: 1
+  });
+  return { project, chapters, evidenceIndexes, batchQueue, correctionSet, run };
+}
+
 function loadInitialNovelProject() {
   const saved = loadLocal<NovelWorldProject | null>(novelProjectStorageKey, null);
   return saved?.version === 2 ? saved : createDefaultNovelProject();
@@ -876,6 +937,17 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
   const causalGapCount = causalityReport.gaps.length;
   const contestedCausalClaimCount = causalityReport.claims.filter((claim) => claim.contestedInterpretations.length).length;
   const pendingThemes = themeRegistry.filter((theme) => theme.status === "pending");
+  const readyCount = correctedProject.chapters.filter((chapter) => chapter.status === "ready").length;
+  const queuedCount = correctedProject.chapters.filter((chapter) => (batchQueue.chapterStatuses[chapter.input.id] || chapter.status) === "queued").length;
+  const lastBatchLabels = batchQueue.lastBatchChapterIds.map((id) => chapterTitle(id)).filter(Boolean);
+  const replayProvenanceCounts = activeSimulationRun?.steps.reduce<Record<string, number>>((counts, step) => {
+    counts[step.provenance] = (counts[step.provenance] || 0) + 1;
+    return counts;
+  }, {}) || {};
+  const replayGapCount = activeSimulationRun
+    ? activeSimulationRun.comparison.missingPrerequisites.length + activeSimulationRun.comparison.lowEvidenceStepIds.length + activeSimulationRun.comparison.divergenceReasons.length
+    : 0;
+  const replayMatchedCount = activeSimulationRun?.comparison.completedCheckpointCount || 0;
 
   useEffect(() => {
     if (!simulationPlaying || !activeSimulationRun || activeSimulationRun.status === "complete" || activeSimulationRun.status === "blocked") return;
@@ -1287,6 +1359,41 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
     void clearNovelIndexedState().catch(() => undefined);
     setStatus("Project reset.");
     setEvidenceStatus("IndexedDB state reset.");
+  }
+
+  function loadSampleProject() {
+    const sample = createSampleNovelRuntime();
+    setProject(sample.project);
+    projectRef.current = sample.project;
+    setActiveChapterId(sample.project.chapters[0]?.input.id || "sample-chapter-1");
+    setSelected({ type: "entity", id: sample.project.mergedGraph.entities[0]?.id || "" });
+    setExportText("");
+    setChapterTexts(sample.chapters);
+    setEvidenceIndexes(sample.evidenceIndexes);
+    setStateSimulation(createNovelStateSimulation(sample.project, sample.chapters));
+    setCurrentAsk(null);
+    setActiveAskId("");
+    setAskHistory([]);
+    setAskThroughChapterId("all");
+    setSimulationRuns([{ run: sample.run, explanationByStepId: {} }]);
+    setActiveSimulationRunId(sample.run.id);
+    setSimulationPlaying(false);
+    setSimulationInterventionActorId(sample.run.currentSnapshot.actorStates[0]?.actorEntityId || "");
+    setPinnedCharacterIds([]);
+    setPinnedCausalChainIds([]);
+    setPinnedThemeIds([]);
+    setCorrectionSet(sample.correctionSet);
+    setWorldView("audit");
+    setInspectorTab("correction");
+    setImportDraft(null);
+    setBatchQueue(sample.batchQueue);
+    batchQueueRef.current = sample.batchQueue;
+    setChapterFilter("all");
+    setBlueprint(null);
+    setBlueprintExportText("");
+    setSimulationStatus(`Sample replay ready with ${sample.run.checkpointEventIds.length} source checkpoint(s).`);
+    setStatus("Loaded the 5-chapter Rain Gate sample with evidence, audit, graph, replay, and game view ready.");
+    setEvidenceStatus("Sample project saved locally with IndexedDB-backed chapters and evidence indexes.");
   }
 
   function exportProject() {
@@ -1743,6 +1850,20 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
           <button onClick={onBack}>Play</button>
           <button className="active">Living World Lab</button>
         </div>
+        <section className="hudPanel sampleProjectPanel" data-testid="sample-project-panel">
+          <div className="panelHeaderLine">
+            <span className="eyebrow">Demo-ready sample</span>
+            <button data-testid="load-sample-novel" className="primaryButton compact" type="button" onClick={loadSampleProject}>Load sample</button>
+          </div>
+          <h2>Rain Gate Sample</h2>
+          <p>Five analyzed chapters with paragraph evidence, audit issues, corrected-view workflow, grounded replay, and Phaser observer data.</p>
+          <div className="sampleFlow">
+            <span>Import</span>
+            <span>Audit</span>
+            <span>Replay</span>
+            <span>Game</span>
+          </div>
+        </section>
         <details className="hudPanel workbenchToolPanel wholeBookImportPanel" data-testid="whole-book-import-panel">
           <summary><span><FileSearch size={16} /> Whole Book Import</span><ChevronDown size={15} /></summary>
           <div className="toolPanelBody">
@@ -1777,6 +1898,13 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
             <h2><BookOpen size={16} /> Chapters</h2>
             <button className="linkButton" type="button" onClick={addChapter}>Add</button>
           </div>
+          <div className="queueSummary" data-testid="chapter-queue-summary">
+            <span><strong>{project.chapters.length}</strong><small>total</small></span>
+            <span><strong>{readyCount}</strong><small>ready</small></span>
+            <span><strong>{queuedCount}</strong><small>queued</small></span>
+            <span><strong>{failedCount}</strong><small>error</small></span>
+            <span><strong>{skippedCount}</strong><small>skipped</small></span>
+          </div>
           <div className="chapterQueue">
             {project.chapters.map((chapter) => (
               <button key={chapter.input.id} type="button" className={chapter.input.id === activeChapterId ? "selected" : ""} onClick={() => setActiveChapterId(chapter.input.id)}>
@@ -1791,6 +1919,12 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
           <div className="panelHeaderLine">
             <h2><Play size={16} /> Replay Runs</h2>
             <button className="linkButton" type="button" onClick={createSimulationReplay}>New</button>
+          </div>
+          <div className="replayStateSummary" data-testid="replay-state-summary">
+            <span><strong>{activeSimulationRun?.comparison.fidelityScore ?? 0}%</strong><small>fidelity</small></span>
+            <span><strong>{replayMatchedCount}</strong><small>matched</small></span>
+            <span><strong>{replayGapCount}</strong><small>gaps</small></span>
+            <span><strong>{activeSimulationRun?.interventions.length ?? 0}</strong><small>interventions</small></span>
           </div>
           <div className="simulationRunList">
             {simulationRuns.length === 0 && <p className="evidenceNote">Analyze chapters, then create an evidence-grounded replay.</p>}
@@ -1957,6 +2091,20 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
             <div><strong>{causalGapCount}</strong><small>Causal gaps</small></div>
             <div><strong>{contestedCausalClaimCount}</strong><small>Causal contested</small></div>
           </div>
+          <div className="workbenchSummary" data-testid="workbench-summary">
+            <article>
+              <strong>Next batch</strong>
+              <span>{nextBatchIds.length ? nextBatchIds.map((id) => chapterTitle(id)).join(" / ") : "No queued chapters"}</span>
+            </article>
+            <article>
+              <strong>Last batch</strong>
+              <span>{lastBatchLabels.length ? lastBatchLabels.join(" / ") : "Not run yet"}</span>
+            </article>
+            <article>
+              <strong>Merged graph</strong>
+              <span>{progressGrowth.entities} entities / {progressGrowth.relationships} relationships / {progressGrowth.events} events / {progressGrowth.development} developments</span>
+            </article>
+          </div>
           <div className="batchControls">
             <label>Batch
               <select data-testid="batch-size-select" value={batchQueue.batchSize} onChange={(event) => setBatchSize(Number(event.target.value) as 3 | 5 | 10)}>
@@ -2084,6 +2232,24 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
                   <button data-testid="quick-replace-evidence" type="button" onClick={quickReplaceEvidence}>Replace evidence</button>
                   <button data-testid="quick-hide-causal" type="button" onClick={quickHideCausalClaim}>Hide causal claim</button>
                 </div>
+              </div>
+              <div className="auditFlow" data-testid="audit-flow">
+                <article>
+                  <strong>1. Issue Queue</strong>
+                  <span>{filteredAuditIssues.length} visible issue(s)</span>
+                </article>
+                <article>
+                  <strong>2. Suggested Fixes</strong>
+                  <span>{suggestedCorrectionPatches.length} local patch candidate(s)</span>
+                </article>
+                <article>
+                  <strong>3. Applied Corrections</strong>
+                  <span>{appliedCorrections.length} active overlay patch(es)</span>
+                </article>
+                <article className={appliedCorrections.length ? "corrected" : ""}>
+                  <strong>4. View Mode</strong>
+                  <span>{correctionModeLabel}</span>
+                </article>
               </div>
               <div className="auditMetricGrid" data-testid="audit-metrics">
                 {auditReport.metrics.map((metric) => (
@@ -2248,6 +2414,22 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
                     <div><strong>{Math.round(activeSimulationRun.comparison.participantMatchRate * 100)}%</strong><small>Actors</small></div>
                     <div><strong>{Math.round(activeSimulationRun.comparison.locationMatchRate * 100)}%</strong><small>Locations</small></div>
                     <div><strong>{Math.round(activeSimulationRun.comparison.causalCoverageRate * 100)}%</strong><small>Causality</small></div>
+                  </div>
+                  <div className="replayProvenanceSummary" data-testid="replay-provenance-summary">
+                    {(["source", "inferred", "counterfactual", "gap"] as const).map((kind) => (
+                      <span key={kind} className={kind}>
+                        <strong>{replayProvenanceCounts[kind] || 0}</strong>
+                        <small>{kind}</small>
+                      </span>
+                    ))}
+                    <span>
+                      <strong>{activeSimulationRun.comparison.completedCheckpointCount}</strong>
+                      <small>matched source events</small>
+                    </span>
+                    <span>
+                      <strong>{replayGapCount}</strong>
+                      <small>replay gaps</small>
+                    </span>
                   </div>
                   <section className="replayCheckpointLane" data-testid="replay-checkpoints">
                     <div className="panelHeaderLine">

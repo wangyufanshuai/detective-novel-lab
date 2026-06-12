@@ -22,9 +22,13 @@ Open the app and choose **Living World Lab**.
 
 The workbench has three main areas:
 
-- Left rail: whole-book import, chapter queue, replay runs, ask history, causal focus, theme focus, character focus, project JSON.
+- Left rail: one-click Rain Gate sample, whole-book import, chapter queue summaries, replay runs, ask history, causal focus, theme focus, character focus, project JSON.
 - Center: Audit Studio, Phaser observer canvas, replay controls, world graph canvas, event timeline, ask view, arc view, causality view, writer view.
 - Right inspector: selected entity, event, relationship, character state, audit issue, correction patch, simulation step, game actor, location, evidence, intervention editor, and blueprint detail.
+
+Use **Load sample** to open a five-chapter Rain Gate project with analyzed chapters, paragraph evidence indexes, ready queue state, an Audit Studio report, and a grounded replay. This is the fastest product demo path and does not require a new API route.
+
+The chapter queue shows total, ready, queued, error, and skipped counts. Whole Book Progress also shows the next batch, last batch, and merged graph totals for entities, relationships, events, and developments.
 
 The Phaser view is intentionally a visual observer, not a full RPG engine. It renders deterministic locations, actor sprites, paths, event markers, evidence heat, and branch effects from the engine state.
 
@@ -37,6 +41,14 @@ Audit Studio makes the extracted world repairable:
 - `Suggested Fixes` are local `NovelCorrectionPatch` records generated from the audit report.
 - `Applied Corrections` create a corrected view used by Map, Game, Replay, Causality, Theme, Character Arc, Ask, and Writer surfaces.
 - Original chapters, paragraph evidence indexes, and the original extracted graph remain unchanged.
+
+The Audit tab now presents the repair loop as four visible steps: Issue Queue, Suggested Fixes, Applied Corrections, and View Mode. This keeps the correction overlay explicit instead of hiding it behind individual patch cards.
+
+## Replay Product Loop
+
+Replay Runs show fidelity, matched source events, replay gaps, and intervention count before the user opens the full Replay tab.
+
+The Replay tab keeps the existing comparison metrics and adds a provenance strip for `source`, `inferred`, `counterfactual`, and `gap` steps. After an intervention, counterfactual steps remain bounded and visible in both Replay and the Phaser observer.
 
 ## Agent API
 
@@ -72,6 +84,7 @@ Correction endpoints also stay local and deterministic. They do not call DeepSee
 ```powershell
 npm run test:novel-world
 node scripts/run-novel-agent-api-smoke.mjs
+npm run test:e2e
 ```
 
-The first command validates the engine helpers. The second starts a local server and verifies the API loop from import through intervention.
+The first command validates the engine helpers. The API smoke starts a local server and verifies the import-through-intervention loop. The E2E suite covers the one-click sample, queue summaries, audit flow, replay provenance, Phaser canvas visibility, and mobile overflow.

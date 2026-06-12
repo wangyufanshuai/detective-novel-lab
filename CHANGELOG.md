@@ -8,10 +8,12 @@
 - Added a browser-only Local Case Gallery for Authoring mode with built-in template cards, local draft saves, JSON bundle import/export, and Static Demo launch for valid drafts.
 - Added SQLite storage health reporting, transactional world/case/event saves, and a local backup script for Docker Server Runtime.
 - Added a deeper Persistent Agent Town simulation loop with staged tick phases, expanded NPC actions, memory propagation, pressure ledger entries, action consequences, and candidate chain stages.
+- Added a one-click Living World Lab sample project with five analyzed chapters, evidence indexes, a ready batch queue, and a grounded replay.
 
 ### Changed
 
 - Docker Server smoke now validates runtime storage health, premium case creation, and Scenario Runner execution.
+- Productized Living World Lab with chapter queue summaries, merged-graph progress, Audit Studio flow steps, and replay provenance counts for source, inferred, counterfactual, and gap steps.
 - Polished Persistent Agent Town's Agent panel into a compact Review Mode for technical evaluation.
 - Scenario Runner now surfaces checks, branch comparison, and copyable report JSON in the workbench.
 - Time Machine now shows a snapshot timeline, expanded diff details, baseline quick selection, and rollback confirmation.
