@@ -44,6 +44,35 @@ export type AuthoringValidationReport = {
   logicReport: CaseLogicReport;
 };
 
+export type CaseGalleryValidationSummary = {
+  valid: boolean;
+  hardLogicValid: boolean;
+  hardLogicPass: boolean;
+  errorCount: number;
+  warningCount: number;
+  qualityScore: number;
+  logicStrength: number;
+  evidenceCount: number;
+  characterCount: number;
+};
+
+export type CaseGalleryEntry = {
+  id: string;
+  title: string;
+  source: "built-in" | "local" | "imported";
+  templateId?: CaseTemplateId;
+  draft: AuthoringDraft;
+  validation: CaseGalleryValidationSummary;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CaseGalleryBundle = {
+  version: 1;
+  entries: CaseGalleryEntry[];
+  exportedAt: string;
+};
+
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
@@ -102,6 +131,31 @@ export function createAuthoringDraftFromCase(caseFromLog: CaseFromLog, world?: W
 export function createPremiumAuthoringDraft(templateId: CaseTemplateId = "archive-blunt"): AuthoringDraft {
   const premium = createPremiumShowcaseWorld("premium-showcase", templateId);
   return createAuthoringDraftFromCase(premium.activeCase, premium.world, premium.events);
+}
+
+function createAuthoringDraftFromStandaloneCase(deductionCase: DeductionCase, baseDraft: AuthoringDraft = createPremiumAuthoringDraft()): AuthoringDraft {
+  const next = clone(baseDraft);
+  next.caseFromLog.deductionCase = clone(deductionCase);
+  next.source = "imported";
+  next.updatedAt = now();
+  return next;
+}
+
+function normalizeAuthoringDraft(value: unknown, baseDraft?: AuthoringDraft): AuthoringDraft | null {
+  const candidate = value as Partial<AuthoringDraft> | null | undefined;
+  if (candidate?.caseFromLog?.deductionCase && candidate.world && Array.isArray(candidate.events)) {
+    return {
+      ...clone(candidate as AuthoringDraft),
+      version: 1,
+      source: candidate.source || "imported",
+      updatedAt: candidate.updatedAt || now()
+    };
+  }
+  const possibleCase = value as Partial<DeductionCase> | null | undefined;
+  if (possibleCase?.id && possibleCase.truth && possibleCase.logicPuzzle) {
+    return createAuthoringDraftFromStandaloneCase(possibleCase as DeductionCase, baseDraft);
+  }
+  return null;
 }
 
 export function applyAuthoringPatch(draft: AuthoringDraft, patch: AuthoringPatch): AuthoringDraft {
@@ -170,6 +224,63 @@ export function validateAuthoringDraft(draft: AuthoringDraft): AuthoringValidati
     deductionGraph,
     logicReport
   };
+}
+
+export function summarizeAuthoringValidation(draft: AuthoringDraft): CaseGalleryValidationSummary {
+  const report = validateAuthoringDraft(draft);
+  return {
+    valid: report.valid,
+    hardLogicValid: report.hardLogicValid,
+    hardLogicPass: report.hardLogicValid,
+    errorCount: report.errors.length,
+    warningCount: report.warnings.length,
+    qualityScore: report.qualityScore,
+    logicStrength: report.logicStrength,
+    evidenceCount: draft.caseFromLog.deductionCase.evidence.length,
+    characterCount: draft.caseFromLog.deductionCase.characters.length
+  };
+}
+
+export function createCaseGalleryEntry(
+  draft: AuthoringDraft,
+  options: { id?: string; source?: CaseGalleryEntry["source"]; templateId?: CaseTemplateId; createdAt?: string; updatedAt?: string } = {}
+): CaseGalleryEntry {
+  const updatedAt = options.updatedAt || draft.updatedAt || now();
+  return {
+    id: options.id || `case-gallery:${draft.caseFromLog.deductionCase.id}:${updatedAt}`,
+    title: draft.caseFromLog.deductionCase.title,
+    source: options.source || (draft.source === "premium-template" ? "built-in" : "local"),
+    templateId: options.templateId,
+    draft: clone({ ...draft, updatedAt }),
+    validation: summarizeAuthoringValidation(draft),
+    createdAt: options.createdAt || updatedAt,
+    updatedAt
+  };
+}
+
+export function exportCaseGalleryBundle(entries: CaseGalleryEntry[]): string {
+  return JSON.stringify({ version: 1, entries: clone(entries), exportedAt: now() } satisfies CaseGalleryBundle, null, 2);
+}
+
+export function importCaseGalleryEntries(value: unknown, baseDraft?: AuthoringDraft): CaseGalleryEntry[] {
+  const bundle = value as Partial<CaseGalleryBundle> | null | undefined;
+  if (bundle?.version === 1 && Array.isArray(bundle.entries)) {
+    return bundle.entries
+      .map((entry) => {
+        const draft = normalizeAuthoringDraft(entry?.draft, baseDraft);
+        if (!draft) return null;
+        return createCaseGalleryEntry(draft, {
+          id: entry.id,
+          source: entry.source === "built-in" ? "built-in" : entry.source === "local" ? "local" : "imported",
+          templateId: entry.templateId,
+          createdAt: entry.createdAt,
+          updatedAt: entry.updatedAt
+        });
+      })
+      .filter((entry): entry is CaseGalleryEntry => Boolean(entry));
+  }
+  const draft = normalizeAuthoringDraft(value, baseDraft);
+  return draft ? [createCaseGalleryEntry(draft, { source: "imported" })] : [];
 }
 
 export function exportAuthoringJson(draft: AuthoringDraft): string {

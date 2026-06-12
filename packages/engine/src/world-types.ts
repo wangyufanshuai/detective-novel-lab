@@ -112,7 +112,7 @@ export type WorldEvent = {
   explanation?: string;
 };
 
-export type CaseTemplateId = "archive-blunt" | "clocktower-locked-room" | "clinic-poison";
+export type CaseTemplateId = "archive-blunt" | "clocktower-locked-room" | "clinic-poison" | "greenhouse-blade";
 
 export type NpcGoal = {
   id: string;

@@ -2,8 +2,15 @@
 
 ## Unreleased
 
+### Added
+
+- Added the `greenhouse-blade` premium hard case to expand the built-in Case Library.
+- Added a browser-only Local Case Gallery for Authoring mode with built-in template cards, local draft saves, JSON bundle import/export, and Static Demo launch for valid drafts.
+- Added SQLite storage health reporting, transactional world/case/event saves, and a local backup script for Docker Server Runtime.
+
 ### Changed
 
+- Docker Server smoke now validates runtime storage health, premium case creation, and Scenario Runner execution.
 - Polished Persistent Agent Town's Agent panel into a compact Review Mode for technical evaluation.
 - Scenario Runner now surfaces checks, branch comparison, and copyable report JSON in the workbench.
 - Time Machine now shows a snapshot timeline, expanded diff details, baseline quick selection, and rollback confirmation.

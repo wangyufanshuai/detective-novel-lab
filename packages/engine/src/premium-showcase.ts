@@ -127,6 +127,29 @@ const templates: TemplateConfig[] = [
     traceTitle: "药柜金属粉末",
     redHerringOne: "顾沉与林澈在旅店账本上有旧债纠纷。",
     redHerringTwo: "沈青禾保管温室药剂，容易被误认为拥有毒物来源。"
+  },
+  {
+    id: "greenhouse-blade",
+    title: "Greenhouse pruning blade case",
+    description: "A florist hides a pruning knife murder behind greenhouse maintenance logs and staged broken glass.",
+    archetype: "blade",
+    worldSeed: "greenhouse-blade",
+    victimId: "npc-00",
+    culpritId: "npc-05",
+    witnessId: "npc-04",
+    focusSuspectIds: ["npc-02", "npc-03"],
+    sceneLocationId: "greenhouse",
+    prepLocationId: "greenhouse",
+    meansItem: "pruning knife",
+    motiveText: "Lin Miao found shipment records proving Shen Qinghe used the greenhouse ledger to hide banned bulbs and planned to expose the fraud at the town council.",
+    meansText: "Shen Qinghe removed the greenhouse pruning knife from the locked tool rack and changed the maintenance checklist to make the missing blade look routine.",
+    opportunityText: "Zhao Lei saw Shen Qinghe leave the town square with a canvas tool wrap and walk toward the greenhouse before the alarm was raised.",
+    methodText: "Shen Qinghe lured Lin Miao into the greenhouse aisle and stabbed him with the pruning knife before hiding the weapon in a compost bin.",
+    stagingText: "Shen Qinghe broke a pane of greenhouse glass and scattered potting soil to suggest an outside intruder forced the door.",
+    traceText: "Fresh sap, dark soil, and a nicked pruning rack mark match the blade hidden in the compost bin and tie it back to Shen Qinghe's tool set.",
+    traceTitle: "sap-stained rack mark",
+    redHerringOne: "Gu Chen argued with Lin Miao over unpaid inn bills, and the dispute was heard from the guest ledger room.",
+    redHerringTwo: "Xu Zhen borrowed greenhouse access keys for clocktower repairs, making his movement log look suspicious before the alibi check."
   }
 ];
 

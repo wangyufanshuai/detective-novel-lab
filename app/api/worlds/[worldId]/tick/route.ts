@@ -15,9 +15,8 @@ export async function POST(_request: Request, context: { params: Promise<{ world
     const activeCase = worldRepository.getActiveCase(worldId) || extractCaseFromWorld(tick.world, events);
     if (!tick.world.activeCaseId) {
       tick.world.activeCaseId = activeCase.id;
-      worldRepository.saveWorld(tick.world);
     }
-    worldRepository.saveCase(activeCase);
+    worldRepository.saveWorldBundle({ world: tick.world, activeCase });
     return NextResponse.json({ ok: true, world: tick.world, events: tick.events, activeCase });
   } catch (error) {
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });

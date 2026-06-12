@@ -19,9 +19,7 @@ export async function POST(request: Request) {
     const mode = body.mode || "showcase";
     if (mode === "showcase" && (body.caseMode || "generated") === "premium") {
       const premium = createPremiumShowcaseWorld(body.seed || "premium-showcase", body.caseTemplateId || "archive-blunt");
-      const savedWorld = worldRepository.saveWorld(premium.world);
-      worldRepository.addEvents(premium.events);
-      worldRepository.saveCase(premium.activeCase);
+      const savedWorld = worldRepository.saveWorldBundle({ world: premium.world, events: premium.events, activeCase: premium.activeCase });
       return ok({ world: savedWorld, events: premium.events, activeCase: premium.activeCase, qualityReport: premium.activeCase.qualityReport, simulationReports: [] });
     }
     const world = createInitialWorld(body.seed || "detective-town-showcase", {
@@ -32,13 +30,10 @@ export async function POST(request: Request) {
     });
     const daily = simulateDailyLife(world, mode === "advanced" ? Math.max(3, Math.min(7, body.preSimDays || 5)) : 1, []);
     const tick = simulateWorldTick(daily.world, daily.events);
-    const savedWorld = worldRepository.saveWorld(tick.world);
-    worldRepository.addEvents([...daily.events, ...tick.events]);
-    const events = worldRepository.getEvents(savedWorld.id);
-    const activeCase = extractCaseFromWorld(savedWorld, events);
-    savedWorld.activeCaseId = activeCase.id;
-    worldRepository.saveWorld(savedWorld);
-    worldRepository.saveCase(activeCase);
+    const events = [...daily.events, ...tick.events];
+    const activeCase = extractCaseFromWorld(tick.world, events);
+    tick.world.activeCaseId = activeCase.id;
+    const savedWorld = worldRepository.saveWorldBundle({ world: tick.world, events, activeCase });
     return ok({ world: savedWorld, events, activeCase, qualityReport: activeCase.qualityReport, simulationReports: daily.reports });
   } catch (error) {
     return errorResponse(error);

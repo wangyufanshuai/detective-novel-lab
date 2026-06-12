@@ -30,12 +30,50 @@ jobs:
           for i in {1..60}; do
             if curl -fsS http://127.0.0.1:3000/api/v1/query/runtime/status > /tmp/runtime-status.json; then
               cat /tmp/runtime-status.json
+              grep -q '"storage"' /tmp/runtime-status.json
               exit 0
             fi
             sleep 2
           done
           docker logs detective-town-smoke
           exit 1
+
+      - name: Smoke premium case and scenario runner
+        run: |
+          curl -fsS -X POST http://127.0.0.1:3000/api/v1/command/town/create \
+            -H 'content-type: application/json' \
+            -d '{"seed":"docker-greenhouse","mode":"showcase","caseMode":"premium","caseTemplateId":"greenhouse-blade"}' \
+            > /tmp/create-town.json
+          cat /tmp/create-town.json
+          grep -q 'greenhouse-blade' /tmp/create-town.json
+          node <<'NODE'
+          const fs = require('node:fs');
+          const created = JSON.parse(fs.readFileSync('/tmp/create-town.json', 'utf8')).data;
+          const worldId = created.world.id;
+          const actorId = created.world.npcs[0].id;
+          fs.writeFileSync('/tmp/scenario-body.json', JSON.stringify({
+            worldId,
+            config: {
+              id: 'docker-smoke-scenario',
+              name: 'Docker smoke scenario',
+              seed: 'docker-smoke-scenario',
+              baselineSteps: 3,
+              branches: [{
+                id: 'resource-branch',
+                name: 'Resource branch',
+                steps: 3,
+                interventions: [{ atTickOffset: 1, intervention: { actorId, kind: 'resource', value: 'resource:docker-smoke' } }]
+              }],
+              passCriteria: { minEventGrowth: 1, minMemoryGrowth: 1, maxBlockedCandidates: 8 }
+            }
+          }));
+          NODE
+          curl -fsS -X POST http://127.0.0.1:3000/api/v1/command/town/scenario/run \
+            -H 'content-type: application/json' \
+            --data-binary @/tmp/scenario-body.json \
+            > /tmp/scenario-run.json
+          cat /tmp/scenario-run.json
+          grep -q 'docker-smoke-scenario' /tmp/scenario-run.json
 
       - name: Smoke static page
         run: curl -fsS "http://127.0.0.1:3000/?runtime=static" > /tmp/detective-town.html

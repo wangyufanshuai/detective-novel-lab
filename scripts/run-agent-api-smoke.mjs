@@ -73,11 +73,14 @@ try {
   const runtime = await request("GET", "/api/v1/query/runtime/status");
   assert.equal(runtime.service, "detective-town");
   assert.equal(runtime.version, "v1");
+  assert.equal(runtime.storage.health, "ok", "runtime status reports healthy SQLite storage");
+  assert.equal(runtime.storage.walEnabled, true, "runtime status reports WAL mode");
 
   const created = await request("POST", "/api/v1/command/town/create", {
     seed: "agent-api-smoke",
     mode: "showcase",
     caseMode: "premium",
+    caseTemplateId: "greenhouse-blade",
     npcCount: 8,
     timelineHours: 24,
     caseArchetype: "auto"

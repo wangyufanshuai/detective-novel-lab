@@ -68,6 +68,7 @@ import {
   buildEmergenceProofTrace,
   buildPlayerProofTour,
   buildWorldMapSnapshot,
+  createCaseGalleryEntry,
   createPremiumAuthoringDraft,
   createStaticDemoRuntime,
   deriveMapInteractiveTargets,
@@ -75,6 +76,8 @@ import {
   discoverDemoEvidence,
   exportAuthoringJson,
   exportAuthoringMarkdown,
+  exportCaseGalleryBundle,
+  importCaseGalleryEntries,
   interrogateDemoNpc,
   listCaseTemplates,
   markDemoCrimeObserved,
@@ -147,6 +150,7 @@ import {
 import type {
   AuthoringDraft,
   AuthoringValidationReport,
+  CaseGalleryEntry,
   CaseFromLog,
   CaseLogicReport,
   CaseTemplateId,
@@ -243,10 +247,11 @@ type AiSafetyState = {
 };
 type CaseMode = "premium" | "generated";
 type AppMode = "play" | "authoring" | "world-graph" | "persistent-town";
-type AuthoringTab = "case" | "characters" | "evidence" | "scenes" | "timeline" | "logic";
+type AuthoringTab = "case" | "characters" | "evidence" | "scenes" | "timeline" | "logic" | "gallery";
 
 const storageKey = "detective-town-launch-v1";
 const authoringStorageKey = "detective-town-authoring-v1";
+const caseGalleryStorageKey = "detective-town-case-gallery-v1";
 const timeMin = 8 * 60;
 const timeMax = 23 * 60;
 const initialProgress: InvestigationProgress = {
@@ -2967,6 +2972,8 @@ export default function Home() {
   const [authoringImportText, setAuthoringImportText] = useState("");
   const [authoringExportText, setAuthoringExportText] = useState("");
   const [authoringStatus, setAuthoringStatus] = useState("Authoring \u4f7f\u7528\u6d4f\u89c8\u5668\u672c\u5730\u72b6\u6001\uff0c\u4e0d\u8bf7\u6c42 DeepSeek\uff0c\u4e0d\u5199\u5165 SQLite\u3002");
+  const [caseGalleryEntries, setCaseGalleryEntries] = useState<CaseGalleryEntry[]>([]);
+  const [caseGalleryLoaded, setCaseGalleryLoaded] = useState(false);
   const [townRuntime, setTownRuntime] = useState<PersistentTownRuntime | null>(null);
   const [townQueue, setTownQueue] = useState<TownEmergenceQueue | null>(null);
   const [selectedAgentCandidates, setSelectedAgentCandidates] = useState<NpcActionCandidate[]>([]);
@@ -3246,6 +3253,10 @@ export default function Home() {
     [activeCase, events, session, world]
   );
   const authoringReport: AuthoringValidationReport = useMemo(() => validateAuthoringDraft(authoringDraft), [authoringDraft]);
+  const builtInGalleryEntries = useMemo(
+    () => caseTemplates.map((template) => createCaseGalleryEntry(createPremiumAuthoringDraft(template.id), { source: "built-in", templateId: template.id })),
+    []
+  );
   const authoringCase = authoringDraft.caseFromLog.deductionCase;
   const authoringCharacters = authoringCase.characters.filter((character) => character.role !== "\u6b7b\u8005");
   const authoringCharacter = authoringCase.characters.find((character) => character.id === authoringCharacterId) || authoringCharacters[0] || authoringCase.characters[0];
@@ -3326,6 +3337,8 @@ export default function Home() {
     initialized.current = true;
     const savedDraft = loadLocal<AuthoringDraft | null>(authoringStorageKey, null);
     if (savedDraft?.caseFromLog?.deductionCase) setAuthoringDraft(savedDraft);
+    setCaseGalleryEntries(loadLocal<CaseGalleryEntry[]>(caseGalleryStorageKey, []));
+    setCaseGalleryLoaded(true);
     const selectedRuntime = resolveRuntimeMode();
     setRuntimeMode(selectedRuntime);
     const saved = loadLocal<{ worldId?: string; sessionId?: string; runtimeState?: DemoRuntimeState }>(storageKey, {});
@@ -3353,6 +3366,11 @@ export default function Home() {
   useEffect(() => {
     localStorage.setItem(authoringStorageKey, JSON.stringify(authoringDraft));
   }, [authoringDraft]);
+
+  useEffect(() => {
+    if (!caseGalleryLoaded) return;
+    localStorage.setItem(caseGalleryStorageKey, JSON.stringify(caseGalleryEntries));
+  }, [caseGalleryEntries, caseGalleryLoaded]);
 
   useEffect(() => {
     if (!world) {
@@ -4269,6 +4287,56 @@ export default function Home() {
     setAuthoringStatus("\u5df2\u6062\u590d\u6848\u4f8b\u6a21\u677f\uff0c\u53ef\u7ee7\u7eed\u7f16\u8f91\u6216\u76f4\u63a5 Run Draft\u3002");
   }
 
+  function resetAuthoringSelection() {
+    setAuthoringCharacterId("");
+    setAuthoringEvidenceId("");
+    setAuthoringSceneId("");
+    setAuthoringTimelineId("");
+  }
+
+  function mergeGalleryEntries(entries: CaseGalleryEntry[]) {
+    setCaseGalleryEntries((current) => {
+      const byId = new Map(current.map((entry) => [entry.id, entry]));
+      for (const entry of entries) byId.set(entry.id, entry);
+      return Array.from(byId.values()).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    });
+  }
+
+  function saveAuthoringToGallery() {
+    const entry = createCaseGalleryEntry(authoringDraft, { source: "local" });
+    mergeGalleryEntries([entry]);
+    setAuthoringStatus(`Saved "${entry.title}" to the browser-local Case Gallery.`);
+    setAuthoringTab("gallery");
+  }
+
+  function loadGalleryEntry(entry: CaseGalleryEntry) {
+    setAuthoringDraft({ ...cloneLocal(entry.draft), source: entry.source === "built-in" ? "premium-template" : entry.draft.source, updatedAt: new Date().toISOString() });
+    resetAuthoringSelection();
+    if (entry.templateId) setCaseTemplateId(entry.templateId);
+    setAuthoringExportText("");
+    setAuthoringStatus(`Loaded "${entry.title}" from Case Gallery.`);
+  }
+
+  function runGalleryEntry(entry: CaseGalleryEntry) {
+    if (!entry.validation.valid) {
+      setAuthoringStatus(`"${entry.title}" is not runnable. Fix validation errors before running.`);
+      return;
+    }
+    setAuthoringDraft(cloneLocal(entry.draft));
+    resetAuthoringSelection();
+    runDraftFrom(entry.draft, `Created a temporary Static Demo Runtime from gallery case "${entry.title}".`);
+  }
+
+  function deleteGalleryEntry(entryId: string) {
+    setCaseGalleryEntries((current) => current.filter((entry) => entry.id !== entryId));
+    setAuthoringStatus("Local gallery draft deleted. Built-in templates remain available.");
+  }
+
+  function exportGalleryEntry(entry: CaseGalleryEntry) {
+    setAuthoringExportText(exportAuthoringJson(entry.draft));
+    setAuthoringStatus(`Exported "${entry.title}" as AuthoringDraft JSON.`);
+  }
+
   function deleteAuthoringEvidence() {
     if (!authoringEvidence) return;
     const refs = authoringEvidenceReferences(authoringEvidence.id);
@@ -4280,8 +4348,19 @@ export default function Home() {
   function importAuthoringJson() {
     try {
       const parsed = JSON.parse(authoringImportText);
-      if (parsed?.caseFromLog?.deductionCase && parsed?.world && Array.isArray(parsed?.events)) {
-        setAuthoringDraft({ ...parsed, version: 1, source: "imported", updatedAt: new Date().toISOString() });
+      const importedEntries = importCaseGalleryEntries(parsed, authoringDraft);
+      if (parsed?.version === 1 && Array.isArray(parsed?.entries)) {
+        if (!importedEntries.length) throw new Error("Gallery bundle did not contain valid AuthoringDraft entries.");
+        mergeGalleryEntries(importedEntries.map((entry) => ({ ...entry, source: "imported" })));
+        setAuthoringTab("gallery");
+        setAuthoringStatus(`Imported ${importedEntries.length} gallery entries into browser-local Case Gallery.`);
+        return;
+      }
+      if (importedEntries.length) {
+        const entry = { ...importedEntries[0], source: "imported" as const };
+        setAuthoringDraft(entry.draft);
+        mergeGalleryEntries([entry]);
+        resetAuthoringSelection();
       } else if (parsed?.id && parsed?.truth && parsed?.logicPuzzle) {
         const next = cloneLocal(authoringDraft);
         next.caseFromLog.deductionCase = parsed;
@@ -4291,7 +4370,7 @@ export default function Home() {
       } else {
         throw new Error("JSON must be an AuthoringDraft or a standalone DeductionCase.");
       }
-      setAuthoringStatus("Import complete. Schema and hard logic validation ran.");
+      setAuthoringStatus("Import complete. Draft was loaded and saved to the browser-local Case Gallery.");
     } catch (error) {
       setAuthoringStatus(error instanceof Error ? error.message : "Import failed: invalid JSON.");
     }
@@ -4303,21 +4382,27 @@ export default function Home() {
     setAuthoringStatus(kind === "json" ? "Runnable case JSON generated." : "Case Markdown notes generated.");
   }
 
-  function runAuthoringDraft() {
-    if (!authoringReport.valid) {
+  function exportGalleryBundle() {
+    setAuthoringExportText(exportCaseGalleryBundle(caseGalleryEntries));
+    setAuthoringStatus(`Exported ${caseGalleryEntries.length} local gallery drafts as a CaseGalleryBundle.`);
+  }
+
+  function runDraftFrom(draft: AuthoringDraft, message: string) {
+    const report = validateAuthoringDraft(draft);
+    if (!report.valid) {
       setAuthoringStatus("The current draft failed hard logic validation and cannot run as a playable case.");
       return;
     }
     const stamp = new Date().toISOString();
     const runtimeState: DemoRuntimeState = {
       mode: "static-demo",
-      world: cloneLocal(authoringDraft.world),
-      events: cloneLocal(authoringDraft.events),
-      activeCase: cloneLocal(authoringDraft.caseFromLog),
+      world: cloneLocal(draft.world),
+      events: cloneLocal(draft.events),
+      activeCase: cloneLocal(draft.caseFromLog),
       session: {
         id: `session-authoring-${Date.now()}`,
-        worldId: authoringDraft.world.id,
-        caseId: authoringDraft.caseFromLog.id,
+        worldId: draft.world.id,
+        caseId: draft.caseFromLog.id,
         playerId: "player-authoring",
         displayName: "Author Test",
         discoveredEvidenceIds: [],
@@ -4331,7 +4416,11 @@ export default function Home() {
     setRuntimeMode("static-demo");
     hydrateStatic(runtimeState);
     setAppMode("play");
-    setStatus("Created a temporary Static Demo Runtime from the current Authoring Draft.");
+    setStatus(message);
+  }
+
+  function runAuthoringDraft() {
+    runDraftFrom(authoringDraft, "Created a temporary Static Demo Runtime from the current Authoring Draft.");
   }
 
   if (appMode === "world-graph") {
@@ -4349,6 +4438,37 @@ export default function Home() {
       const key = `${marker.x}:${marker.y}`;
       authoringMarkersByTile.set(key, [...(authoringMarkersByTile.get(key) || []), marker]);
     }
+    const allGalleryEntries = [...builtInGalleryEntries, ...caseGalleryEntries];
+    const formatGalleryTime = (value: string) => {
+      const time = new Date(value);
+      return Number.isNaN(time.getTime()) ? value : time.toLocaleString();
+    };
+    const renderGalleryCard = (entry: CaseGalleryEntry, readonly: boolean) => (
+      <article key={entry.id} className={`caseGalleryCard ${entry.validation.valid ? "pass" : "fail"}`} data-testid="case-gallery-card">
+        <div className="caseGalleryCardTop">
+          <div>
+            <p>{entry.source === "built-in" ? "Built-in template" : entry.source === "imported" ? "Imported draft" : "Local draft"}</p>
+            <h3>{entry.title}</h3>
+          </div>
+          <span className={entry.validation.valid ? "runtimePill pass" : "runtimePill fail"}>{entry.validation.valid ? "Runnable" : "Blocked"}</span>
+        </div>
+        <div className="caseGalleryMeta">
+          <span><strong>{entry.validation.evidenceCount}</strong><small>Evidence</small></span>
+          <span><strong>{entry.validation.characterCount}</strong><small>Characters</small></span>
+          <span><strong>{entry.validation.hardLogicValid ? "Pass" : "Fail"}</strong><small>Hard logic</small></span>
+          <span><strong>{formatGalleryTime(entry.updatedAt)}</strong><small>Updated</small></span>
+        </div>
+        {!entry.validation.valid && entry.validation.errorCount > 0 && (
+          <p className="caseGalleryIssue">{entry.validation.errorCount} validation errors must be fixed before this draft can run.</p>
+        )}
+        <div className="caseGalleryActions">
+          <button type="button" onClick={() => loadGalleryEntry(entry)}>Load into Authoring</button>
+          <button type="button" onClick={() => runGalleryEntry(entry)} disabled={!entry.validation.valid}>Run Draft</button>
+          <button type="button" onClick={() => exportGalleryEntry(entry)}>Export JSON</button>
+          {!readonly && <button type="button" className="dangerButton" data-testid="delete-gallery-entry" onClick={() => deleteGalleryEntry(entry.id)}>Delete</button>}
+        </div>
+      </article>
+    );
 
     return (
       <main className="authoringShell" data-testid="authoring-workbench">
@@ -4372,7 +4492,8 @@ export default function Home() {
               ["evidence", "Evidence"],
               ["scenes", "Scenes"],
               ["timeline", "Timeline"],
-              ["logic", "Logic"]
+              ["logic", "Logic"],
+              ["gallery", "Gallery"]
             ].map(([value, label]) => (
               <button key={value} className={authoringTab === value ? "active" : ""} onClick={() => setAuthoringTab(value as AuthoringTab)}>{label}</button>
             ))}
@@ -4488,32 +4609,73 @@ export default function Home() {
               )}
             </div>
           </header>
-          <section className="pixelMapWrap compactMap" data-testid="authoring-map">
-            <div className="pixelMap" style={{ gridTemplateColumns: `repeat(${authoringMapSnapshot.width}, minmax(18px, 1fr))` }}>
-              {authoringMapSnapshot.tiles.map((tile) => {
-                const actors = authoringActorsByTile.get(`${tile.x}:${tile.y}`) || [];
-                const markers = authoringMarkersByTile.get(`${tile.x}:${tile.y}`) || [];
-                return (
-                  <button key={tile.id} className={`mapTile terrain-${tile.terrain} ${tile.searchable ? "searchable" : ""}`} title={tile.locationName || tile.terrain}>
-                    {tile.locationName && <span className="placeName">{tile.locationName}</span>}
-                    {markers.slice(0, 2).map((marker) => <span key={marker.id} className={`marker marker-${marker.type}`}>?</span>)}
-                    <span className="actorStack">{actors.slice(0, 3).map((actor) => <span key={actor.id} className={`actorPin actor-${actor.status}`}>{actorInitial(actor.name)}</span>)}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-          <section className="actionPanel">
-            <h2><Database size={16} /> Deduction Graph Preview</h2>
-            <DeductionGraphView
-              graph={authoringReport.deductionGraph}
-              discoveredEvidenceIds={authoringCase.evidence.map((item) => item.id)}
-              solutionRevealed
-              onSelectEvidence={setAuthoringEvidenceId}
-              onSelectEvent={setAuthoringTimelineId}
-              onSelectCharacter={setAuthoringCharacterId}
-            />
-          </section>
+          {authoringTab === "gallery" ? (
+            <section className="actionPanel caseGalleryPanel" data-testid="case-gallery-panel">
+              <div className="caseGalleryHeader">
+                <div>
+                  <p>Browser-local case library</p>
+                  <h2><Database size={16} /> Local Case Gallery</h2>
+                </div>
+                <span className="runtimePill">{caseGalleryEntries.length} local / {builtInGalleryEntries.length} built-in</span>
+              </div>
+              <div className="caseGallerySummary">
+                <span><strong>{allGalleryEntries.filter((entry) => entry.validation.valid).length}</strong><small>Runnable</small></span>
+                <span><strong>{allGalleryEntries.filter((entry) => !entry.validation.valid).length}</strong><small>Blocked</small></span>
+                <span><strong>{allGalleryEntries.reduce((sum, entry) => sum + entry.validation.evidenceCount, 0)}</strong><small>Total evidence</small></span>
+              </div>
+              <p className="caseGalleryNote">Gallery data stays in this browser under <code>{caseGalleryStorageKey}</code>. It is safe for Static Demo deployments and never calls `/api/*`.</p>
+              <div className="caseGallerySectionHeader">
+                <h3>Built-in Premium Templates</h3>
+                <span>Read-only</span>
+              </div>
+              <div className="caseGalleryGrid">
+                {builtInGalleryEntries.map((entry) => renderGalleryCard(entry, true))}
+              </div>
+              <div className="caseGallerySectionHeader">
+                <h3>Local Drafts</h3>
+                <span>{caseGalleryEntries.length} saved</span>
+              </div>
+              {caseGalleryEntries.length === 0 ? (
+                <div className="galleryEmptyState" data-testid="case-gallery-empty">
+                  <strong>No local drafts saved yet.</strong>
+                  <span>Use Save to Gallery after editing a template. Imports and exports stay browser-local unless you copy the JSON out.</span>
+                </div>
+              ) : (
+                <div className="caseGalleryGrid">
+                  {caseGalleryEntries.map((entry) => renderGalleryCard(entry, false))}
+                </div>
+              )}
+            </section>
+          ) : (
+            <>
+              <section className="pixelMapWrap compactMap" data-testid="authoring-map">
+                <div className="pixelMap" style={{ gridTemplateColumns: `repeat(${authoringMapSnapshot.width}, minmax(18px, 1fr))` }}>
+                  {authoringMapSnapshot.tiles.map((tile) => {
+                    const actors = authoringActorsByTile.get(`${tile.x}:${tile.y}`) || [];
+                    const markers = authoringMarkersByTile.get(`${tile.x}:${tile.y}`) || [];
+                    return (
+                      <button key={tile.id} className={`mapTile terrain-${tile.terrain} ${tile.searchable ? "searchable" : ""}`} title={tile.locationName || tile.terrain}>
+                        {tile.locationName && <span className="placeName">{tile.locationName}</span>}
+                        {markers.slice(0, 2).map((marker) => <span key={marker.id} className={`marker marker-${marker.type}`}>?</span>)}
+                        <span className="actorStack">{actors.slice(0, 3).map((actor) => <span key={actor.id} className={`actorPin actor-${actor.status}`}>{actorInitial(actor.name)}</span>)}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+              <section className="actionPanel">
+                <h2><Database size={16} /> Deduction Graph Preview</h2>
+                <DeductionGraphView
+                  graph={authoringReport.deductionGraph}
+                  discoveredEvidenceIds={authoringCase.evidence.map((item) => item.id)}
+                  solutionRevealed
+                  onSelectEvidence={setAuthoringEvidenceId}
+                  onSelectEvent={setAuthoringTimelineId}
+                  onSelectCharacter={setAuthoringCharacterId}
+                />
+              </section>
+            </>
+          )}
         </section>
 
         <aside className="authoringInspector">
@@ -4572,10 +4734,12 @@ export default function Home() {
             </label>
             <div className="authoringActions">
               <button onClick={() => loadPremiumTemplate()}>Load Premium Template</button>
+              <button data-testid="save-to-gallery" onClick={saveAuthoringToGallery}>Save to Gallery</button>
               <button onClick={() => exportAuthoring("json")}>Export JSON</button>
               <button onClick={() => exportAuthoring("markdown")}>Export Markdown</button>
+              <button data-testid="export-gallery-json" onClick={exportGalleryBundle} disabled={!caseGalleryEntries.length}>Export Gallery JSON</button>
             </div>
-            <textarea data-testid="authoring-import-text" placeholder="Paste AuthoringDraft or DeductionCase JSON" value={authoringImportText} onChange={(event) => setAuthoringImportText(event.target.value)} />
+            <textarea data-testid="authoring-import-text" placeholder="Paste AuthoringDraft, DeductionCase, or CaseGalleryBundle JSON" value={authoringImportText} onChange={(event) => setAuthoringImportText(event.target.value)} />
             <button className="secondaryButton full" onClick={importAuthoringJson}>Import JSON</button>
             <textarea data-testid="authoring-export-text" readOnly value={authoringExportText} placeholder="Export output appears here" />
             <div className="statusBox"><AlertTriangle size={16} /><span>{authoringStatus}</span></div>

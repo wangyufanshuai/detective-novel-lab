@@ -62,7 +62,7 @@ import type { GuidedTask, SelectionHighlight } from "@/app/hooks/useGuidedOnboar
 
 export type InspectorTabId = "events" | "investigation" | "logic" | "agent" | "people" | "developer";
 
-type CaseTemplateOption = { id: CaseTemplateId; title: string; description?: string };
+type CaseTemplateOption = { id: CaseTemplateId; title: string; description?: string; archetype: MurderArchetype };
 type CaseMode = "premium" | "generated";
 type AiSafetyView = {
   promptAudit?: { safe?: boolean };
@@ -399,6 +399,13 @@ export function ControlRail({
             {caseTemplates.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
           </select>
         </label>
+        {activeTemplate && (
+          <div className="caseLibraryMeta" data-testid="case-library-meta">
+            <span>{caseTemplates.length} premium templates</span>
+            <span>{activeTemplate.archetype} case</span>
+            <small>{activeTemplate.description}</small>
+          </div>
+        )}
         <label>案件类型
           <select value={caseArchetype} onChange={(event) => setCaseArchetype(event.target.value as MurderArchetype | "auto")}>
             {archetypeOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}

@@ -77,8 +77,8 @@ const engine = await loadEngine();
 }
 
 {
-  const templateIds = ["archive-blunt", "clocktower-locked-room", "clinic-poison"];
-  assert.deepEqual(engine.listCaseTemplates().map((item) => item.id), templateIds, "case library exposes three stable templates");
+  const templateIds = ["archive-blunt", "clocktower-locked-room", "clinic-poison", "greenhouse-blade"];
+  assert.deepEqual(engine.listCaseTemplates().map((item) => item.id), templateIds, "case library exposes four stable templates");
   for (const templateId of templateIds) {
     const { world, events, activeCase } = engine.createCaseTemplate(templateId);
     assert.equal(world.npcs.length, 8, `${templateId} has 8 NPCs`);
@@ -321,6 +321,24 @@ const engine = await loadEngine();
   const driftReport = engine.validateAuthoringDraft(drift);
   assert.equal(driftReport.valid, false, "field drift in imported authoring JSON is reported clearly");
   assert.equal(driftReport.errors.some((item) => item.path.includes("knowledgeScope")), true, "field drift issue locates the missing field");
+
+  const galleryEntry = engine.createCaseGalleryEntry(draft, { source: "local" });
+  assert.equal(galleryEntry.validation.valid, true, "valid premium draft can become a runnable gallery entry");
+  assert.equal(galleryEntry.validation.hardLogicValid, true, "gallery entry preserves hard logic summary");
+  assert.equal(galleryEntry.validation.evidenceCount, draft.caseFromLog.deductionCase.evidence.length, "gallery entry summarizes evidence count");
+
+  const invalidGalleryEntry = engine.createCaseGalleryEntry(withoutKeyEvidence, { source: "local" });
+  assert.equal(invalidGalleryEntry.validation.valid, false, "invalid draft is stored but marked non-runnable in gallery");
+  assert.equal(invalidGalleryEntry.validation.errorCount > 0, true, "invalid gallery entry keeps error count");
+
+  const bundle = engine.exportCaseGalleryBundle([galleryEntry, invalidGalleryEntry]);
+  const importedBundle = engine.importCaseGalleryEntries(JSON.parse(bundle), draft);
+  assert.equal(importedBundle.length, 2, "gallery bundle export/import round-trips entries");
+  assert.deepEqual(importedBundle.map((entry) => entry.validation.valid), [true, false], "gallery bundle preserves validation status after import");
+
+  const standaloneImported = engine.importCaseGalleryEntries(draft.caseFromLog.deductionCase, draft);
+  assert.equal(standaloneImported.length, 1, "standalone DeductionCase imports as a gallery entry");
+  assert.equal(standaloneImported[0].draft.caseFromLog.deductionCase.title, draft.caseFromLog.deductionCase.title, "standalone DeductionCase import preserves title");
 }
 
 {

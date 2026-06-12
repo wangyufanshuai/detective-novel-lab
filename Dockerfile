@@ -17,4 +17,5 @@ COPY --from=build /app/.next ./.next
 COPY --from=build /app/public ./public
 RUN mkdir -p /app/data
 EXPOSE 3000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 CMD node -e "fetch('http://127.0.0.1:3000/api/v1/query/runtime/status').then((r)=>r.ok?process.exit(0):process.exit(1)).catch(()=>process.exit(1))"
 CMD ["npm", "run", "start"]

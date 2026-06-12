@@ -9,6 +9,7 @@ The project now also includes two advanced labs:
 - **Persistent Agent Town**: a SQLite-backed runtime where NPCs keep goals, plans, memories, pressure, resources, and action scores across ticks until playable case candidates emerge.
 - **Living World Lab + Audit Studio**: a novel/world observer workbench for extracting a world graph from chapters, auditing extraction quality, applying local correction overlays, replaying source-backed character actions, and exposing the same observe -> decide -> intervene -> observe loop through `/api/v1/*`.
 - **Scenario Runner + Time Machine**: reproducible town experiments with baseline/counterfactual branch reports, tick snapshots, state diffs, rollback, and benchmark visibility.
+- **Local Case Gallery**: a browser-only Authoring library for built-in Premium templates, locally saved drafts, JSON bundle import/export, and valid-draft launch into Static Demo Runtime.
 
 DeepSeek is used only for NPC surface dialogue and optional solution prose. It does not decide the culprit, method, evidence, or timeline.
 
@@ -33,6 +34,8 @@ npm run dev -- -p 3000
 - **Static Demo**: open `http://127.0.0.1:3000/?runtime=static` for the public, no-server Premium Showcase.
 - **Server Runtime**: open `http://127.0.0.1:3000/?runtime=server` for SQLite-backed worlds, Persistent Agent Town, Scenario Runner, Time Machine, and optional DeepSeek dialogue.
 - **Agent API**: run `node examples/agent-client-node/index.mjs` or `node examples/scenario-runner/index.mjs` against a running server, or reuse the SDK starter in `examples/sdk`.
+
+In Static Demo, open **Authoring** and use **Save to Gallery** for a browser-local case library. Gallery data lives in `localStorage`, can be exported as JSON, and does not require server APIs.
 
 ## 30-Second Experience
 
@@ -83,6 +86,7 @@ Detective Town uses the LLM only as a surface language layer. The durable case l
 - **Audit Studio**: extracted novel worlds get a trust score, issue queue, suggested fixes, applied correction patches, and a corrected view without mutating the original source graph.
 - **Agent intervention loop**: scripts can query the world, start a replay, intervene in actor state, then query the changed branch.
 - **Scenario experiments**: scripts can run deterministic baseline and counterfactual town branches, compare snapshots, and roll runtime state back for debugging.
+- **Local authoring gallery**: browser-only case drafts can be saved, imported, exported, validated, and launched without server storage.
 - **Symbolic culprit validation**: local rules verify motive, means, opportunity, exclusions, and reasoning coverage.
 - **Playable investigation**: search scenes, question NPCs, challenge testimony with evidence, submit a theory, and reveal the solution.
 - **Case authoring**: authors can edit a playable case draft, run real-time hard-logic validation, and export runnable JSON or Markdown.
@@ -153,15 +157,24 @@ Example summary:
 
 The full report is written to `outputs/emergence-benchmark.json` and `outputs/emergence-benchmark.md`, which are ignored by Git.
 
+Docker Server Runtime exposes SQLite storage health through `/api/v1/query/runtime/status` and can create local backups with:
+
+```powershell
+npm run backup:sqlite
+```
+
+Backups are written under `outputs/backups/`, which is ignored by Git.
+
 ## Case Library
 
-Static Demo and Authoring mode include three deterministic 8 NPC / 24h cases:
+Static Demo and Authoring mode include four deterministic 8 NPC / 24h cases:
 
 | Template id | Case | Focus |
 | --- | --- | --- |
 | `archive-blunt` | Archive blunt-force misdirection | strong red herrings, staged scene, exclusion chain |
 | `clocktower-locked-room` | Clocktower locked-room timing case | timeline contradiction, mechanical misdirection |
 | `clinic-poison` | Clinic poison testimony case | testimony reversal, medicine-cabinet records |
+| `greenhouse-blade` | Greenhouse pruning blade case | tool-rack contradiction, staged break-in, trace evidence |
 
 Every template is validated by `validateHardCaseLogic`, has a complete `WorldCausalTrace`, keeps decisive clues backed by `WorldEvent` records, and gives every non-culprit a discoverable exclusion.
 

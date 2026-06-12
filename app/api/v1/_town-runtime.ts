@@ -32,8 +32,7 @@ export function loadRuntimeWorld(worldId: string) {
 }
 
 export function persistRuntimeWorld(world: RuntimeWorld, eventsToAdd: WorldEvent[] = []) {
-  worldRepository.saveWorld(world);
-  if (eventsToAdd.length) worldRepository.addEvents(eventsToAdd);
+  worldRepository.saveWorldBundle({ world, events: eventsToAdd });
   return world;
 }
 

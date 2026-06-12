@@ -771,10 +771,11 @@ test("loads a playable premium town without server APIs", async ({ page }) => {
   await expect(page.locator("body")).not.toHaveCSS("overflow-x", "scroll");
 });
 
-test("case library switches all three static templates", async ({ page }) => {
+test("case library switches all four static templates", async ({ page }) => {
   await dismissOnboarding(page);
   await page.locator(".settingsDrawer summary").click();
   const select = page.getByTestId("case-template-select");
+  await expect(page.getByTestId("case-library-meta")).toContainText("4 premium templates");
   await select.selectOption("archive-blunt");
   await expect(page.locator("body")).toContainText("档案馆钝器误导案");
   await clickInspectorTab(page, "Logic");
@@ -787,10 +788,16 @@ test("case library switches all three static templates", async ({ page }) => {
 
   await select.selectOption("clinic-poison");
   await expect(page.getByTestId("deduction-graph")).toBeVisible();
+  await select.selectOption("greenhouse-blade");
+  await expect(page.getByTestId("case-library-meta")).toContainText("blade case");
+  await expect(page.locator("body")).toContainText("Greenhouse pruning blade case");
+  await expect(page.locator(".actorPin")).toHaveCount(8);
+  await expect(page.getByTestId("deduction-graph")).toBeVisible();
   await clickInspectorTab(page, "Events");
   await expect(page.locator(".eventRow")).not.toHaveCount(0);
   await clickInspectorTab(page, "Logic");
   await expect(page.getByTestId("causal-trace")).toBeVisible();
+  await expect(page.getByTestId("proof-tour")).toBeVisible();
 });
 
 test("search, interrogate and solve use the local rule engine", async ({ page }) => {
@@ -893,6 +900,7 @@ test("replay advances the 24h timeline", async ({ page }) => {
 test("authoring workbench explains validation blockers", async ({ page }) => {
   await dismissOnboarding(page);
   await page.evaluate(() => localStorage.removeItem("detective-town-authoring-v1"));
+  await page.evaluate(() => localStorage.removeItem("detective-town-case-gallery-v1"));
   await page.reload();
   await dismissOnboarding(page);
   await page.getByTestId("open-authoring").click();
@@ -911,6 +919,22 @@ test("authoring workbench explains validation blockers", async ({ page }) => {
   await page.getByTestId("open-authoring").click();
   await expect(page.getByTestId("authoring-title")).toHaveValue("Author Test Case");
 
+  await page.getByTestId("save-to-gallery").click();
+  await expect(page.getByTestId("case-gallery-panel")).toBeVisible();
+  const savedGalleryCard = page.getByTestId("case-gallery-card").filter({ hasText: "Author Test Case" });
+  await expect(savedGalleryCard).toContainText("Runnable");
+  await expect(savedGalleryCard).toContainText("Hard logic");
+  await savedGalleryCard.getByRole("button", { name: "Load into Authoring" }).click();
+  await page.getByRole("button", { name: "Case", exact: true }).click();
+  await expect(page.getByTestId("authoring-title")).toHaveValue("Author Test Case");
+  await page.getByTestId("export-gallery-json").click();
+  await expect(page.getByTestId("authoring-export-text")).toContainText('"version": 1');
+  await expect(page.getByTestId("authoring-export-text")).toContainText('"entries"');
+  await page.getByRole("button", { name: "Gallery", exact: true }).click();
+  await savedGalleryCard.getByTestId("delete-gallery-entry").click();
+  await expect(page.getByTestId("case-gallery-card").filter({ hasText: "Author Test Case" })).toHaveCount(0);
+  await expect(page.getByTestId("case-gallery-empty")).toContainText("No local drafts");
+
   await page.getByRole("button", { name: "Evidence", exact: true }).click();
   await page.getByTestId("delete-authoring-evidence").click();
   await expect(page.getByTestId("authoring-rule-report")).toContainText("Fail");
@@ -919,6 +943,10 @@ test("authoring workbench explains validation blockers", async ({ page }) => {
   await page.locator(".runDraftBlocker").click();
   await expect(page.getByRole("button", { name: "Evidence", exact: true })).toHaveClass(/active/);
   await expect(page.getByTestId("run-authoring-draft")).toBeDisabled();
+  await page.getByTestId("save-to-gallery").click();
+  const invalidGalleryCard = page.getByTestId("case-gallery-card").filter({ hasText: "Author Test Case" });
+  await expect(invalidGalleryCard).toContainText("Blocked");
+  await expect(invalidGalleryCard.getByRole("button", { name: "Run Draft" })).toBeDisabled();
 
   await page.getByRole("button", { name: "Load Premium Template" }).click();
   await expect(page.getByTestId("run-authoring-draft")).toBeEnabled();

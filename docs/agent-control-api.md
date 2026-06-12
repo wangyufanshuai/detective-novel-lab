@@ -24,6 +24,8 @@ Failure:
 
 The SDK is the executable reference for the stable external-agent subset. It is repo-local in v0.1.0 and is not published to npm.
 
+`GET /api/v1/query/runtime/status` also reports SQLite storage health for Docker Server Runtime. The optional `storage` object includes `schemaVersion`, `databasePath`, `walEnabled`, `health`, `quickCheck`, and row counts. Existing clients can ignore this field.
+
 ## Query Endpoints
 
 - `GET /api/v1/query/runtime/status`
