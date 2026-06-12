@@ -1190,6 +1190,8 @@ export function AgentControlPanel({
               <span>Secret risk: {selectedAgent.secretRisk}</span>
               <span>Alert: {selectedAgent.alertness}</span>
               <span>Location: {selectedAgent.locationId}</span>
+              <span>Propagated memories: {selectedAgent.propagatedMemoryCount ?? 0}</span>
+              <span>Last consequence: {selectedAgent.lastConsequence || "none"}</span>
             </div>
             <small>Known facts: {selectedAgent.knownFactIds.slice(-4).join(" / ") || "none"}</small>
             <button type="button" className="secondaryButton full" onClick={interveneAgent} disabled={runningBusy}>Apply resource intervention</button>
@@ -1221,8 +1223,10 @@ export function AgentControlPanel({
               <span>Memory: {candidate.validation.memoryScopedTestimony ? "Yes" : "No"}</span>
               <span>Timeline: {candidate.validation.timelineClosed ? "Yes" : "No"}</span>
               <span>Hard logic: {candidate.validation.hardLogicValid ? "Pass" : "Pending"}</span>
+              <span>Stages: {(candidate.chainStageTags || candidate.validation.chainStages || []).join(" / ") || "forming"}</span>
             </div>
             {!!candidate.validation.errors.length && <small>{candidate.validation.errors.slice(0, 2).join(" / ")}</small>}
+            {!!candidate.validation.failureReasons?.length && <small>{candidate.validation.failureReasons.slice(0, 2).join(" / ")}</small>}
             <button type="button" className="secondaryButton full" onClick={() => extractCase(candidate)} disabled={runningBusy}>
               Extract playable case
             </button>

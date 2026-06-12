@@ -76,6 +76,8 @@ try {
   });
   assert.equal(started.runtime.status, "running", "runtime starts running");
   assert.ok(started.runtime.decisionTraces.length > 0, "runtime creates decisions");
+  assert.ok(started.runtime.decisionTraces[0].phases?.includes("candidate-extraction"), "decision traces expose simulation phases");
+  assert.ok(started.runtime.decisionTraces[0].consequence?.actionKind, "decision traces expose action consequences");
 
   const stepped = await request("/api/v1/command/town/runtime/step", {
     method: "POST",
@@ -85,10 +87,12 @@ try {
 
   const agents = await request(`/api/v1/query/town/agents?worldId=${encodeURIComponent(worldId)}`);
   assert.ok(agents.agents.length > 0, "agents query returns states");
+  assert.ok("propagatedMemoryCount" in agents.agents[0], "agent states expose propagated memory count");
   const actorId = agents.agents[0].npcId;
 
   const agent = await request(`/api/v1/query/town/agent?worldId=${encodeURIComponent(worldId)}&npcId=${encodeURIComponent(actorId)}`);
   assert.ok(agent.candidates.length >= 3, "agent query returns action candidates");
+  assert.ok(agent.candidates.some((candidate) => ["investigate", "spread-rumor", "seek-alibi", "pressure", "cover-up"].includes(candidate.kind)), "agent query returns core simulation actions");
 
   const intervened = await request("/api/v1/command/town/agent/intervene", {
     method: "POST",
@@ -99,6 +103,8 @@ try {
   const candidateQueue = await request(`/api/v1/query/town/candidates?worldId=${encodeURIComponent(worldId)}`);
   const candidate = candidateQueue.candidates[0];
   assert.ok(candidate.id, "candidate id is available");
+  assert.ok(Array.isArray(candidate.chainStageTags), "candidate exposes chain stage tags");
+  assert.ok(Array.isArray(candidate.validation.failureReasons), "candidate exposes validation failure reasons");
 
   const proof = await request(`/api/v1/query/town/emergence-proof?worldId=${encodeURIComponent(worldId)}&candidateId=${encodeURIComponent(candidate.id)}`);
   assert.equal(proof.candidate.id, candidate.id, "proof returns selected candidate");

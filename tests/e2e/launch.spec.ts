@@ -692,7 +692,9 @@ test("persistent agent town runs, scores agents and extracts a playable case", a
   await expect(page.getByTestId("persistent-town-panel")).toBeVisible();
   await page.getByTestId("persistent-town-panel").getByRole("button", { name: "Start", exact: true }).click();
   await expect(page.getByTestId("agent-state-panel")).toContainText("Agent State", { timeout: 20_000 });
+  await expect(page.getByTestId("agent-state-panel")).toContainText("Propagated memories", { timeout: 20_000 });
   await expect(page.getByTestId("agent-action-candidates")).toContainText("Score", { timeout: 20_000 });
+  await expect(page.getByTestId("agent-action-candidates")).toContainText(/investigate|spread-rumor|seek-alibi|pressure|cover-up/, { timeout: 20_000 });
 
   for (let index = 0; index < 3; index += 1) {
     await page.getByTestId("persistent-town-panel").getByRole("button", { name: "Step" }).click();
@@ -700,6 +702,7 @@ test("persistent agent town runs, scores agents and extracts a playable case", a
 
   await expect(page.getByTestId("emergence-queue")).toContainText("Pressure", { timeout: 20_000 });
   await expect(page.getByTestId("emergence-queue")).toContainText("WorldEvent");
+  await expect(page.getByTestId("emergence-queue")).toContainText("Stages:");
   await expect(page.getByTestId("scenario-runner")).toBeVisible();
   await page.getByTestId("scenario-runner").getByRole("button", { name: "Run default scenario" }).click();
   await expect(page.getByTestId("review-summary")).toContainText("Review Summary", { timeout: 20_000 });

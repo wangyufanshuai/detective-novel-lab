@@ -123,15 +123,15 @@ Persistent Agent Town is the runtime side of Detective Town. It keeps agent stat
 Each tick follows a fixed local loop:
 
 ```text
-observe events -> update memories and beliefs -> generate legal actions -> score locally -> execute -> write events -> build case candidates
+observe events -> propagate memories and rumors -> update goals/plans -> generate legal actions -> score locally -> execute -> write events and consequences -> build case candidates
 ```
 
-Action scoring is deterministic and inspectable. The score includes goal priority, known information, relationship pressure, resource availability, location reachability, risk, evidence consistency, and case impact. DeepSeek is not used for action legality, culprit choice, evidence placement, candidate validation, or player judgement.
+Action scoring is deterministic and inspectable. The score includes goal priority, known information, relationship pressure, resource availability, location reachability, risk, evidence consistency, case impact, witness exposure, rumor value, alibi pressure, and cover-up urgency. DeepSeek is not used for action legality, culprit choice, evidence placement, candidate validation, or player judgement.
 
 The UI exposes this through **持续小镇 / Persistent Agent Town**:
 
-- `Agent` tab: current NPC goal, short-term plan, known facts, risk, alertness, resources, and action candidate scores.
-- `Emergence Queue`: candidate culprit/victim chains, source event count, memory count, validation status, and failure reasons.
+- `Agent` tab: current NPC goal, short-term plan, known facts, risk, alertness, resources, propagated memories, consequences, and action candidate scores.
+- `Emergence Queue`: candidate culprit/victim chains, source event count, memory count, validation status, chain stages, and failure reasons.
 - bounded intervention: changing an NPC resource creates a counterfactual branch without overwriting original world facts.
 - extraction: a valid candidate can be converted into the existing playable investigation flow.
 

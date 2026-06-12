@@ -52,6 +52,26 @@ const engine = await loadEngine();
     true,
     "candidate score fields are complete"
   );
+  assert.equal(
+    runA.runtime.decisionTraces.every((trace) => trace.candidates.every((candidate) => ["witnessExposure", "rumorValue", "alibiPressure", "coverUpUrgency"].every((field) => Number.isFinite(candidate.score[field] ?? 0)))),
+    true,
+    "core simulation score fields are complete"
+  );
+  assert.equal(runA.runtime.pressureLedger.length > 0, true, "ticks record a pressure ledger");
+  assert.equal(runA.runtime.consequences.length > 0, true, "ticks record action consequences");
+  assert.equal(runA.runtime.decisionTraces.every((trace) => trace.phases?.includes("candidate-extraction") && trace.consequence), true, "decision traces include phase and consequence data");
+}
+
+{
+  const world = engine.createInitialWorld("simulation-depth-persistent", { mode: "advanced", npcCount: 12, timelineHours: 72 });
+  const daily = engine.simulateDailyLife(world, 3, []);
+  const run = engine.advancePersistentTownTick(daily.world, daily.events, { steps: 14, status: "running" });
+  const selectedKinds = new Set(run.runtime.decisionTraces.map((trace) => trace.candidates.find((candidate) => candidate.id === trace.selectedCandidateId)?.kind).filter(Boolean));
+  const newKinds = ["investigate", "spread-rumor", "seek-alibi", "pressure", "cover-up"].filter((kind) => selectedKinds.has(kind));
+  assert.equal(newKinds.length >= 3, true, "runtime selects diverse core simulation actions");
+  assert.equal(run.runtime.memoryPropagations.length > 0, true, "runtime propagates memories beyond direct participants");
+  assert.equal(run.runtime.agentStates.some((agent) => (agent.propagatedMemoryCount || 0) > 0 || agent.lastConsequence), true, "agent state reflects propagation or consequence updates");
+  assert.equal(run.runtime.consequences.some((item) => item.chainStage === "cover-up" || item.chainStage === "memory" || item.chainStage === "alibi"), true, "consequences record case-chain stages");
 }
 
 {
@@ -62,6 +82,8 @@ const engine = await loadEngine();
   assert.equal(queue.candidates.length > 0, true, "emergence queue produces candidates");
   assert.equal(queue.candidates.every((candidate) => candidate.riskChainEventIds.length > 0), true, "candidates trace risk chain events");
   assert.equal(queue.candidates.every((candidate) => candidate.validation.errors.length || candidate.validation.valid), true, "invalid candidates explain failure");
+  assert.equal(queue.candidates.some((candidate) => (candidate.chainStageTags || []).length >= 2), true, "candidates expose multi-stage risk chains");
+  assert.equal(queue.candidates.every((candidate) => Array.isArray(candidate.validation.failureReasons)), true, "candidate validation exposes failure reasons");
   const selected = queue.candidates.find((candidate) => candidate.validation.valid) || queue.candidates[0];
   const validation = engine.validateCaseCandidate(run.world, [...daily.events, ...run.events], selected);
   assert.deepEqual(validation.errors, selected.validation.errors, "candidate validation is stable");

@@ -43,6 +43,7 @@ Persistent Agent Town validates:
 - per-tick agent decision traces;
 - complete action score fields;
 - blocked action reasons for illegal choices;
+- memory propagation and action consequence summaries;
 - event and memory provenance for case candidates;
 - candidate failure reasons before extraction;
 - fair-play validation after a candidate becomes a playable case.
@@ -52,12 +53,12 @@ Persistent Agent Town validates:
 Persistent Agent Town adds a long-running form of Detective Town:
 
 ```text
-NPC state -> legal candidate actions -> local scoring -> WorldEvent -> MemoryRecord -> CaseCandidate -> validation
+NPC state -> propagated memory -> legal candidate actions -> local scoring -> WorldEvent -> consequence -> CaseCandidate -> validation
 ```
 
 The runtime is deliberately stored inside existing world JSON instead of a new graph database. That keeps the project deployable as a local SQLite app while still making the agent loop observable through `/api/v1/query/town/*`.
 
-Decision traces are first-class output. A failed or blocked candidate should answer "why did this not become a fair mystery?" instead of returning only `false`.
+Decision traces are first-class output. They now preserve tick phases, selected action consequences, propagated memory ids, and candidate chain stages. A failed or blocked candidate should answer "why did this not become a fair mystery?" instead of returning only `false`.
 
 ## Replay Provenance
 

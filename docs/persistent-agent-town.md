@@ -8,11 +8,12 @@ Each tick is local and deterministic:
 
 ```text
 observe recent events
--> update memories and known facts
+-> propagate direct, witness, rumor, and deduced memories
+-> update goals, plans, pressure, risk, fatigue, and alertness
 -> generate action candidates
 -> score candidates with local rules
 -> execute the best legal action
--> write WorldEvent and MemoryRecord
+-> write WorldEvent, MemoryRecord, pressure ledger, and consequence records
 -> build or update CaseCandidate records
 ```
 
@@ -32,6 +33,7 @@ Each NPC receives a persisted `NpcAgentState`:
 - resources;
 - current location;
 - fatigue and alertness.
+- propagated memory count and last consequence summary.
 
 The UI shows these in the `Agent` tab when the user opens **持续小镇 / Persistent Agent Town**.
 
@@ -49,8 +51,14 @@ Every candidate action includes a full `NpcActionScore`:
 | `risk` | How risky the action is for the NPC. |
 | `evidenceConsistency` | Whether the action remains compatible with known world evidence. |
 | `caseImpact` | Whether it can contribute to a conflict, clue, alibi, or candidate case. |
+| `witnessExposure` | Whether the action can surface source events through same-location witnesses. |
+| `rumorValue` | Whether known facts are useful enough to spread as rumor memory. |
+| `alibiPressure` | Whether the NPC is trying to create a public exclusion trail. |
+| `coverUpUrgency` | Whether secret risk makes a trace-hiding action plausible. |
 
 Illegal candidates are retained in traces with a `blockedReason`, so failures remain inspectable instead of disappearing.
+
+Core simulation actions now include `investigate`, `spread-rumor`, `seek-alibi`, `pressure`, and `cover-up` in addition to movement, observation, talk, confrontation, resource access, and trace hiding.
 
 ## Case Emergence Factory
 
@@ -60,6 +68,8 @@ The runtime builds `CaseCandidate` records from pressure chains:
 - relationship pressure;
 - resource or means contact;
 - opportunity windows;
+- cover-up or staging actions;
+- alibi seeds;
 - suspicious movement;
 - memory-backed testimony;
 - event-backed evidence.
@@ -73,7 +83,7 @@ Candidates must pass local validation before extraction:
 - closed timeline;
 - playable evidence chain.
 
-Invalid candidates are still useful. Their validation report explains whether the missing piece is motive, means, opportunity, exclusion evidence, timeline closure, or hard-logic validation.
+Invalid candidates are still useful. Their validation report explains whether the missing piece is motive, means, opportunity, memory support, timeline depth, non-culprit exclusion seed, or hard-logic validation.
 
 ## Counterfactual Interventions
 
