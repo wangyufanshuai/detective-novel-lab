@@ -54,10 +54,11 @@ try {
   assert.equal(status.version, "v1", "runtime status returns v1");
   assert.equal(status.capabilities.scenarioRunner, true, "scenario runner capability is advertised");
 
-  const created = await client.createTown({ seed: "sdk-client-smoke", mode: "showcase", caseMode: "generated", npcCount: 8, timelineHours: 24 });
+  const created = await client.createTown({ seed: "sdk-client-smoke", mode: "showcase", caseMode: "generated", timelineHours: 24 });
   const worldId = created.world.id;
   const actorId = created.world.npcs[0].id;
   assert.ok(worldId, "createTown returns world id");
+  assert.equal(created.world.npcs.length, 20, "SDK createTown follows generated 20 NPC default");
 
   const started = await client.startRuntime(worldId, { steps: 2 });
   assert.equal(started.runtime.status, "running", "runtime starts");

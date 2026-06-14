@@ -165,8 +165,9 @@ export function createInitialWorld(seed = "detective-town-showcase", options: Cr
   const random = makeSeededRandom(seed);
   const locations = createTownLocations();
   const workLocations = locations.filter((location) => location.kind !== "home");
-  const people = mode === "advanced" ? advancedPeople : showcasePeople;
-  const npcCount = Math.max(4, Math.min(options.npcCount || (mode === "advanced" ? 30 : 8), people.length));
+  const requestedNpcCount = options.npcCount || (mode === "advanced" ? 30 : 8);
+  const people = mode === "advanced" || requestedNpcCount > showcasePeople.length ? advancedPeople : showcasePeople;
+  const npcCount = Math.max(4, Math.min(requestedNpcCount, people.length));
   const npcs: NPCProfile[] = people.slice(0, npcCount).map(([name, role], index) => {
     const homeLocationId = `home-${index + 1}`;
     return {

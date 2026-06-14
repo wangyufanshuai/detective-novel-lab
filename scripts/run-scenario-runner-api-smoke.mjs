@@ -70,10 +70,11 @@ try {
 
   const created = await request("/api/v1/command/town/create", {
     method: "POST",
-    body: JSON.stringify({ seed: "scenario-api-smoke", mode: "showcase", caseMode: "generated", npcCount: 8, timelineHours: 24 })
+    body: JSON.stringify({ seed: "scenario-api-smoke", mode: "showcase", caseMode: "generated", timelineHours: 24 })
   });
   const worldId = created.world.id;
   const actorId = created.world.npcs[0].id;
+  assert.equal(created.world.npcs.length, 20, "scenario generated baseline defaults to 20 NPCs");
 
   const scenario = await request("/api/v1/command/town/scenario/run", {
     method: "POST",

@@ -63,18 +63,26 @@ server?.stderr.on("data", (chunk) => serverOutput.push(String(chunk).trim()));
 
 try {
   await waitForServer();
+  const explicitCreated = await request("/api/v1/command/town/create", {
+    method: "POST",
+    body: JSON.stringify({ seed: "persistent-api-smoke-explicit", mode: "showcase", caseMode: "generated", npcCount: 8, timelineHours: 24 })
+  });
+  assert.equal(explicitCreated.world.npcs.length, 8, "explicit generated npcCount is preserved");
+
   const created = await request("/api/v1/command/town/create", {
     method: "POST",
-    body: JSON.stringify({ seed: "persistent-api-smoke", mode: "showcase", caseMode: "generated", npcCount: 8, timelineHours: 24 })
+    body: JSON.stringify({ seed: "persistent-api-smoke", mode: "showcase", caseMode: "generated", timelineHours: 24 })
   });
   const worldId = created.world.id;
   assert.ok(worldId, "world id is returned");
+  assert.equal(created.world.npcs.length, 20, "generated server town defaults to 20 NPCs");
 
   const started = await request("/api/v1/command/town/runtime/start", {
     method: "POST",
     body: JSON.stringify({ worldId, steps: 2 })
   });
   assert.equal(started.runtime.status, "running", "runtime starts running");
+  assert.equal(started.runtime.agentStates.length, 20, "runtime creates 20 agent states by default");
   assert.ok(started.runtime.decisionTraces.length > 0, "runtime creates decisions");
   assert.ok(started.runtime.decisionTraces[0].phases?.includes("candidate-extraction"), "decision traces expose simulation phases");
   assert.ok(started.runtime.decisionTraces[0].consequence?.actionKind, "decision traces expose action consequences");
@@ -100,9 +108,18 @@ try {
   });
   assert.equal(intervened.intervention.branch, "counterfactual", "intervention is counterfactual");
 
-  const candidateQueue = await request(`/api/v1/query/town/candidates?worldId=${encodeURIComponent(worldId)}`);
-  const candidate = candidateQueue.candidates[0];
+  let candidateQueue = await request(`/api/v1/query/town/candidates?worldId=${encodeURIComponent(worldId)}`);
+  let candidate = candidateQueue.candidates.find((item) => item.validation?.valid) || candidateQueue.candidates[0];
+  for (let attempt = 0; attempt < 4 && !candidate?.validation?.valid; attempt += 1) {
+    await request("/api/v1/command/town/runtime/step", {
+      method: "POST",
+      body: JSON.stringify({ worldId, steps: 4 })
+    });
+    candidateQueue = await request(`/api/v1/query/town/candidates?worldId=${encodeURIComponent(worldId)}`);
+    candidate = candidateQueue.candidates.find((item) => item.validation?.valid) || candidateQueue.candidates[0];
+  }
   assert.ok(candidate.id, "candidate id is available");
+  assert.equal(candidate.validation.valid, true, "at least one valid candidate emerges before extraction");
   assert.ok(Array.isArray(candidate.chainStageTags), "candidate exposes chain stage tags");
   assert.ok(Array.isArray(candidate.validation.failureReasons), "candidate exposes validation failure reasons");
 

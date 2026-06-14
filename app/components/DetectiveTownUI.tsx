@@ -995,28 +995,70 @@ export function AgentControlPanel({
   const benchmarkState = benchmarkSummary ? (benchmarkSummary.failed === 0 ? "pass" : "fail") : "pending";
   const baselineStartId = scenarioReport?.baseline.startSnapshotId || "";
   const baselineEndId = scenarioReport?.baseline.endSnapshotId || "";
+  const actionLabels: Record<string, string> = {
+    investigate: "调查",
+    "spread-rumor": "传闻",
+    "seek-alibi": "不在场",
+    pressure: "施压",
+    "cover-up": "掩盖",
+    talk: "交谈",
+    trade: "交易",
+    move: "移动",
+    rest: "休整"
+  };
+  const stageLabels: Record<string, string> = {
+    motive: "动机",
+    means: "手段",
+    opportunity: "机会",
+    "cover-up": "掩盖",
+    staging: "伪装",
+    memory: "记忆",
+    exclusion: "排除",
+    "non-culprit-exclusion": "排除"
+  };
+  const phaseLabels: Record<string, string> = {
+    observe: "感知",
+    propagate: "传播",
+    "memory-propagation": "传播",
+    "propagate-memory": "传播",
+    plan: "计划",
+    "goal-update": "目标",
+    "plan-update": "计划",
+    "generate-candidates": "候选",
+    score: "评分",
+    execute: "执行",
+    consequence: "后果",
+    "candidate-extraction": "成案"
+  };
+  const runtimePhases = runtime?.simulationPhases?.length ? runtime.simulationPhases : ["observe", "memory-propagation", "goal-update", "generate-candidates", "score", "execute", "consequence", "candidate-extraction"];
+  const currentPhase = runtimePhases.length ? runtimePhases[Math.max(0, (runtime?.tick ?? 0) % runtimePhases.length)] : "observe";
+  const propagationCount = runtime?.memoryPropagations?.length ?? 0;
+  const consequenceCount = runtime?.consequences?.length ?? 0;
+  const selectedDecision = selectedAgent?.lastDecisionId ? runtime?.decisionTraces.find((trace) => trace.id === selectedAgent.lastDecisionId) : undefined;
+  const selectedConsequences = selectedAgent ? (runtime?.consequences || []).filter((item) => item.npcId === selectedAgent.npcId).slice(-3).reverse() : [];
+  const topCandidate = candidates[0];
 
   async function copyScenarioReport() {
     if (!scenarioReport) {
-      setCopyStatus("No scenario report to copy.");
+      setCopyStatus("暂无可复制的场景报告。");
       return;
     }
     if (!navigator.clipboard?.writeText) {
-      setCopyStatus("Clipboard unavailable. Report JSON is visible in the panel.");
+      setCopyStatus("剪贴板不可用，报告 JSON 已显示在面板中。");
       return;
     }
     try {
       await navigator.clipboard.writeText(JSON.stringify(scenarioReport, null, 2));
-      setCopyStatus("Scenario report JSON copied.");
+      setCopyStatus("场景报告 JSON 已复制。");
     } catch {
-      setCopyStatus("Clipboard blocked by the browser. Report JSON is visible in the panel.");
+      setCopyStatus("浏览器阻止了剪贴板，报告 JSON 已显示在面板中。");
     }
   }
 
   function confirmRollback() {
     if (!selectedSnapshotFromId) return;
     const label = snapshotFrom ? `${snapshotFrom.label} at tick ${snapshotFrom.tick}` : selectedSnapshotFromId;
-    if (window.confirm(`Roll back Persistent Agent Town to ${label}? This restores runtime state for review.`)) {
+    if (window.confirm(`是否把 Persistent Agent Town 回滚到 ${label}？这会恢复导演台评审用的运行状态。`)) {
       rollbackSnapshot(selectedSnapshotFromId);
     }
   }
@@ -1028,49 +1070,71 @@ export function AgentControlPanel({
   }
 
   return (
-    <div className="stackedInspector persistentTownPanel" data-testid="persistent-town-panel">
+    <div className="stackedInspector persistentTownPanel agentDirectorPanel" data-testid="persistent-town-panel">
       <section className="actionPanel reviewSummaryPanel" data-testid="review-summary">
         <div className="panelHeaderLine">
-          <h2><Network size={16} /> Review Summary</h2>
-          <span className={`runtimePill ${runtime?.status || "paused"}`}>{runtime?.status || "not started"}</span>
+          <h2><Network size={16} /> 案件导演台</h2>
+          <span className={`runtimePill ${runtime?.status || "paused"}`}>{runtime?.status || "未启动"}</span>
         </div>
-        <p>Compact review surface for runtime health, scenario evidence, Time Machine coverage, and benchmark confidence.</p>
+        <p>用导演视角扫读小镇运行：NPC 行动、记忆传播、案件链、分支回放和基准验证集中在同一个控制面板。</p>
         <div className="reviewMetricGrid">
           <span><b>{runtime?.tick ?? 0}</b>Tick</span>
-          <span><b>{runtime?.currentTime || "--:--"}</b>Day {runtime?.currentDay ?? 1}</span>
-          <span className={reviewStatus}><b>{scenarioReport ? (scenarioReport.passed ? "Pass" : "Fail") : "Pending"}</b>Scenario</span>
-          <span><b>{branchCount}</b>Branches</span>
-          <span><b>{snapshots.length}</b>Snapshots</span>
-          <span className={benchmarkState}><b>{benchmarkSummary ? `${benchmarkSummary.passRate}%` : "N/A"}</b>Benchmark</span>
-          <span><b>{queue?.validCount ?? 0}</b>Valid candidates</span>
-          <span><b>{runtime?.agentStates.length ?? 0}</b>Agents</span>
+          <span><b>{runtime?.currentTime || "--:--"}</b>第 {runtime?.currentDay ?? 1} 天</span>
+          <span className={reviewStatus}><b>{scenarioReport ? (scenarioReport.passed ? "通过" : "失败") : "待运行"}</b>场景</span>
+          <span><b>{branchCount}</b>分支</span>
+          <span><b>{snapshots.length}</b>快照</span>
+          <span className={benchmarkState}><b>{benchmarkSummary ? `${benchmarkSummary.passRate}%` : "N/A"}</b>基准</span>
+          <span><b>{queue?.validCount ?? 0}</b>可玩案件</span>
+          <span data-testid="director-agent-count"><b>{runtime?.agentStates.length ?? 0}</b>NPC</span>
+          <span><b>{phaseLabels[currentPhase] || currentPhase}</b>当前阶段</span>
+          <span><b>{propagationCount}</b>传播记忆</span>
+          <span><b>{consequenceCount}</b>行动后果</span>
+          <span><b>{topCandidate?.chainStageTags?.length || topCandidate?.validation.chainStages?.length || 0}</b>链条阶段</span>
         </div>
         <div className="townRuntimeActions">
-          <button type="button" className="primaryButton compact" onClick={startRuntime} disabled={runningBusy}>Start</button>
-          <button type="button" onClick={pauseRuntime} disabled={runningBusy || !runtime}>Pause</button>
-          <button type="button" onClick={stepRuntime} disabled={runningBusy || !runtime}>Step</button>
-          <button type="button" onClick={resetRuntime} disabled={runningBusy || !runtime}>Reset</button>
+          <button type="button" className="primaryButton compact" onClick={startRuntime} disabled={runningBusy}>开始</button>
+          <button type="button" onClick={pauseRuntime} disabled={runningBusy || !runtime}>暂停</button>
+          <button type="button" onClick={stepRuntime} disabled={runningBusy || !runtime}>单步</button>
+          <button type="button" onClick={resetRuntime} disabled={runningBusy || !runtime}>重置</button>
         </div>
-        <small>{queue?.nextAction || "Start the runtime to build an emergence queue."}</small>
+        <div className="phaseGemRail">
+          {runtimePhases.map((phase) => (
+            <span key={phase} className={phase === currentPhase ? "active" : ""}>{phaseLabels[phase] || phase}</span>
+          ))}
+        </div>
+        <small>{queue?.nextAction || "启动运行后，导演台会开始生成 NPC 行动和案件队列。"}</small>
       </section>
 
-      <section className="actionPanel scenarioRunnerPanel" data-testid="scenario-runner">
-        <div className="panelHeaderLine">
-          <h2><GitBranch size={16} /> Scenario Runner</h2>
-          <span className={`runtimePill ${selectedScenarioRun?.status || "paused"}`}>{scenarioReport ? (scenarioReport.passed ? "passed" : "failed") : selectedScenarioRun?.status || "not run"}</span>
+      <nav className="actionPanel directorMenuPanel" aria-label="案件导演台菜单">
+        <span className="eyebrow">案件菜单</span>
+        <a href="#director-actions">NPC 行动</a>
+        <a href="#director-scenario">场景推演</a>
+        <a href="#director-time-machine">时间机器</a>
+        <a href="#director-candidates">案件队列</a>
+        <a href="#director-dossier">NPC 档案</a>
+        <div className="directorMenuStat">
+          <strong>{runtime?.agentStates.length ?? 0}</strong>
+          <span>当前管理 NPC</span>
         </div>
-        <p>Run a deterministic baseline and compare counterfactual branches without overwriting source facts.</p>
+      </nav>
+
+      <section className="actionPanel scenarioRunnerPanel" id="director-scenario" data-testid="scenario-runner">
+        <div className="panelHeaderLine">
+          <h2><GitBranch size={16} /> 场景推演</h2>
+          <span className={`runtimePill ${selectedScenarioRun?.status || "paused"}`}>{scenarioReport ? (scenarioReport.passed ? "通过" : "失败") : selectedScenarioRun?.status || "未运行"}</span>
+        </div>
+        <p>运行确定性基线，再比较反事实分支；源世界不会被分支污染。</p>
         <div className="reviewMetricGrid compact">
-          <span className={reviewStatus}><b>{scenarioReport ? (scenarioReport.passed ? "Pass" : "Fail") : "-"}</b>Result</span>
-          <span><b>{scenarioReport?.baseline.eventGrowth ?? 0}</b>Baseline events</span>
-          <span><b>{scenarioReport?.baseline.memoryGrowth ?? 0}</b>Baseline memories</span>
-          <span><b>{scenarioReport?.baseline.validCandidateCount ?? 0}</b>Baseline valid</span>
-          <span><b>{branchCount}</b>Branches</span>
-          <span><b>{passedChecks}/{totalChecks}</b>Checks</span>
+          <span className={reviewStatus}><b>{scenarioReport ? (scenarioReport.passed ? "通过" : "失败") : "-"}</b>结果</span>
+          <span><b>{scenarioReport?.baseline.eventGrowth ?? 0}</b>基线事件</span>
+          <span><b>{scenarioReport?.baseline.memoryGrowth ?? 0}</b>基线记忆</span>
+          <span><b>{scenarioReport?.baseline.validCandidateCount ?? 0}</b>有效案件</span>
+          <span><b>{branchCount}</b>分支</span>
+          <span><b>{passedChecks}/{totalChecks}</b>检查</span>
         </div>
         <div className="townRuntimeActions">
-          <button type="button" className="secondaryButton full" onClick={runScenario} disabled={runningBusy}>Run default scenario</button>
-          <button type="button" className="secondaryButton full" onClick={copyScenarioReport} disabled={!scenarioReport}>Copy report JSON</button>
+          <button type="button" className="secondaryButton full" onClick={runScenario} disabled={runningBusy}>运行默认场景</button>
+          <button type="button" className="secondaryButton full" onClick={copyScenarioReport} disabled={!scenarioReport}>复制报告 JSON</button>
         </div>
         {copyStatus && <small data-testid="scenario-copy-status">{copyStatus}</small>}
         {scenarioReport ? (
@@ -1078,9 +1142,9 @@ export function AgentControlPanel({
             <div className="scenarioCheckList" data-testid="scenario-check-list">
               {scenarioReport.checks.map((check) => (
                 <div key={check.id} className={check.passed ? "pass" : "fail"}>
-                  <strong>{check.passed ? "Pass" : "Fail"}</strong>
+                  <strong>{check.passed ? "通过" : "失败"}</strong>
                   <span>{check.label}</span>
-                  <small>actual {String(check.actual)} / expected {String(check.expected)}</small>
+                  <small>实际 {String(check.actual)} / 期望 {String(check.expected)}</small>
                 </div>
               ))}
             </div>
@@ -1089,51 +1153,51 @@ export function AgentControlPanel({
                 <article key={branch.id} className={branch.status === "completed" ? "source" : "gap"}>
                   <strong>{branch.name}</strong>
                   <span>{branch.status}</span>
-                  <span>{branch.eventGrowth} events</span>
-                  <span>{branch.memoryGrowth} memories</span>
-                  <span>{branch.validCandidateCount} valid</span>
-                  <span>{branch.diffFromBaseline.changedAgents.length} agents changed</span>
-                  <small>{branch.diffFromBaseline.branchOnlyInterventionIds.length} branch-only interventions</small>
+                  <span>{branch.eventGrowth} 事件</span>
+                  <span>{branch.memoryGrowth} 记忆</span>
+                  <span>{branch.validCandidateCount} 有效</span>
+                  <span>{branch.diffFromBaseline.changedAgents.length} NPC 变化</span>
+                  <small>{branch.diffFromBaseline.branchOnlyInterventionIds.length} 个分支专属干预</small>
                 </article>
               ))}
             </div>
             <pre className="apiExample">{scenarioReport.summary}</pre>
           </div>
-        ) : <small>No scenario report yet.</small>}
+        ) : <small>暂无场景报告。</small>}
       </section>
 
-      <section className="actionPanel timeMachinePanel" data-testid="time-machine">
+      <section className="actionPanel timeMachinePanel" id="director-time-machine" data-testid="time-machine">
         <div className="panelHeaderLine">
-          <h2><Clock size={16} /> World State Time Machine</h2>
-          <span>{snapshots.length} snapshots</span>
+          <h2><Clock size={16} /> 时间机器 / 分支回放</h2>
+          <span>{snapshots.length} 快照</span>
         </div>
-        <p>Compare ticks, agent state, memory growth, interventions, and candidate status changes.</p>
+        <p>对比 tick、NPC 状态、记忆增长、干预和候选案件变化。</p>
         <div className="timeMachineControls">
           <label>
-            From
+            起点
             <select value={selectedSnapshotFromId} onChange={(event) => setSelectedSnapshotFromId(event.target.value)}>
-              <option value="">Select snapshot</option>
+              <option value="">选择快照</option>
               {snapshots.map((snapshot) => <option key={snapshot.id} value={snapshot.id}>{snapshot.label} / {snapshot.time}</option>)}
             </select>
           </label>
           <label>
-            To
+            终点
             <select value={selectedSnapshotToId} onChange={(event) => setSelectedSnapshotToId(event.target.value)}>
-              <option value="">Select snapshot</option>
+              <option value="">选择快照</option>
               {snapshots.map((snapshot) => <option key={snapshot.id} value={snapshot.id}>{snapshot.label} / {snapshot.time}</option>)}
             </select>
           </label>
         </div>
         <div className="townRuntimeActions">
-          <button type="button" className="secondaryButton full" onClick={selectBaselineDiff} disabled={!baselineStartId || !baselineEndId}>Use baseline diff</button>
-          <button type="button" onClick={() => baselineStartId && setSelectedSnapshotFromId(baselineStartId)} disabled={!baselineStartId}>Set From baseline</button>
-          <button type="button" onClick={() => baselineEndId && setSelectedSnapshotToId(baselineEndId)} disabled={!baselineEndId}>Set To baseline</button>
+          <button type="button" className="secondaryButton full" onClick={selectBaselineDiff} disabled={!baselineStartId || !baselineEndId}>选择基线差异</button>
+          <button type="button" onClick={() => baselineStartId && setSelectedSnapshotFromId(baselineStartId)} disabled={!baselineStartId}>起点设为基线</button>
+          <button type="button" onClick={() => baselineEndId && setSelectedSnapshotToId(baselineEndId)} disabled={!baselineEndId}>终点设为基线</button>
         </div>
         <div className="logicBadges">
-          <span>From: {snapshotFrom?.tick ?? "-"}</span>
-          <span>To: {snapshotTo?.tick ?? "-"}</span>
-          <span>Events +{snapshotDiff?.addedEventIds.length ?? 0}</span>
-          <span>Memories +{snapshotDiff?.addedMemoryIds.length ?? 0}</span>
+          <span>起点: {snapshotFrom?.tick ?? "-"}</span>
+          <span>终点: {snapshotTo?.tick ?? "-"}</span>
+          <span>事件 +{snapshotDiff?.addedEventIds.length ?? 0}</span>
+          <span>记忆 +{snapshotDiff?.addedMemoryIds.length ?? 0}</span>
         </div>
         {!!sortedSnapshots.length && (
           <div className="snapshotTimeline" data-testid="snapshot-timeline">
@@ -1141,94 +1205,118 @@ export function AgentControlPanel({
               <button key={snapshot.id} type="button" className={snapshot.id === selectedSnapshotFromId || snapshot.id === selectedSnapshotToId ? "selected" : ""} onClick={() => setSelectedSnapshotToId(snapshot.id)}>
                 <strong>{snapshot.label}</strong>
                 <span>Tick {snapshot.tick} / {snapshot.time}</span>
-                <small>{snapshot.eventIds.length} events / {snapshot.memoryIds.length} memories / {snapshot.candidateSummaries.length} candidates</small>
+                <small>{snapshot.eventIds.length} 事件 / {snapshot.memoryIds.length} 记忆 / {snapshot.candidateSummaries.length} 候选</small>
               </button>
             ))}
           </div>
         )}
         {snapshotDiff ? (
           <div className="snapshotDiffDetails" data-testid="snapshot-diff-details">
-            <div><strong>Added events</strong><span>{snapshotDiff.addedEventIds.length}</span><small>{snapshotDiff.addedEventIds.slice(0, 3).join(" / ") || "none"}</small></div>
-            <div><strong>Added memories</strong><span>{snapshotDiff.addedMemoryIds.length}</span><small>{snapshotDiff.addedMemoryIds.slice(0, 3).join(" / ") || "none"}</small></div>
-            <div><strong>Changed agents</strong><span>{snapshotDiff.changedAgents.length}</span><small>{snapshotDiff.changedAgents.slice(0, 3).map((agent) => `${agent.npcId}:${agent.changedFields.join(",")}`).join(" / ") || "none"}</small></div>
-            <div><strong>Candidate status changes</strong><span>{snapshotDiff.candidateStatusChanges.length}</span><small>{snapshotDiff.candidateStatusChanges.slice(0, 3).map((candidate) => `${candidate.candidateId}:${candidate.beforeStatus || "new"}->${candidate.afterStatus || "removed"}`).join(" / ") || "none"}</small></div>
-            <div><strong>Branch-only interventions</strong><span>{snapshotDiff.branchOnlyInterventionIds.length}</span><small>{snapshotDiff.branchOnlyInterventionIds.slice(0, 3).join(" / ") || "none"}</small></div>
+            <div><strong>新增事件</strong><span>{snapshotDiff.addedEventIds.length}</span><small>{snapshotDiff.addedEventIds.slice(0, 3).join(" / ") || "无"}</small></div>
+            <div><strong>新增记忆</strong><span>{snapshotDiff.addedMemoryIds.length}</span><small>{snapshotDiff.addedMemoryIds.slice(0, 3).join(" / ") || "无"}</small></div>
+            <div><strong>NPC 变化</strong><span>{snapshotDiff.changedAgents.length}</span><small>{snapshotDiff.changedAgents.slice(0, 3).map((agent) => `${agent.npcId}:${agent.changedFields.join(",")}`).join(" / ") || "无"}</small></div>
+            <div><strong>候选状态变化</strong><span>{snapshotDiff.candidateStatusChanges.length}</span><small>{snapshotDiff.candidateStatusChanges.slice(0, 3).map((candidate) => `${candidate.candidateId}:${candidate.beforeStatus || "new"}->${candidate.afterStatus || "removed"}`).join(" / ") || "无"}</small></div>
+            <div><strong>分支专属干预</strong><span>{snapshotDiff.branchOnlyInterventionIds.length}</span><small>{snapshotDiff.branchOnlyInterventionIds.slice(0, 3).join(" / ") || "无"}</small></div>
           </div>
-        ) : <small>Select two snapshots to inspect a diff.</small>}
+        ) : <small>选择两个快照查看差异。</small>}
         <button type="button" className="secondaryButton full" onClick={confirmRollback} disabled={runningBusy || !selectedSnapshotFromId}>
-          Roll back to From snapshot
+          回滚到起点快照
         </button>
       </section>
 
       <section className="actionPanel benchmarkDashboardPanel" data-testid="benchmark-dashboard">
         <div className="panelHeaderLine">
-          <h2><ShieldCheck size={16} /> Benchmark Dashboard</h2>
-          <span className={`runtimePill ${benchmarkState}`}>{benchmarkSummary ? (benchmarkSummary.failed === 0 ? "pass" : "fail") : "unavailable"}</span>
+          <h2><ShieldCheck size={16} /> 基准仪表盘</h2>
+          <span className={`runtimePill ${benchmarkState}`}>{benchmarkSummary ? (benchmarkSummary.failed === 0 ? "通过" : "失败") : "未生成"}</span>
         </div>
         {benchmarkSummary ? (
           <div className="reviewMetricGrid compact">
-            <span><b>{benchmarkSummary.passRate}%</b>Pass rate</span>
-            <span><b>{benchmarkSummary.seedCount}</b>Seeds</span>
-            <span><b>{benchmarkSummary.averageQualityScore}</b>Quality</span>
-            <span><b>{benchmarkSummary.averageEmergenceScore}</b>Emergence</span>
-            <span className={benchmarkSummary.failed === 0 ? "pass" : "fail"}><b>{benchmarkSummary.failed}</b>Failed seeds</span>
-            <span><b>{benchmarkSummary.passed}</b>Passed seeds</span>
+            <span><b>{benchmarkSummary.passRate}%</b>通过率</span>
+            <span><b>{benchmarkSummary.seedCount}</b>种子数</span>
+            <span><b>{benchmarkSummary.averageQualityScore}</b>质量分</span>
+            <span><b>{benchmarkSummary.averageEmergenceScore}</b>涌现分</span>
+            <span className={benchmarkSummary.failed === 0 ? "pass" : "fail"}><b>{benchmarkSummary.failed}</b>失败种子</span>
+            <span><b>{benchmarkSummary.passed}</b>通过种子</span>
           </div>
-        ) : <p>No benchmark report found. Run <code>npm run benchmark:emergence</code> to populate <code>outputs/emergence-benchmark.json</code>. The report is intentionally ignored by Git.</p>}
+        ) : <p>未找到基准报告。运行 <code>npm run benchmark:emergence</code> 会生成 <code>outputs/emergence-benchmark.json</code>，该文件会被 Git 忽略。</p>}
       </section>
 
-      <section className="actionPanel agentStatePanel" data-testid="agent-state-panel">
-        <h2><Users size={16} /> Agent State</h2>
+      <section className="actionPanel agentStatePanel" id="director-dossier" data-testid="agent-state-panel">
+        <h2><Users size={16} /> NPC 档案</h2>
         {selectedAgent ? (
           <article className="worldInspectCard compact">
             <span className="eyebrow">{selectedCharacterName || selectedAgent.npcId}</span>
             <h3>{selectedAgent.currentGoal}</h3>
             <p>{selectedAgent.currentPlan.join(" -> ")}</p>
             <div className="logicBadges">
-              <span>Priority: {selectedAgent.goalPriority}</span>
-              <span>Pressure: {selectedAgent.relationshipPressure}</span>
-              <span>Secret risk: {selectedAgent.secretRisk}</span>
-              <span>Alert: {selectedAgent.alertness}</span>
-              <span>Location: {selectedAgent.locationId}</span>
-              <span>Propagated memories: {selectedAgent.propagatedMemoryCount ?? 0}</span>
-              <span>Last consequence: {selectedAgent.lastConsequence || "none"}</span>
+              <span>优先级: {selectedAgent.goalPriority}</span>
+              <span>关系压力: {selectedAgent.relationshipPressure}</span>
+              <span>秘密风险: {selectedAgent.secretRisk}</span>
+              <span>警觉: {selectedAgent.alertness}</span>
+              <span>位置: {selectedAgent.locationId}</span>
+              <span>传播记忆: {selectedAgent.propagatedMemoryCount ?? 0}</span>
+              <span>最近后果: {selectedAgent.lastConsequence || "无"}</span>
             </div>
-            <small>Known facts: {selectedAgent.knownFactIds.slice(-4).join(" / ") || "none"}</small>
-            <button type="button" className="secondaryButton full" onClick={interveneAgent} disabled={runningBusy}>Apply resource intervention</button>
+            <small>已知事实: {selectedAgent.knownFactIds.slice(-4).join(" / ") || "无"}</small>
+            {selectedDecision?.consequence && (
+              <div className="directorConsequence">
+                <strong>行动后果</strong>
+                <span>{actionLabels[selectedDecision.consequence.actionKind] || selectedDecision.consequence.actionKind}</span>
+                <small>压力 {selectedDecision.consequence.relationshipPressureDelta >= 0 ? "+" : ""}{selectedDecision.consequence.relationshipPressureDelta} / 风险 {selectedDecision.consequence.secretRiskDelta >= 0 ? "+" : ""}{selectedDecision.consequence.secretRiskDelta} / 记忆 +{selectedDecision.consequence.memoryIds.length}</small>
+              </div>
+            )}
+            {!!selectedConsequences.length && (
+              <div className="directorMiniList">
+                {selectedConsequences.map((item) => (
+                  <span key={item.id}>{actionLabels[item.actionKind] || item.actionKind} - {stageLabels[item.chainStage || "memory"] || item.chainStage || "记忆"}</span>
+                ))}
+              </div>
+            )}
+            <button type="button" className="secondaryButton full" onClick={interveneAgent} disabled={runningBusy}>施加资源干预</button>
           </article>
-        ) : <p>Select an NPC on the map or suspect board to inspect agent state.</p>}
-        <div className="simulationCandidateList" data-testid="agent-action-candidates">
+        ) : <p>在地图或嫌疑人板选择 NPC，查看角色状态。</p>}
+        <div className="simulationCandidateList directorActionList" id="director-actions" data-testid="agent-action-candidates">
           {selectedAgentCandidates.slice(0, 5).map((candidate) => (
             <article key={candidate.id} className={candidate.legal ? "source" : "gap"}>
-              <strong>{candidate.kind}: {candidate.description}</strong>
-              <span>Score {candidate.score.total} / target {candidate.targetLocationId}</span>
-              <small>{candidate.legal ? candidate.score.reasons.join(" / ") || "legal action" : candidate.blockedReason || "blocked by local rules"}</small>
+              <strong>{actionLabels[candidate.kind] || candidate.kind}: {candidate.description}</strong>
+              <span>行动评分 {candidate.score.total} / 目标 {candidate.targetLocationId}</span>
+              <div className="actionScoreGrid">
+                <span>目击 {candidate.score.witnessExposure ?? 0}</span>
+                <span>传闻 {candidate.score.rumorValue ?? 0}</span>
+                <span>不在场 {candidate.score.alibiPressure ?? 0}</span>
+                <span>掩盖 {candidate.score.coverUpUrgency ?? 0}</span>
+              </div>
+              <small>{candidate.legal ? candidate.score.reasons.join(" / ") || "可执行行动" : candidate.blockedReason || "被本地规则阻止"}</small>
             </article>
           ))}
         </div>
       </section>
 
-      <section className="actionPanel emergenceQueuePanel" data-testid="emergence-queue">
-        <h2><GitBranch size={16} /> Emergence Queue</h2>
-        {!candidates.length && <p>No case candidates yet. Step the runtime until pressure chains form.</p>}
+      <section className="actionPanel emergenceQueuePanel" id="director-candidates" data-testid="emergence-queue">
+        <h2><GitBranch size={16} /> 案件队列</h2>
+        {!candidates.length && <p>暂无候选案件。单步运行，直到压力链形成。</p>}
         {candidates.slice(0, 5).map((candidate) => (
           <article key={candidate.id} className={`candidateCard ${candidate.validation.valid ? "pass" : "fail"}`}>
             <div className="panelHeaderLine">
               <strong>{candidate.culpritId} {"->"} {candidate.victimId}</strong>
               <span>{candidate.status}</span>
             </div>
-            <p>Pressure {candidate.pressureScore}; events {candidate.riskChainEventIds.length}; memories {candidate.memoryIds.length}</p>
+            <p>压力 {candidate.pressureScore}; 事件 {candidate.riskChainEventIds.length}; 记忆 {candidate.memoryIds.length}</p>
             <div className="logicBadges">
-              <span>WorldEvent: {candidate.validation.worldBackedEvidence ? "Yes" : "No"}</span>
-              <span>Memory: {candidate.validation.memoryScopedTestimony ? "Yes" : "No"}</span>
-              <span>Timeline: {candidate.validation.timelineClosed ? "Yes" : "No"}</span>
-              <span>Hard logic: {candidate.validation.hardLogicValid ? "Pass" : "Pending"}</span>
-              <span>Stages: {(candidate.chainStageTags || candidate.validation.chainStages || []).join(" / ") || "forming"}</span>
+              <span>事件支撑: {candidate.validation.worldBackedEvidence ? "是" : "否"}</span>
+              <span>记忆证词: {candidate.validation.memoryScopedTestimony ? "是" : "否"}</span>
+              <span>时间闭合: {candidate.validation.timelineClosed ? "是" : "否"}</span>
+              <span>硬逻辑: {candidate.validation.hardLogicValid ? "通过" : "待补"}</span>
+            </div>
+            <div className="questChain">
+              {(candidate.chainStageTags || candidate.validation.chainStages || []).length ? (candidate.chainStageTags || candidate.validation.chainStages || []).map((stage) => (
+                <span key={`${candidate.id}:${stage}`}>{stageLabels[stage] || stage}</span>
+              )) : <span>形成中</span>}
             </div>
             {!!candidate.validation.errors.length && <small>{candidate.validation.errors.slice(0, 2).join(" / ")}</small>}
             {!!candidate.validation.failureReasons?.length && <small>{candidate.validation.failureReasons.slice(0, 2).join(" / ")}</small>}
             <button type="button" className="secondaryButton full" onClick={() => extractCase(candidate)} disabled={runningBusy}>
-              Extract playable case
+              抽取可玩案件
             </button>
           </article>
         ))}

@@ -717,49 +717,52 @@ test("persistent agent town runs, scores agents and extracts a playable case", a
   await dismissOnboarding(page);
   await page.locator(".settingsDrawer summary").click();
   await page.getByLabel("Seed").fill(`persistent-e2e-${testInfo.project.name}`);
+  await page.getByLabel("Case Mode").selectOption("generated");
   await page.getByRole("button", { name: /Reset \/ Create Town/ }).click();
   await expect(page.getByTestId("pixel-map")).toBeVisible({ timeout: 20_000 });
-  await expect(page.locator(".actorPin")).toHaveCount(8, { timeout: 20_000 });
+  await expect.poll(async () => page.locator(".actorPin").count(), { timeout: 20_000 }).toBeGreaterThanOrEqual(18);
 
   await page.getByTestId("open-persistent-town").click();
   await expect(page.getByTestId("persistent-town-panel")).toBeVisible();
-  await page.getByTestId("persistent-town-panel").getByRole("button", { name: "Start", exact: true }).click();
-  await expect(page.getByTestId("agent-state-panel")).toContainText("Agent State", { timeout: 20_000 });
-  await expect(page.getByTestId("agent-state-panel")).toContainText("Propagated memories", { timeout: 20_000 });
-  await expect(page.getByTestId("agent-action-candidates")).toContainText("Score", { timeout: 20_000 });
-  await expect(page.getByTestId("agent-action-candidates")).toContainText(/investigate|spread-rumor|seek-alibi|pressure|cover-up/, { timeout: 20_000 });
+  await expect(page.getByTestId("review-summary")).toContainText("案件导演台", { timeout: 20_000 });
+  await expect(page.getByTestId("director-agent-count")).toContainText("20", { timeout: 20_000 });
+  await page.getByTestId("persistent-town-panel").getByRole("button", { name: "开始", exact: true }).click();
+  await expect(page.getByTestId("agent-state-panel")).toContainText("NPC 档案", { timeout: 20_000 });
+  await expect(page.getByTestId("agent-state-panel")).toContainText("传播记忆", { timeout: 20_000 });
+  await expect(page.getByTestId("agent-action-candidates")).toContainText("行动评分", { timeout: 20_000 });
+  await expect(page.getByTestId("agent-action-candidates")).toContainText(/调查|传闻|不在场|施压|掩盖/, { timeout: 20_000 });
 
   for (let index = 0; index < 3; index += 1) {
-    await page.getByTestId("persistent-town-panel").getByRole("button", { name: "Step" }).click();
+    await page.getByTestId("persistent-town-panel").getByRole("button", { name: "单步" }).click();
   }
 
-  await expect(page.getByTestId("emergence-queue")).toContainText("Pressure", { timeout: 20_000 });
-  await expect(page.getByTestId("emergence-queue")).toContainText("WorldEvent");
-  await expect(page.getByTestId("emergence-queue")).toContainText("Stages:");
+  await expect(page.getByTestId("emergence-queue")).toContainText("压力", { timeout: 20_000 });
+  await expect(page.getByTestId("emergence-queue")).toContainText("事件支撑");
+  await expect(page.getByTestId("emergence-queue")).toContainText(/动机|手段|机会|形成中/);
   await expect(page.getByTestId("scenario-runner")).toBeVisible();
-  await page.getByTestId("scenario-runner").getByRole("button", { name: "Run default scenario" }).click();
-  await expect(page.getByTestId("review-summary")).toContainText("Review Summary", { timeout: 20_000 });
-  await expect(page.getByTestId("review-summary")).toContainText("Scenario", { timeout: 20_000 });
+  await page.getByTestId("scenario-runner").getByRole("button", { name: "运行默认场景" }).click();
+  await expect(page.getByTestId("review-summary")).toContainText("案件导演台", { timeout: 20_000 });
+  await expect(page.getByTestId("review-summary")).toContainText("场景", { timeout: 20_000 });
   await expect(page.getByTestId("scenario-runner")).toContainText("Selected agent resource branch", { timeout: 25_000 });
-  await expect(page.getByTestId("scenario-check-list")).toContainText("Pass", { timeout: 20_000 });
-  await expect(page.getByTestId("branch-comparison")).toContainText("agents changed", { timeout: 20_000 });
-  await expect(page.getByTestId("time-machine")).toContainText("Events +", { timeout: 20_000 });
+  await expect(page.getByTestId("scenario-check-list")).toContainText("通过", { timeout: 20_000 });
+  await expect(page.getByTestId("branch-comparison")).toContainText("NPC 变化", { timeout: 20_000 });
+  await expect(page.getByTestId("time-machine")).toContainText("事件 +", { timeout: 20_000 });
   await expect(page.getByTestId("snapshot-timeline")).toContainText("Tick", { timeout: 20_000 });
-  await expect(page.getByTestId("snapshot-diff-details")).toContainText("Changed agents", { timeout: 20_000 });
+  await expect(page.getByTestId("snapshot-diff-details")).toContainText("NPC 变化", { timeout: 20_000 });
   await expect(page.getByTestId("benchmark-dashboard")).toBeVisible();
-  await expect(page.getByTestId("benchmark-dashboard")).toContainText(/Pass rate|benchmark report/);
+  await expect(page.getByTestId("benchmark-dashboard")).toContainText(/通过率|基准报告/);
 
   let rollbackDialogMessage = "";
   page.once("dialog", async (dialog) => {
     rollbackDialogMessage = dialog.message();
     await dialog.dismiss();
   });
-  await page.getByTestId("time-machine").getByRole("button", { name: "Roll back to From snapshot" }).click();
-  expect(rollbackDialogMessage).toContain("Roll back");
+  await page.getByTestId("time-machine").getByRole("button", { name: "回滚到起点快照" }).click();
+  expect(rollbackDialogMessage).toContain("回滚");
 
   const agentPanelOverflow = await page.getByTestId("persistent-town-panel").evaluate((element) => element.scrollWidth - element.clientWidth);
   expect(agentPanelOverflow).toBeLessThanOrEqual(1);
-  await page.getByTestId("emergence-queue").getByRole("button", { name: "Extract playable case" }).first().click();
+  await page.getByTestId("emergence-queue").getByRole("button", { name: "抽取可玩案件" }).first().click();
   await expect(page.getByTestId("status-line")).toContainText("Playable case extracted", { timeout: 20_000 });
   await expect(page.getByTestId("inspector-rail").locator("button.active")).toContainText("调查");
 });

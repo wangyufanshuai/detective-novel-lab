@@ -3503,7 +3503,7 @@ export default function Home() {
     () =>
       JSON.stringify(
         {
-          createTown: { method: "POST", url: "/api/v1/command/town/create", body: { seed: seedInput, mode, caseMode, caseTemplateId, npcCount: mode === "advanced" ? 30 : 8, timelineHours: mode === "advanced" ? 120 : 24, caseArchetype } },
+          createTown: { method: "POST", url: "/api/v1/command/town/create", body: { seed: seedInput, mode, caseMode, caseTemplateId, npcCount: mode === "advanced" ? 30 : caseMode === "generated" ? 20 : 8, timelineHours: mode === "advanced" ? 120 : 24, caseArchetype } },
           mapSnapshot: world ? { method: "GET", url: `/api/v1/query/world/map?worldId=${world.id}&caseId=${activeCase?.id || ""}&sessionId=${session?.id || ""}&day=1&time=${minutesToTime(timeValue)}` } : null,
           deductionGraph: activeCase ? { method: "GET", url: `/api/v1/query/case/deduction-graph?caseId=${activeCase.id}` } : null,
           interrogate: session ? { method: "POST", url: "/api/v1/command/investigation/interrogate", body: { sessionId: session.id, characterId: selectedCharacterId, question, evidenceId: selectedEvidenceId || undefined } } : null
@@ -3697,12 +3697,13 @@ export default function Home() {
     }
     setBusy(true);
     try {
+      const generatedNpcCount = mode === "advanced" ? 30 : caseMode === "generated" ? 20 : 8;
       const data = await postJson<{ world: WorldState; events: WorldEvent[]; activeCase: CaseFromLog }>("/api/worlds/create", {
         seed: seedInput.trim() || (caseMode === "premium" ? "premium-showcase" : "showcase-seed"),
         mode,
         caseMode: mode === "showcase" ? caseMode : "generated",
         caseTemplateId,
-        npcCount: mode === "advanced" ? 30 : 8,
+        npcCount: generatedNpcCount,
         timelineHours: mode === "advanced" ? 120 : 24,
         preSimDays: mode === "advanced" ? 5 : 1,
         caseArchetype

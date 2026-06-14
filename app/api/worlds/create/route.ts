@@ -20,9 +20,10 @@ export async function POST(request: NextRequest) {
       const savedWorld = worldRepository.saveWorldBundle({ world: premium.world, events: premium.events, activeCase: premium.activeCase });
       return NextResponse.json({ ok: true, world: savedWorld, events: premium.events, activeCase: premium.activeCase, qualityReport: premium.activeCase.qualityReport, simulationReports: [] });
     }
+    const generatedNpcCount = mode === "advanced" ? 30 : 20;
     const world = createInitialWorld(body.seed || "detective-town-showcase", {
       mode,
-      npcCount: body.npcCount || (mode === "advanced" ? 30 : 8),
+      npcCount: body.npcCount ?? generatedNpcCount,
       timelineHours: body.timelineHours || (mode === "advanced" ? 120 : 24),
       caseArchetype: body.caseArchetype === "auto" ? undefined : body.caseArchetype
     });

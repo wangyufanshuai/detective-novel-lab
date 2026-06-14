@@ -874,6 +874,173 @@ blockquote {
   min-width: 0;
 }
 
+.agentDirectorPanel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  min-width: 0;
+  padding: 2px;
+  overflow-x: hidden;
+}
+
+.agentDirectorPanel .actionPanel {
+  min-width: 0;
+  background:
+    linear-gradient(180deg, rgba(255, 179, 71, 0.045), rgba(8, 16, 24, 0.94)),
+    #081018;
+  border-color: rgba(243, 193, 91, 0.2);
+  box-shadow: inset 0 1px 0 rgba(255, 229, 174, 0.05), 0 10px 28px rgba(0, 0, 0, 0.16);
+}
+
+.agentDirectorPanel .reviewSummaryPanel {
+  grid-column: 1 / -1;
+  background:
+    linear-gradient(90deg, rgba(243, 193, 91, 0.16), rgba(101, 255, 196, 0.04)),
+    #090f16;
+  border-color: rgba(243, 193, 91, 0.36);
+}
+
+.directorMenuPanel {
+  position: static;
+  top: 8px;
+  grid-column: 1;
+  display: grid;
+  gap: 7px;
+}
+
+.directorMenuPanel a {
+  display: block;
+  min-width: 0;
+  padding: 8px 9px;
+  color: #f3dca7;
+  background: rgba(243, 193, 91, 0.07);
+  border: 1px solid rgba(243, 193, 91, 0.18);
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.directorMenuPanel a:hover,
+.directorMenuPanel a:focus-visible {
+  color: #fff2c8;
+  border-color: rgba(243, 193, 91, 0.46);
+}
+
+.directorMenuStat {
+  display: grid;
+  gap: 3px;
+  padding: 9px;
+  background: #0b121a;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+}
+
+.directorMenuStat strong {
+  color: #f6fbff;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.directorMenuStat span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.agentDirectorPanel .scenarioRunnerPanel,
+.agentDirectorPanel .timeMachinePanel,
+.agentDirectorPanel .emergenceQueuePanel {
+  grid-column: 1;
+}
+
+.agentDirectorPanel .benchmarkDashboardPanel,
+.agentDirectorPanel .agentStatePanel {
+  grid-column: 1;
+}
+
+.phaseGemRail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.phaseGemRail span,
+.questChain span {
+  flex: 0 1 auto;
+  padding: 5px 7px;
+  color: #f3dca7;
+  background: rgba(243, 193, 91, 0.08);
+  border: 1px solid rgba(243, 193, 91, 0.2);
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 1000;
+}
+
+.phaseGemRail span.active {
+  color: #0b121a;
+  background: #f3c15b;
+  border-color: #ffd98a;
+}
+
+.directorConsequence {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0;
+  padding: 8px;
+  background: rgba(240, 91, 97, 0.08);
+  border: 1px solid rgba(240, 91, 97, 0.24);
+  border-radius: 5px;
+}
+
+.directorConsequence strong {
+  color: #ffd6d8;
+  font-size: 11px;
+}
+
+.directorConsequence span {
+  color: #f6fbff;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.directorConsequence small,
+.directorMiniList span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.directorMiniList,
+.questChain,
+.actionScoreGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+}
+
+.directorMiniList {
+  margin: 6px 0 8px;
+}
+
+.directorMiniList span,
+.actionScoreGrid span {
+  padding: 4px 6px;
+  background: rgba(101, 255, 196, 0.06);
+  border: 1px solid rgba(101, 255, 196, 0.15);
+  border-radius: 4px;
+}
+
+.directorActionList > article.source {
+  border-color: rgba(101, 255, 196, 0.28);
+}
+
+.directorActionList > article.gap {
+  border-color: rgba(240, 91, 97, 0.32);
+}
+
 .reviewMetricGrid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -2522,6 +2689,24 @@ blockquote {
 }
 
 @media (max-width: 720px) {
+  .agentDirectorPanel {
+    grid-template-columns: 1fr;
+  }
+
+  .agentDirectorPanel .reviewSummaryPanel,
+  .agentDirectorPanel .directorMenuPanel,
+  .agentDirectorPanel .scenarioRunnerPanel,
+  .agentDirectorPanel .timeMachinePanel,
+  .agentDirectorPanel .emergenceQueuePanel,
+  .agentDirectorPanel .benchmarkDashboardPanel,
+  .agentDirectorPanel .agentStatePanel {
+    grid-column: 1;
+  }
+
+  .directorMenuPanel {
+    position: static;
+  }
+
   .timeMachineControls {
     grid-template-columns: 1fr;
   }

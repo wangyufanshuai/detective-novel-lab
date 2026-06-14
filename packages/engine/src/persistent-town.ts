@@ -829,7 +829,7 @@ export function createPersistentTownRuntime(world: WorldState, events: WorldEven
     createdAt: now,
     updatedAt: now
   };
-  runtime.agentStates = world.npcs.filter((npc) => npc.alive).map((npc) => deriveNpcAgentState(world, npc, events, runtime));
+  runtime.agentStates = world.npcs.map((npc) => deriveNpcAgentState(world, npc, events, runtime));
   return runtime;
 }
 

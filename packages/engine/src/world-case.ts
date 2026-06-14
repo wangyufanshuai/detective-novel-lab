@@ -295,7 +295,8 @@ export function validateWorldCase(world: WorldState, events: WorldEvent[], deduc
   const culpritRows = deriveSuspectMatrix(deductionCase).filter((row) => row.completeAndUnexcluded);
 
   if (deathEvents.length !== 1) worldErrors.push(`World log must contain exactly one death event; found ${deathEvents.length}.`);
-  if (world.mode === "showcase" && world.npcs.length !== 8) worldErrors.push(`Showcase world must contain exactly 8 NPCs; found ${world.npcs.length}.`);
+  if (world.mode === "showcase" && world.npcs.length < 8) worldErrors.push(`Showcase world must contain at least 8 NPCs; found ${world.npcs.length}.`);
+  if (world.mode === "showcase" && world.npcs.length > 12) worldWarnings.push("Generated showcase worlds with many NPCs should keep suspect grouping compact in UI.");
   if (culpritRows.length !== 1) worldErrors.push("World case must leave exactly one complete and unexcluded suspect.");
   if (!npcIds.has(deductionCase.truth.culpritId)) worldErrors.push("Culprit must exist in the world NPC list.");
   if (!events.some((event) => event.type === "conflict" && event.relatedCharacterIds.includes(deductionCase.truth.culpritId))) worldErrors.push("Culprit must have a motive-bearing conflict event.");
