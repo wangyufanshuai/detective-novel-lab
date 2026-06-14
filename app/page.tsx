@@ -43,6 +43,7 @@ import {
   InvestigationPanel,
   AgentControlPanel,
   OnboardingOverlay,
+  PersistentTownCommandCenter,
   PlayShell,
   ProofTourPanel,
   SuspectBoardPanel,
@@ -3877,7 +3878,7 @@ export default function Home() {
     }
   }
 
-  async function stepPersistentTown() {
+  async function stepPersistentTown(steps = 1) {
     if (!world) return;
     if (runtimeMode === "static-demo") {
       setStatus("Persistent Agent Town uses SQLite server runtime. Switch to Server Runtime first.");
@@ -3885,7 +3886,7 @@ export default function Home() {
     }
     setTownRuntimeBusy(true);
     try {
-      const data = await postV1<{ runtime: PersistentTownRuntime; events: WorldEvent[]; queue: TownEmergenceQueue; world: WorldState }>("/api/v1/command/town/runtime/step", { worldId: world.id, steps: 1 });
+      const data = await postV1<{ runtime: PersistentTownRuntime; events: WorldEvent[]; queue: TownEmergenceQueue; world: WorldState }>("/api/v1/command/town/runtime/step", { worldId: world.id, steps });
       setTownRuntime(data.runtime);
       setTownQueue(data.queue);
       setWorld(data.world);
@@ -4932,6 +4933,56 @@ export default function Home() {
     );
   }
 
+  if (appMode === "persistent-town") {
+    return (
+      <PersistentTownCommandCenter
+        worldName={world?.name || "未创建小镇"}
+        caseTitle={activeCase?.deductionCase.title || "Generated Agent Town"}
+        runtime={townRuntime}
+        queue={townQueue}
+        snapshot={snapshot}
+        selectedAgent={selectedAgent}
+        selectedAgentCandidates={selectedAgentCandidates}
+        selectedCharacterName={selectedCharacter?.name}
+        selectedCharacterId={selectedCharacterId}
+        runningBusy={townRuntimeBusy}
+        startRuntime={() => void startPersistentTown()}
+        pauseRuntime={() => void pausePersistentTown()}
+        stepRuntime={() => void stepPersistentTown()}
+        stepRuntimeFast={() => void stepPersistentTown(5)}
+        resetRuntime={() => void resetPersistentTown()}
+        interveneAgent={() => void intervenePersistentAgent()}
+        extractCase={(candidate) => void extractPersistentCandidate(candidate)}
+        runScenario={() => void runDefaultTownScenario()}
+        rollbackSnapshot={(snapshotId) => void rollbackTownSnapshot(snapshotId)}
+        backToPlay={() => {
+          setAppMode("play");
+          setInspectorTab("investigation");
+        }}
+        onActorSelect={(actor) => {
+          setSelectedCharacterId(actor.id);
+          setSelectedSuspectId(actor.id);
+          highlightSelection({ characterId: actor.id });
+          void refreshTownRuntime(world?.id, actor.id);
+        }}
+        onLocationSelect={(locationId) => {
+          setSelectedSceneId(locationId);
+          setHoveredLocationId(locationId);
+          highlightSelection({ locationId });
+        }}
+        selectedScenarioRun={scenarioRun}
+        scenarioReport={scenarioReport}
+        snapshots={townSnapshots}
+        selectedSnapshotFromId={selectedSnapshotFromId}
+        selectedSnapshotToId={selectedSnapshotToId}
+        setSelectedSnapshotFromId={setSelectedSnapshotFromId}
+        setSelectedSnapshotToId={setSelectedSnapshotToId}
+        snapshotDiff={snapshotDiff}
+        benchmarkSummary={benchmarkSummary}
+      />
+    );
+  }
+
   const graphView = (
     <DeductionGraphView
       graph={deductionGraph}
@@ -5046,7 +5097,7 @@ export default function Home() {
           onNpcAction={(characterId) => {
             setSelectedCharacterId(characterId);
             setQuestion("Where were you during the crime window, and what unusual details do you remember?");
-            setInspectorTab(appMode === "persistent-town" ? "agent" : "investigation");
+            setInspectorTab("investigation");
             highlightSelection({ characterId });
           }}
           replaying={replaying}

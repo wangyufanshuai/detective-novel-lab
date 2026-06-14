@@ -1325,6 +1325,319 @@ export function AgentControlPanel({
   );
 }
 
+export function PersistentTownCommandCenter({
+  worldName,
+  caseTitle,
+  runtime,
+  queue,
+  snapshot,
+  selectedAgent,
+  selectedAgentCandidates,
+  selectedCharacterName,
+  selectedCharacterId,
+  runningBusy,
+  startRuntime,
+  pauseRuntime,
+  stepRuntime,
+  stepRuntimeFast,
+  resetRuntime,
+  interveneAgent,
+  extractCase,
+  runScenario,
+  rollbackSnapshot,
+  backToPlay,
+  onActorSelect,
+  onLocationSelect,
+  selectedScenarioRun,
+  scenarioReport,
+  snapshots,
+  selectedSnapshotFromId,
+  selectedSnapshotToId,
+  setSelectedSnapshotFromId,
+  setSelectedSnapshotToId,
+  snapshotDiff,
+  benchmarkSummary
+}: {
+  worldName: string;
+  caseTitle: string;
+  runtime: PersistentTownRuntime | null;
+  queue: TownEmergenceQueue | null;
+  snapshot: WorldMapSnapshot | null;
+  selectedAgent?: NpcAgentState | null;
+  selectedAgentCandidates: NpcActionCandidate[];
+  selectedCharacterName?: string;
+  selectedCharacterId?: string;
+  runningBusy: boolean;
+  startRuntime: () => void;
+  pauseRuntime: () => void;
+  stepRuntime: () => void;
+  stepRuntimeFast: () => void;
+  resetRuntime: () => void;
+  interveneAgent: () => void;
+  extractCase: (candidate: CaseCandidate) => void;
+  runScenario: () => void;
+  rollbackSnapshot: (snapshotId: string) => void;
+  backToPlay: () => void;
+  onActorSelect: (actor: WorldMapActor) => void;
+  onLocationSelect: (locationId: string) => void;
+  selectedScenarioRun?: ScenarioRun | null;
+  scenarioReport?: ScenarioReport | null;
+  snapshots: TownStateSnapshot[];
+  selectedSnapshotFromId: string;
+  selectedSnapshotToId: string;
+  setSelectedSnapshotFromId: (value: string) => void;
+  setSelectedSnapshotToId: (value: string) => void;
+  snapshotDiff?: TownStateDiff | null;
+  benchmarkSummary?: { seedCount: number; passed: number; failed: number; passRate: number; averageQualityScore: number; averageEmergenceScore: number } | null;
+}) {
+  const candidates = queue?.candidates || runtime?.candidates || [];
+  const actionLabels: Record<string, string> = {
+    investigate: "调查",
+    "spread-rumor": "传闻",
+    "seek-alibi": "不在场",
+    pressure: "施压",
+    "cover-up": "掩盖",
+    talk: "交谈",
+    trade: "交易",
+    move: "移动",
+    rest: "休整"
+  };
+  const stageLabels: Record<string, string> = {
+    motive: "动机",
+    means: "手段",
+    opportunity: "机会",
+    "cover-up": "掩盖",
+    staging: "伪装",
+    memory: "记忆",
+    exclusion: "排除",
+    "non-culprit-exclusion": "排除"
+  };
+  const phaseLabels: Record<string, string> = {
+    observe: "感知",
+    propagate: "传播",
+    plan: "计划",
+    score: "评分",
+    execute: "执行",
+    consequence: "后果",
+    "candidate-extraction": "成案"
+  };
+  const currentPhase = runtime?.simulationPhases?.length ? runtime.simulationPhases[Math.max(0, (runtime.tick || 0) % runtime.simulationPhases.length)] : "execute";
+  const recentTraces = [...(runtime?.decisionTraces || [])].slice(-6).reverse();
+  const recentConsequences = [...(runtime?.consequences || [])].slice(0, 3);
+  const snapshotFrom = snapshots.find((item) => item.id === selectedSnapshotFromId);
+  const snapshotTo = snapshots.find((item) => item.id === selectedSnapshotToId);
+  const benchmarkState = benchmarkSummary ? (benchmarkSummary.failed === 0 ? "pass" : "fail") : "pending";
+  const scenarioState = scenarioReport ? (scenarioReport.passed ? "pass" : "fail") : "pending";
+  const selectedActor = snapshot?.actors.find((actor) => actor.id === selectedCharacterId);
+  const maxX = Math.max(1, (snapshot?.width || 28) - 1);
+  const maxY = Math.max(1, (snapshot?.height || 18) - 1);
+  const actorName = selectedCharacterName || selectedActor?.name || selectedAgent?.npcId || "未选择 NPC";
+  const avatarIndex = Math.abs(Array.from(selectedAgent?.npcId || selectedCharacterId || "0").reduce((sum, char) => sum + char.charCodeAt(0), 0)) % 8;
+
+  function confirmRollback() {
+    if (!selectedSnapshotFromId) return;
+    const label = snapshotFrom ? `${snapshotFrom.label} / Tick ${snapshotFrom.tick}` : selectedSnapshotFromId;
+    if (window.confirm(`是否回滚到 ${label}？这会恢复指挥中心中的运行状态。`)) rollbackSnapshot(selectedSnapshotFromId);
+  }
+
+  function chooseBaselineDiff() {
+    if (!scenarioReport) return;
+    setSelectedSnapshotFromId(scenarioReport.baseline.startSnapshotId);
+    setSelectedSnapshotToId(scenarioReport.baseline.endSnapshotId);
+  }
+
+  return (
+    <main className="commandCenterShell" data-testid="persistent-command-center">
+      <header className="commandTopHud" data-testid="command-center-hud">
+        <button type="button" className="commandBrand" onClick={backToPlay} aria-label="返回 Play">
+          <img src="/command-center/town-map.svg" alt="" />
+          <span><strong>模拟指挥中心</strong><small>DETECTIVE TOWN</small></span>
+        </button>
+        <div className="commandChapter">
+          <span>当前案件</span>
+          <strong>{caseTitle}</strong>
+          <small>{worldName}</small>
+        </div>
+        <div className="commandHudMetric"><span>Tick</span><strong>{runtime?.tick ?? 0}</strong><small>/ {runtime?.maxTicks ?? 200}</small></div>
+        <div className="commandHudMetric"><span>时间</span><strong>{runtime?.currentTime || snapshot?.time || "--:--"}</strong><small>第 {runtime?.currentDay ?? snapshot?.day ?? 1} 天</small></div>
+        <div className="commandHudMetric hot"><span>当前阶段</span><strong>{phaseLabels[currentPhase] || currentPhase}</strong><small>{currentPhase}</small></div>
+        <div className="commandHudMetric"><span>活跃 NPC</span><strong>{runtime?.agentStates.length ?? 0}</strong><small>/ 20</small></div>
+        <div className="commandHudMetric"><span>传播记忆</span><strong>{runtime?.memoryPropagations?.length ?? 0}</strong><small>+{recentTraces.reduce((sum, trace) => sum + (trace.propagatedMemoryIds?.length || 0), 0)}</small></div>
+        <div className="commandHudMetric"><span>行动后果</span><strong>{runtime?.consequences?.length ?? 0}</strong><small>最近 {recentConsequences.length}</small></div>
+        <div className="commandHudMetric"><span>有效候选</span><strong>{queue?.validCount ?? candidates.filter((candidate) => candidate.validation.valid).length}</strong><small>{candidates.length} 总数</small></div>
+        <button type="button" className={`commandPass ${scenarioState}`} onClick={runScenario} disabled={runningBusy}>
+          {scenarioReport?.passed ? "基线通过" : "运行基线"} <ShieldCheck size={16} />
+        </button>
+      </header>
+
+      <aside className="commandLeftRail">
+        <section className="commandPanel commandArchive">
+          <h2>案件档案</h2>
+          <button className="active" type="button">小镇地图</button>
+          <button type="button">NPC 行动</button>
+          <button type="button">记忆传播</button>
+          <button type="button">案件队列 <b>{candidates.length}</b></button>
+          <button type="button">时间机器</button>
+        </section>
+        <section className="commandPanel commandControls">
+          <div className="panelHeaderLine"><h2>运行控制</h2><span className={`runtimePill ${runtime?.status || "paused"}`}>{runtime?.status || "未启动"}</span></div>
+          <button className="primaryButton full" type="button" onClick={startRuntime} disabled={runningBusy}>开始</button>
+          <button type="button" onClick={pauseRuntime} disabled={runningBusy || !runtime}>暂停</button>
+          <div className="commandSplit">
+            <button type="button" onClick={stepRuntime} disabled={runningBusy || !runtime}>单步</button>
+            <button type="button" onClick={stepRuntimeFast} disabled={runningBusy || !runtime}>快速 x5</button>
+          </div>
+          <button type="button" onClick={resetRuntime} disabled={runningBusy || !runtime}>重置</button>
+        </section>
+        <section className="commandPanel commandSceneInfo">
+          <h2>场景信息</h2>
+          <span>地区：{selectedActor?.locationName || selectedAgent?.locationId || "市中心"}</span>
+          <span>快照：{snapshots.length}</span>
+          <span>可调查点：{snapshot?.markers.length ?? 0}</span>
+          <span>Benchmark：{benchmarkSummary ? `${benchmarkSummary.passRate}%` : "未生成"}</span>
+        </section>
+      </aside>
+
+      <section className="commandMapPanel" data-testid="command-center-map">
+        <div className="commandPanelTitle"><h2>小镇地图（黄昏）</h2><span>NPC / 线索点 / 事件</span></div>
+        <div className="commandMapArt">
+          <img src="/command-center/town-map.svg" alt="黄昏侦探小镇地图" />
+          {(snapshot?.tiles || []).filter((tile) => tile.locationId && tile.locationName).map((tile) => (
+            <button
+              key={tile.id}
+              type="button"
+              className="commandLocationTag"
+              style={{ left: `${(tile.x / maxX) * 100}%`, top: `${(tile.y / maxY) * 100}%` }}
+              onClick={() => tile.locationId && onLocationSelect(tile.locationId)}
+            >
+              {tile.locationName}
+            </button>
+          ))}
+          {(snapshot?.markers || []).slice(0, 18).map((marker) => (
+            <button
+              key={marker.id}
+              type="button"
+              className={`commandMarker marker-${marker.type}`}
+              title={marker.label}
+              style={{ left: `${(marker.x / maxX) * 100}%`, top: `${(marker.y / maxY) * 100}%` }}
+              onClick={() => onLocationSelect(marker.locationId)}
+            >
+              {marker.type === "crime" ? "!" : marker.type === "evidence" ? "?" : "+"}
+            </button>
+          ))}
+          {(snapshot?.actors || []).map((actor) => (
+            <button
+              key={actor.id}
+              type="button"
+              className={`commandActorPin ${actor.id === selectedCharacterId ? "selected" : ""} actor-${actor.status}`}
+              style={{ left: `${(actor.x / maxX) * 100}%`, top: `${(actor.y / maxY) * 100}%` }}
+              onClick={() => onActorSelect(actor)}
+              title={`${actor.name} / ${actor.role}`}
+            >
+              <img src={`/command-center/avatar-${Math.abs(Array.from(actor.id).reduce((sum, char) => sum + char.charCodeAt(0), 0)) % 8}.svg`} alt="" />
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="commandSceneFeed commandPanel" data-testid="command-scene-feed">
+        <div className="panelHeaderLine"><h2>场景推理（最新 6 条）</h2><button type="button" onClick={runScenario} disabled={runningBusy}>查看全部</button></div>
+        {recentTraces.map((trace) => {
+          const selected = trace.candidates.find((candidate) => candidate.id === trace.selectedCandidateId);
+          return (
+            <article key={trace.id} className="commandTraceRow">
+              <time>{trace.time}<small>Tick {trace.tick}</small></time>
+              <div>
+                <strong>{actionLabels[selected?.kind || ""] || selected?.kind || "行动"}</strong>
+                <span>{selected?.description || trace.createdEventId || trace.id}</span>
+              </div>
+              <small>{trace.npcId}</small>
+            </article>
+          );
+        })}
+        {!recentTraces.length && <p>启动或单步运行后，NPC 行动会写入这里。</p>}
+      </section>
+
+      <aside className="commandRightRail">
+        <section className="commandPanel commandNpcPanel" data-testid="command-npc-dossier">
+          <div className="panelHeaderLine"><h2>选中 NPC：{actorName}</h2><span>★</span></div>
+          <div className="commandNpcHero">
+            <img src={`/command-center/avatar-${avatarIndex}.svg`} alt="" />
+            <div>
+              <label>关系压力 <b>{selectedAgent?.relationshipPressure ?? 0}/100</b><meter value={selectedAgent?.relationshipPressure ?? 0} min={0} max={100} /></label>
+              <label>秘密风险 <b>{selectedAgent?.secretRisk ?? 0}/100</b><meter value={selectedAgent?.secretRisk ?? 0} min={0} max={100} /></label>
+              <label>疲劳 <b>{selectedAgent?.fatigue ?? 0}/100</b><meter value={selectedAgent?.fatigue ?? 0} min={0} max={100} /></label>
+              <label>警觉 <b>{selectedAgent?.alertness ?? 0}/100</b><meter value={selectedAgent?.alertness ?? 0} min={0} max={100} /></label>
+            </div>
+          </div>
+          <div className="commandPlanFacts">
+            <div><h3>当前计划</h3>{(selectedAgent?.currentPlan || ["选择地图上的 NPC"]).slice(0, 5).map((item, index) => <span key={`${item}:${index}`}>{index + 1}. {item}</span>)}</div>
+            <div><h3>已知事实</h3>{(selectedAgent?.knownFactIds || []).slice(-6).map((item) => <span key={item}>{item}</span>) || <span>暂无</span>}</div>
+          </div>
+          <article className="commandConsequence">
+            <strong>最近后果</strong>
+            <span>{selectedAgent?.lastConsequence || recentConsequences[0]?.actionKind || "等待行动"}</span>
+          </article>
+        </section>
+
+        <section className="commandPanel commandActions" data-testid="command-action-choices">
+          <h2>行动选择</h2>
+          {selectedAgentCandidates.slice(0, 5).map((candidate) => (
+            <article key={candidate.id} className={candidate.legal ? "legal" : "blocked"}>
+              <strong>{actionLabels[candidate.kind] || candidate.kind}<small>{candidate.kind}</small></strong>
+              <span>评分 {candidate.score.total}</span>
+              <span>风险 {(candidate.score.risk || 0) > 10 ? "高" : "低"}</span>
+              <small>{candidate.score.reasons.slice(0, 2).join(" / ") || candidate.blockedReason || "预期产生新线索"}</small>
+            </article>
+          ))}
+          <button type="button" onClick={interveneAgent} disabled={runningBusy || !selectedAgent}>施加资源干预</button>
+        </section>
+      </aside>
+
+      <section className="commandCandidateBoard commandPanel" data-testid="command-candidate-board">
+        <div className="panelHeaderLine"><h2>案件候选板（{candidates.length} 条候选链）</h2><span>{queue?.validCount ?? 0} 可抽取</span></div>
+        <div className="commandCandidateGrid">
+          {candidates.slice(0, 4).map((candidate, index) => (
+            <article key={candidate.id} className={candidate.validation.valid ? "valid" : "blocked"}>
+              <strong>{index + 1}. {candidate.culpritId} → {candidate.victimId}</strong>
+              <span>压力 {candidate.pressureScore} / 形成度 {candidate.validation.valid ? "82%" : "61%"}</span>
+              <div className="commandStageGems">
+                {["motive", "means", "opportunity", "cover-up", "memory", "exclusion"].map((stage) => (
+                  <b key={stage} className={(candidate.chainStageTags || candidate.validation.chainStages || []).includes(stage) ? "on" : ""}>{stageLabels[stage]}</b>
+                ))}
+              </div>
+              <small>{candidate.validation.failureReasons?.[0] || (candidate.validation.valid ? "可抽取案件" : "仍阻塞")}</small>
+              <button type="button" onClick={() => extractCase(candidate)} disabled={runningBusy || !candidate.validation.valid}>抽取可玩案件</button>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="commandTimeMachine commandPanel" data-testid="command-time-machine">
+        <div className="panelHeaderLine"><h2>时间机器</h2><span>{snapshots.length} 快照</span></div>
+        <label>起点<select value={selectedSnapshotFromId} onChange={(event) => setSelectedSnapshotFromId(event.target.value)}>{snapshots.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+        <label>终点<select value={selectedSnapshotToId} onChange={(event) => setSelectedSnapshotToId(event.target.value)}>{snapshots.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+        <div className="commandSplit">
+          <button type="button" onClick={chooseBaselineDiff} disabled={!scenarioReport}>选择基线</button>
+          <button type="button" onClick={confirmRollback} disabled={!selectedSnapshotFromId || runningBusy}>回滚到起点</button>
+        </div>
+        <div className="commandDiffStats">
+          <span>事件 +{snapshotDiff?.addedEventIds.length ?? 0}</span>
+          <span>记忆 +{snapshotDiff?.addedMemoryIds.length ?? 0}</span>
+          <span>NPC 变化 {snapshotDiff?.changedAgents.length ?? 0}</span>
+        </div>
+      </section>
+
+      <section className="commandBenchmark commandPanel" data-testid="command-benchmark">
+        <div className="panelHeaderLine"><h2>基准仪表盘</h2><span className={`runtimePill ${benchmarkState}`}>{benchmarkSummary ? `${benchmarkSummary.passRate}%` : "未生成"}</span></div>
+        <span>Seeds {benchmarkSummary?.seedCount ?? 0}</span>
+        <span>Quality {benchmarkSummary?.averageQualityScore ?? 0}</span>
+        <span>Emergence {benchmarkSummary?.averageEmergenceScore ?? 0}</span>
+      </section>
+    </main>
+  );
+}
+
 export function EvidenceNotebookPanel({
   items,
   onAction

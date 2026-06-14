@@ -1041,6 +1041,522 @@ blockquote {
   border-color: rgba(240, 91, 97, 0.32);
 }
 
+.commandCenterShell {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1.18fr) minmax(280px, 0.72fr) minmax(280px, 0.78fr);
+  grid-template-rows: auto minmax(360px, 1fr) auto auto;
+  gap: 10px;
+  min-height: 100vh;
+  padding: 10px;
+  overflow-x: hidden;
+  color: #d8c3a0;
+  background:
+    radial-gradient(circle at 52% 14%, rgba(197, 134, 55, 0.13), transparent 36%),
+    linear-gradient(180deg, #050605, #0b0c0b 58%, #050606);
+}
+
+.commandPanel,
+.commandTopHud {
+  min-width: 0;
+  background:
+    linear-gradient(180deg, rgba(31, 27, 20, 0.96), rgba(8, 12, 12, 0.97)),
+    #090d0d;
+  border: 1px solid rgba(151, 103, 50, 0.42);
+  border-radius: 6px;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 211, 130, 0.06),
+    0 14px 36px rgba(0, 0, 0, 0.3);
+}
+
+.commandTopHud {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 260px minmax(180px, 1fr) repeat(7, minmax(70px, 0.4fr)) 150px;
+  gap: 0;
+  align-items: stretch;
+  min-height: 94px;
+  overflow: hidden;
+}
+
+.commandBrand {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+  padding: 12px 16px;
+  text-align: left;
+  background: rgba(9, 12, 12, 0.55);
+  border: 0;
+  border-right: 1px solid rgba(151, 103, 50, 0.28);
+}
+
+.commandBrand img {
+  width: 70px;
+  height: 70px;
+  object-fit: cover;
+  border: 1px solid rgba(210, 154, 78, 0.42);
+  border-radius: 6px;
+}
+
+.commandBrand strong,
+.commandChapter strong {
+  display: block;
+  overflow: hidden;
+  color: #f2d7a1;
+  font-size: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.commandBrand small,
+.commandChapter small,
+.commandHudMetric small {
+  color: #8f785b;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.commandChapter,
+.commandHudMetric,
+.commandPass {
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px 18px;
+  border-left: 1px solid rgba(151, 103, 50, 0.26);
+}
+
+.commandChapter span,
+.commandHudMetric span {
+  color: #9d835f;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.commandHudMetric strong {
+  color: #f4d8a1;
+  font-size: 25px;
+  line-height: 1;
+}
+
+.commandHudMetric.hot strong {
+  color: #e65b3f;
+}
+
+.commandPass {
+  place-items: center;
+  margin: 18px;
+  color: #f4d8a1;
+  background: rgba(197, 134, 55, 0.1);
+  border: 1px solid rgba(197, 134, 55, 0.55);
+  border-radius: 5px;
+  font-weight: 1000;
+}
+
+.commandPass.pass {
+  color: #bfe6a0;
+  border-color: rgba(121, 200, 111, 0.5);
+}
+
+.commandLeftRail {
+  grid-column: 1;
+  grid-row: 2 / 5;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  min-width: 0;
+}
+
+.commandMapPanel {
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
+}
+
+.commandSceneFeed {
+  grid-column: 3;
+  grid-row: 2;
+  overflow: hidden;
+}
+
+.commandRightRail {
+  grid-column: 4;
+  grid-row: 2 / 5;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  min-width: 0;
+}
+
+.commandCandidateBoard {
+  grid-column: 2 / 4;
+  grid-row: 3;
+}
+
+.commandTimeMachine {
+  grid-column: 2;
+  grid-row: 4;
+}
+
+.commandBenchmark {
+  grid-column: 3;
+  grid-row: 4;
+}
+
+.commandPanel {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.commandPanel h2,
+.commandPanel h3 {
+  margin: 0;
+  color: #f2d7a1;
+  font-size: 15px;
+}
+
+.commandArchive button,
+.commandControls button,
+.commandActions button,
+.commandTimeMachine button {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  color: #d8c3a0;
+  background: rgba(197, 134, 55, 0.08);
+  border: 1px solid rgba(197, 134, 55, 0.36);
+  border-radius: 5px;
+  font-weight: 900;
+}
+
+.commandArchive button {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 14px;
+  text-align: left;
+}
+
+.commandArchive button.active,
+.commandActions article.legal:first-of-type {
+  border-color: rgba(229, 166, 79, 0.72);
+  box-shadow: inset 4px 0 0 #d99a48;
+}
+
+.commandSplit {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.commandSceneInfo span,
+.commandBenchmark span {
+  color: #a99371;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.commandPanelTitle,
+.commandSceneFeed .panelHeaderLine {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.commandMapArt {
+  position: relative;
+  min-height: 0;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  background: #050807;
+  border: 1px solid rgba(151, 103, 50, 0.46);
+  border-radius: 6px;
+}
+
+.commandMapArt > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: contrast(1.06) saturate(0.9);
+}
+
+.commandLocationTag,
+.commandMarker,
+.commandActorPin {
+  position: absolute;
+  z-index: 2;
+  transform: translate(-50%, -50%);
+}
+
+.commandLocationTag {
+  padding: 5px 8px;
+  color: #ead0a0;
+  background: rgba(12, 12, 10, 0.72);
+  border: 1px solid rgba(197, 134, 55, 0.48);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.commandMarker {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  color: #111;
+  background: #d99a48;
+  border: 2px solid #4b2615;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 1000;
+}
+
+.commandMarker.marker-crime {
+  color: #ffe2bb;
+  background: #8c2c20;
+}
+
+.commandActorPin {
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  background: #120f0d;
+  border: 2px solid rgba(197, 134, 55, 0.86);
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px rgba(197, 134, 55, 0.1), 0 8px 18px rgba(0, 0, 0, 0.42);
+}
+
+.commandActorPin img,
+.commandNpcHero > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
+.commandActorPin img {
+  pointer-events: none;
+}
+
+.commandActorPin.selected {
+  z-index: 6;
+  border-color: #ffd37b;
+  box-shadow: 0 0 0 5px rgba(229, 166, 79, 0.28), 0 0 28px rgba(229, 166, 79, 0.34);
+}
+
+.commandTraceRow {
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1fr) 54px;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 10px;
+  background: rgba(7, 12, 12, 0.72);
+  border: 1px solid rgba(151, 103, 50, 0.28);
+  border-radius: 5px;
+}
+
+.commandTraceRow time,
+.commandTraceRow strong,
+.commandTraceRow small,
+.commandTraceRow span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.commandTraceRow time {
+  display: grid;
+  color: #d8a155;
+  font-weight: 1000;
+}
+
+.commandTraceRow span,
+.commandTraceRow small {
+  color: #9f8869;
+  font-size: 11px;
+}
+
+.commandNpcHero {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 12px;
+}
+
+.commandNpcHero > img {
+  width: 150px;
+  height: 150px;
+  border: 1px solid rgba(197, 134, 55, 0.52);
+  border-radius: 5px;
+}
+
+.commandNpcHero label {
+  display: grid;
+  gap: 5px;
+  color: #a99371;
+  font-size: 11px;
+}
+
+.commandNpcHero meter {
+  width: 100%;
+  height: 8px;
+}
+
+.commandPlanFacts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.commandPlanFacts div,
+.commandConsequence {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px;
+  background: rgba(7, 12, 12, 0.66);
+  border: 1px solid rgba(151, 103, 50, 0.24);
+  border-radius: 5px;
+}
+
+.commandPlanFacts span,
+.commandConsequence span {
+  overflow-wrap: anywhere;
+  color: #a99371;
+  font-size: 11px;
+}
+
+.commandConsequence {
+  border-color: rgba(167, 64, 42, 0.38);
+}
+
+.commandActions article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 52px 42px;
+  gap: 6px 10px;
+  align-items: center;
+  padding: 10px;
+  background: rgba(7, 12, 12, 0.74);
+  border: 1px solid rgba(151, 103, 50, 0.26);
+  border-radius: 5px;
+}
+
+.commandActions article strong {
+  display: grid;
+  color: #f2d7a1;
+  font-size: 13px;
+}
+
+.commandActions article strong small,
+.commandActions article > small {
+  grid-column: 1 / -1;
+  color: #9f8869;
+  font-size: 11px;
+}
+
+.commandActions article span {
+  color: #cbb188;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.commandActions article.blocked {
+  opacity: 0.58;
+  border-style: dashed;
+}
+
+.commandCandidateGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.commandCandidateGrid article {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 12px;
+  background: rgba(8, 12, 12, 0.74);
+  border: 1px solid rgba(151, 103, 50, 0.28);
+  border-radius: 5px;
+}
+
+.commandCandidateGrid article.valid {
+  border-color: rgba(121, 200, 111, 0.48);
+}
+
+.commandCandidateGrid article.blocked {
+  border-color: rgba(229, 166, 79, 0.38);
+}
+
+.commandStageGems {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.commandStageGems b {
+  padding: 5px 7px;
+  color: #6f6352;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(151, 103, 50, 0.25);
+  border-radius: 999px;
+  font-size: 10px;
+}
+
+.commandStageGems b.on {
+  color: #180f08;
+  background: #d99a48;
+}
+
+.commandCandidateGrid button {
+  min-height: 34px;
+  color: #0a0d0d;
+  background: #b98b45;
+  border: 0;
+  border-radius: 4px;
+  font-weight: 1000;
+}
+
+.commandTimeMachine label {
+  display: grid;
+  gap: 5px;
+  color: #a99371;
+  font-size: 11px;
+}
+
+.commandTimeMachine select {
+  width: 100%;
+  min-width: 0;
+  color: #f2d7a1;
+  background: #0a0e0e;
+  border: 1px solid rgba(151, 103, 50, 0.34);
+  border-radius: 4px;
+  padding: 8px;
+}
+
+.commandDiffStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.commandDiffStats span {
+  padding: 7px;
+  color: #cbb188;
+  background: rgba(7, 12, 12, 0.65);
+  border: 1px solid rgba(151, 103, 50, 0.24);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 900;
+}
+
 .reviewMetricGrid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -5814,6 +6330,43 @@ blockquote {
 }
 
 @media (max-width: 1180px) {
+  .commandCenterShell {
+    grid-template-columns: 260px minmax(0, 1fr);
+    grid-template-rows: auto auto auto auto auto auto;
+  }
+
+  .commandTopHud {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .commandBrand,
+  .commandChapter,
+  .commandHudMetric,
+  .commandPass {
+    border-left: 0;
+    border-right: 0;
+    border-top: 1px solid rgba(151, 103, 50, 0.22);
+  }
+
+  .commandLeftRail {
+    grid-column: 1;
+    grid-row: 2 / 7;
+  }
+
+  .commandMapPanel,
+  .commandSceneFeed,
+  .commandRightRail,
+  .commandCandidateBoard,
+  .commandTimeMachine,
+  .commandBenchmark {
+    grid-column: 2;
+    grid-row: auto;
+  }
+
+  .commandRightRail {
+    grid-template-columns: 1fr;
+  }
+
   .townShell {
     grid-template-columns: 270px minmax(420px, 1fr);
   }
@@ -5857,6 +6410,47 @@ blockquote {
 }
 
 @media (max-width: 760px) {
+  .commandCenterShell {
+    display: block;
+    padding: 8px;
+  }
+
+  .commandTopHud,
+  .commandLeftRail,
+  .commandRightRail,
+  .commandCandidateGrid,
+  .commandPlanFacts,
+  .commandNpcHero,
+  .commandDiffStats {
+    grid-template-columns: 1fr;
+  }
+
+  .commandPanel,
+  .commandMapPanel,
+  .commandTopHud,
+  .commandLeftRail,
+  .commandRightRail {
+    margin-bottom: 10px;
+  }
+
+  .commandMapArt {
+    min-width: 0;
+    aspect-ratio: 1 / 1;
+  }
+
+  .commandActorPin {
+    width: 42px;
+    height: 42px;
+  }
+
+  .commandLocationTag {
+    font-size: 9px;
+    max-width: 72px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .townShell {
     display: block;
     overflow-x: hidden;
