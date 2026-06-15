@@ -30,6 +30,7 @@ export type NpcActionScore = {
   rumorValue?: number;
   alibiPressure?: number;
   coverUpUrgency?: number;
+  directorBias?: number;
   total: number;
   reasons: string[];
 };
@@ -120,7 +121,7 @@ export type TownRuntimeIntervention = {
   id: string;
   tick: number;
   actorId: string;
-  kind: "goal" | "location" | "resource" | "relationship-pressure" | "knowledge";
+  kind: "goal" | "location" | "resource" | "relationship-pressure" | "knowledge" | "action-bias";
   value: string | number | boolean;
   createdAt: string;
   branch: "counterfactual";
@@ -633,6 +634,17 @@ export function scoreNpcActionCandidates(world: WorldState, npc: NPCProfile, eve
   ];
   return base.map((candidate) => {
     const score = scoreCandidate({ world, npc, state, candidate, events });
+    const directorBias = runtime?.interventions.find((intervention) =>
+      intervention.actorId === npc.id &&
+      intervention.kind === "action-bias" &&
+      intervention.value === candidate.kind &&
+      (intervention.tick === (runtime.tick || 0) || intervention.tick === (runtime.tick || 0) - 1)
+    );
+    if (directorBias) {
+      score.directorBias = 18;
+      score.total += score.directorBias;
+      score.reasons.push(`director action bias favors ${candidate.kind}`);
+    }
     return { ...candidate, legal: candidate.legal && score.locationReachability > 0 && score.resourceAvailability > 0, blockedReason: score.reasons.find((reason) => reason.includes("not")), score };
   });
 }
@@ -1340,7 +1352,9 @@ export function applyTownRuntimeIntervention(world: WorldState, intervention: Om
     createdAt: new Date().toISOString(),
     branch: "counterfactual",
     ...intervention,
-    impact: `${intervention.kind} changed for ${intervention.actorId}; next tick will mark affected decisions as counterfactual.`
+    impact: intervention.kind === "action-bias"
+      ? `Director bias favors ${intervention.value} for ${intervention.actorId} on the next tick without forcing illegal actions.`
+      : `${intervention.kind} changed for ${intervention.actorId}; next tick will mark affected decisions as counterfactual.`
   };
   const agent = runtime.agentStates.find((state) => state.npcId === intervention.actorId);
   if (agent) {
@@ -1349,7 +1363,9 @@ export function applyTownRuntimeIntervention(world: WorldState, intervention: Om
     if (intervention.kind === "resource") agent.resources = Array.from(new Set([...agent.resources, String(intervention.value)]));
     if (intervention.kind === "relationship-pressure") agent.relationshipPressure = Number(intervention.value);
     if (intervention.kind === "knowledge") agent.knownFactIds = Array.from(new Set([...agent.knownFactIds, String(intervention.value)]));
-    agent.nextActionPreview = "Counterfactual intervention will be considered on the next tick.";
+    agent.nextActionPreview = intervention.kind === "action-bias"
+      ? `Director bias pending: ${intervention.value}`
+      : "Counterfactual intervention will be considered on the next tick.";
   }
   runtime.interventions.push(created);
   runtime.updatedAt = new Date().toISOString();
@@ -1404,9 +1420,14 @@ export function advancePersistentTownTick(world: WorldState, events: WorldEvent[
       const topCandidate = legalCandidates[0] || candidates[0];
       const phaseKinds: NpcActionKind[] = ["investigate", "spread-rumor", "pressure", "seek-alibi", "cover-up"];
       const phasePreferred = legalCandidates.find((candidate) => candidate.kind === phaseKinds[(runtime.tick + selectedActors.indexOf(npc)) % phaseKinds.length]);
-      const selected = phasePreferred && phasePreferred.score.total >= topCandidate.score.total - 12 ? phasePreferred : topCandidate;
+      const biasedCandidate = legalCandidates.find((candidate) => (candidate.score.directorBias || 0) > 0);
+      const selected = biasedCandidate || (phasePreferred && phasePreferred.score.total >= topCandidate.score.total - 12 ? phasePreferred : topCandidate);
       const traceId = `decision-${nextWorld.id}-${runtime.tick}-${npc.id}`;
-      const intervention = runtime.interventions.find((item) => item.actorId === npc.id && item.tick === runtime.tick - 1);
+      const intervention = runtime.interventions.find((item) =>
+        item.actorId === npc.id &&
+        item.tick === runtime.tick - 1 &&
+        (item.kind !== "action-bias" || item.value === selected.kind)
+      );
       const event: WorldEvent = {
         id: `agent-${nextWorld.seed.replace(/[^a-z0-9-]/gi, "-").toLowerCase()}-${runtime.tick}-${npc.id}-${selected.kind}`,
         worldId: nextWorld.id,

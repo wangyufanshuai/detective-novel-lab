@@ -727,11 +727,26 @@ test("persistent agent town runs, scores agents and extracts a playable case", a
   await expect(page.getByTestId("command-center-hud")).toContainText("模拟指挥中心", { timeout: 20_000 });
   await expect(page.getByTestId("command-center-hud")).toContainText("20", { timeout: 20_000 });
   await expect(page.getByTestId("command-center-map")).toBeVisible();
+  await page.getByTestId("command-center-map").getByRole("button", { name: "放大" }).click();
+  await page.getByTestId("command-center-map").getByRole("button", { name: "线索点" }).click();
+  await page.getByTestId("command-center-map").getByRole("button", { name: "线索点" }).click();
   await page.getByTestId("command-center-map").locator(".commandActorPin").first().click();
   await page.getByTestId("persistent-command-center").getByRole("button", { name: "开始", exact: true }).click();
   await expect(page.getByTestId("command-npc-dossier")).toContainText("选中 NPC", { timeout: 20_000 });
   await expect(page.getByTestId("command-action-choices")).toContainText(/调查|传闻|不在场|施压|掩盖/, { timeout: 20_000 });
+  if (process.env.CAPTURE_QA && testInfo.project.name === "chromium-desktop") {
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await page.screenshot({ path: "test-results/qa-screenshots/command-center-desktop-1920x1080.png", fullPage: false });
+  }
+  await page.getByTestId("command-action-choices").locator("button:not([disabled])").filter({ hasText: "偏置下一 Tick" }).first().click();
+  await expect(page.getByTestId("command-action-choices")).toContainText("已偏置下一 Tick", { timeout: 20_000 });
+  if (process.env.CAPTURE_QA && testInfo.project.name === "chromium-desktop") {
+    await page.screenshot({ path: "test-results/qa-screenshots/command-center-action-bias-1920x1080.png", fullPage: false });
+  }
   await expect(page.getByTestId("command-scene-feed")).toContainText("Tick", { timeout: 20_000 });
+  await page.getByTestId("persistent-command-center").getByRole("button", { name: /记忆传播/ }).click();
+  await expect(page.getByTestId("command-memory-propagation")).toContainText(/witness|rumor|deduced|目击|传播/, { timeout: 20_000 });
+  await page.getByTestId("command-scene-feed").locator(".commandTraceRow").first().click();
 
   for (let index = 0; index < 3; index += 1) {
     await page.getByTestId("persistent-command-center").getByRole("button", { name: "单步" }).click();
@@ -756,6 +771,10 @@ test("persistent agent town runs, scores agents and extracts a playable case", a
 
   const commandOverflow = await page.getByTestId("persistent-command-center").evaluate((element) => element.scrollWidth - element.clientWidth);
   expect(commandOverflow).toBeLessThanOrEqual(1);
+  if (process.env.CAPTURE_QA && testInfo.project.name === "chromium-mobile") {
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+    await page.screenshot({ path: "test-results/qa-screenshots/command-center-pixel-7.png", fullPage: false });
+  }
   await page.getByTestId("command-candidate-board").locator("button:not([disabled])").filter({ hasText: "抽取可玩案件" }).first().click();
   await expect(page.getByTestId("status-line")).toContainText("Playable case extracted", { timeout: 20_000 });
   await expect(page.getByTestId("inspector-rail").locator("button.active")).toContainText("调查");

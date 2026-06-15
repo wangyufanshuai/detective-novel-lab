@@ -121,6 +121,33 @@ const engine = await loadEngine();
 }
 
 {
+  const world = engine.createInitialWorld("action-bias-persistent", { mode: "showcase", npcCount: 8, timelineHours: 24 });
+  const daily = engine.simulateDailyLife(world, 1, []);
+  const actorId = daily.world.npcs[0].id;
+  daily.world.npcs = daily.world.npcs.map((npc, index) => ({ ...npc, alive: index === 0 }));
+  const runtime = engine.createPersistentTownRuntime(daily.world, daily.events, { maxTicks: 8 });
+  daily.world.persistentRuntime = runtime;
+  const biased = engine.applyTownRuntimeIntervention(daily.world, {
+    actorId,
+    kind: "action-bias",
+    value: "investigate"
+  });
+  const biasedScores = engine.scoreNpcActionCandidates(biased.world, biased.world.npcs[0], daily.events, biased.runtime);
+  const investigate = biasedScores.find((candidate) => candidate.kind === "investigate");
+  assert.equal(investigate.score.directorBias, 18, "action bias is visible in candidate scoring");
+  const after = engine.advancePersistentTownTick(biased.world, daily.events, { steps: 1, status: "running" });
+  const trace = after.runtime.decisionTraces.find((item) => item.npcId === actorId);
+  const selected = trace.candidates.find((candidate) => candidate.id === trace.selectedCandidateId);
+  assert.equal(selected.kind, "investigate", "action bias affects the next legal selected action");
+  assert.ok(trace.interventionId, "biased decision records the intervention id");
+  const afterExpiry = engine.scoreNpcActionCandidates(after.world, after.world.npcs[0], [...daily.events, ...after.events], after.runtime);
+  assert.equal(afterExpiry.find((candidate) => candidate.kind === "investigate").score.directorBias, 18, "bias remains inspectable on the applied tick");
+  const expired = engine.advancePersistentTownTick(after.world, [...daily.events, ...after.events], { steps: 1, status: "running" });
+  const expiredScores = engine.scoreNpcActionCandidates(expired.world, expired.world.npcs[0], [...daily.events, ...after.events, ...expired.events], expired.runtime);
+  assert.equal(expiredScores.some((candidate) => candidate.score.directorBias), false, "action bias expires after one selected tick");
+}
+
+{
   const world = engine.createInitialWorld("scenario-persistent", { mode: "showcase", npcCount: 8, timelineHours: 24 });
   const daily = engine.simulateDailyLife(world, 1, []);
   const actorId = daily.world.npcs[0].id;

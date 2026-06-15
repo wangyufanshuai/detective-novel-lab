@@ -102,6 +102,18 @@ try {
   assert.ok(agent.candidates.length >= 3, "agent query returns action candidates");
   assert.ok(agent.candidates.some((candidate) => ["investigate", "spread-rumor", "seek-alibi", "pressure", "cover-up"].includes(candidate.kind)), "agent query returns core simulation actions");
 
+  const biased = await request("/api/v1/command/town/agent/intervene", {
+    method: "POST",
+    body: JSON.stringify({ worldId, intervention: { actorId, kind: "action-bias", value: "investigate" } })
+  });
+  assert.equal(biased.intervention.kind, "action-bias", "action bias intervention is accepted");
+  const biasedAgent = await request(`/api/v1/query/town/agent?worldId=${encodeURIComponent(worldId)}&npcId=${encodeURIComponent(actorId)}`);
+  assert.equal(
+    biasedAgent.candidates.find((candidate) => candidate.kind === "investigate")?.score?.directorBias,
+    18,
+    "agent query exposes director action bias score"
+  );
+
   const intervened = await request("/api/v1/command/town/agent/intervene", {
     method: "POST",
     body: JSON.stringify({ worldId, intervention: { actorId, kind: "resource", value: "resource:api-smoke" } })

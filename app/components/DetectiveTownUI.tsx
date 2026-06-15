@@ -22,11 +22,12 @@ import {
   Users,
   X
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type PointerEvent, type ReactNode } from "react";
 import type {
   CaseLogicReport,
   CaseTemplateId,
   CaseCandidate,
+  AgentDecisionTrace,
   DeductionCase,
   DeductionGraphNode,
   EmergenceProofTrace,
@@ -48,6 +49,7 @@ import type {
   SuspectBoardRow,
   TownStateDiff,
   TownStateSnapshot,
+  TownRuntimeIntervention,
   TownEmergenceQueue,
   WorldEvent,
   WorldMapActor,
@@ -969,7 +971,7 @@ export function AgentControlPanel({
   pauseRuntime: () => void;
   stepRuntime: () => void;
   resetRuntime: () => void;
-  interveneAgent: () => void;
+  interveneAgent: (kind?: TownRuntimeIntervention["kind"], value?: string | number | boolean) => void;
   extractCase: (candidate: CaseCandidate) => void;
   runScenario: () => void;
   rollbackSnapshot: (snapshotId: string) => void;
@@ -1272,7 +1274,7 @@ export function AgentControlPanel({
                 ))}
               </div>
             )}
-            <button type="button" className="secondaryButton full" onClick={interveneAgent} disabled={runningBusy}>施加资源干预</button>
+            <button type="button" className="secondaryButton full" onClick={() => interveneAgent()} disabled={runningBusy}>施加资源干预</button>
           </article>
         ) : <p>在地图或嫌疑人板选择 NPC，查看角色状态。</p>}
         <div className="simulationCandidateList directorActionList" id="director-actions" data-testid="agent-action-candidates">
@@ -1373,7 +1375,7 @@ export function PersistentTownCommandCenter({
   stepRuntime: () => void;
   stepRuntimeFast: () => void;
   resetRuntime: () => void;
-  interveneAgent: () => void;
+  interveneAgent: (kind?: TownRuntimeIntervention["kind"], value?: string | number | boolean) => void;
   extractCase: (candidate: CaseCandidate) => void;
   runScenario: () => void;
   rollbackSnapshot: (snapshotId: string) => void;
@@ -1433,6 +1435,114 @@ export function PersistentTownCommandCenter({
   const maxY = Math.max(1, (snapshot?.height || 18) - 1);
   const actorName = selectedCharacterName || selectedActor?.name || selectedAgent?.npcId || "未选择 NPC";
   const avatarIndex = Math.abs(Array.from(selectedAgent?.npcId || selectedCharacterId || "0").reduce((sum, char) => sum + char.charCodeAt(0), 0)) % 8;
+  const [activeSection, setActiveSection] = useState<"map" | "actions" | "memory" | "queue" | "time">("map");
+  const [mapZoom, setMapZoom] = useState(1);
+  const [mapPan, setMapPan] = useState({ x: 0, y: 0 });
+  const [mapFilters, setMapFilters] = useState({ npc: true, evidence: true, event: true });
+  const [traceKindFilter, setTraceKindFilter] = useState<string>("all");
+  const [selectedTraceId, setSelectedTraceId] = useState<string>("");
+  const [biasStatus, setBiasStatus] = useState("");
+  const [menuExpanded, setMenuExpanded] = useState(true);
+  const dragRef = useRef({ active: false, startX: 0, startY: 0, x: 0, y: 0 });
+  const activeTrace = recentTraces.find((trace) => trace.id === selectedTraceId) || recentTraces[0];
+  const traceKinds = Array.from(new Set(recentTraces.flatMap((trace) => trace.candidates.find((candidate) => candidate.id === trace.selectedCandidateId)?.kind || [])));
+  const filteredTraces = traceKindFilter === "all"
+    ? recentTraces
+    : recentTraces.filter((trace) => trace.candidates.find((candidate) => candidate.id === trace.selectedCandidateId)?.kind === traceKindFilter);
+  const visibleMarkers = (snapshot?.markers || []).filter((marker) =>
+    marker.type === "evidence" ? mapFilters.evidence :
+    marker.type === "event" || marker.type === "crime" || marker.type === "contradiction" ? mapFilters.event :
+    true
+  );
+  const memoryPropagations = [...(runtime?.memoryPropagations || [])].slice(-12).reverse();
+  const branchSummary = scenarioReport?.branches?.[0];
+  const actionPriority = ["investigate", "spread-rumor", "seek-alibi", "pressure", "cover-up", "talk", "observe", "move", "obtain-resource", "confront", "hide-trace"];
+  const displayedActionCandidates = [...selectedAgentCandidates].sort((a, b) => actionPriority.indexOf(a.kind) - actionPriority.indexOf(b.kind)).slice(0, 5);
+
+  function describeAction(candidate?: NpcActionCandidate) {
+    if (!candidate) return "等待行动";
+    const descriptions: Record<string, string> = {
+      observe: "观察附近公开事件并更新个人记忆",
+      move: `前往 ${candidate.targetLocationId} 推进当前计划`,
+      talk: `与 ${candidate.targetNpcId || "目标 NPC"} 交谈并交换信息`,
+      investigate: "检查现场痕迹，并与已知记忆交叉核对",
+      "spread-rumor": `向 ${candidate.targetNpcId || "目标 NPC"} 传播部分事实`,
+      "seek-alibi": "前往公共地点寻找不在场证明",
+      pressure: `向 ${candidate.targetNpcId || "关系目标"} 施压以改变局势`,
+      confront: `与 ${candidate.targetNpcId || "关系目标"} 正面对峙`,
+      "obtain-resource": `获取资源 ${candidate.resourceId || "关键物品"}`,
+      "cover-up": "混淆来源链并降低秘密暴露风险",
+      "hide-trace": "隐藏可能连接因果链的痕迹"
+    };
+    return descriptions[candidate.kind] || candidate.description;
+  }
+
+  function translateRuleText(value?: string) {
+    if (!value) return "预期产生新的世界状态变化";
+    const rules: Array<[string, string]> = [
+      ["required resource is not available", "缺少行动所需资源"],
+      ["target location is not reachable", "目标地点当前不可达"],
+      ["secret risk is high", "秘密风险正在影响行动选择"],
+      ["relationship pressure is high", "关系压力已达到高位"],
+      ["local witness exposure can reveal source events", "本地目击暴露可揭示来源事件"],
+      ["known facts can propagate as rumor memory", "已知事实可传播为传闻记忆"],
+      ["agent tries to create an alibi before pressure rises", "NPC 尝试在压力上升前建立不在场证明"],
+      ["secret risk creates cover-up urgency", "秘密风险正在提升掩盖行动的紧迫度"],
+      ["director action bias favors", "导演偏置正在提高该行动的下一 Tick 优先级"],
+      ["missing motive stage", "缺少动机阶段"],
+      ["missing means stage", "缺少手段阶段"],
+      ["missing opportunity stage", "缺少机会阶段"],
+      ["missing memory support", "缺少记忆支撑"],
+      ["missing timeline depth", "时间线深度不足"],
+      ["non-culprit exclusion seed missing", "缺少非凶手排除种子"]
+    ];
+    const matched = rules.find(([source]) => value.includes(source));
+    return matched ? matched[1] : value;
+  }
+
+  function translatePlan(value: string) {
+    return value
+      .replace(/^Move through /, "前往 ")
+      .replace(/^Stage: /, "因果阶段：")
+      .replace(/^Act: /, "行动：")
+      .replace(/^Watch: /, "关注地点：")
+      .replace("observe public events", "观察公开事件")
+      .replace("preserve routine", "维持日常路线")
+      .replace("avoid witnesses", "避开目击者")
+      .replace("resolve pressure source", "处理压力来源");
+  }
+
+  function beginMapDrag(event: PointerEvent<HTMLDivElement>) {
+    dragRef.current = { active: true, startX: event.clientX, startY: event.clientY, x: mapPan.x, y: mapPan.y };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function moveMapDrag(event: PointerEvent<HTMLDivElement>) {
+    if (!dragRef.current.active) return;
+    setMapPan({
+      x: dragRef.current.x + event.clientX - dragRef.current.startX,
+      y: dragRef.current.y + event.clientY - dragRef.current.startY
+    });
+  }
+
+  function endMapDrag(event: PointerEvent<HTMLDivElement>) {
+    dragRef.current.active = false;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+  }
+
+  function focusTrace(trace: AgentDecisionTrace) {
+    setSelectedTraceId(trace.id);
+    const selected = trace.candidates.find((candidate) => candidate.id === trace.selectedCandidateId);
+    const actor = snapshot?.actors.find((item) => item.id === trace.npcId);
+    if (actor) onActorSelect(actor);
+    if (selected?.targetLocationId) onLocationSelect(selected.targetLocationId);
+    setActiveSection("actions");
+  }
+
+  function applyActionBias(candidate: NpcActionCandidate) {
+    setBiasStatus(`已偏置下一 Tick：${actionLabels[candidate.kind] || candidate.kind}`);
+    interveneAgent("action-bias", candidate.kind);
+  }
 
   function confirmRollback() {
     if (!selectedSnapshotFromId) return;
@@ -1450,7 +1560,7 @@ export function PersistentTownCommandCenter({
     <main className="commandCenterShell" data-testid="persistent-command-center">
       <header className="commandTopHud" data-testid="command-center-hud">
         <button type="button" className="commandBrand" onClick={backToPlay} aria-label="返回 Play">
-          <img src="/command-center/town-map.svg" alt="" />
+          <img src="/command-center/command-emblem.webp" alt="" />
           <span><strong>模拟指挥中心</strong><small>DETECTIVE TOWN</small></span>
         </button>
         <div className="commandChapter">
@@ -1471,13 +1581,15 @@ export function PersistentTownCommandCenter({
       </header>
 
       <aside className="commandLeftRail">
-        <section className="commandPanel commandArchive">
-          <h2>案件档案</h2>
-          <button className="active" type="button">小镇地图</button>
-          <button type="button">NPC 行动</button>
-          <button type="button">记忆传播</button>
-          <button type="button">案件队列 <b>{candidates.length}</b></button>
-          <button type="button">时间机器</button>
+        <section className={`commandPanel commandArchive ${menuExpanded ? "expanded" : "collapsed"}`}>
+          <div className="panelHeaderLine"><h2>案件档案</h2><button className="commandMenuToggle" type="button" onClick={() => setMenuExpanded((value) => !value)}>{menuExpanded ? "收起" : "展开"}</button></div>
+          <div className="commandArchiveItems">
+            <button className={activeSection === "map" ? "active" : ""} type="button" onClick={() => setActiveSection("map")}>小镇地图</button>
+            <button className={activeSection === "actions" ? "active" : ""} type="button" onClick={() => setActiveSection("actions")}>NPC 行动</button>
+            <button className={activeSection === "memory" ? "active" : ""} type="button" onClick={() => setActiveSection("memory")}>记忆传播 <b>{memoryPropagations.length}</b></button>
+            <button className={activeSection === "queue" ? "active" : ""} type="button" onClick={() => setActiveSection("queue")}>案件队列 <b>{candidates.length}</b></button>
+            <button className={activeSection === "time" ? "active" : ""} type="button" onClick={() => setActiveSection("time")}>时间机器</button>
+          </div>
         </section>
         <section className="commandPanel commandControls">
           <div className="panelHeaderLine"><h2>运行控制</h2><span className={`runtimePill ${runtime?.status || "paused"}`}>{runtime?.status || "未启动"}</span></div>
@@ -1498,10 +1610,21 @@ export function PersistentTownCommandCenter({
         </section>
       </aside>
 
-      <section className="commandMapPanel" data-testid="command-center-map">
-        <div className="commandPanelTitle"><h2>小镇地图（黄昏）</h2><span>NPC / 线索点 / 事件</span></div>
-        <div className="commandMapArt">
-          <img src="/command-center/town-map.svg" alt="黄昏侦探小镇地图" />
+      <section className={`commandMapPanel ${activeSection === "map" ? "commandFocus" : ""}`} data-testid="command-center-map">
+        <div className="commandPanelTitle">
+          <h2>小镇地图（黄昏）</h2>
+          <div className="commandMapTools">
+            <button type="button" className={mapFilters.npc ? "active" : ""} onClick={() => setMapFilters((current) => ({ ...current, npc: !current.npc }))}>NPC</button>
+            <button type="button" className={mapFilters.evidence ? "active" : ""} onClick={() => setMapFilters((current) => ({ ...current, evidence: !current.evidence }))}>线索点</button>
+            <button type="button" className={mapFilters.event ? "active" : ""} onClick={() => setMapFilters((current) => ({ ...current, event: !current.event }))}>事件</button>
+            <button type="button" onClick={() => setMapZoom((value) => Math.max(0.8, Number((value - 0.15).toFixed(2))))}>缩小</button>
+            <button type="button" onClick={() => setMapZoom((value) => Math.min(1.8, Number((value + 0.15).toFixed(2))))}>放大</button>
+            <button type="button" onClick={() => { setMapZoom(1); setMapPan({ x: 0, y: 0 }); }}>重置视角</button>
+          </div>
+        </div>
+        <div className="commandMapArt" onPointerDown={beginMapDrag} onPointerMove={moveMapDrag} onPointerUp={endMapDrag} onPointerCancel={endMapDrag}>
+          <div className="commandMapLayer" style={{ transform: `translate(${mapPan.x}px, ${mapPan.y}px) scale(${mapZoom})` }}>
+          <img src="/command-center/town-map.webp" alt="黄昏侦探小镇地图" />
           {(snapshot?.tiles || []).filter((tile) => tile.locationId && tile.locationName).map((tile) => (
             <button
               key={tile.id}
@@ -1513,7 +1636,7 @@ export function PersistentTownCommandCenter({
               {tile.locationName}
             </button>
           ))}
-          {(snapshot?.markers || []).slice(0, 18).map((marker) => (
+          {visibleMarkers.slice(0, 18).map((marker) => (
             <button
               key={marker.id}
               type="button"
@@ -1525,7 +1648,7 @@ export function PersistentTownCommandCenter({
               {marker.type === "crime" ? "!" : marker.type === "evidence" ? "?" : "+"}
             </button>
           ))}
-          {(snapshot?.actors || []).map((actor) => (
+          {mapFilters.npc && (snapshot?.actors || []).map((actor) => (
             <button
               key={actor.id}
               type="button"
@@ -1534,35 +1657,42 @@ export function PersistentTownCommandCenter({
               onClick={() => onActorSelect(actor)}
               title={`${actor.name} / ${actor.role}`}
             >
-              <img src={`/command-center/avatar-${Math.abs(Array.from(actor.id).reduce((sum, char) => sum + char.charCodeAt(0), 0)) % 8}.svg`} alt="" />
+              <img src={`/command-center/avatar-${Math.abs(Array.from(actor.id).reduce((sum, char) => sum + char.charCodeAt(0), 0)) % 8}.webp`} alt="" />
             </button>
           ))}
+          </div>
         </div>
       </section>
 
-      <section className="commandSceneFeed commandPanel" data-testid="command-scene-feed">
-        <div className="panelHeaderLine"><h2>场景推理（最新 6 条）</h2><button type="button" onClick={runScenario} disabled={runningBusy}>查看全部</button></div>
-        {recentTraces.map((trace) => {
+      <section className={`commandSceneFeed commandPanel ${activeSection === "actions" ? "commandFocus" : ""}`} data-testid="command-scene-feed">
+        <div className="panelHeaderLine">
+          <h2>场景推理（最新 6 条）</h2>
+          <select value={traceKindFilter} onChange={(event) => setTraceKindFilter(event.target.value)} aria-label="行动类型筛选">
+            <option value="all">全部行动</option>
+            {traceKinds.map((kind) => <option key={kind} value={kind}>{actionLabels[kind] || kind}</option>)}
+          </select>
+        </div>
+        {filteredTraces.map((trace) => {
           const selected = trace.candidates.find((candidate) => candidate.id === trace.selectedCandidateId);
           return (
-            <article key={trace.id} className="commandTraceRow">
+            <button key={trace.id} type="button" className={`commandTraceRow ${trace.id === activeTrace?.id ? "selected" : ""}`} onClick={() => focusTrace(trace)}>
               <time>{trace.time}<small>Tick {trace.tick}</small></time>
               <div>
                 <strong>{actionLabels[selected?.kind || ""] || selected?.kind || "行动"}</strong>
-                <span>{selected?.description || trace.createdEventId || trace.id}</span>
+                <span>{describeAction(selected)}</span>
               </div>
               <small>{trace.npcId}</small>
-            </article>
+            </button>
           );
         })}
-        {!recentTraces.length && <p>启动或单步运行后，NPC 行动会写入这里。</p>}
+        {!filteredTraces.length && <p>启动或单步运行后，NPC 行动会写入这里。</p>}
       </section>
 
       <aside className="commandRightRail">
         <section className="commandPanel commandNpcPanel" data-testid="command-npc-dossier">
           <div className="panelHeaderLine"><h2>选中 NPC：{actorName}</h2><span>★</span></div>
           <div className="commandNpcHero">
-            <img src={`/command-center/avatar-${avatarIndex}.svg`} alt="" />
+            <img src={`/command-center/avatar-${avatarIndex}.webp`} alt="" />
             <div>
               <label>关系压力 <b>{selectedAgent?.relationshipPressure ?? 0}/100</b><meter value={selectedAgent?.relationshipPressure ?? 0} min={0} max={100} /></label>
               <label>秘密风险 <b>{selectedAgent?.secretRisk ?? 0}/100</b><meter value={selectedAgent?.secretRisk ?? 0} min={0} max={100} /></label>
@@ -1571,30 +1701,35 @@ export function PersistentTownCommandCenter({
             </div>
           </div>
           <div className="commandPlanFacts">
-            <div><h3>当前计划</h3>{(selectedAgent?.currentPlan || ["选择地图上的 NPC"]).slice(0, 5).map((item, index) => <span key={`${item}:${index}`}>{index + 1}. {item}</span>)}</div>
+            <div><h3>当前计划</h3>{(selectedAgent?.currentPlan || ["选择地图上的 NPC"]).slice(0, 5).map((item, index) => <span key={`${item}:${index}`}>{index + 1}. {translatePlan(item)}</span>)}</div>
             <div><h3>已知事实</h3>{(selectedAgent?.knownFactIds || []).slice(-6).map((item) => <span key={item}>{item}</span>) || <span>暂无</span>}</div>
           </div>
           <article className="commandConsequence">
             <strong>最近后果</strong>
-            <span>{selectedAgent?.lastConsequence || recentConsequences[0]?.actionKind || "等待行动"}</span>
+            <span>{translateRuleText(selectedAgent?.lastConsequence || recentConsequences[0]?.actionKind || "等待行动")}</span>
           </article>
         </section>
 
-        <section className="commandPanel commandActions" data-testid="command-action-choices">
-          <h2>行动选择</h2>
-          {selectedAgentCandidates.slice(0, 5).map((candidate) => (
+        <section className={`commandPanel commandActions ${activeSection === "actions" ? "commandFocus" : ""}`} data-testid="command-action-choices">
+          <div className="panelHeaderLine"><h2>行动选择</h2><span>{biasStatus || "评分依据：目标匹配 / 风险 / 预期后果"}</span></div>
+          {displayedActionCandidates.map((candidate) => (
             <article key={candidate.id} className={candidate.legal ? "legal" : "blocked"}>
               <strong>{actionLabels[candidate.kind] || candidate.kind}<small>{candidate.kind}</small></strong>
-              <span>评分 {candidate.score.total}</span>
-              <span>风险 {(candidate.score.risk || 0) > 10 ? "高" : "低"}</span>
-              <small>{candidate.score.reasons.slice(0, 2).join(" / ") || candidate.blockedReason || "预期产生新线索"}</small>
+              <div className="commandScoreGrid">
+                <span>评分 <b>{candidate.score.total}</b></span>
+                <span>风险 <b>{(candidate.score.risk || 0) > 10 ? "高" : "低"}</b></span>
+                <span>偏置 <b>{candidate.score.directorBias || 0}</b></span>
+                <span>案件影响 <b>{candidate.score.caseImpact}</b></span>
+              </div>
+              <small>{candidate.score.reasons.slice(0, 3).map(translateRuleText).join(" / ") || translateRuleText(candidate.blockedReason)}</small>
+              <button type="button" onClick={() => applyActionBias(candidate)} disabled={runningBusy || !selectedAgent || !candidate.legal}>偏置下一 Tick</button>
             </article>
           ))}
-          <button type="button" onClick={interveneAgent} disabled={runningBusy || !selectedAgent}>施加资源干预</button>
+          <button type="button" onClick={() => interveneAgent()} disabled={runningBusy || !selectedAgent}>施加资源干预</button>
         </section>
       </aside>
 
-      <section className="commandCandidateBoard commandPanel" data-testid="command-candidate-board">
+      <section className={`commandCandidateBoard commandPanel ${activeSection === "queue" ? "commandFocus" : ""}`} data-testid="command-candidate-board">
         <div className="panelHeaderLine"><h2>案件候选板（{candidates.length} 条候选链）</h2><span>{queue?.validCount ?? 0} 可抽取</span></div>
         <div className="commandCandidateGrid">
           {candidates.slice(0, 4).map((candidate, index) => (
@@ -1606,14 +1741,28 @@ export function PersistentTownCommandCenter({
                   <b key={stage} className={(candidate.chainStageTags || candidate.validation.chainStages || []).includes(stage) ? "on" : ""}>{stageLabels[stage]}</b>
                 ))}
               </div>
-              <small>{candidate.validation.failureReasons?.[0] || (candidate.validation.valid ? "可抽取案件" : "仍阻塞")}</small>
+              <small>{candidate.validation.failureReasons?.[0] ? translateRuleText(candidate.validation.failureReasons[0]) : (candidate.validation.valid ? "可抽取案件" : "仍阻塞")}</small>
               <button type="button" onClick={() => extractCase(candidate)} disabled={runningBusy || !candidate.validation.valid}>抽取可玩案件</button>
             </article>
           ))}
         </div>
       </section>
 
-      <section className="commandTimeMachine commandPanel" data-testid="command-time-machine">
+      <section className={`commandMemoryPanel commandPanel ${activeSection === "memory" ? "commandFocus" : ""}`} data-testid="command-memory-propagation">
+        <div className="panelHeaderLine"><h2>记忆传播</h2><span>{memoryPropagations.length} 条最近传播</span></div>
+        <div className="commandMemoryList">
+          {memoryPropagations.map((item) => (
+            <button key={item.id} type="button" onClick={() => setActiveSection("memory")}>
+              <strong>{item.kind}</strong>
+              <span>{item.fromNpcId || "目击"} → {item.toNpcId}</span>
+              <small>{item.source} / Tick {item.tick} / 置信度 {Math.round(item.confidence * 100)}% / {item.eventId}</small>
+            </button>
+          ))}
+          {!memoryPropagations.length && <p>运行后，目击与传闻会在这里形成传播路径。</p>}
+        </div>
+      </section>
+
+      <section className={`commandTimeMachine commandPanel ${activeSection === "time" ? "commandFocus" : ""}`} data-testid="command-time-machine">
         <div className="panelHeaderLine"><h2>时间机器</h2><span>{snapshots.length} 快照</span></div>
         <label>起点<select value={selectedSnapshotFromId} onChange={(event) => setSelectedSnapshotFromId(event.target.value)}>{snapshots.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
         <label>终点<select value={selectedSnapshotToId} onChange={(event) => setSelectedSnapshotToId(event.target.value)}>{snapshots.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
@@ -1625,6 +1774,25 @@ export function PersistentTownCommandCenter({
           <span>事件 +{snapshotDiff?.addedEventIds.length ?? 0}</span>
           <span>记忆 +{snapshotDiff?.addedMemoryIds.length ?? 0}</span>
           <span>NPC 变化 {snapshotDiff?.changedAgents.length ?? 0}</span>
+        </div>
+        {branchSummary && (
+          <article className="commandBranchSummary">
+            <strong>{branchSummary.name}</strong>
+            <span>事件 +{branchSummary.eventGrowth} / 记忆 +{branchSummary.memoryGrowth} / 有效候选 {branchSummary.validCandidateCount}</span>
+          </article>
+        )}
+        <div className="commandSnapshotTimeline">
+          {snapshots.slice(0, 8).map((item) => (
+            <button key={item.id} type="button" className={item.id === selectedSnapshotFromId || item.id === selectedSnapshotToId ? "active" : ""} onClick={() => setSelectedSnapshotToId(item.id)}>
+              <strong>{item.label}</strong>
+              <small>Tick {item.tick} / {item.time} / 候选 {item.candidateSummaries.length}</small>
+            </button>
+          ))}
+        </div>
+        <div className="commandDiffDetail">
+          <span>新增事件：{snapshotDiff?.addedEventIds.slice(0, 3).join(", ") || "无"}</span>
+          <span>新增记忆：{snapshotDiff?.addedMemoryIds.slice(0, 3).join(", ") || "无"}</span>
+          <span>分支干预：{snapshotDiff?.branchOnlyInterventionIds.slice(0, 3).join(", ") || "无"}</span>
         </div>
       </section>
 

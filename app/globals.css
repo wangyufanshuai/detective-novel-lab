@@ -1044,7 +1044,7 @@ blockquote {
 .commandCenterShell {
   display: grid;
   grid-template-columns: 260px minmax(0, 1.18fr) minmax(280px, 0.72fr) minmax(280px, 0.78fr);
-  grid-template-rows: auto minmax(360px, 1fr) auto auto;
+  grid-template-rows: auto minmax(360px, 1fr) auto auto auto;
   gap: 10px;
   min-height: 100vh;
   padding: 10px;
@@ -1196,13 +1196,18 @@ blockquote {
 }
 
 .commandTimeMachine {
+  grid-column: 3;
+  grid-row: 4;
+}
+
+.commandMemoryPanel {
   grid-column: 2;
   grid-row: 4;
 }
 
 .commandBenchmark {
-  grid-column: 3;
-  grid-row: 4;
+  grid-column: 2 / 4;
+  grid-row: 5;
 }
 
 .commandPanel {
@@ -1239,8 +1244,21 @@ blockquote {
   text-align: left;
 }
 
+.commandArchiveItems {
+  display: grid;
+  gap: 10px;
+}
+
+.commandArchive .commandMenuToggle {
+  width: auto;
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 10px;
+}
+
 .commandArchive button.active,
-.commandActions article.legal:first-of-type {
+.commandActions article.legal:first-of-type,
+.commandFocus {
   border-color: rgba(229, 166, 79, 0.72);
   box-shadow: inset 4px 0 0 #d99a48;
 }
@@ -1267,6 +1285,39 @@ blockquote {
   margin-bottom: 8px;
 }
 
+.commandMapTools {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+}
+
+.commandMapTools button,
+.commandSceneFeed select {
+  min-height: 30px;
+  color: #d8c3a0;
+  background: rgba(7, 12, 12, 0.82);
+  border: 1px solid rgba(151, 103, 50, 0.36);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.commandMapTools button {
+  padding: 0 9px;
+}
+
+.commandMapTools button.active {
+  color: #14100b;
+  background: #d99a48;
+}
+
+.commandSceneFeed select {
+  max-width: 130px;
+  padding: 5px 8px;
+}
+
 .commandMapArt {
   position: relative;
   min-height: 0;
@@ -1275,9 +1326,22 @@ blockquote {
   background: #050807;
   border: 1px solid rgba(151, 103, 50, 0.46);
   border-radius: 6px;
+  cursor: grab;
+  touch-action: none;
 }
 
-.commandMapArt > img {
+.commandMapArt:active {
+  cursor: grabbing;
+}
+
+.commandMapLayer {
+  position: absolute;
+  inset: 0;
+  transform-origin: center center;
+  transition: transform 160ms ease;
+}
+
+.commandMapLayer > img {
   display: block;
   width: 100%;
   height: 100%;
@@ -1360,6 +1424,14 @@ blockquote {
   background: rgba(7, 12, 12, 0.72);
   border: 1px solid rgba(151, 103, 50, 0.28);
   border-radius: 5px;
+  color: inherit;
+  text-align: left;
+}
+
+.commandTraceRow.selected,
+.commandTraceRow:hover {
+  border-color: rgba(229, 166, 79, 0.64);
+  background: rgba(83, 49, 22, 0.42);
 }
 
 .commandTraceRow time,
@@ -1438,8 +1510,7 @@ blockquote {
 
 .commandActions article {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 52px 42px;
-  gap: 6px 10px;
+  gap: 8px;
   align-items: center;
   padding: 10px;
   background: rgba(7, 12, 12, 0.74);
@@ -1455,7 +1526,6 @@ blockquote {
 
 .commandActions article strong small,
 .commandActions article > small {
-  grid-column: 1 / -1;
   color: #9f8869;
   font-size: 11px;
 }
@@ -1469,6 +1539,33 @@ blockquote {
 .commandActions article.blocked {
   opacity: 0.58;
   border-style: dashed;
+}
+
+.commandScoreGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.commandScoreGrid span,
+.commandBranchSummary,
+.commandDiffDetail span {
+  min-width: 0;
+  padding: 6px;
+  color: #cbb188;
+  background: rgba(3, 7, 7, 0.72);
+  border: 1px solid rgba(151, 103, 50, 0.24);
+  border-radius: 4px;
+  font-size: 10px;
+}
+
+.commandActions article button {
+  min-height: 32px;
+  color: #15100b;
+  background: #d99a48;
+  border: 0;
+  border-radius: 4px;
+  font-weight: 1000;
 }
 
 .commandCandidateGrid {
@@ -1555,6 +1652,59 @@ blockquote {
   border-radius: 4px;
   font-size: 11px;
   font-weight: 900;
+}
+
+.commandMemoryList,
+.commandSnapshotTimeline,
+.commandDiffDetail {
+  display: grid;
+  gap: 7px;
+}
+
+.commandMemoryList button,
+.commandSnapshotTimeline button {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 9px;
+  color: #d8c3a0;
+  text-align: left;
+  background: rgba(7, 12, 12, 0.68);
+  border: 1px solid rgba(151, 103, 50, 0.28);
+  border-radius: 5px;
+}
+
+.commandMemoryList button strong,
+.commandSnapshotTimeline button strong,
+.commandBranchSummary strong {
+  color: #f2d7a1;
+  font-size: 12px;
+}
+
+.commandMemoryList button span,
+.commandMemoryList button small,
+.commandSnapshotTimeline button small,
+.commandBranchSummary span {
+  overflow: hidden;
+  color: #9f8869;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.commandSnapshotTimeline {
+  max-height: 170px;
+  overflow: auto;
+}
+
+.commandSnapshotTimeline button.active {
+  border-color: rgba(121, 200, 111, 0.5);
+}
+
+.commandBranchSummary {
+  display: grid;
+  gap: 5px;
+  border-color: rgba(121, 200, 111, 0.36);
 }
 
 .reviewMetricGrid {
@@ -6357,6 +6507,7 @@ blockquote {
   .commandSceneFeed,
   .commandRightRail,
   .commandCandidateBoard,
+  .commandMemoryPanel,
   .commandTimeMachine,
   .commandBenchmark {
     grid-column: 2;
@@ -6411,18 +6562,77 @@ blockquote {
 
 @media (max-width: 760px) {
   .commandCenterShell {
-    display: block;
+    display: flex;
+    flex-direction: column;
     padding: 8px;
   }
 
-  .commandTopHud,
   .commandLeftRail,
   .commandRightRail,
   .commandCandidateGrid,
   .commandPlanFacts,
   .commandNpcHero,
-  .commandDiffStats {
+  .commandDiffStats,
+  .commandScoreGrid {
     grid-template-columns: 1fr;
+  }
+
+  .commandTopHud {
+    order: 1;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .commandBrand,
+  .commandChapter,
+  .commandPass {
+    grid-column: 1 / -1;
+  }
+
+  .commandBrand {
+    grid-template-columns: 52px minmax(0, 1fr);
+    min-height: 64px;
+    padding: 7px 10px;
+  }
+
+  .commandBrand img {
+    width: 48px;
+    height: 48px;
+  }
+
+  .commandBrand strong,
+  .commandChapter strong {
+    font-size: 16px;
+  }
+
+  .commandChapter,
+  .commandHudMetric {
+    padding: 8px 10px;
+  }
+
+  .commandHudMetric strong {
+    font-size: 19px;
+  }
+
+  .commandPass {
+    min-height: 42px;
+    margin: 6px;
+  }
+
+  .commandMapPanel { order: 2; }
+  .commandLeftRail { order: 3; }
+  .commandSceneFeed { order: 4; }
+  .commandRightRail { order: 5; }
+  .commandCandidateBoard { order: 6; }
+  .commandMemoryPanel { order: 7; }
+  .commandTimeMachine { order: 8; }
+  .commandBenchmark { order: 9; }
+
+  .commandMapTools {
+    justify-content: flex-start;
+  }
+
+  .commandArchive.collapsed .commandArchiveItems {
+    display: none;
   }
 
   .commandPanel,

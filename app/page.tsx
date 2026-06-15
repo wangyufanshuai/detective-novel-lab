@@ -225,6 +225,7 @@ import type {
   SuspectBoardRow,
   TownStateDiff,
   TownStateSnapshot,
+  TownRuntimeIntervention,
   TownEmergenceQueue,
   WorldEvent,
   WorldMapActor,
@@ -3919,17 +3920,19 @@ export default function Home() {
     }
   }
 
-  async function intervenePersistentAgent() {
+  async function intervenePersistentAgent(kind: TownRuntimeIntervention["kind"] = "resource", value: string | number | boolean = "resource:player-intervention") {
     if (!world || !selectedCharacterId) return;
     setTownRuntimeBusy(true);
     try {
       const data = await postV1<{ runtime: PersistentTownRuntime; intervention: unknown; world: WorldState }>("/api/v1/command/town/agent/intervene", {
         worldId: world.id,
-        intervention: { actorId: selectedCharacterId, kind: "resource", value: "resource:player-intervention" }
+        intervention: { actorId: selectedCharacterId, kind, value }
       });
       setTownRuntime(data.runtime);
       setWorld(data.world);
-      setStatus("Counterfactual resource intervention applied to selected NPC.");
+      setStatus(kind === "action-bias"
+        ? `Director action bias applied: ${String(value)} will influence the selected NPC next tick.`
+        : "Counterfactual resource intervention applied to selected NPC.");
       await refreshTownRuntime(data.world.id);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to apply intervention");
@@ -4951,7 +4954,7 @@ export default function Home() {
         stepRuntime={() => void stepPersistentTown()}
         stepRuntimeFast={() => void stepPersistentTown(5)}
         resetRuntime={() => void resetPersistentTown()}
-        interveneAgent={() => void intervenePersistentAgent()}
+        interveneAgent={(kind, value) => void intervenePersistentAgent(kind, value)}
         extractCase={(candidate) => void extractPersistentCandidate(candidate)}
         runScenario={() => void runDefaultTownScenario()}
         rollbackSnapshot={(snapshotId) => void rollbackTownSnapshot(snapshotId)}
