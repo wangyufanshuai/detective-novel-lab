@@ -78,16 +78,18 @@ try {
     id: "sdk-smoke-scenario",
     name: "SDK smoke scenario",
     seed: "sdk-client-smoke-fixed",
-    baselineSteps: 4,
+    baselineSteps: 45,
     branches: [{
       id: "resource-branch",
       name: "Resource branch",
-      steps: 4,
+      steps: 12,
       interventions: [{ atTickOffset: 1, intervention: { actorId, kind: "resource", value: "resource:sdk-smoke" } }]
     }],
     passCriteria: { minEventGrowth: 1, minMemoryGrowth: 1, maxBlockedCandidates: 8 }
   });
   assert.equal(scenario.run.id, "sdk-smoke-scenario", "runScenario returns run");
+  assert.equal((scenario.runtime.triggeredCases || []).length > 0, true, "SDK can observe real triggered case events");
+  assert.equal((scenario.runtime.longChainLedger || []).some((entry) => entry.complete && entry.maturityScore >= 90), true, "SDK can observe mature six-stage chains");
 
   const report = await client.getScenarioReport(worldId, "sdk-smoke-scenario");
   assert.equal(report.report.scenarioId, "sdk-smoke-scenario", "getScenarioReport returns report");
@@ -99,6 +101,7 @@ try {
   const to = scenario.report.baseline.endSnapshotId;
   const diff = await client.diffSnapshots(worldId, from, to);
   assert.equal(diff.diff.fromSnapshotId, from, "diffSnapshots returns requested from snapshot");
+  assert.equal(diff.to.candidateSummaries.some((candidate) => candidate.triggeredEventId || candidate.maturityScore >= 90), true, "SDK snapshot diff exposes long-chain candidate summaries");
 
   const rolledBack = await client.rollbackSnapshot(worldId, from);
   assert.equal(rolledBack.snapshot.id, from, "rollbackSnapshot returns selected snapshot");

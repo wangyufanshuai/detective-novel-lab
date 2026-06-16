@@ -90,12 +90,35 @@ const engine = await loadEngine();
 }
 
 {
-  const world = engine.createInitialWorld("extract-persistent", { mode: "advanced", npcCount: 12, timelineHours: 72 });
+  const world = engine.createInitialWorld("long-chain-trigger-persistent", { mode: "advanced", npcCount: 20, timelineHours: 72 });
   const daily = engine.simulateDailyLife(world, 3, []);
-  const run = engine.advancePersistentTownTick(daily.world, daily.events, { steps: 10, status: "running" });
+  const runA = engine.advancePersistentTownTick(daily.world, daily.events, { steps: 45, status: "running" });
+  const dailyB = engine.simulateDailyLife(engine.createInitialWorld("long-chain-trigger-persistent", { mode: "advanced", npcCount: 20, timelineHours: 72 }), 3, []);
+  const runB = engine.advancePersistentTownTick(dailyB.world, dailyB.events, { steps: 45, status: "running" });
+  assert.equal(runA.runtime.triggeredCases.length > 0, true, "30-60 ticks trigger at least one real simulated case event");
+  assert.deepEqual(
+    runA.runtime.triggeredCases.map((item) => [item.eventId, item.culpritId, item.victimId, item.maturityScore]),
+    runB.runtime.triggeredCases.map((item) => [item.eventId, item.culpritId, item.victimId, item.maturityScore]),
+    "long-chain triggered cases are deterministic"
+  );
+  const triggerEvent = runA.events.find((event) => event.id === runA.runtime.triggeredCases[0].eventId);
+  assert.equal(triggerEvent.type, "death", "mature long chain writes a real death event");
+  assert.equal(triggerEvent.causedByEventIds.length >= 6, true, "triggered case event points back to six-stage causes");
+  const queue = engine.buildTownEmergenceQueue(runA.world, [...daily.events, ...runA.events], runA.runtime);
+  const mature = queue.candidates.find((candidate) => candidate.triggeredEventId);
+  assert.equal(mature.validation.valid, true, "triggered candidates pass six-stage validation");
+  assert.equal(Object.values(mature.chainCompleteness).every(Boolean), true, "triggered candidate exposes complete six-stage chain");
+  assert.equal(mature.validation.memoryConfidence.supportScore >= 55, true, "triggered candidate has weighted memory support");
+}
+
+{
+  const world = engine.createInitialWorld("extract-persistent", { mode: "advanced", npcCount: 20, timelineHours: 72 });
+  const daily = engine.simulateDailyLife(world, 3, []);
+  const run = engine.advancePersistentTownTick(daily.world, daily.events, { steps: 45, status: "running" });
   const allEvents = [...daily.events, ...run.events];
   const queue = engine.buildTownEmergenceQueue(run.world, allEvents, run.runtime);
   const selected = queue.candidates.find((candidate) => candidate.validation.valid) || queue.candidates[0];
+  assert.ok(selected.triggeredEventId, "extraction prefers a candidate backed by a real triggered case event");
   const extracted = engine.extractPlayableCaseFromCandidate(run.world, allEvents, selected);
   assert.equal(extracted.activeCase.validation.valid, true, "extracted playable case passes existing world validation");
   assert.equal(extracted.activeCase.qualityReport.uniqueCulprit, true, "extracted playable case has unique culprit");

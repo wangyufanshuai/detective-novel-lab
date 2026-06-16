@@ -1455,6 +1455,21 @@ blockquote {
   font-size: 11px;
 }
 
+.commandTraceRow em,
+.commandCandidateGrid em {
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  padding: 3px 7px;
+  color: #b8f0a0;
+  background: rgba(76, 120, 54, 0.18);
+  border: 1px solid rgba(143, 212, 111, 0.34);
+  border-radius: 999px;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 900;
+}
+
 .commandNpcHero {
   display: grid;
   grid-template-columns: 150px minmax(0, 1fr);

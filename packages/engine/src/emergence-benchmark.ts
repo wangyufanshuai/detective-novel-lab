@@ -1,5 +1,6 @@
 import { validateHardCaseLogic } from "./deduction-graph";
 import { extractCaseFromWorld } from "./world-case";
+import { advancePersistentTownTick, buildTownEmergenceQueue } from "./persistent-town";
 import { createInitialWorld, simulateDailyLife, simulateWorldTick } from "./world-simulator";
 import type {
   CaseFromLog,
@@ -253,6 +254,12 @@ function runSeed(seed: string): EmergenceSeedResult {
     const caseFromLog = extractCaseFromWorld(tick.world, events);
     const evaluation = evaluateWorldEmergence(tick.world, events, caseFromLog);
     const proof = buildEmergenceProofTrace(tick.world, events, caseFromLog, { solved: true, discoveredEvidenceIds: caseFromLog.deductionCase.evidence.map((item) => item.id) });
+    const persistentWorld = createInitialWorld(`${seed}-persistent`, { mode: "advanced", npcCount: 20, timelineHours: 72 });
+    const persistentDaily = simulateDailyLife(persistentWorld, 3, []);
+    const persistentRun = advancePersistentTownTick(persistentDaily.world, persistentDaily.events, { steps: 45, status: "running" });
+    const persistentQueue = buildTownEmergenceQueue(persistentRun.world, [...persistentDaily.events, ...persistentRun.events], persistentRun.runtime);
+    const sixStageComplete = persistentQueue.candidates.some((candidate) => Object.values(candidate.chainCompleteness || candidate.validation.chainCompleteness || {}).every(Boolean));
+    const matureTick = persistentRun.runtime.triggeredCases?.[0]?.tick;
     return {
       seed,
       worldId: tick.world.id,
@@ -267,6 +274,9 @@ function runSeed(seed: string): EmergenceSeedResult {
       hardLogicValid: evaluation.hardLogicValid,
       qualityScore: evaluation.qualityScore,
       emergenceScore: evaluation.emergenceScore,
+      sixStageComplete,
+      realCaseTriggered: Boolean(persistentRun.runtime.triggeredCases?.length),
+      matureTick,
       proofNodeCount: proof.nodes.length,
       errors: evaluation.errors,
       warnings: evaluation.warnings
@@ -284,6 +294,8 @@ function runSeed(seed: string): EmergenceSeedResult {
       hardLogicValid: false,
       qualityScore: 0,
       emergenceScore: 0,
+      sixStageComplete: false,
+      realCaseTriggered: false,
       proofNodeCount: 0,
       errors: [error instanceof Error ? error.message : "Unknown benchmark failure"],
       warnings: []
@@ -296,6 +308,7 @@ export function runEmergenceBenchmark(seeds: string[] = defaultSeeds(20)): Emerg
   const passed = results.filter((result) => result.passed).length;
   const averageQualityScore = Math.round(results.reduce((sum, result) => sum + result.qualityScore, 0) / Math.max(results.length, 1));
   const averageEmergenceScore = Math.round(results.reduce((sum, result) => sum + result.emergenceScore, 0) / Math.max(results.length, 1));
+  const matureTicks = results.map((result) => result.matureTick).filter((tick): tick is number => Number.isFinite(tick));
   return {
     generatedAt: new Date().toISOString(),
     seedCount: results.length,
@@ -303,6 +316,9 @@ export function runEmergenceBenchmark(seeds: string[] = defaultSeeds(20)): Emerg
     failed: results.length - passed,
     averageQualityScore,
     averageEmergenceScore,
+    sixStageCompleteRate: Math.round((results.filter((result) => result.sixStageComplete).length / Math.max(results.length, 1)) * 100),
+    realCaseTriggerRate: Math.round((results.filter((result) => result.realCaseTriggered).length / Math.max(results.length, 1)) * 100),
+    averageMatureTick: matureTicks.length ? Math.round(matureTicks.reduce((sum, tick) => sum + tick, 0) / matureTicks.length) : undefined,
     passRate: Math.round((passed / Math.max(results.length, 1)) * 100),
     results
   };
@@ -318,13 +334,16 @@ export function renderEmergenceBenchmarkMarkdown(report: EmergenceBenchmarkRepor
     `Pass rate: ${report.passRate}%`,
     `Average quality score: ${report.averageQualityScore}`,
     `Average emergence score: ${report.averageEmergenceScore}`,
+    `Six-stage complete rate: ${report.sixStageCompleteRate ?? 0}%`,
+    `Real case trigger rate: ${report.realCaseTriggerRate ?? 0}%`,
+    `Average mature tick: ${report.averageMatureTick ?? "-"}`,
     "",
-    "| Seed | Case | Generated | Unique | Event-backed | Memory-scoped | Exclusions | Timeline | Hard logic | Quality | Emergence | Result |",
-    "| --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: | ---: | --- |"
+    "| Seed | Case | Generated | Unique | Event-backed | Memory-scoped | Exclusions | Timeline | Hard logic | Six-stage | Triggered | Mature tick | Quality | Emergence | Result |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | --- |"
   ];
   for (const result of report.results) {
     lines.push(
-      `| ${result.seed} | ${result.caseId || "-"} | ${result.generatedCase ? "yes" : "no"} | ${result.uniqueCulprit ? "yes" : "no"} | ${result.worldBackedEvidence ? "yes" : "no"} | ${result.memoryScopedTestimony ? "yes" : "no"} | ${result.nonCulpritExcluded ? "yes" : "no"} | ${result.timelineConsistent ? "yes" : "no"} | ${result.hardLogicValid ? "yes" : "no"} | ${result.qualityScore} | ${result.emergenceScore} | ${result.passed ? "pass" : "fail"} |`
+      `| ${result.seed} | ${result.caseId || "-"} | ${result.generatedCase ? "yes" : "no"} | ${result.uniqueCulprit ? "yes" : "no"} | ${result.worldBackedEvidence ? "yes" : "no"} | ${result.memoryScopedTestimony ? "yes" : "no"} | ${result.nonCulpritExcluded ? "yes" : "no"} | ${result.timelineConsistent ? "yes" : "no"} | ${result.hardLogicValid ? "yes" : "no"} | ${result.sixStageComplete ? "yes" : "no"} | ${result.realCaseTriggered ? "yes" : "no"} | ${result.matureTick ?? "-"} | ${result.qualityScore} | ${result.emergenceScore} | ${result.passed ? "pass" : "fail"} |`
     );
   }
   const failures = report.results.filter((result) => !result.passed);

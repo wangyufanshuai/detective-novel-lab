@@ -27,6 +27,7 @@ import type {
   CaseLogicReport,
   CaseTemplateId,
   CaseCandidate,
+  CaseChainStage,
   AgentDecisionTrace,
   DeductionCase,
   DeductionGraphNode,
@@ -1426,6 +1427,8 @@ export function PersistentTownCommandCenter({
   const currentPhase = runtime?.simulationPhases?.length ? runtime.simulationPhases[Math.max(0, (runtime.tick || 0) % runtime.simulationPhases.length)] : "execute";
   const recentTraces = [...(runtime?.decisionTraces || [])].slice(-6).reverse();
   const recentConsequences = [...(runtime?.consequences || [])].slice(0, 3);
+  const triggeredCases = runtime?.triggeredCases || [];
+  const topLongChain = [...(runtime?.longChainLedger || [])].sort((a, b) => (b.maturityScore || 0) - (a.maturityScore || 0))[0];
   const snapshotFrom = snapshots.find((item) => item.id === selectedSnapshotFromId);
   const snapshotTo = snapshots.find((item) => item.id === selectedSnapshotToId);
   const benchmarkState = benchmarkSummary ? (benchmarkSummary.failed === 0 ? "pass" : "fail") : "pending";
@@ -1492,9 +1495,12 @@ export function PersistentTownCommandCenter({
       ["missing motive stage", "缺少动机阶段"],
       ["missing means stage", "缺少手段阶段"],
       ["missing opportunity stage", "缺少机会阶段"],
+      ["missing cover-up stage", "缺少掩盖阶段"],
       ["missing memory support", "缺少记忆支撑"],
       ["missing timeline depth", "时间线深度不足"],
-      ["non-culprit exclusion seed missing", "缺少非凶手排除种子"]
+      ["non-culprit exclusion seed missing", "缺少非凶手排除种子"],
+      ["missing real case trigger", "缺少真实案件触发事件"],
+      ["real case trigger missing", "缺少真实案件触发事件"]
     ];
     const matched = rules.find(([source]) => value.includes(source));
     return matched ? matched[1] : value;
@@ -1575,6 +1581,7 @@ export function PersistentTownCommandCenter({
         <div className="commandHudMetric"><span>传播记忆</span><strong>{runtime?.memoryPropagations?.length ?? 0}</strong><small>+{recentTraces.reduce((sum, trace) => sum + (trace.propagatedMemoryIds?.length || 0), 0)}</small></div>
         <div className="commandHudMetric"><span>行动后果</span><strong>{runtime?.consequences?.length ?? 0}</strong><small>最近 {recentConsequences.length}</small></div>
         <div className="commandHudMetric"><span>有效候选</span><strong>{queue?.validCount ?? candidates.filter((candidate) => candidate.validation.valid).length}</strong><small>{candidates.length} 总数</small></div>
+        <div className="commandHudMetric hot"><span>案件成熟度</span><strong>{topLongChain?.maturityScore ?? 0}%</strong><small>{triggeredCases.length ? "真实案件已触发" : "六阶段链"}</small></div>
         <button type="button" className={`commandPass ${scenarioState}`} onClick={runScenario} disabled={runningBusy}>
           {scenarioReport?.passed ? "基线通过" : "运行基线"} <ShieldCheck size={16} />
         </button>
@@ -1680,6 +1687,8 @@ export function PersistentTownCommandCenter({
               <div>
                 <strong>{actionLabels[selected?.kind || ""] || selected?.kind || "行动"}</strong>
                 <span>{describeAction(selected)}</span>
+                {trace.consequence?.chainStage && <em>{stageLabels[trace.consequence.chainStage] || trace.consequence.chainStage}</em>}
+                {trace.consequence?.triggeredCaseId && <em>真实案件已触发</em>}
               </div>
               <small>{trace.npcId}</small>
             </button>
@@ -1735,12 +1744,14 @@ export function PersistentTownCommandCenter({
           {candidates.slice(0, 4).map((candidate, index) => (
             <article key={candidate.id} className={candidate.validation.valid ? "valid" : "blocked"}>
               <strong>{index + 1}. {candidate.culpritId} → {candidate.victimId}</strong>
-              <span>压力 {candidate.pressureScore} / 形成度 {candidate.validation.valid ? "82%" : "61%"}</span>
+              <span>压力 {candidate.pressureScore} / 成熟度 {candidate.maturityScore ?? (candidate.validation.valid ? 100 : 61)}%</span>
+              {candidate.triggeredEventId && <em>真实案件已触发：{candidate.triggeredEventId}</em>}
               <div className="commandStageGems">
-                {["motive", "means", "opportunity", "cover-up", "memory", "exclusion"].map((stage) => (
-                  <b key={stage} className={(candidate.chainStageTags || candidate.validation.chainStages || []).includes(stage) ? "on" : ""}>{stageLabels[stage]}</b>
+                {(["motive", "means", "opportunity", "cover-up", "memory", "exclusion"] as CaseChainStage[]).map((stage) => (
+                  <b key={stage} className={(candidate.chainCompleteness?.[stage] || candidate.validation.chainCompleteness?.[stage] || (candidate.chainStageTags || candidate.validation.chainStages || []).includes(stage)) ? "on" : ""}>{stageLabels[stage]}</b>
                 ))}
               </div>
+              <small>记忆可信度 {candidate.validation.memoryConfidence?.supportScore ?? 0}% / 触发链 {candidate.riskChainEventIds.length} 事件</small>
               <small>{candidate.validation.failureReasons?.[0] ? translateRuleText(candidate.validation.failureReasons[0]) : (candidate.validation.valid ? "可抽取案件" : "仍阻塞")}</small>
               <button type="button" onClick={() => extractCase(candidate)} disabled={runningBusy || !candidate.validation.valid}>抽取可玩案件</button>
             </article>

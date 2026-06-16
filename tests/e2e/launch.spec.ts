@@ -712,7 +712,7 @@ test("novel world graph analyzes three chapters, merges changes and restores loc
 });
 
 test("persistent agent town runs, scores agents and extracts a playable case", async ({ page }, testInfo) => {
-  test.setTimeout(60_000);
+  test.setTimeout(120_000);
   await page.goto("/?runtime=server");
   await dismissOnboarding(page);
   await page.locator(".settingsDrawer summary").click();
@@ -726,6 +726,7 @@ test("persistent agent town runs, scores agents and extracts a playable case", a
   await expect(page.getByTestId("persistent-command-center")).toBeVisible();
   await expect(page.getByTestId("command-center-hud")).toContainText("模拟指挥中心", { timeout: 20_000 });
   await expect(page.getByTestId("command-center-hud")).toContainText("20", { timeout: 20_000 });
+  await expect(page.getByTestId("command-center-hud")).toContainText("案件成熟度", { timeout: 20_000 });
   await expect(page.getByTestId("command-center-map")).toBeVisible();
   await page.getByTestId("command-center-map").getByRole("button", { name: "放大" }).click();
   await page.getByTestId("command-center-map").getByRole("button", { name: "线索点" }).click();
@@ -752,9 +753,14 @@ test("persistent agent town runs, scores agents and extracts a playable case", a
     await page.getByTestId("persistent-command-center").getByRole("button", { name: "单步" }).click();
   }
   await page.getByTestId("persistent-command-center").getByRole("button", { name: "快速 x5" }).click();
+  for (let index = 0; index < 4; index += 1) {
+    await page.getByTestId("persistent-command-center").getByRole("button", { name: "快速 x5" }).click();
+  }
 
   await expect(page.getByTestId("command-candidate-board")).toContainText("案件候选板", { timeout: 20_000 });
   await expect(page.getByTestId("command-candidate-board")).toContainText(/动机|手段|机会/);
+  await expect(page.getByTestId("command-candidate-board")).toContainText(/成熟度|记忆可信度/, { timeout: 20_000 });
+  await expect(page.getByTestId("command-candidate-board")).toContainText(/真实案件已触发|触发链/, { timeout: 25_000 });
   await page.getByTestId("command-center-hud").getByRole("button", { name: /运行基线|基线通过/ }).click();
   await expect(page.getByTestId("command-center-hud")).toContainText(/基线通过|运行基线/, { timeout: 25_000 });
   await expect(page.getByTestId("command-time-machine")).toContainText("事件 +", { timeout: 20_000 });
@@ -775,6 +781,7 @@ test("persistent agent town runs, scores agents and extracts a playable case", a
     await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
     await page.screenshot({ path: "test-results/qa-screenshots/command-center-pixel-7.png", fullPage: false });
   }
+  await expect(page.getByTestId("command-candidate-board").locator("button:not([disabled])").filter({ hasText: "抽取可玩案件" }).first()).toBeVisible({ timeout: 30_000 });
   await page.getByTestId("command-candidate-board").locator("button:not([disabled])").filter({ hasText: "抽取可玩案件" }).first().click();
   await expect(page.getByTestId("status-line")).toContainText("Playable case extracted", { timeout: 20_000 });
   await expect(page.getByTestId("inspector-rail").locator("button.active")).toContainText("调查");

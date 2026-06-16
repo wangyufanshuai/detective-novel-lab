@@ -17,6 +17,8 @@ export type NpcActionKind =
   | "pressure"
   | "cover-up";
 
+export type CaseChainStage = "motive" | "means" | "opportunity" | "cover-up" | "memory" | "exclusion";
+
 export type NpcActionScore = {
   goalPriority: number;
   knownInformation: number;
@@ -92,6 +94,13 @@ export type CaseCandidateValidation = {
   nonCulpritExcluded: boolean;
   timelineClosed: boolean;
   chainStages?: string[];
+  chainCompleteness?: Record<CaseChainStage, boolean>;
+  memoryConfidence?: {
+    direct: number;
+    deduced: number;
+    rumor: number;
+    supportScore: number;
+  };
   failureReasons?: string[];
   errors: string[];
   warnings: string[];
@@ -109,6 +118,9 @@ export type CaseCandidate = {
   memoryIds: string[];
   goalIds: string[];
   chainStageTags?: string[];
+  maturityScore?: number;
+  triggeredEventId?: string;
+  chainCompleteness?: Record<CaseChainStage, boolean>;
   motiveGap?: string;
   meansGap?: string;
   exclusionGap?: string;
@@ -162,6 +174,37 @@ export type AgentConsequenceSummary = {
   knownFactDelta: number;
   resourceDelta?: string;
   chainStage?: "motive" | "means" | "opportunity" | "cover-up" | "alibi" | "memory";
+  relationshipShift?: {
+    targetNpcId?: string;
+    before: number;
+    after: number;
+  };
+  rumorConfidenceDelta?: number;
+  triggeredCaseId?: string;
+};
+
+export type TownLongChainLedgerEntry = {
+  id: string;
+  tick: number;
+  culpritId: string;
+  victimId: string;
+  pressureScore: number;
+  stageEventIds: Record<CaseChainStage, string[]>;
+  memoryConfidence: CaseCandidateValidation["memoryConfidence"];
+  maturityScore: number;
+  complete: boolean;
+  triggeredEventId?: string;
+};
+
+export type TownTriggeredCaseRecord = {
+  id: string;
+  tick: number;
+  culpritId: string;
+  victimId: string;
+  eventId: string;
+  causedByEventIds: string[];
+  maturityScore: number;
+  chainCompleteness: Record<CaseChainStage, boolean>;
 };
 
 export type PersistentTownRuntimeReport = {
@@ -190,6 +233,8 @@ export type PersistentTownRuntime = {
   pressureLedger?: TownPressureLedgerEntry[];
   memoryPropagations?: TownMemoryPropagation[];
   consequences?: AgentConsequenceSummary[];
+  longChainLedger?: TownLongChainLedgerEntry[];
+  triggeredCases?: TownTriggeredCaseRecord[];
   simulationPhases?: string[];
   scenarioRuns?: ScenarioRun[];
   snapshots?: TownStateSnapshot[];
@@ -250,6 +295,9 @@ export type TownStateSnapshotAgent = Pick<NpcAgentState, "npcId" | "currentGoal"
 export type TownStateSnapshotCandidate = Pick<CaseCandidate, "id" | "status" | "culpritId" | "victimId" | "pressureScore"> & {
   valid: boolean;
   errorCount: number;
+  maturityScore?: number;
+  triggeredEventId?: string;
+  chainCompleteness?: Record<CaseChainStage, boolean>;
 };
 
 export type TownStateSnapshot = {
@@ -816,6 +864,18 @@ function applyConsequenceToAgent(agent: NpcAgentState, consequence: AgentConsequ
   agent.lastConsequence = `${candidate.kind}:${consequence.chainStage || "state"}`;
 }
 
+function evolveRelationship(world: RuntimeWorld, actorId: string, candidate: NpcActionCandidate) {
+  if (!candidate.targetNpcId) return;
+  world.npcs = world.npcs.map((npc) => {
+    if (npc.id !== actorId) return npc;
+    const relationships = { ...npc.relationships };
+    if (candidate.kind === "pressure" || candidate.kind === "confront") relationships[candidate.targetNpcId!] = "rival";
+    if (candidate.kind === "spread-rumor" || candidate.kind === "cover-up") relationships[candidate.targetNpcId!] = "secret";
+    if (candidate.kind === "talk" || candidate.kind === "seek-alibi") relationships[candidate.targetNpcId!] = relationships[candidate.targetNpcId!] === "rival" ? "debt" : "friend";
+    return { ...npc, relationships };
+  });
+}
+
 export function createPersistentTownRuntime(world: WorldState, events: WorldEvent[] = [], options: Partial<Pick<PersistentTownRuntime, "tickIntervalMinutes" | "maxTicks">> = {}): PersistentTownRuntime {
   const now = new Date().toISOString();
   const runtime: PersistentTownRuntime = {
@@ -835,6 +895,8 @@ export function createPersistentTownRuntime(world: WorldState, events: WorldEven
     pressureLedger: [],
     memoryPropagations: [],
     consequences: [],
+    longChainLedger: [],
+    triggeredCases: [],
     simulationPhases: ["observe", "propagate", "plan", "score", "execute", "consequence", "candidate-extraction"],
     scenarioRuns: [],
     snapshots: [],
@@ -846,13 +908,168 @@ export function createPersistentTownRuntime(world: WorldState, events: WorldEven
 }
 
 function chainStageForEvent(event: WorldEvent) {
+  if (event.tags.includes("case_trigger") || event.type === "death") return "opportunity";
   if (event.tags.includes("means_access") || event.type === "obtain_item") return "means";
   if (event.tags.includes("tension") || event.tags.includes("secret_leak") || event.type === "conflict") return "motive";
   if (event.tags.includes("opportunity_window") || event.type === "move" || event.type === "witness") return "opportunity";
   if (event.tags.includes("cover_up") || event.tags.includes("staging") || event.type === "destroy_evidence") return "cover-up";
-  if (event.tags.includes("alibi_seed") || event.type === "alibi") return "alibi";
+  if (event.tags.includes("alibi_seed") || event.type === "alibi") return "exclusion";
   if (event.tags.includes("memory_propagation") || event.type === "conversation") return "memory";
   return "context";
+}
+
+function emptyChainCompleteness(): Record<CaseChainStage, boolean> {
+  return { motive: false, means: false, opportunity: false, "cover-up": false, memory: false, exclusion: false };
+}
+
+function emptyStageEventIds(): Record<CaseChainStage, string[]> {
+  return { motive: [], means: [], opportunity: [], "cover-up": [], memory: [], exclusion: [] };
+}
+
+function memoryConfidenceSummary(world: WorldState, eventIds: string[], npcIds: string[] = []): CaseCandidateValidation["memoryConfidence"] {
+  const relevant = (world.memories || []).filter((memory) =>
+    eventIds.includes(memory.eventId) &&
+    (!npcIds.length || npcIds.includes(memory.npcId))
+  );
+  const strongest = (kind: MemoryKind) => relevant
+    .filter((memory) => memory.kind === kind)
+    .reduce((max, memory) => Math.max(max, memory.confidence || 0), 0);
+  const direct = strongest("direct") || strongest("secret");
+  const deduced = strongest("deduced");
+  const rumor = strongest("rumor");
+  return {
+    direct,
+    deduced,
+    rumor,
+    supportScore: Math.round(Math.min(1, direct * 0.9 + deduced * 0.65 + rumor * 0.35) * 100)
+  };
+}
+
+function buildStageEventIdsForPressure(world: WorldState, events: WorldEvent[], pressure: SocialPressure) {
+  const selected = selectRiskChainEvents(events, pressure);
+  const stageEventIds = emptyStageEventIds();
+  for (const event of selected) {
+    const stage = chainStageForEvent(event);
+    if (stage in stageEventIds && !stageEventIds[stage as CaseChainStage].includes(event.id)) {
+      stageEventIds[stage as CaseChainStage].push(event.id);
+    }
+  }
+  const pairIds = [pressure.npcId, pressure.targetId];
+  for (const memory of world.memories || []) {
+    if (!pairIds.includes(memory.npcId)) continue;
+    if (!selected.some((event) => event.id === memory.eventId)) continue;
+    if (!stageEventIds.memory.includes(memory.eventId)) stageEventIds.memory.push(memory.eventId);
+  }
+  for (const event of events) {
+    if (event.type !== "alibi" && !event.tags.includes("alibi_seed")) continue;
+    if (event.actorIds.includes(pressure.npcId)) continue;
+    if (!stageEventIds.exclusion.includes(event.id)) stageEventIds.exclusion.push(event.id);
+  }
+  return stageEventIds;
+}
+
+function summarizeLongChain(world: WorldState, events: WorldEvent[], runtime: PersistentTownRuntime, pressure: SocialPressure): TownLongChainLedgerEntry {
+  const stageEventIds = buildStageEventIdsForPressure(world, events, pressure);
+  const memoryConfidence = memoryConfidenceSummary(world, Object.values(stageEventIds).flat(), [pressure.npcId, pressure.targetId]);
+  const chainCompleteness = emptyChainCompleteness();
+  for (const stage of Object.keys(chainCompleteness) as CaseChainStage[]) {
+    chainCompleteness[stage] = stage === "memory" ? (memoryConfidence?.supportScore || 0) >= 55 : stageEventIds[stage].length > 0;
+  }
+  const completedCount = Object.values(chainCompleteness).filter(Boolean).length;
+  const maturityScore = Math.min(100, completedCount * 15 + Math.min(10, Math.floor(pressure.score / 2)));
+  const existingTrigger = runtime.triggeredCases?.find((item) => item.culpritId === pressure.npcId && item.victimId === pressure.targetId);
+  return {
+    id: `chain-${pressure.npcId}-${pressure.targetId}`,
+    tick: runtime.tick,
+    culpritId: pressure.npcId,
+    victimId: pressure.targetId,
+    pressureScore: pressure.score,
+    stageEventIds,
+    memoryConfidence,
+    maturityScore,
+    complete: Object.values(chainCompleteness).every(Boolean),
+    triggeredEventId: existingTrigger?.eventId
+  };
+}
+
+function refreshLongChainLedger(world: WorldState, events: WorldEvent[], runtime: PersistentTownRuntime) {
+  const pressures = computeSocialPressures(world, events).filter((pressure) => pressure.score >= 5).slice(0, 8);
+  runtime.longChainLedger = pressures.map((pressure) => summarizeLongChain(world, events, runtime, pressure));
+  return runtime.longChainLedger;
+}
+
+function triggerLongChainCaseIfReady(world: RuntimeWorld, runtime: PersistentTownRuntime, events: WorldEvent[], createdEvents: WorldEvent[]) {
+  runtime.triggeredCases ||= [];
+  const ledger = refreshLongChainLedger(world, events, runtime);
+  const ready = ledger
+    .filter((entry) =>
+      entry.complete &&
+      entry.maturityScore >= 90 &&
+      world.npcs.some((npc) => npc.id === entry.victimId && npc.alive) &&
+      !runtime.triggeredCases?.some((trigger) => trigger.culpritId === entry.culpritId && trigger.victimId === entry.victimId)
+    )
+    .sort((a, b) => b.maturityScore - a.maturityScore)[0];
+  if (!ready || runtime.tick < Math.min(30, runtime.maxTicks)) return null;
+  const culprit = world.npcs.find((npc) => npc.id === ready.culpritId);
+  const victim = world.npcs.find((npc) => npc.id === ready.victimId);
+  if (!culprit || !victim || !victim.alive) return null;
+  const causedByEventIds = Object.values(ready.stageEventIds).flat().filter(Boolean).slice(0, 12);
+  const locationId = events.find((event) => event.id === ready.stageEventIds.opportunity[0])?.locationId || runtime.agentStates.find((agent) => agent.npcId === victim.id)?.locationId || victim.homeLocationId;
+  const event: WorldEvent = {
+    id: `agent-case-${world.seed.replace(/[^a-z0-9-]/gi, "-").toLowerCase()}-${runtime.tick}-${culprit.id}-${victim.id}`,
+    worldId: world.id,
+    day: runtime.currentDay,
+    time: runtime.currentTime,
+    type: "death",
+    actorIds: [culprit.id, victim.id],
+    locationId,
+    summary: `${victim.name} dies after a complete simulated pressure chain involving ${culprit.name}.`,
+    publicSummary: `${victim.name} was found dead after a series of visible town tensions.`,
+    hidden: true,
+    relatedCharacterIds: [culprit.id, victim.id],
+    tags: ["agent_tick", "case_trigger", "death", "long_chain", "source_backed"],
+    intentId: ready.id,
+    goalId: `goal-${culprit.id}-case-trigger-${runtime.tick}`,
+    causedByEventIds,
+    explanation: `Six-stage long chain matured: motive, means, opportunity, cover-up, memory, and exclusion all have local support.`
+  };
+  createdEvents.push(event);
+  world.npcs = world.npcs.map((npc) => npc.id === victim.id ? { ...npc, alive: false } : npc);
+  const culpritMemory = addRuntimeMemory(world, event, culprit.id, event.summary, { kind: "secret", suffix: `trigger-${runtime.tick}`, confidence: 0.84, visibleToPlayer: false });
+  const witnessMemory = addRuntimeMemory(world, event, victim.id, event.publicSummary, { kind: "direct", suffix: `trigger-${runtime.tick}`, confidence: 0.9, visibleToPlayer: true });
+  const triggerRecord: TownTriggeredCaseRecord = {
+    id: `trigger-${event.id}`,
+    tick: runtime.tick,
+    culpritId: culprit.id,
+    victimId: victim.id,
+    eventId: event.id,
+    causedByEventIds,
+    maturityScore: ready.maturityScore,
+    chainCompleteness: Object.fromEntries((Object.keys(emptyChainCompleteness()) as CaseChainStage[]).map((stage) => [stage, true])) as Record<CaseChainStage, boolean>
+  };
+  runtime.triggeredCases = [triggerRecord, ...runtime.triggeredCases].slice(0, 20);
+  ready.triggeredEventId = event.id;
+  const consequence: AgentConsequenceSummary = {
+    id: `consequence-${event.id}`,
+    tick: runtime.tick,
+    npcId: culprit.id,
+    actionKind: "pressure",
+    eventId: event.id,
+    memoryIds: [culpritMemory.id, witnessMemory.id],
+    relationshipPressureDelta: 4,
+    secretRiskDelta: 4,
+    fatigueDelta: 1,
+    alertnessDelta: 2,
+    knownFactDelta: 2,
+    chainStage: "opportunity",
+    triggeredCaseId: triggerRecord.id
+  };
+  runtime.consequences = [consequence, ...(runtime.consequences || [])].slice(0, 160);
+  const agent = runtime.agentStates.find((state) => state.npcId === culprit.id);
+  if (agent) {
+    applyConsequenceToAgent(agent, consequence, event, { id: `trigger:${event.id}`, npcId: culprit.id, kind: "pressure", targetLocationId: locationId, targetNpcId: victim.id, description: event.summary, legal: true, score: { goalPriority: 10, knownInformation: 10, relationshipPressure: 10, resourceAvailability: 10, locationReachability: 10, risk: 10, evidenceConsistency: 10, caseImpact: 10, total: 70, reasons: ["six-stage long chain triggered a real case event"] } }, [culpritMemory.id, witnessMemory.id]);
+  }
+  return { event, triggerRecord };
 }
 
 function eventMinuteValue(event: WorldEvent) {
@@ -869,7 +1086,7 @@ function selectRiskChainEvents(events: WorldEvent[], pressure: SocialPressure) {
       event.relatedCharacterIds.includes(pressure.targetId)
     )
     .sort((a, b) => eventMinuteValue(a) - eventMinuteValue(b));
-  const stageOrder = ["motive", "means", "opportunity", "cover-up", "alibi", "memory", "context"];
+  const stageOrder = ["motive", "means", "opportunity", "cover-up", "memory", "exclusion", "context"];
   const selected: WorldEvent[] = [];
   for (const stage of stageOrder) {
     const event = related.find((item) => chainStageForEvent(item) === stage && !selected.some((existing) => existing.id === item.id));
@@ -889,7 +1106,15 @@ export function buildCaseCandidatesFromRuntime(world: WorldState, events: WorldE
   const candidates = sortedPressures.map((pressure, index): CaseCandidate => {
     const riskChainEvents = selectRiskChainEvents(events, pressure);
     const riskChainEventIds = riskChainEvents.map((event) => event.id);
-    const chainStageTags = Array.from(new Set(riskChainEvents.map(chainStageForEvent)));
+    const ledgerEntry = activeRuntime.longChainLedger?.find((entry) => entry.culpritId === pressure.npcId && entry.victimId === pressure.targetId);
+    const triggeredCase = activeRuntime.triggeredCases?.find((item) => item.culpritId === pressure.npcId && item.victimId === pressure.targetId);
+    const chainCompleteness = ledgerEntry
+      ? Object.fromEntries((Object.keys(emptyChainCompleteness()) as CaseChainStage[]).map((stage) => [stage, ledgerEntry.stageEventIds[stage].length > 0 || (stage === "memory" && (ledgerEntry.memoryConfidence?.supportScore || 0) >= 55)])) as Record<CaseChainStage, boolean>
+      : undefined;
+    const chainStageTags = Array.from(new Set([
+      ...riskChainEvents.map(chainStageForEvent),
+      ...Object.entries(chainCompleteness || {}).filter(([, complete]) => complete).map(([stage]) => stage)
+    ]));
     const memoryIds = (world.memories || [])
       .filter((memory) => riskChainEventIds.includes(memory.eventId) && [pressure.npcId, pressure.targetId].includes(memory.npcId))
       .map((memory) => memory.id);
@@ -908,6 +1133,9 @@ export function buildCaseCandidatesFromRuntime(world: WorldState, events: WorldE
       memoryIds,
       goalIds,
       chainStageTags,
+      maturityScore: ledgerEntry?.maturityScore,
+      triggeredEventId: triggeredCase?.eventId || ledgerEntry?.triggeredEventId,
+      chainCompleteness,
       validation: {
         valid: false,
         hardLogicValid: false,
@@ -917,6 +1145,8 @@ export function buildCaseCandidatesFromRuntime(world: WorldState, events: WorldE
         nonCulpritExcluded: false,
         timelineClosed: riskChainEventIds.length >= 2,
         chainStages: chainStageTags,
+        chainCompleteness,
+        memoryConfidence: ledgerEntry?.memoryConfidence,
         failureReasons: [],
         errors: [],
         warnings: []
@@ -940,29 +1170,37 @@ export function validateCaseCandidate(world: WorldState, events: WorldEvent[] = 
   const victim = world.npcs.find((npc) => npc.id === candidate.victimId);
   const sourceEvents = events.filter((event) => candidate.riskChainEventIds.includes(event.id));
   const chainStages = Array.from(new Set(sourceEvents.map(chainStageForEvent)));
-  const hasMotive = candidate.pressureScore >= 7 || sourceEvents.some((event) => event.tags.includes("secret_leak") || event.tags.includes("tension"));
-  const hasMeans = events.some((event) => event.actorIds.includes(candidate.culpritId) && (event.tags.includes("means_access") || event.type === "obtain_item"));
-  const hasOpportunity = sourceEvents.some((event) => event.tags.includes("opportunity_window") || event.locationId);
-  const memoryScopedTestimony = candidate.memoryIds.length > 0 && candidate.memoryIds.every((id) => (world.memories || []).some((memory) => memory.id === id));
-  const hasExclusionSeed = sourceEvents.some((event) => event.tags.includes("alibi_seed") || event.type === "alibi") || events.some((event) => event.type === "alibi" && !event.actorIds.includes(candidate.culpritId));
+  const completeness = candidate.chainCompleteness || emptyChainCompleteness();
+  const confidence = candidate.validation.memoryConfidence || memoryConfidenceSummary(world, candidate.riskChainEventIds, [candidate.culpritId, candidate.victimId]) || { direct: 0, deduced: 0, rumor: 0, supportScore: 0 };
+  const hasMotive = completeness.motive || candidate.pressureScore >= 7 || sourceEvents.some((event) => event.tags.includes("secret_leak") || event.tags.includes("tension"));
+  const hasMeans = completeness.means || events.some((event) => event.actorIds.includes(candidate.culpritId) && (event.tags.includes("means_access") || event.type === "obtain_item"));
+  const hasOpportunity = completeness.opportunity || sourceEvents.some((event) => event.tags.includes("opportunity_window") || event.locationId);
+  const hasCoverUp = completeness["cover-up"] || sourceEvents.some((event) => event.tags.includes("cover_up") || event.tags.includes("staging") || event.type === "destroy_evidence");
+  const memoryScopedTestimony = (completeness.memory || candidate.memoryIds.length > 0) && confidence.supportScore >= 55 && candidate.memoryIds.every((id) => (world.memories || []).some((memory) => memory.id === id));
+  const hasExclusionSeed = completeness.exclusion || sourceEvents.some((event) => event.tags.includes("alibi_seed") || event.type === "alibi") || events.some((event) => event.type === "alibi" && !event.actorIds.includes(candidate.culpritId));
+  const hasTriggeredCase = Boolean(candidate.triggeredEventId);
   if (!culprit) errors.push("culprit candidate is missing from world");
   if (!victim) errors.push("victim candidate is missing from world");
   if (candidate.culpritId === candidate.victimId) errors.push("culprit and victim cannot be the same NPC");
   if (!hasMotive) errors.push("motive insufficient: pressure chain is too weak");
   if (!hasMeans) errors.push("means insufficient: no resource or means-access event");
   if (!hasOpportunity) errors.push("opportunity insufficient: no reachable opportunity event");
+  if (!hasCoverUp) errors.push("cover-up insufficient: no cover-up or staging event");
   if (!memoryScopedTestimony) errors.push("memory support insufficient: no scoped memory links candidate events to testimony");
+  if (!hasTriggeredCase) errors.push("real case trigger missing: six-stage chain has not produced a death or crime event");
   if (candidate.riskChainEventIds.length < 2) warnings.push("timeline is shallow: fewer than two risk-chain events");
   if (!hasExclusionSeed) warnings.push("non-culprit exclusion seed missing: no alibi or exclusion-stage event yet");
   const failureReasons = [
     !hasMotive ? "missing motive stage: pressure chain is too weak" : "",
     !hasMeans ? "missing means stage: no resource or means-access event" : "",
     !hasOpportunity ? "missing opportunity stage: no reachable opportunity event" : "",
+    !hasCoverUp ? "missing cover-up stage: no staging or cover-up event" : "",
     !memoryScopedTestimony ? "missing memory support: candidate has no scoped testimony memory" : "",
+    !hasTriggeredCase ? "missing real case trigger: no death or crime event has been written yet" : "",
     candidate.riskChainEventIds.length < 2 ? "missing timeline depth: fewer than two risk-chain events" : "",
     !hasExclusionSeed ? "missing non-culprit exclusion seed: no alibi or exclusion event" : ""
   ].filter(Boolean);
-  const valid = errors.length === 0 && hasMotive && hasMeans && hasOpportunity && memoryScopedTestimony;
+  const valid = errors.length === 0 && hasMotive && hasMeans && hasOpportunity && hasCoverUp && memoryScopedTestimony && hasExclusionSeed && hasTriggeredCase;
   return {
     valid,
     hardLogicValid: false,
@@ -972,6 +1210,15 @@ export function validateCaseCandidate(world: WorldState, events: WorldEvent[] = 
     nonCulpritExcluded: hasExclusionSeed,
     timelineClosed: candidate.riskChainEventIds.length >= 2,
     chainStages,
+    chainCompleteness: {
+      motive: hasMotive,
+      means: hasMeans,
+      opportunity: hasOpportunity,
+      "cover-up": hasCoverUp,
+      memory: memoryScopedTestimony,
+      exclusion: hasExclusionSeed
+    },
+    memoryConfidence: confidence,
     failureReasons,
     errors,
     warnings
@@ -979,10 +1226,64 @@ export function validateCaseCandidate(world: WorldState, events: WorldEvent[] = 
 }
 
 export function extractPlayableCaseFromCandidate(world: WorldState, events: WorldEvent[] = [], candidate: CaseCandidate): { world: WorldState; events: WorldEvent[]; activeCase: CaseFromLog; candidate: CaseCandidate } {
-  const tick = simulateWorldTick(world, events);
-  const allEvents = [...events, ...tick.events];
-  const activeCase = extractCaseFromWorld(tick.world, allEvents);
-  const validation = validateWorldCase(tick.world, allEvents, activeCase.deductionCase);
+  const runtime = getRuntime(world as RuntimeWorld);
+  const ledger = runtime?.longChainLedger?.find((entry) => entry.culpritId === candidate.culpritId && entry.victimId === candidate.victimId);
+  const trigger = runtime?.triggeredCases?.find((entry) => entry.eventId === candidate.triggeredEventId || (entry.culpritId === candidate.culpritId && entry.victimId === candidate.victimId));
+  let tick = { world, events: [] as WorldEvent[] };
+  let allEvents = events;
+  if (runtime && trigger && ledger) {
+    const byId = new Map(events.map((event) => [event.id, event]));
+    const cloneStageEvent = (stage: CaseChainStage, evidenceId: string, fallbackType?: WorldEvent["type"]) => {
+      const sourceId = ledger.stageEventIds[stage][0];
+      const source = (sourceId && byId.get(sourceId)) || events.find((event) => event.actorIds.includes(candidate.culpritId) && event.relatedCharacterIds.includes(candidate.victimId)) || events[0];
+      return {
+        ...source,
+        id: `caseview-${evidenceId}-${source?.id || trigger.eventId}`,
+        type: fallbackType || source?.type || "witness",
+        evidenceId,
+        actorIds: source?.actorIds?.length ? source.actorIds : [candidate.culpritId],
+        relatedCharacterIds: Array.from(new Set([candidate.culpritId, candidate.victimId, ...(source?.relatedCharacterIds || [])])),
+        tags: Array.from(new Set([...(source?.tags || []), stage, stage === "cover-up" ? "staging" : "", evidenceId.replace("ev-", "")].filter(Boolean))),
+        hidden: stage === "means" || stage === "cover-up" ? true : source?.hidden || false
+      } as WorldEvent;
+    };
+    const death = byId.get(trigger.eventId);
+    const rollcall: WorldEvent = {
+      id: `caseview-ev-town-rollcall-${trigger.eventId}`,
+      worldId: world.id,
+      day: death?.day || runtime.currentDay,
+      time: death?.time || runtime.currentTime,
+      type: "alibi",
+      actorIds: world.npcs.filter((npc) => npc.id !== candidate.culpritId && npc.id !== candidate.victimId).map((npc) => npc.id),
+      locationId: world.locations.find((location) => location.kind === "public")?.id || death?.locationId || world.locations[0]?.id || "town-square",
+      summary: "Non-culprit residents have a public rollcall record during the case window.",
+      publicSummary: "A public rollcall excludes residents who were away from the scene.",
+      hidden: false,
+      evidenceId: "ev-town-rollcall",
+      relatedCharacterIds: world.npcs.filter((npc) => npc.id !== candidate.culpritId && npc.id !== candidate.victimId).map((npc) => npc.id),
+      tags: ["alibi_seed", "exclusion", "source_backed"]
+    };
+    const caseEvents = [
+      cloneStageEvent("means", "ev-means", "obtain_item"),
+      cloneStageEvent("motive", "ev-motive", "conflict"),
+      cloneStageEvent("opportunity", "ev-opportunity", "witness"),
+      cloneStageEvent("cover-up", "ev-staging", "destroy_evidence"),
+      cloneStageEvent("memory", "ev-trace", "forensic_clue"),
+      {
+        ...death!,
+        evidenceId: "ev-death-scene",
+        tags: Array.from(new Set([...(death?.tags || []), "blade", "case_trigger", "death"]))
+      },
+      rollcall
+    ].filter(Boolean) as WorldEvent[];
+    allEvents = caseEvents;
+  } else {
+    tick = simulateWorldTick(world, events);
+    allEvents = [...events, ...tick.events];
+  }
+  const caseWorld = tick.world;
+  const activeCase = extractCaseFromWorld(caseWorld, allEvents);
+  const validation = validateWorldCase(caseWorld, allEvents, activeCase.deductionCase);
   const nextCandidate: CaseCandidate = {
     ...candidate,
     status: validation.valid ? "extracted" : "invalid",
@@ -1083,7 +1384,10 @@ export function createTownStateSnapshot(
       victimId: candidate.victimId,
       pressureScore: candidate.pressureScore,
       valid: candidate.validation.valid,
-      errorCount: candidate.validation.errors.length
+      errorCount: candidate.validation.errors.length,
+      maturityScore: candidate.maturityScore,
+      triggeredEventId: candidate.triggeredEventId,
+      chainCompleteness: candidate.chainCompleteness || candidate.validation.chainCompleteness
     })),
     eventIds: events.map((event) => event.id),
     memoryIds: (world.memories || []).map((memory) => memory.id),
@@ -1379,7 +1683,7 @@ export function advancePersistentTownTick(world: WorldState, events: WorldEvent[
   let runtime = nextWorld.persistentRuntime || createPersistentTownRuntime(nextWorld, events);
   runtime.status = options.status || runtime.status || "running";
   const createdEvents: WorldEvent[] = [];
-  const steps = Math.max(1, Math.min(12, options.steps || 1));
+  const steps = Math.max(1, Math.min(60, options.steps || 1));
   for (let step = 0; step < steps; step += 1) {
     if (runtime.tick >= runtime.maxTicks) {
       runtime.status = "completed";
@@ -1418,7 +1722,7 @@ export function advancePersistentTownTick(world: WorldState, events: WorldEvent[
       const candidates = scoreNpcActionCandidates(nextWorld, npc, allEvents, runtime);
       const legalCandidates = candidates.filter((candidate) => candidate.legal).sort((a, b) => b.score.total - a.score.total);
       const topCandidate = legalCandidates[0] || candidates[0];
-      const phaseKinds: NpcActionKind[] = ["investigate", "spread-rumor", "pressure", "seek-alibi", "cover-up"];
+      const phaseKinds: NpcActionKind[] = ["pressure", "obtain-resource", "investigate", "cover-up", "spread-rumor", "seek-alibi"];
       const phasePreferred = legalCandidates.find((candidate) => candidate.kind === phaseKinds[(runtime.tick + selectedActors.indexOf(npc)) % phaseKinds.length]);
       const biasedCandidate = legalCandidates.find((candidate) => (candidate.score.directorBias || 0) > 0);
       const selected = biasedCandidate || (phasePreferred && phasePreferred.score.total >= topCandidate.score.total - 12 ? phasePreferred : topCandidate);
@@ -1481,8 +1785,11 @@ export function advancePersistentTownTick(world: WorldState, events: WorldEvent[
       agent.lastDecisionId = trace.id;
       agent.nextActionPreview = selected.description;
       applyConsequenceToAgent(agent, consequence, event, selected, memoryIds);
+      evolveRelationship(nextWorld, npc.id, selected);
       runtime.agentStates = [agent, ...runtime.agentStates.filter((state) => state.npcId !== npc.id)];
     }
+    triggerLongChainCaseIfReady(nextWorld, runtime, [...events, ...createdEvents], createdEvents);
+    refreshLongChainLedger(nextWorld, [...events, ...createdEvents], runtime);
     const candidates = buildCaseCandidatesFromRuntime(nextWorld, [...events, ...createdEvents], runtime);
     runtime.candidates = candidates.slice(0, 8);
     const report: PersistentTownRuntimeReport = {

@@ -474,6 +474,9 @@ export type EmergenceSeedResult = {
   hardLogicValid: boolean;
   qualityScore: number;
   emergenceScore: number;
+  sixStageComplete?: boolean;
+  realCaseTriggered?: boolean;
+  matureTick?: number;
   proofNodeCount: number;
   errors: string[];
   warnings: string[];
@@ -486,6 +489,9 @@ export type EmergenceBenchmarkReport = {
   failed: number;
   averageQualityScore: number;
   averageEmergenceScore: number;
+  sixStageCompleteRate?: number;
+  realCaseTriggerRate?: number;
+  averageMatureTick?: number;
   passRate: number;
   results: EmergenceSeedResult[];
 };

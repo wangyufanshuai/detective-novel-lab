@@ -3978,11 +3978,11 @@ export default function Home() {
           id: `scenario-${world.seed}`,
           name: "Default counterfactual scenario",
           seed: `${world.seed}-scenario`,
-          baselineSteps: 6,
+          baselineSteps: 45,
           branches: actorId ? [{
             id: "selected-agent-resource",
             name: "Selected agent resource branch",
-            steps: 6,
+            steps: 12,
             interventions: [{ atTickOffset: 1, intervention: { actorId, kind: "resource", value: "resource:scenario-ui" } }]
           }] : [],
           passCriteria: { minEventGrowth: 3, minMemoryGrowth: 3, maxBlockedCandidates: 8 }

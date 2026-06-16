@@ -122,16 +122,19 @@ try {
 
   let candidateQueue = await request(`/api/v1/query/town/candidates?worldId=${encodeURIComponent(worldId)}`);
   let candidate = candidateQueue.candidates.find((item) => item.validation?.valid) || candidateQueue.candidates[0];
-  for (let attempt = 0; attempt < 4 && !candidate?.validation?.valid; attempt += 1) {
+  for (let attempt = 0; attempt < 5 && !candidate?.validation?.valid; attempt += 1) {
     await request("/api/v1/command/town/runtime/step", {
       method: "POST",
-      body: JSON.stringify({ worldId, steps: 4 })
+      body: JSON.stringify({ worldId, steps: 8 })
     });
     candidateQueue = await request(`/api/v1/query/town/candidates?worldId=${encodeURIComponent(worldId)}`);
     candidate = candidateQueue.candidates.find((item) => item.validation?.valid) || candidateQueue.candidates[0];
   }
   assert.ok(candidate.id, "candidate id is available");
   assert.equal(candidate.validation.valid, true, "at least one valid candidate emerges before extraction");
+  assert.ok(candidate.triggeredEventId, "valid candidate is backed by a real triggered case event");
+  assert.equal(Object.values(candidate.chainCompleteness || {}).every(Boolean), true, "candidate exposes complete six-stage chain");
+  assert.equal(candidate.validation.memoryConfidence.supportScore >= 55, true, "candidate exposes weighted memory support");
   assert.ok(Array.isArray(candidate.chainStageTags), "candidate exposes chain stage tags");
   assert.ok(Array.isArray(candidate.validation.failureReasons), "candidate exposes validation failure reasons");
 

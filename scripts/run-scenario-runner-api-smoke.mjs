@@ -84,11 +84,11 @@ try {
         id: "api-smoke-scenario",
         name: "API smoke scenario",
         seed: "scenario-api-smoke-fixed",
-        baselineSteps: 4,
+        baselineSteps: 45,
         branches: [{
           id: "resource-branch",
           name: "Resource branch",
-          steps: 4,
+          steps: 12,
           interventions: [{ atTickOffset: 1, intervention: { actorId, kind: "resource", value: "resource:api-scenario" } }]
         }],
         passCriteria: { minEventGrowth: 1, minMemoryGrowth: 1, maxBlockedCandidates: 8 }
@@ -97,6 +97,8 @@ try {
   });
   assert.equal(scenario.run.id, "api-smoke-scenario", "scenario run id is returned");
   assert.equal(scenario.report.branches.length, 1, "scenario report returns branch comparison");
+  assert.equal((scenario.runtime.triggeredCases || []).length > 0, true, "scenario baseline records real triggered case events");
+  assert.equal((scenario.runtime.longChainLedger || []).some((entry) => entry.complete && entry.maturityScore >= 90), true, "scenario baseline records mature six-stage chains");
   assert.ok(scenario.snapshots.length >= 4, "scenario returns snapshots");
   assert.equal(scenario.snapshots.every((snapshot) => !snapshot.checkpoint), true, "public snapshots omit rollback checkpoints");
 
@@ -114,6 +116,7 @@ try {
   const diff = await request(`/api/v1/query/town/snapshot/diff?worldId=${encodeURIComponent(worldId)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
   assert.equal(diff.diff.addedEventIds.length >= 1, true, "snapshot diff reports added events");
   assert.equal(diff.diff.addedMemoryIds.length >= 1, true, "snapshot diff reports added memories");
+  assert.equal(diff.to.candidateSummaries.some((candidate) => candidate.triggeredEventId || candidate.maturityScore >= 90), true, "snapshot summaries expose long-chain maturity");
 
   const rolledBack = await request("/api/v1/command/town/snapshot/rollback", {
     method: "POST",

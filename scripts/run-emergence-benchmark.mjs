@@ -38,7 +38,10 @@ console.log(JSON.stringify({
   failed: report.failed,
   passRate: report.passRate,
   averageQualityScore: report.averageQualityScore,
-  averageEmergenceScore: report.averageEmergenceScore
+  averageEmergenceScore: report.averageEmergenceScore,
+  sixStageCompleteRate: report.sixStageCompleteRate,
+  realCaseTriggerRate: report.realCaseTriggerRate,
+  averageMatureTick: report.averageMatureTick
 }, null, 2));
 
 if (report.failed > report.seedCount) {
