@@ -129,6 +129,20 @@ export type CaseCandidate = {
   caseId?: string;
 };
 
+export type PersistentCaseExtractionView = {
+  world: WorldState;
+  events: WorldEvent[];
+  sourceMap: {
+    triggeredEventId: string;
+    sourceCandidateId: string;
+    sourceEventIds: string[];
+    evidenceSourceEventIds: Record<string, string[]>;
+    extractionEventSourceIds: Record<string, string[]>;
+    chainStageSourceEventIds: Record<CaseChainStage, string[]>;
+    memorySourceIds: string[];
+  };
+};
+
 export type TownRuntimeIntervention = {
   id: string;
   tick: number;
@@ -1225,64 +1239,148 @@ export function validateCaseCandidate(world: WorldState, events: WorldEvent[] = 
   };
 }
 
-export function extractPlayableCaseFromCandidate(world: WorldState, events: WorldEvent[] = [], candidate: CaseCandidate): { world: WorldState; events: WorldEvent[]; activeCase: CaseFromLog; candidate: CaseCandidate } {
+function uniqueIds(ids: Array<string | undefined>) {
+  return Array.from(new Set(ids.filter((id): id is string => Boolean(id))));
+}
+
+export function buildPersistentCaseExtractionView(world: WorldState, events: WorldEvent[] = [], candidate: CaseCandidate): PersistentCaseExtractionView | null {
   const runtime = getRuntime(world as RuntimeWorld);
   const ledger = runtime?.longChainLedger?.find((entry) => entry.culpritId === candidate.culpritId && entry.victimId === candidate.victimId);
   const trigger = runtime?.triggeredCases?.find((entry) => entry.eventId === candidate.triggeredEventId || (entry.culpritId === candidate.culpritId && entry.victimId === candidate.victimId));
+  if (!runtime || !ledger || !trigger) return null;
+
+  const byId = new Map(events.map((event) => [event.id, event]));
+  const triggerEvent = byId.get(trigger.eventId);
+  if (!triggerEvent) return null;
+
+  const chainStageSourceEventIds = {
+    motive: uniqueIds(ledger.stageEventIds.motive),
+    means: uniqueIds(ledger.stageEventIds.means),
+    opportunity: uniqueIds(ledger.stageEventIds.opportunity),
+    "cover-up": uniqueIds(ledger.stageEventIds["cover-up"]),
+    memory: uniqueIds(ledger.stageEventIds.memory),
+    exclusion: uniqueIds(ledger.stageEventIds.exclusion)
+  } satisfies Record<CaseChainStage, string[]>;
+
+  const fallbackSource = events.find((event) => event.actorIds.includes(candidate.culpritId) && event.relatedCharacterIds.includes(candidate.victimId)) || events[0] || triggerEvent;
+  const evidenceSourceEventIds: Record<string, string[]> = {
+    "ev-motive": chainStageSourceEventIds.motive,
+    "ev-means": chainStageSourceEventIds.means,
+    "ev-opportunity": chainStageSourceEventIds.opportunity,
+    "ev-staging": chainStageSourceEventIds["cover-up"],
+    "ev-trace": chainStageSourceEventIds.memory,
+    "ev-death-scene": [trigger.eventId],
+    "ev-town-rollcall": chainStageSourceEventIds.exclusion
+  };
+  const extractionEventSourceIds: Record<string, string[]> = {};
+  const memorySourceIds = uniqueIds(
+    (world.memories || [])
+      .filter((memory) => candidate.memoryIds.includes(memory.id) || Object.values(chainStageSourceEventIds).flat().includes(memory.eventId))
+      .map((memory) => memory.id)
+  );
+
+  const cloneStageEvent = (stage: CaseChainStage, evidenceId: string, fallbackType?: WorldEvent["type"]): WorldEvent => {
+    const sourceId = chainStageSourceEventIds[stage][0];
+    const source = (sourceId && byId.get(sourceId)) || fallbackSource;
+    const id = `caseview-${evidenceId}-${source?.id || trigger.eventId}`;
+    extractionEventSourceIds[id] = uniqueIds([source?.id, ...evidenceSourceEventIds[evidenceId]]);
+    return {
+      ...source,
+      id,
+      type: fallbackType || source?.type || "witness",
+      evidenceId,
+      actorIds: source?.actorIds?.length ? source.actorIds : [candidate.culpritId],
+      relatedCharacterIds: Array.from(new Set([candidate.culpritId, candidate.victimId, ...(source?.relatedCharacterIds || [])])),
+      tags: Array.from(new Set([...(source?.tags || []), stage, stage === "cover-up" ? "staging" : "", evidenceId.replace("ev-", ""), "persistent-source-backed"].filter(Boolean))),
+      hidden: stage === "means" || stage === "cover-up" ? true : source?.hidden || false,
+      causedByEventIds: uniqueIds([...(source?.causedByEventIds || []), ...evidenceSourceEventIds[evidenceId]])
+    };
+  };
+
+  const deathId = `caseview-ev-death-scene-${trigger.eventId}`;
+  extractionEventSourceIds[deathId] = uniqueIds([trigger.eventId, ...(trigger.causedByEventIds || [])]);
+  const death: WorldEvent = {
+    ...triggerEvent,
+    id: deathId,
+    evidenceId: "ev-death-scene",
+    tags: Array.from(new Set([...(triggerEvent.tags || []), "blade", "case_trigger", "death", "persistent-source-backed"])),
+    causedByEventIds: uniqueIds([...(triggerEvent.causedByEventIds || []), ...trigger.causedByEventIds])
+  };
+
+  const rollcallSourceIds = chainStageSourceEventIds.exclusion.length ? chainStageSourceEventIds.exclusion : [trigger.eventId];
+  const rollcallId = `caseview-ev-town-rollcall-${trigger.eventId}`;
+  extractionEventSourceIds[rollcallId] = uniqueIds(rollcallSourceIds);
+  const nonCulpritIds = world.npcs.filter((npc) => npc.id !== candidate.culpritId && npc.id !== candidate.victimId).map((npc) => npc.id);
+  const rollcall: WorldEvent = {
+    id: rollcallId,
+    worldId: world.id,
+    day: triggerEvent.day || runtime.currentDay,
+    time: triggerEvent.time || runtime.currentTime,
+    type: "alibi",
+    actorIds: nonCulpritIds,
+    locationId: world.locations.find((location) => location.kind === "public")?.id || triggerEvent.locationId || world.locations[0]?.id || "town-square",
+    summary: "Non-culprit residents have a public rollcall record during the case window.",
+    publicSummary: "A public rollcall excludes residents who were away from the scene.",
+    hidden: false,
+    evidenceId: "ev-town-rollcall",
+    relatedCharacterIds: nonCulpritIds,
+    tags: ["alibi_seed", "exclusion", "source_backed", "persistent-source-backed"],
+    causedByEventIds: uniqueIds(rollcallSourceIds)
+  };
+
+  const extractionEvents = [
+    cloneStageEvent("means", "ev-means", "obtain_item"),
+    cloneStageEvent("motive", "ev-motive", "conflict"),
+    cloneStageEvent("opportunity", "ev-opportunity", "witness"),
+    cloneStageEvent("cover-up", "ev-staging", "destroy_evidence"),
+    cloneStageEvent("memory", "ev-trace", "forensic_clue"),
+    death,
+    rollcall
+  ];
+  const extractionEventIds = extractionEvents.map((event) => event.id);
+
+  return {
+    world,
+    events: extractionEvents,
+    sourceMap: {
+      triggeredEventId: trigger.eventId,
+      sourceCandidateId: candidate.id,
+      sourceEventIds: extractionEventIds,
+      evidenceSourceEventIds,
+      extractionEventSourceIds,
+      chainStageSourceEventIds,
+      memorySourceIds
+    }
+  };
+}
+
+export function extractPlayableCaseFromCandidate(world: WorldState, events: WorldEvent[] = [], candidate: CaseCandidate): { world: WorldState; events: WorldEvent[]; activeCase: CaseFromLog; candidate: CaseCandidate } {
   let tick = { world, events: [] as WorldEvent[] };
   let allEvents = events;
-  if (runtime && trigger && ledger) {
-    const byId = new Map(events.map((event) => [event.id, event]));
-    const cloneStageEvent = (stage: CaseChainStage, evidenceId: string, fallbackType?: WorldEvent["type"]) => {
-      const sourceId = ledger.stageEventIds[stage][0];
-      const source = (sourceId && byId.get(sourceId)) || events.find((event) => event.actorIds.includes(candidate.culpritId) && event.relatedCharacterIds.includes(candidate.victimId)) || events[0];
-      return {
-        ...source,
-        id: `caseview-${evidenceId}-${source?.id || trigger.eventId}`,
-        type: fallbackType || source?.type || "witness",
-        evidenceId,
-        actorIds: source?.actorIds?.length ? source.actorIds : [candidate.culpritId],
-        relatedCharacterIds: Array.from(new Set([candidate.culpritId, candidate.victimId, ...(source?.relatedCharacterIds || [])])),
-        tags: Array.from(new Set([...(source?.tags || []), stage, stage === "cover-up" ? "staging" : "", evidenceId.replace("ev-", "")].filter(Boolean))),
-        hidden: stage === "means" || stage === "cover-up" ? true : source?.hidden || false
-      } as WorldEvent;
-    };
-    const death = byId.get(trigger.eventId);
-    const rollcall: WorldEvent = {
-      id: `caseview-ev-town-rollcall-${trigger.eventId}`,
-      worldId: world.id,
-      day: death?.day || runtime.currentDay,
-      time: death?.time || runtime.currentTime,
-      type: "alibi",
-      actorIds: world.npcs.filter((npc) => npc.id !== candidate.culpritId && npc.id !== candidate.victimId).map((npc) => npc.id),
-      locationId: world.locations.find((location) => location.kind === "public")?.id || death?.locationId || world.locations[0]?.id || "town-square",
-      summary: "Non-culprit residents have a public rollcall record during the case window.",
-      publicSummary: "A public rollcall excludes residents who were away from the scene.",
-      hidden: false,
-      evidenceId: "ev-town-rollcall",
-      relatedCharacterIds: world.npcs.filter((npc) => npc.id !== candidate.culpritId && npc.id !== candidate.victimId).map((npc) => npc.id),
-      tags: ["alibi_seed", "exclusion", "source_backed"]
-    };
-    const caseEvents = [
-      cloneStageEvent("means", "ev-means", "obtain_item"),
-      cloneStageEvent("motive", "ev-motive", "conflict"),
-      cloneStageEvent("opportunity", "ev-opportunity", "witness"),
-      cloneStageEvent("cover-up", "ev-staging", "destroy_evidence"),
-      cloneStageEvent("memory", "ev-trace", "forensic_clue"),
-      {
-        ...death!,
-        evidenceId: "ev-death-scene",
-        tags: Array.from(new Set([...(death?.tags || []), "blade", "case_trigger", "death"]))
-      },
-      rollcall
-    ].filter(Boolean) as WorldEvent[];
-    allEvents = caseEvents;
+  const extractionView = buildPersistentCaseExtractionView(world, events, candidate);
+  if (extractionView) {
+    allEvents = extractionView.events;
   } else {
     tick = simulateWorldTick(world, events);
     allEvents = [...events, ...tick.events];
   }
   const caseWorld = tick.world;
   const activeCase = extractCaseFromWorld(caseWorld, allEvents);
+  if (extractionView) {
+    activeCase.triggeredEventId = extractionView.sourceMap.triggeredEventId;
+    activeCase.sourceCandidateId = extractionView.sourceMap.sourceCandidateId;
+    activeCase.sourceEventIds = extractionView.sourceMap.sourceEventIds;
+    activeCase.sourceMap = {
+      ...activeCase.sourceMap,
+      triggeredEventId: extractionView.sourceMap.triggeredEventId,
+      sourceCandidateId: extractionView.sourceMap.sourceCandidateId,
+      sourceEventIds: extractionView.sourceMap.sourceEventIds,
+      evidenceSourceEventIds: extractionView.sourceMap.evidenceSourceEventIds,
+      extractionEventSourceIds: extractionView.sourceMap.extractionEventSourceIds,
+      chainStageSourceEventIds: extractionView.sourceMap.chainStageSourceEventIds,
+      memorySourceIds: extractionView.sourceMap.memorySourceIds
+    };
+  }
   const validation = validateWorldCase(caseWorld, allEvents, activeCase.deductionCase);
   const nextCandidate: CaseCandidate = {
     ...candidate,

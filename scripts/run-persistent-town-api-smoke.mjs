@@ -147,6 +147,16 @@ try {
   });
   assert.ok(extracted.activeCase.id, "case extraction returns active case");
   assert.equal(extracted.activeCase.validation.valid, true, "extracted case validates");
+  assert.equal(extracted.activeCase.triggeredEventId, candidate.triggeredEventId, "extracted case preserves the triggered event id");
+  assert.equal(extracted.activeCase.sourceCandidateId, candidate.id, "extracted case preserves the source candidate id");
+  assert.equal(extracted.events.filter((event) => event.type === "death").length, 1, "extraction response contains one selected death event");
+  assert.equal(extracted.activeCase.qualityReport.worldBackedEvidence, true, "extracted case keeps world-backed evidence quality");
+  assert.equal(extracted.activeCase.qualityReport.nonCulpritExcluded, true, "extracted case excludes non-culprits");
+  assert.equal(extracted.activeCase.qualityReport.reasoningTraceComplete, true, "extracted case has complete reasoning trace");
+  for (const evidenceId of ["ev-motive", "ev-means", "ev-opportunity", "ev-staging", "ev-trace", "ev-town-rollcall"]) {
+    assert.ok(extracted.activeCase.sourceMap.evidenceSourceEventIds?.[evidenceId]?.length, `${evidenceId} maps to original persistent source events`);
+  }
+  assert.ok(extracted.activeCase.sourceMap.memorySourceIds?.length, "extracted case exposes memory source ids");
 
   await request("/api/v1/command/town/runtime/pause", {
     method: "POST",

@@ -79,6 +79,12 @@ export type WorldCaseSourceMap = {
   traceEvidenceId: string;
   groupAlibiEvidenceId: string;
   sourceEventIds: string[];
+  triggeredEventId?: string;
+  sourceCandidateId?: string;
+  evidenceSourceEventIds?: Record<string, string[]>;
+  extractionEventSourceIds?: Record<string, string[]>;
+  chainStageSourceEventIds?: Record<string, string[]>;
+  memorySourceIds?: string[];
 };
 
 export type WorldEventType =
@@ -651,6 +657,8 @@ export type CaseFromLog = {
   worldId: string;
   sourceEventIds: string[];
   deathEventId: string;
+  triggeredEventId?: string;
+  sourceCandidateId?: string;
   generationProfile: CaseGenerationProfile;
   sourceMap: WorldCaseSourceMap;
   testimonies: TestimonyRecord[];

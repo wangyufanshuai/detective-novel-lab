@@ -1746,6 +1746,11 @@ export function PersistentTownCommandCenter({
               <strong>{index + 1}. {candidate.culpritId} → {candidate.victimId}</strong>
               <span>压力 {candidate.pressureScore} / 成熟度 {candidate.maturityScore ?? (candidate.validation.valid ? 100 : 61)}%</span>
               {candidate.triggeredEventId && <em>真实案件已触发：{candidate.triggeredEventId}</em>}
+              {candidate.validation.valid && candidate.triggeredEventId && (
+                <small className="fairCaseStatus">
+                  可玩公平案：证据链 {candidate.riskChainEventIds.length} / 记忆 {candidate.memoryIds.length} / 六阶段完整
+                </small>
+              )}
               <div className="commandStageGems">
                 {(["motive", "means", "opportunity", "cover-up", "memory", "exclusion"] as CaseChainStage[]).map((stage) => (
                   <b key={stage} className={(candidate.chainCompleteness?.[stage] || candidate.validation.chainCompleteness?.[stage] || (candidate.chainStageTags || candidate.validation.chainStages || []).includes(stage)) ? "on" : ""}>{stageLabels[stage]}</b>

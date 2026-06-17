@@ -124,6 +124,17 @@ const engine = await loadEngine();
   assert.equal(extracted.activeCase.qualityReport.uniqueCulprit, true, "extracted playable case has unique culprit");
   assert.equal(extracted.activeCase.qualityReport.worldBackedEvidence, true, "extracted playable case has event-backed evidence");
   assert.equal(extracted.candidate.validation.hardLogicValid, true, "candidate records hard logic pass after extraction");
+  assert.equal(extracted.activeCase.triggeredEventId, selected.triggeredEventId, "extracted case records the real triggered event id");
+  assert.equal(extracted.activeCase.sourceCandidateId, selected.id, "extracted case records the source candidate id");
+  assert.equal(extracted.events.filter((event) => event.type === "death").length, 1, "triggered extraction view contains exactly one death event");
+  assert.equal(extracted.events.every((event) => event.id.startsWith("caseview-")), true, "triggered extraction uses a selected-case view");
+  for (const evidenceId of ["ev-motive", "ev-means", "ev-opportunity", "ev-staging", "ev-trace", "ev-town-rollcall"]) {
+    assert.equal((extracted.activeCase.sourceMap.evidenceSourceEventIds?.[evidenceId] || []).length > 0, true, `${evidenceId} maps back to real persistent town source events`);
+  }
+  const originalStageSources = Object.values(extracted.activeCase.sourceMap.chainStageSourceEventIds || {}).flat();
+  assert.equal(originalStageSources.some((eventId) => allEvents.some((event) => event.id === eventId)), true, "chain stage source map references original runtime events");
+  assert.equal((extracted.activeCase.sourceMap.memorySourceIds || []).length > 0, true, "extracted case records memory sources from the selected chain");
+  assert.equal(extracted.activeCase.deductionCase.logicPuzzle.exclusionChains.every((chain) => chain.evidenceIds.length > 0), true, "all non-culprit exclusions keep evidence ids");
 }
 
 {
