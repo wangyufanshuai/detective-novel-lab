@@ -727,6 +727,7 @@ test("persistent agent town runs, scores agents and extracts a playable case", a
   await expect(page.getByTestId("command-center-hud")).toContainText("模拟指挥中心", { timeout: 20_000 });
   await expect(page.getByTestId("command-center-hud")).toContainText("20", { timeout: 20_000 });
   await expect(page.getByTestId("command-center-hud")).toContainText("案件成熟度", { timeout: 20_000 });
+  await expect(page.getByTestId("command-center-hud")).toContainText("观察索引", { timeout: 20_000 });
   await expect(page.getByTestId("command-center-map")).toBeVisible();
   await page.getByTestId("command-center-map").getByRole("button", { name: "放大" }).click();
   await page.getByTestId("command-center-map").getByRole("button", { name: "线索点" }).click();
@@ -734,6 +735,7 @@ test("persistent agent town runs, scores agents and extracts a playable case", a
   await page.getByTestId("command-center-map").locator(".commandActorPin").first().click();
   await page.getByTestId("persistent-command-center").getByRole("button", { name: "开始", exact: true }).click();
   await expect(page.getByTestId("command-npc-dossier")).toContainText("选中 NPC", { timeout: 20_000 });
+  await expect(page.getByTestId("command-npc-dossier")).toContainText("观察来源", { timeout: 20_000 });
   await expect(page.getByTestId("command-action-choices")).toContainText(/调查|传闻|不在场|施压|掩盖/, { timeout: 20_000 });
   if (process.env.CAPTURE_QA && testInfo.project.name === "chromium-desktop") {
     await page.setViewportSize({ width: 1920, height: 1080 });
@@ -759,11 +761,12 @@ test("persistent agent town runs, scores agents and extracts a playable case", a
 
   await expect(page.getByTestId("command-candidate-board")).toContainText("案件候选板", { timeout: 20_000 });
   await expect(page.getByTestId("command-candidate-board")).toContainText(/动机|手段|机会/);
-  await expect(page.getByTestId("command-candidate-board")).toContainText(/成熟度|记忆可信度/, { timeout: 20_000 });
+  await expect(page.getByTestId("command-candidate-board")).toContainText(/成熟度|记忆可信度|观察支撑/, { timeout: 20_000 });
   await expect(page.getByTestId("command-candidate-board")).toContainText(/真实案件已触发|触发链/, { timeout: 25_000 });
   await page.getByTestId("command-center-hud").getByRole("button", { name: /运行基线|基线通过/ }).click();
   await expect(page.getByTestId("command-center-hud")).toContainText(/基线通过|运行基线/, { timeout: 25_000 });
   await expect(page.getByTestId("command-time-machine")).toContainText("事件 +", { timeout: 20_000 });
+  await expect(page.getByTestId("command-time-machine")).toContainText("观察 +", { timeout: 20_000 });
   await expect(page.getByTestId("command-benchmark")).toBeVisible();
   await expect(page.getByTestId("command-benchmark")).toContainText(/Seeds|未生成/);
 

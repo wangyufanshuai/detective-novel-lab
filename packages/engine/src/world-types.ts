@@ -85,6 +85,7 @@ export type WorldCaseSourceMap = {
   extractionEventSourceIds?: Record<string, string[]>;
   chainStageSourceEventIds?: Record<string, string[]>;
   memorySourceIds?: string[];
+  observationSourceIds?: string[];
 };
 
 export type WorldEventType =
@@ -192,6 +193,7 @@ export type MemoryRecord = {
   day: number;
   summary: string;
   sourceNpcId?: string;
+  sourceObservationId?: string;
   confidence: number;
   visibleToPlayer: boolean;
   challengeableEvidenceIds: string[];

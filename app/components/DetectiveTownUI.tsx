@@ -1458,6 +1458,16 @@ export function PersistentTownCommandCenter({
     true
   );
   const memoryPropagations = [...(runtime?.memoryPropagations || [])].slice(-12).reverse();
+  const eventObservations = [...(runtime?.eventObservations || [])];
+  const selectedObservationStats = selectedAgent
+    ? {
+        direct: eventObservations.filter((item) => item.observerNpcId === selectedAgent.npcId && item.kind === "direct").length,
+        sameLocation: eventObservations.filter((item) => item.observerNpcId === selectedAgent.npcId && item.kind === "same-location").length,
+        rumor: eventObservations.filter((item) => item.observerNpcId === selectedAgent.npcId && item.kind === "rumor").length,
+        deduced: eventObservations.filter((item) => item.observerNpcId === selectedAgent.npcId && item.kind === "deduced").length,
+        exclusion: eventObservations.filter((item) => item.observerNpcId === selectedAgent.npcId && (item.kind === "alibi" || item.kind === "exclusion")).length
+      }
+    : { direct: 0, sameLocation: 0, rumor: 0, deduced: 0, exclusion: 0 };
   const branchSummary = scenarioReport?.branches?.[0];
   const actionPriority = ["investigate", "spread-rumor", "seek-alibi", "pressure", "cover-up", "talk", "observe", "move", "obtain-resource", "confront", "hide-trace"];
   const displayedActionCandidates = [...selectedAgentCandidates].sort((a, b) => actionPriority.indexOf(a.kind) - actionPriority.indexOf(b.kind)).slice(0, 5);
@@ -1579,6 +1589,7 @@ export function PersistentTownCommandCenter({
         <div className="commandHudMetric hot"><span>当前阶段</span><strong>{phaseLabels[currentPhase] || currentPhase}</strong><small>{currentPhase}</small></div>
         <div className="commandHudMetric"><span>活跃 NPC</span><strong>{runtime?.agentStates.length ?? 0}</strong><small>/ 20</small></div>
         <div className="commandHudMetric"><span>传播记忆</span><strong>{runtime?.memoryPropagations?.length ?? 0}</strong><small>+{recentTraces.reduce((sum, trace) => sum + (trace.propagatedMemoryIds?.length || 0), 0)}</small></div>
+        <div className="commandHudMetric"><span>观察索引</span><strong>{eventObservations.length}</strong><small>谁知道什么</small></div>
         <div className="commandHudMetric"><span>行动后果</span><strong>{runtime?.consequences?.length ?? 0}</strong><small>最近 {recentConsequences.length}</small></div>
         <div className="commandHudMetric"><span>有效候选</span><strong>{queue?.validCount ?? candidates.filter((candidate) => candidate.validation.valid).length}</strong><small>{candidates.length} 总数</small></div>
         <div className="commandHudMetric hot"><span>案件成熟度</span><strong>{topLongChain?.maturityScore ?? 0}%</strong><small>{triggeredCases.length ? "真实案件已触发" : "六阶段链"}</small></div>
@@ -1713,6 +1724,10 @@ export function PersistentTownCommandCenter({
             <div><h3>当前计划</h3>{(selectedAgent?.currentPlan || ["选择地图上的 NPC"]).slice(0, 5).map((item, index) => <span key={`${item}:${index}`}>{index + 1}. {translatePlan(item)}</span>)}</div>
             <div><h3>已知事实</h3>{(selectedAgent?.knownFactIds || []).slice(-6).map((item) => <span key={item}>{item}</span>) || <span>暂无</span>}</div>
           </div>
+          <div className="commandPlanFacts">
+            <div><h3>观察来源</h3><span>直接 {selectedObservationStats.direct}</span><span>同地 {selectedObservationStats.sameLocation}</span><span>推断 {selectedObservationStats.deduced}</span></div>
+            <div><h3>传闻 / 排除</h3><span>传闻 {selectedObservationStats.rumor}</span><span>排除 {selectedObservationStats.exclusion}</span><span>支撑 {selectedAgent?.propagatedMemoryCount ?? 0}</span></div>
+          </div>
           <article className="commandConsequence">
             <strong>最近后果</strong>
             <span>{translateRuleText(selectedAgent?.lastConsequence || recentConsequences[0]?.actionKind || "等待行动")}</span>
@@ -1756,7 +1771,7 @@ export function PersistentTownCommandCenter({
                   <b key={stage} className={(candidate.chainCompleteness?.[stage] || candidate.validation.chainCompleteness?.[stage] || (candidate.chainStageTags || candidate.validation.chainStages || []).includes(stage)) ? "on" : ""}>{stageLabels[stage]}</b>
                 ))}
               </div>
-              <small>记忆可信度 {candidate.validation.memoryConfidence?.supportScore ?? 0}% / 触发链 {candidate.riskChainEventIds.length} 事件</small>
+              <small>记忆可信度 {candidate.validation.memoryConfidence?.supportScore ?? 0}% / 观察支撑 {candidate.validation.observationSupport?.supportScore ?? 0}% / 触发链 {candidate.riskChainEventIds.length} 事件</small>
               <small>{candidate.validation.failureReasons?.[0] ? translateRuleText(candidate.validation.failureReasons[0]) : (candidate.validation.valid ? "可抽取案件" : "仍阻塞")}</small>
               <button type="button" onClick={() => extractCase(candidate)} disabled={runningBusy || !candidate.validation.valid}>抽取可玩案件</button>
             </article>
@@ -1789,6 +1804,7 @@ export function PersistentTownCommandCenter({
         <div className="commandDiffStats">
           <span>事件 +{snapshotDiff?.addedEventIds.length ?? 0}</span>
           <span>记忆 +{snapshotDiff?.addedMemoryIds.length ?? 0}</span>
+          <span>观察 +{snapshotDiff?.addedObservationIds?.length ?? 0}</span>
           <span>NPC 变化 {snapshotDiff?.changedAgents.length ?? 0}</span>
         </div>
         {branchSummary && (

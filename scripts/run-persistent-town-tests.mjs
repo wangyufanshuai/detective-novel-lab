@@ -32,6 +32,10 @@ const engine = await loadEngine();
   assert.equal(runtime.agentStates.length, 8, "runtime creates one agent state per living NPC");
   assert.equal(runtime.agentStates.every((agent) => agent.currentGoal && agent.currentPlan.length), true, "agents have goals and plans");
   assert.equal(runtime.agentStates.every((agent) => Number.isFinite(agent.secretRisk) && Number.isFinite(agent.alertness)), true, "agents have risk and alertness");
+  const actionKinds = new Set(engine.getTownActionDefinitions().map((definition) => definition.kind));
+  for (const kind of ["move", "observe", "talk", "confront", "obtain-resource", "hide-trace", "investigate", "spread-rumor", "seek-alibi", "pressure", "cover-up"]) {
+    assert.equal(actionKinds.has(kind), true, `action registry covers ${kind}`);
+  }
 }
 
 {
@@ -46,6 +50,12 @@ const engine = await loadEngine();
     "persistent town ticks are deterministic for the same seed"
   );
   assert.equal(runA.runtime.decisionTraces.length > 0, true, "ticks produce decision traces");
+  assert.equal(runA.runtime.eventObservations.length > 0, true, "ticks produce event observations");
+  assert.deepEqual(
+    runA.runtime.eventObservations.map((observation) => [observation.id, observation.eventId, observation.observerNpcId, observation.kind, observation.memoryId || ""]),
+    runB.runtime.eventObservations.map((observation) => [observation.id, observation.eventId, observation.observerNpcId, observation.kind, observation.memoryId || ""]),
+    "event observations are deterministic"
+  );
   assert.equal(runA.runtime.decisionTraces.every((trace) => trace.candidates.length >= 3), true, "each trace includes action candidates");
   assert.equal(
     runA.runtime.decisionTraces.every((trace) => trace.candidates.every((candidate) => ["goalPriority", "knownInformation", "relationshipPressure", "resourceAvailability", "locationReachability", "risk", "evidenceConsistency", "caseImpact"].every((field) => Number.isFinite(candidate.score[field])))),
@@ -59,7 +69,7 @@ const engine = await loadEngine();
   );
   assert.equal(runA.runtime.pressureLedger.length > 0, true, "ticks record a pressure ledger");
   assert.equal(runA.runtime.consequences.length > 0, true, "ticks record action consequences");
-  assert.equal(runA.runtime.decisionTraces.every((trace) => trace.phases?.includes("candidate-extraction") && trace.consequence), true, "decision traces include phase and consequence data");
+  assert.equal(runA.runtime.decisionTraces.every((trace) => trace.phases?.includes("extract-candidates") && trace.consequence && trace.observationIds?.length), true, "decision traces include phase, observation and consequence data");
 }
 
 {
@@ -70,6 +80,8 @@ const engine = await loadEngine();
   const newKinds = ["investigate", "spread-rumor", "seek-alibi", "pressure", "cover-up"].filter((kind) => selectedKinds.has(kind));
   assert.equal(newKinds.length >= 3, true, "runtime selects diverse core simulation actions");
   assert.equal(run.runtime.memoryPropagations.length > 0, true, "runtime propagates memories beyond direct participants");
+  assert.equal(run.runtime.eventObservations.some((observation) => observation.kind === "same-location" || observation.kind === "rumor" || observation.kind === "deduced"), true, "runtime records observation kinds beyond direct participation");
+  assert.equal(run.world.memories.some((memory) => memory.sourceObservationId), true, "memories reference source observations");
   assert.equal(run.runtime.agentStates.some((agent) => (agent.propagatedMemoryCount || 0) > 0 || agent.lastConsequence), true, "agent state reflects propagation or consequence updates");
   assert.equal(run.runtime.consequences.some((item) => item.chainStage === "cover-up" || item.chainStage === "memory" || item.chainStage === "alibi"), true, "consequences record case-chain stages");
 }
@@ -87,6 +99,29 @@ const engine = await loadEngine();
   const selected = queue.candidates.find((candidate) => candidate.validation.valid) || queue.candidates[0];
   const validation = engine.validateCaseCandidate(run.world, [...daily.events, ...run.events], selected);
   assert.deepEqual(validation.errors, selected.validation.errors, "candidate validation is stable");
+  assert.ok(selected.validation.observationSupport, "candidate validation exposes observation support");
+  const rumorObservation = run.runtime.eventObservations.find((observation) => observation.kind === "rumor");
+  if (rumorObservation) {
+    const rumorVictimId = rumorObservation.subjectNpcId || rumorObservation.sourceNpcId || selected.victimId;
+    const rumorCandidate = {
+      ...selected,
+      culpritId: rumorObservation.observerNpcId,
+      victimId: rumorVictimId,
+      riskChainEventIds: [rumorObservation.eventId],
+      memoryIds: run.world.memories.filter((memory) => memory.sourceObservationId === rumorObservation.id).map((memory) => memory.id),
+      triggeredEventId: "fake-trigger",
+      chainCompleteness: { motive: true, means: true, opportunity: true, "cover-up": true, memory: true, exclusion: true },
+      validation: {
+        ...selected.validation,
+        memoryConfidence: { direct: 0, deduced: 0, rumor: rumorObservation.confidence, supportScore: Math.round(rumorObservation.confidence * 25) },
+        observationSupport: { direct: 0, deduced: 0, sameLocation: 0, rumor: rumorObservation.confidence, supportScore: Math.round(rumorObservation.confidence * 20), observationIds: [rumorObservation.id] }
+      }
+    };
+    const rumorValidation = engine.validateCaseCandidate(run.world, [...daily.events, ...run.events], rumorCandidate);
+    assert.equal(rumorValidation.observationSupport.rumor > 0, true, "rumor-only candidate sees rumor observation support");
+    assert.equal(rumorValidation.observationSupport.supportScore < 55, true, "low-confidence rumor alone cannot satisfy memory support");
+    assert.equal(rumorValidation.memoryScopedTestimony, false, "rumor-only support does not satisfy scoped testimony");
+  }
 }
 
 {
@@ -134,6 +169,7 @@ const engine = await loadEngine();
   const originalStageSources = Object.values(extracted.activeCase.sourceMap.chainStageSourceEventIds || {}).flat();
   assert.equal(originalStageSources.some((eventId) => allEvents.some((event) => event.id === eventId)), true, "chain stage source map references original runtime events");
   assert.equal((extracted.activeCase.sourceMap.memorySourceIds || []).length > 0, true, "extracted case records memory sources from the selected chain");
+  assert.equal((extracted.activeCase.sourceMap.observationSourceIds || []).length > 0, true, "extracted case records observation sources from the selected chain");
   assert.equal(extracted.activeCase.deductionCase.logicPuzzle.exclusionChains.every((chain) => chain.evidenceIds.length > 0), true, "all non-culprit exclusions keep evidence ids");
 }
 
@@ -214,6 +250,7 @@ const engine = await loadEngine();
   assert.equal(scenarioA.report.passed, true, "scenario report passes configured criteria");
   assert.equal(scenarioA.report.branches.length, 1, "scenario includes a counterfactual branch");
   assert.equal(scenarioA.report.branches[0].diffFromBaseline.branchOnlyInterventionIds.length > 0, true, "branch diff tracks counterfactual interventions");
+  assert.equal(scenarioA.runtime.snapshots.some((snapshot) => (snapshot.observationIds || []).length > 0), true, "scenario snapshots track observations");
   assert.equal(scenarioA.report.baseline.eventGrowth, scenarioB.report.baseline.eventGrowth, "scenario baseline event growth is deterministic");
   assert.equal(scenarioA.runtime.scenarioRuns.length, 1, "scenario run is stored on runtime");
   assert.equal(scenarioA.runtime.snapshots.length >= 4, true, "scenario stores baseline and branch snapshots");
@@ -228,6 +265,7 @@ const engine = await loadEngine();
   const diff = engine.diffTownStateSnapshots(start, end);
   assert.equal(diff.addedEventIds.length >= 1, true, "snapshot diff reports added events");
   assert.equal(diff.addedMemoryIds.length >= 1, true, "snapshot diff reports added memories");
+  assert.equal(diff.addedObservationIds.length >= 1, true, "snapshot diff reports added observations");
   assert.equal(diff.changedAgents.length >= 1, true, "snapshot diff reports changed agents");
   const runtime = run.world.persistentRuntime;
   runtime.snapshots = [start, end];

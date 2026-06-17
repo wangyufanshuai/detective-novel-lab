@@ -18,6 +18,20 @@ export type NpcActionKind =
   | "cover-up";
 
 export type CaseChainStage = "motive" | "means" | "opportunity" | "cover-up" | "memory" | "exclusion";
+export type TownTickPhaseName =
+  | "observe"
+  | "update-goals"
+  | "score-actions"
+  | "execute-actions"
+  | "observe-events"
+  | "propagate-memory"
+  | "apply-consequences"
+  | "advance-case-chain"
+  | "trigger-case"
+  | "extract-candidates"
+  | "finalize";
+
+export type TownObservationKind = "direct" | "same-location" | "rumor" | "deduced" | "alibi" | "exclusion";
 
 export type NpcActionScore = {
   goalPriority: number;
@@ -48,6 +62,16 @@ export type NpcActionCandidate = {
   legal: boolean;
   blockedReason?: string;
   score: NpcActionScore;
+};
+
+export type TownActionDefinition = {
+  kind: NpcActionKind;
+  chainStage?: AgentConsequenceSummary["chainStage"];
+  expectedObservationKind: TownObservationKind;
+  buildCandidate: (input: TownActionBuildInput) => Omit<NpcActionCandidate, "score">;
+  canStart: (input: TownActionLegalityInput) => { legal: boolean; reason?: string };
+  score: typeof scoreCandidate;
+  execute: (input: TownActionExecuteInput) => WorldEvent;
 };
 
 export type NpcAgentState = {
@@ -83,6 +107,7 @@ export type AgentDecisionTrace = {
   phases?: string[];
   propagatedMemoryIds?: string[];
   consequence?: AgentConsequenceSummary;
+  observationIds?: string[];
 };
 
 export type CaseCandidateValidation = {
@@ -100,6 +125,14 @@ export type CaseCandidateValidation = {
     deduced: number;
     rumor: number;
     supportScore: number;
+  };
+  observationSupport?: {
+    direct: number;
+    deduced: number;
+    rumor: number;
+    sameLocation: number;
+    supportScore: number;
+    observationIds: string[];
   };
   failureReasons?: string[];
   errors: string[];
@@ -140,7 +173,60 @@ export type PersistentCaseExtractionView = {
     extractionEventSourceIds: Record<string, string[]>;
     chainStageSourceEventIds: Record<CaseChainStage, string[]>;
     memorySourceIds: string[];
+    observationSourceIds: string[];
   };
+};
+
+export type TownEventObservation = {
+  id: string;
+  tick: number;
+  eventId: string;
+  observerNpcId: string;
+  subjectNpcId?: string;
+  sourceNpcId?: string;
+  kind: TownObservationKind;
+  confidence: number;
+  visibleToPlayer: boolean;
+  memoryId?: string;
+  chainStage?: CaseChainStage | "context";
+};
+
+type TownActionBuildInput = {
+  world: WorldState;
+  npc: NPCProfile;
+  state: NpcAgentState;
+  runtime?: PersistentTownRuntime | null;
+  events: WorldEvent[];
+  locations: Array<{ id: string }>;
+  targetNpcId?: string;
+  targetNpc?: NPCProfile;
+  targetLocationId: string;
+};
+
+type TownActionLegalityInput = TownActionBuildInput & {
+  candidate: Omit<NpcActionCandidate, "score">;
+};
+
+type TownActionExecuteInput = {
+  world: RuntimeWorld;
+  runtime: PersistentTownRuntime;
+  npc: NPCProfile;
+  candidate: NpcActionCandidate;
+  intervention?: TownRuntimeIntervention;
+  allEvents: WorldEvent[];
+};
+
+type TownTickContext = {
+  world: RuntimeWorld;
+  baseEvents: WorldEvent[];
+  runtime: PersistentTownRuntime;
+  allEvents: WorldEvent[];
+  createdEvents: WorldEvent[];
+  createdMemories: MemoryRecord[];
+  createdObservations: TownEventObservation[];
+  createdConsequences: AgentConsequenceSummary[];
+  decisionIds: string[];
+  phases: TownTickPhaseName[];
 };
 
 export type TownRuntimeIntervention = {
@@ -167,6 +253,7 @@ export type TownMemoryPropagation = {
   id: string;
   tick: number;
   eventId: string;
+  observationId?: string;
   fromNpcId?: string;
   toNpcId: string;
   kind: "witness" | "rumor" | "deduced";
@@ -245,11 +332,12 @@ export type PersistentTownRuntime = {
   interventions: TownRuntimeIntervention[];
   reports: PersistentTownRuntimeReport[];
   pressureLedger?: TownPressureLedgerEntry[];
+  eventObservations?: TownEventObservation[];
   memoryPropagations?: TownMemoryPropagation[];
   consequences?: AgentConsequenceSummary[];
   longChainLedger?: TownLongChainLedgerEntry[];
   triggeredCases?: TownTriggeredCaseRecord[];
-  simulationPhases?: string[];
+  simulationPhases?: TownTickPhaseName[];
   scenarioRuns?: ScenarioRun[];
   snapshots?: TownStateSnapshot[];
   createdAt: string;
@@ -329,6 +417,7 @@ export type TownStateSnapshot = {
   candidateSummaries: TownStateSnapshotCandidate[];
   eventIds: string[];
   memoryIds: string[];
+  observationIds: string[];
   interventionIds: string[];
   createdAt: string;
   checkpoint?: {
@@ -361,6 +450,7 @@ export type TownStateDiff = {
   timeDeltaMinutes: number;
   addedEventIds: string[];
   addedMemoryIds: string[];
+  addedObservationIds: string[];
   changedAgents: TownStateAgentDiff[];
   candidateStatusChanges: TownStateCandidateDiff[];
   branchOnlyInterventionIds: string[];
@@ -456,6 +546,20 @@ function minutesToTime(minutes: number) {
 function clamp(value: number, min = 0, max = 10) {
   return Math.max(min, Math.min(max, value));
 }
+
+const TOWN_TICK_PHASES: TownTickPhaseName[] = [
+  "observe",
+  "update-goals",
+  "score-actions",
+  "execute-actions",
+  "observe-events",
+  "propagate-memory",
+  "apply-consequences",
+  "advance-case-chain",
+  "trigger-case",
+  "extract-candidates",
+  "finalize"
+];
 
 function getRuntime(world: RuntimeWorld) {
   return world.persistentRuntime || null;
@@ -598,6 +702,247 @@ function scoreCandidate(input: {
   return score;
 }
 
+function createEventForAction(input: TownActionExecuteInput): WorldEvent {
+  const { world, runtime, npc, candidate, intervention } = input;
+  return {
+    id: `agent-${world.seed.replace(/[^a-z0-9-]/gi, "-").toLowerCase()}-${runtime.tick}-${npc.id}-${candidate.kind}`,
+    worldId: world.id,
+    day: runtime.currentDay,
+    time: runtime.currentTime,
+    type: eventTypeForAction(candidate.kind),
+    actorIds: [npc.id, ...(candidate.targetNpcId ? [candidate.targetNpcId] : [])],
+    locationId: candidate.targetLocationId,
+    summary: `${npc.name}: ${candidate.description}`,
+    publicSummary:
+      candidate.kind === "confront" || candidate.kind === "pressure" ? `${npc.name} was seen in a tense exchange.` :
+      candidate.kind === "spread-rumor" ? `${npc.name} repeated a partial account of recent events.` :
+      candidate.kind === "seek-alibi" ? `${npc.name} made sure someone saw them in public.` :
+      candidate.kind === "investigate" ? `${npc.name} checked a location for traces.` :
+      `${npc.name} followed a visible town action.`,
+    hidden: candidate.kind === "hide-trace" || candidate.kind === "cover-up" || candidate.kind === "obtain-resource",
+    relatedCharacterIds: [npc.id, ...(candidate.targetNpcId ? [candidate.targetNpcId] : [])],
+    tags: [...eventTagsForAction(candidate), intervention ? "counterfactual" : "source_backed"],
+    intentId: candidate.id,
+    goalId: `goal-${npc.id}-${runtime.tick}`,
+    causedByEventIds: deriveNpcAgentState(world, npc, input.allEvents, runtime).knownFactIds.slice(-2),
+    explanation: candidate.score.reasons.join(" / ") || "Local agent rules selected the highest scoring legal action."
+  };
+}
+
+const townActionDefinitions: TownActionDefinition[] = [
+  {
+    kind: "observe",
+    chainStage: "memory",
+    expectedObservationKind: "direct",
+    buildCandidate: ({ npc, state, runtime }) => ({
+      id: `candidate:${npc.id}:${runtime?.tick || 0}:observe`,
+      npcId: npc.id,
+      kind: "observe",
+      targetLocationId: state.locationId,
+      description: `${npc.name} reviews nearby events and updates memory.`,
+      legal: true
+    }),
+    canStart: () => ({ legal: true }),
+    score: scoreCandidate,
+    execute: createEventForAction
+  },
+  {
+    kind: "move",
+    chainStage: "opportunity",
+    expectedObservationKind: "same-location",
+    buildCandidate: ({ npc, runtime, targetLocationId }) => ({
+      id: `candidate:${npc.id}:${runtime?.tick || 0}:move`,
+      npcId: npc.id,
+      kind: "move",
+      targetLocationId,
+      description: `${npc.name} moves toward ${targetLocationId} to follow the current plan.`,
+      legal: true
+    }),
+    canStart: ({ world, state, candidate }) => ({
+      legal: locationReachable(world, state.locationId, candidate.targetLocationId),
+      reason: "target location is not reachable from current location"
+    }),
+    score: scoreCandidate,
+    execute: createEventForAction
+  },
+  {
+    kind: "talk",
+    chainStage: "memory",
+    expectedObservationKind: "direct",
+    buildCandidate: ({ npc, runtime, targetLocationId, targetNpcId, targetNpc }) => ({
+      id: `candidate:${npc.id}:${runtime?.tick || 0}:talk`,
+      npcId: npc.id,
+      kind: "talk",
+      targetLocationId,
+      targetNpcId,
+      description: `${npc.name} talks with ${targetNpc?.name || targetNpcId || "a witness"} about recent pressure.`,
+      legal: true
+    }),
+    canStart: ({ candidate }) => ({ legal: Boolean(candidate.targetNpcId), reason: "target NPC is missing" }),
+    score: scoreCandidate,
+    execute: createEventForAction
+  },
+  {
+    kind: "investigate",
+    chainStage: "opportunity",
+    expectedObservationKind: "deduced",
+    buildCandidate: ({ npc, state, runtime }) => ({
+      id: `candidate:${npc.id}:${runtime?.tick || 0}:investigate`,
+      npcId: npc.id,
+      kind: "investigate",
+      targetLocationId: state.locationId,
+      description: `${npc.name} checks nearby traces and compares them with remembered events.`,
+      legal: true
+    }),
+    canStart: () => ({ legal: true }),
+    score: scoreCandidate,
+    execute: createEventForAction
+  },
+  {
+    kind: "spread-rumor",
+    chainStage: "memory",
+    expectedObservationKind: "rumor",
+    buildCandidate: ({ npc, runtime, targetLocationId, targetNpcId, targetNpc }) => ({
+      id: `candidate:${npc.id}:${runtime?.tick || 0}:rumor`,
+      npcId: npc.id,
+      kind: "spread-rumor",
+      targetLocationId,
+      targetNpcId,
+      description: `${npc.name} passes a partial account to ${targetNpc?.name || targetNpcId || "another resident"}.`,
+      legal: true
+    }),
+    canStart: ({ state, candidate }) => ({
+      legal: Boolean(candidate.targetNpcId) && state.knownFactIds.length > 0,
+      reason: !candidate.targetNpcId ? "target NPC is missing" : "known facts are not available for rumor propagation"
+    }),
+    score: scoreCandidate,
+    execute: createEventForAction
+  },
+  {
+    kind: "seek-alibi",
+    chainStage: "alibi",
+    expectedObservationKind: "alibi",
+    buildCandidate: ({ world, npc, state, runtime, targetNpcId }) => ({
+      id: `candidate:${npc.id}:${runtime?.tick || 0}:alibi`,
+      npcId: npc.id,
+      kind: "seek-alibi",
+      targetLocationId: world.locations.find((location) => location.kind === "public")?.id || state.locationId,
+      targetNpcId,
+      description: `${npc.name} looks for a public alibi before pressure attaches to them.`,
+      legal: true
+    }),
+    canStart: ({ state }) => ({
+      legal: state.relationshipPressure >= 3 || state.secretRisk >= 3,
+      reason: "relationship pressure or secret risk is too low to seek an alibi"
+    }),
+    score: scoreCandidate,
+    execute: createEventForAction
+  },
+  {
+    kind: "pressure",
+    chainStage: "motive",
+    expectedObservationKind: "direct",
+    buildCandidate: ({ npc, runtime, targetLocationId, targetNpcId, targetNpc }) => ({
+      id: `candidate:${npc.id}:${runtime?.tick || 0}:pressure`,
+      npcId: npc.id,
+      kind: "pressure",
+      targetLocationId,
+      targetNpcId,
+      description: `${npc.name} applies pressure to ${targetNpc?.name || targetNpcId || "a rival"} over a risky secret.`,
+      legal: true
+    }),
+    canStart: ({ state, candidate }) => ({
+      legal: Boolean(candidate.targetNpcId) && state.relationshipPressure >= 3,
+      reason: !candidate.targetNpcId ? "target NPC is missing" : "relationship pressure is too low"
+    }),
+    score: scoreCandidate,
+    execute: createEventForAction
+  },
+  {
+    kind: "confront",
+    chainStage: "motive",
+    expectedObservationKind: "direct",
+    buildCandidate: ({ npc, runtime, targetLocationId, targetNpcId, targetNpc }) => ({
+      id: `candidate:${npc.id}:${runtime?.tick || 0}:confront`,
+      npcId: npc.id,
+      kind: "confront",
+      targetLocationId,
+      targetNpcId,
+      description: `${npc.name} confronts ${targetNpc?.name || targetNpcId || "a rival"} as secret risk rises.`,
+      legal: true
+    }),
+    canStart: ({ state, candidate }) => ({
+      legal: Boolean(candidate.targetNpcId) && state.relationshipPressure >= 4,
+      reason: !candidate.targetNpcId ? "target NPC is missing" : "relationship pressure is too low"
+    }),
+    score: scoreCandidate,
+    execute: createEventForAction
+  },
+  {
+    kind: "obtain-resource",
+    chainStage: "means",
+    expectedObservationKind: "direct",
+    buildCandidate: ({ world, npc, state, runtime }) => ({
+      id: `candidate:${npc.id}:${runtime?.tick || 0}:resource`,
+      npcId: npc.id,
+      kind: "obtain-resource",
+      targetLocationId: world.locations.find((location) => location.kind === "restricted" || location.kind === "work")?.id || state.locationId,
+      resourceId: npc.skills.includes("medicine") ? "resource:medicine" : npc.skills.includes("mechanical") ? "resource:tool" : "resource:local-access",
+      description: `${npc.name} tries to obtain a resource relevant to their skills.`,
+      legal: true
+    }),
+    canStart: () => ({ legal: true }),
+    score: scoreCandidate,
+    execute: createEventForAction
+  },
+  {
+    kind: "cover-up",
+    chainStage: "cover-up",
+    expectedObservationKind: "deduced",
+    buildCandidate: ({ npc, state, runtime }) => ({
+      id: `candidate:${npc.id}:${runtime?.tick || 0}:cover-up`,
+      npcId: npc.id,
+      kind: "cover-up",
+      targetLocationId: state.locationId,
+      description: `${npc.name} tries to muddy the source trail before witnesses connect it.`,
+      legal: true
+    }),
+    canStart: ({ state, events, npc }) => ({
+      legal: state.secretRisk >= 3 || events.some((event) => event.hidden && event.actorIds.includes(npc.id)),
+      reason: "secret risk is too low and there is no hidden source trail"
+    }),
+    score: scoreCandidate,
+    execute: createEventForAction
+  },
+  {
+    kind: "hide-trace",
+    chainStage: "cover-up",
+    expectedObservationKind: "deduced",
+    buildCandidate: ({ npc, state, runtime }) => ({
+      id: `candidate:${npc.id}:${runtime?.tick || 0}:hide-trace`,
+      npcId: npc.id,
+      kind: "hide-trace",
+      targetLocationId: state.locationId,
+      description: `${npc.name} hides a trace that could expose the source chain.`,
+      legal: true
+    }),
+    canStart: ({ state, events, npc }) => ({
+      legal: state.secretRisk >= 5 || events.some((event) => event.hidden && event.actorIds.includes(npc.id)),
+      reason: "secret risk is too low and there is no trace to hide"
+    }),
+    score: scoreCandidate,
+    execute: createEventForAction
+  }
+];
+
+export function getTownActionDefinitions() {
+  return [...townActionDefinitions];
+}
+
+function getTownActionDefinition(kind: NpcActionKind) {
+  return townActionDefinitions.find((definition) => definition.kind === kind) || townActionDefinitions[0];
+}
+
 export function scoreNpcActionCandidates(world: WorldState, npc: NPCProfile, events: WorldEvent[] = [], runtime?: PersistentTownRuntime | null): NpcActionCandidate[] {
   const state = deriveNpcAgentState(world, npc, events, runtime);
   const random = makeRandom(`${world.seed}:agent:${npc.id}:${runtime?.tick || 0}`);
@@ -606,96 +951,11 @@ export function scoreNpcActionCandidates(world: WorldState, npc: NPCProfile, eve
   const targetNpcId = pressureTarget || Object.keys(npc.relationships)[0];
   const targetNpc = world.npcs.find((item) => item.id === targetNpcId);
   const targetLocationId = targetNpc ? locationForNpc(targetNpc, runtime?.currentTime || world.currentTime || "08:00") : locations[Math.floor(random() * locations.length)]?.id || state.locationId;
-  const base: Array<Omit<NpcActionCandidate, "score">> = [
-    {
-      id: `candidate:${npc.id}:${runtime?.tick || 0}:observe`,
-      npcId: npc.id,
-      kind: "observe",
-      targetLocationId: state.locationId,
-      description: `${npc.name} reviews nearby events and updates memory.`,
-      legal: true
-    },
-    {
-      id: `candidate:${npc.id}:${runtime?.tick || 0}:move`,
-      npcId: npc.id,
-      kind: "move",
-      targetLocationId,
-      description: `${npc.name} moves toward ${targetLocationId} to follow the current plan.`,
-      legal: locationReachable(world, state.locationId, targetLocationId)
-    },
-    {
-      id: `candidate:${npc.id}:${runtime?.tick || 0}:talk`,
-      npcId: npc.id,
-      kind: "talk",
-      targetLocationId,
-      targetNpcId,
-      description: `${npc.name} talks with ${targetNpc?.name || targetNpcId || "a witness"} about recent pressure.`,
-      legal: Boolean(targetNpcId)
-    },
-    {
-      id: `candidate:${npc.id}:${runtime?.tick || 0}:investigate`,
-      npcId: npc.id,
-      kind: "investigate",
-      targetLocationId: state.locationId,
-      description: `${npc.name} checks nearby traces and compares them with remembered events.`,
-      legal: true
-    },
-    {
-      id: `candidate:${npc.id}:${runtime?.tick || 0}:rumor`,
-      npcId: npc.id,
-      kind: "spread-rumor",
-      targetLocationId,
-      targetNpcId,
-      description: `${npc.name} passes a partial account to ${targetNpc?.name || targetNpcId || "another resident"}.`,
-      legal: Boolean(targetNpcId) && state.knownFactIds.length > 0
-    },
-    {
-      id: `candidate:${npc.id}:${runtime?.tick || 0}:alibi`,
-      npcId: npc.id,
-      kind: "seek-alibi",
-      targetLocationId: world.locations.find((location) => location.kind === "public")?.id || state.locationId,
-      targetNpcId,
-      description: `${npc.name} looks for a public alibi before pressure attaches to them.`,
-      legal: state.relationshipPressure >= 3 || state.secretRisk >= 3
-    },
-    {
-      id: `candidate:${npc.id}:${runtime?.tick || 0}:pressure`,
-      npcId: npc.id,
-      kind: "pressure",
-      targetLocationId,
-      targetNpcId,
-      description: `${npc.name} applies pressure to ${targetNpc?.name || targetNpcId || "a rival"} over a risky secret.`,
-      legal: Boolean(targetNpcId) && state.relationshipPressure >= 3
-    },
-    {
-      id: `candidate:${npc.id}:${runtime?.tick || 0}:confront`,
-      npcId: npc.id,
-      kind: "confront",
-      targetLocationId,
-      targetNpcId,
-      description: `${npc.name} confronts ${targetNpc?.name || targetNpcId || "a rival"} as secret risk rises.`,
-      legal: Boolean(targetNpcId) && state.relationshipPressure >= 4
-    },
-    {
-      id: `candidate:${npc.id}:${runtime?.tick || 0}:resource`,
-      npcId: npc.id,
-      kind: "obtain-resource",
-      targetLocationId: world.locations.find((location) => location.kind === "restricted" || location.kind === "work")?.id || state.locationId,
-      resourceId: npc.skills.includes("medicine") ? "resource:medicine" : npc.skills.includes("mechanical") ? "resource:tool" : "resource:local-access",
-      description: `${npc.name} tries to obtain a resource relevant to their skills.`,
-      legal: true
-    },
-    {
-      id: `candidate:${npc.id}:${runtime?.tick || 0}:cover-up`,
-      npcId: npc.id,
-      kind: "cover-up",
-      targetLocationId: state.locationId,
-      description: `${npc.name} tries to muddy the source trail before witnesses connect it.`,
-      legal: state.secretRisk >= 3 || events.some((event) => event.hidden && event.actorIds.includes(npc.id))
-    }
-  ];
-  return base.map((candidate) => {
-    const score = scoreCandidate({ world, npc, state, candidate, events });
+  const buildInput: TownActionBuildInput = { world, npc, state, runtime, events, locations, targetNpcId, targetNpc, targetLocationId };
+  return townActionDefinitions.map((definition) => {
+    const candidate = definition.buildCandidate(buildInput);
+    const legality = definition.canStart({ ...buildInput, candidate });
+    const score = definition.score({ world, npc, state, candidate, events });
     const directorBias = runtime?.interventions.find((intervention) =>
       intervention.actorId === npc.id &&
       intervention.kind === "action-bias" &&
@@ -707,8 +967,44 @@ export function scoreNpcActionCandidates(world: WorldState, npc: NPCProfile, eve
       score.total += score.directorBias;
       score.reasons.push(`director action bias favors ${candidate.kind}`);
     }
-    return { ...candidate, legal: candidate.legal && score.locationReachability > 0 && score.resourceAvailability > 0, blockedReason: score.reasons.find((reason) => reason.includes("not")), score };
+    const legal = candidate.legal && legality.legal && score.locationReachability > 0 && score.resourceAvailability > 0;
+    return { ...candidate, legal, blockedReason: !legality.legal ? legality.reason : score.reasons.find((reason) => reason.includes("not")), score };
   });
+}
+
+function memoryKindForObservation(kind: TownObservationKind, event: WorldEvent): MemoryKind {
+  if (kind === "rumor") return "rumor";
+  if (kind === "deduced") return "deduced";
+  if (event.hidden && kind === "direct") return "secret";
+  return "direct";
+}
+
+function addRuntimeObservation(
+  runtime: PersistentTownRuntime,
+  event: WorldEvent,
+  observerNpcId: string,
+  kind: TownObservationKind,
+  options: Partial<TownEventObservation> & { suffix?: string } = {}
+): TownEventObservation {
+  runtime.eventObservations ||= [];
+  const observation: TownEventObservation = {
+    id: `obs-${event.id}-${observerNpcId}-${kind}-${options.suffix || "0"}`,
+    tick: runtime.tick,
+    eventId: event.id,
+    observerNpcId,
+    subjectNpcId: options.subjectNpcId,
+    sourceNpcId: options.sourceNpcId,
+    kind,
+    confidence: options.confidence ?? (kind === "rumor" ? 0.56 : kind === "deduced" ? 0.68 : kind === "same-location" ? 0.74 : 0.86),
+    visibleToPlayer: options.visibleToPlayer ?? (!event.hidden || kind === "rumor" || kind === "same-location" || kind === "alibi" || kind === "exclusion"),
+    memoryId: options.memoryId,
+    chainStage: options.chainStage || chainStageForEvent(event)
+  };
+  const existing = runtime.eventObservations.find((item) => item.id === observation.id);
+  if (existing) return existing;
+  runtime.eventObservations.push(observation);
+  runtime.eventObservations = runtime.eventObservations.slice(-500);
+  return observation;
 }
 
 function addRuntimeMemory(
@@ -728,6 +1024,7 @@ function addRuntimeMemory(
     day: event.day,
     summary,
     sourceNpcId: options.sourceNpcId,
+    sourceObservationId: options.sourceObservationId,
     confidence: options.confidence ?? (kind === "rumor" ? 0.58 : kind === "deduced" ? 0.66 : event.hidden ? 0.72 : 0.88),
     visibleToPlayer: options.visibleToPlayer ?? (!event.hidden && kind !== "secret"),
     challengeableEvidenceIds: options.challengeableEvidenceIds || (event.evidenceId ? [event.evidenceId] : [])
@@ -736,6 +1033,28 @@ function addRuntimeMemory(
   if (!world.memories.some((item) => item.id === memory.id)) world.memories.push(memory);
   const npc = world.npcs.find((item) => item.id === npcId);
   if (npc && !npc.memoryEventIds.includes(event.id)) npc.memoryEventIds.push(event.id);
+  return memory;
+}
+
+function addMemoryForObservation(
+  world: RuntimeWorld,
+  runtime: PersistentTownRuntime,
+  event: WorldEvent,
+  observation: TownEventObservation,
+  summary: string,
+  options: Partial<MemoryRecord> & { suffix?: string } = {}
+) {
+  const memory = addRuntimeMemory(world, event, observation.observerNpcId, summary, {
+    ...options,
+    kind: options.kind || memoryKindForObservation(observation.kind, event),
+    suffix: options.suffix || `${observation.kind}-${runtime.tick}`,
+    sourceNpcId: observation.sourceNpcId,
+    sourceObservationId: observation.id,
+    confidence: options.confidence ?? observation.confidence,
+    visibleToPlayer: options.visibleToPlayer ?? observation.visibleToPlayer
+  });
+  observation.memoryId = memory.id;
+  runtime.eventObservations = (runtime.eventObservations || []).map((item) => item.id === observation.id ? observation : item);
   return memory;
 }
 
@@ -770,23 +1089,55 @@ function chainStageForAction(kind: NpcActionKind): AgentConsequenceSummary["chai
   return undefined;
 }
 
+function observeEventParticipants(world: RuntimeWorld, runtime: PersistentTownRuntime, event: WorldEvent, actorId: string, targetNpcId?: string) {
+  const created: MemoryRecord[] = [];
+  const actorObservation = addRuntimeObservation(runtime, event, actorId, event.type === "alibi" ? "alibi" : "direct", {
+    subjectNpcId: targetNpcId || actorId,
+    confidence: event.hidden ? 0.76 : 0.9,
+    visibleToPlayer: !event.hidden,
+    suffix: "actor"
+  });
+  created.push(addMemoryForObservation(world, runtime, event, actorObservation, event.summary, {
+    suffix: "agent",
+    kind: event.hidden ? "secret" : "direct"
+  }));
+  if (targetNpcId) {
+    const targetObservation = addRuntimeObservation(runtime, event, targetNpcId, event.type === "alibi" ? "alibi" : "direct", {
+      subjectNpcId: actorId,
+      sourceNpcId: actorId,
+      confidence: event.hidden ? 0.66 : 0.82,
+      visibleToPlayer: !event.hidden,
+      suffix: "target"
+    });
+    created.push(addMemoryForObservation(world, runtime, event, targetObservation, event.publicSummary, {
+      suffix: "target",
+      kind: event.hidden ? "secret" : "direct"
+    }));
+  }
+  return created;
+}
+
 function propagateEventMemories(world: RuntimeWorld, runtime: PersistentTownRuntime, event: WorldEvent, actorId: string, targetNpcId?: string) {
   runtime.memoryPropagations ||= [];
   const created: MemoryRecord[] = [];
   const participantIds = new Set([actorId, ...(targetNpcId ? [targetNpcId] : [])]);
   if (targetNpcId && (event.tags.includes("rumor_spread") || event.type === "conversation")) {
-    const rumor = addRuntimeMemory(world, event, targetNpcId, `Rumor from ${actorId}: ${event.publicSummary}`, {
-      kind: "rumor",
-      suffix: `rumor-${runtime.tick}`,
+    const observation = addRuntimeObservation(runtime, event, targetNpcId, "rumor", {
+      subjectNpcId: event.relatedCharacterIds.find((id) => id !== targetNpcId) || actorId,
       sourceNpcId: actorId,
       confidence: 0.56,
-      visibleToPlayer: true
+      visibleToPlayer: true,
+      suffix: `rumor-${runtime.tick}`
+    });
+    const rumor = addMemoryForObservation(world, runtime, event, observation, `Rumor from ${actorId}: ${event.publicSummary}`, {
+      suffix: `rumor-${runtime.tick}`
     });
     created.push(rumor);
     runtime.memoryPropagations.push({
       id: `prop-${event.id}-${targetNpcId}-rumor`,
       tick: runtime.tick,
       eventId: event.id,
+      observationId: observation.id,
       fromNpcId: actorId,
       toNpcId: targetNpcId,
       kind: "rumor",
@@ -797,17 +1148,21 @@ function propagateEventMemories(world: RuntimeWorld, runtime: PersistentTownRunt
   if (!event.hidden) {
     for (const npc of world.npcs.filter((item) => item.alive && !participantIds.has(item.id))) {
       if (runtimeLocationForNpc(world, npc, runtime) !== event.locationId) continue;
-      const witness = addRuntimeMemory(world, event, npc.id, `Witnessed at ${event.locationId}: ${event.publicSummary}`, {
-        kind: "direct",
-        suffix: `witness-${runtime.tick}`,
+      const observation = addRuntimeObservation(runtime, event, npc.id, event.type === "alibi" ? "exclusion" : "same-location", {
+        subjectNpcId: event.actorIds[0],
         confidence: 0.74,
-        visibleToPlayer: true
+        visibleToPlayer: true,
+        suffix: `witness-${runtime.tick}`
+      });
+      const witness = addMemoryForObservation(world, runtime, event, observation, `Witnessed at ${event.locationId}: ${event.publicSummary}`, {
+        suffix: `witness-${runtime.tick}`
       });
       created.push(witness);
       runtime.memoryPropagations.push({
         id: `prop-${event.id}-${npc.id}-witness`,
         tick: runtime.tick,
         eventId: event.id,
+        observationId: observation.id,
         toNpcId: npc.id,
         kind: "witness",
         source: "same-location",
@@ -816,17 +1171,21 @@ function propagateEventMemories(world: RuntimeWorld, runtime: PersistentTownRunt
     }
   }
   if (event.tags.includes("witness_probe")) {
-    const deduced = addRuntimeMemory(world, event, actorId, `Deduced a local link from ${event.locationId}: ${event.summary}`, {
-      kind: "deduced",
-      suffix: `deduced-${runtime.tick}`,
+    const observation = addRuntimeObservation(runtime, event, actorId, "deduced", {
+      subjectNpcId: targetNpcId,
       confidence: 0.68,
-      visibleToPlayer: false
+      visibleToPlayer: false,
+      suffix: `deduced-${runtime.tick}`
+    });
+    const deduced = addMemoryForObservation(world, runtime, event, observation, `Deduced a local link from ${event.locationId}: ${event.summary}`, {
+      suffix: `deduced-${runtime.tick}`
     });
     created.push(deduced);
     runtime.memoryPropagations.push({
       id: `prop-${event.id}-${actorId}-deduced`,
       tick: runtime.tick,
       eventId: event.id,
+      observationId: observation.id,
       toNpcId: actorId,
       kind: "deduced",
       source: "action",
@@ -907,11 +1266,12 @@ export function createPersistentTownRuntime(world: WorldState, events: WorldEven
     interventions: [],
     reports: [],
     pressureLedger: [],
+    eventObservations: [],
     memoryPropagations: [],
     consequences: [],
     longChainLedger: [],
     triggeredCases: [],
-    simulationPhases: ["observe", "propagate", "plan", "score", "execute", "consequence", "candidate-extraction"],
+    simulationPhases: [...TOWN_TICK_PHASES],
     scenarioRuns: [],
     snapshots: [],
     createdAt: now,
@@ -940,7 +1300,29 @@ function emptyStageEventIds(): Record<CaseChainStage, string[]> {
   return { motive: [], means: [], opportunity: [], "cover-up": [], memory: [], exclusion: [] };
 }
 
-function memoryConfidenceSummary(world: WorldState, eventIds: string[], npcIds: string[] = []): CaseCandidateValidation["memoryConfidence"] {
+function observationSupportSummary(runtime: PersistentTownRuntime | null | undefined, eventIds: string[], npcIds: string[] = []): CaseCandidateValidation["observationSupport"] {
+  const relevant = (runtime?.eventObservations || []).filter((observation) =>
+    eventIds.includes(observation.eventId) &&
+    (!npcIds.length || npcIds.includes(observation.observerNpcId) || (observation.subjectNpcId && npcIds.includes(observation.subjectNpcId)))
+  );
+  const strongest = (kinds: TownObservationKind[]) => relevant
+    .filter((observation) => kinds.includes(observation.kind))
+    .reduce((max, observation) => Math.max(max, observation.confidence || 0), 0);
+  const direct = strongest(["direct", "alibi", "exclusion"]);
+  const deduced = strongest(["deduced"]);
+  const sameLocation = strongest(["same-location"]);
+  const rumor = strongest(["rumor"]);
+  return {
+    direct,
+    deduced,
+    rumor,
+    sameLocation,
+    supportScore: Math.round(Math.min(1, direct * 0.9 + deduced * 0.7 + sameLocation * 0.6 + rumor * 0.2) * 100),
+    observationIds: relevant.map((observation) => observation.id)
+  };
+}
+
+function memoryConfidenceSummary(world: WorldState, eventIds: string[], npcIds: string[] = [], runtime?: PersistentTownRuntime | null): CaseCandidateValidation["memoryConfidence"] {
   const relevant = (world.memories || []).filter((memory) =>
     eventIds.includes(memory.eventId) &&
     (!npcIds.length || npcIds.includes(memory.npcId))
@@ -951,15 +1333,16 @@ function memoryConfidenceSummary(world: WorldState, eventIds: string[], npcIds: 
   const direct = strongest("direct") || strongest("secret");
   const deduced = strongest("deduced");
   const rumor = strongest("rumor");
+  const observation = observationSupportSummary(runtime, eventIds, npcIds);
   return {
-    direct,
-    deduced,
-    rumor,
-    supportScore: Math.round(Math.min(1, direct * 0.9 + deduced * 0.65 + rumor * 0.35) * 100)
+    direct: Math.max(direct, observation?.direct || 0, observation?.sameLocation || 0),
+    deduced: Math.max(deduced, observation?.deduced || 0),
+    rumor: Math.max(rumor, observation?.rumor || 0),
+    supportScore: Math.round(Math.min(1, Math.max(direct, observation?.direct || 0, observation?.sameLocation || 0) * 0.9 + Math.max(deduced, observation?.deduced || 0) * 0.65 + Math.max(rumor, observation?.rumor || 0) * 0.25) * 100)
   };
 }
 
-function buildStageEventIdsForPressure(world: WorldState, events: WorldEvent[], pressure: SocialPressure) {
+function buildStageEventIdsForPressure(world: WorldState, events: WorldEvent[], pressure: SocialPressure, runtime?: PersistentTownRuntime | null) {
   const selected = selectRiskChainEvents(events, pressure);
   const stageEventIds = emptyStageEventIds();
   for (const event of selected) {
@@ -974,6 +1357,16 @@ function buildStageEventIdsForPressure(world: WorldState, events: WorldEvent[], 
     if (!selected.some((event) => event.id === memory.eventId)) continue;
     if (!stageEventIds.memory.includes(memory.eventId)) stageEventIds.memory.push(memory.eventId);
   }
+  for (const observation of runtime?.eventObservations || []) {
+    if (!pairIds.includes(observation.observerNpcId) && !(observation.subjectNpcId && pairIds.includes(observation.subjectNpcId))) continue;
+    if (!events.some((event) => event.id === observation.eventId)) continue;
+    if (observation.kind === "direct" || observation.kind === "deduced" || observation.kind === "same-location") {
+      if (!stageEventIds.memory.includes(observation.eventId)) stageEventIds.memory.push(observation.eventId);
+    }
+    if (observation.kind === "alibi" || observation.kind === "exclusion") {
+      if (!stageEventIds.exclusion.includes(observation.eventId)) stageEventIds.exclusion.push(observation.eventId);
+    }
+  }
   for (const event of events) {
     if (event.type !== "alibi" && !event.tags.includes("alibi_seed")) continue;
     if (event.actorIds.includes(pressure.npcId)) continue;
@@ -983,8 +1376,8 @@ function buildStageEventIdsForPressure(world: WorldState, events: WorldEvent[], 
 }
 
 function summarizeLongChain(world: WorldState, events: WorldEvent[], runtime: PersistentTownRuntime, pressure: SocialPressure): TownLongChainLedgerEntry {
-  const stageEventIds = buildStageEventIdsForPressure(world, events, pressure);
-  const memoryConfidence = memoryConfidenceSummary(world, Object.values(stageEventIds).flat(), [pressure.npcId, pressure.targetId]);
+  const stageEventIds = buildStageEventIdsForPressure(world, events, pressure, runtime);
+  const memoryConfidence = memoryConfidenceSummary(world, Object.values(stageEventIds).flat(), [pressure.npcId, pressure.targetId], runtime);
   const chainCompleteness = emptyChainCompleteness();
   for (const stage of Object.keys(chainCompleteness) as CaseChainStage[]) {
     chainCompleteness[stage] = stage === "memory" ? (memoryConfidence?.supportScore || 0) >= 55 : stageEventIds[stage].length > 0;
@@ -1049,8 +1442,20 @@ function triggerLongChainCaseIfReady(world: RuntimeWorld, runtime: PersistentTow
   };
   createdEvents.push(event);
   world.npcs = world.npcs.map((npc) => npc.id === victim.id ? { ...npc, alive: false } : npc);
-  const culpritMemory = addRuntimeMemory(world, event, culprit.id, event.summary, { kind: "secret", suffix: `trigger-${runtime.tick}`, confidence: 0.84, visibleToPlayer: false });
-  const witnessMemory = addRuntimeMemory(world, event, victim.id, event.publicSummary, { kind: "direct", suffix: `trigger-${runtime.tick}`, confidence: 0.9, visibleToPlayer: true });
+  const culpritObservation = addRuntimeObservation(runtime, event, culprit.id, "direct", {
+    subjectNpcId: victim.id,
+    confidence: 0.84,
+    visibleToPlayer: false,
+    suffix: `trigger-${runtime.tick}`
+  });
+  const victimObservation = addRuntimeObservation(runtime, event, victim.id, "direct", {
+    subjectNpcId: culprit.id,
+    confidence: 0.9,
+    visibleToPlayer: true,
+    suffix: `trigger-${runtime.tick}`
+  });
+  const culpritMemory = addMemoryForObservation(world, runtime, event, culpritObservation, event.summary, { kind: "secret", suffix: `trigger-${runtime.tick}` });
+  const witnessMemory = addMemoryForObservation(world, runtime, event, victimObservation, event.publicSummary, { kind: "direct", suffix: `trigger-${runtime.tick}` });
   const triggerRecord: TownTriggeredCaseRecord = {
     id: `trigger-${event.id}`,
     tick: runtime.tick,
@@ -1132,6 +1537,7 @@ export function buildCaseCandidatesFromRuntime(world: WorldState, events: WorldE
     const memoryIds = (world.memories || [])
       .filter((memory) => riskChainEventIds.includes(memory.eventId) && [pressure.npcId, pressure.targetId].includes(memory.npcId))
       .map((memory) => memory.id);
+    const observationSupport = observationSupportSummary(activeRuntime, riskChainEventIds, [pressure.npcId, pressure.targetId]);
     const goalIds = activeRuntime.agentStates
       .filter((state) => [pressure.npcId, pressure.targetId].includes(state.npcId))
       .map((state) => `goal:${state.npcId}:${state.currentGoal.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`);
@@ -1161,6 +1567,7 @@ export function buildCaseCandidatesFromRuntime(world: WorldState, events: WorldE
         chainStages: chainStageTags,
         chainCompleteness,
         memoryConfidence: ledgerEntry?.memoryConfidence,
+        observationSupport,
         failureReasons: [],
         errors: [],
         warnings: []
@@ -1180,18 +1587,33 @@ export function buildCaseCandidatesFromRuntime(world: WorldState, events: WorldE
 export function validateCaseCandidate(world: WorldState, events: WorldEvent[] = [], candidate: CaseCandidate): CaseCandidateValidation {
   const errors: string[] = [];
   const warnings: string[] = [];
+  const runtime = getRuntime(world as RuntimeWorld);
   const culprit = world.npcs.find((npc) => npc.id === candidate.culpritId);
   const victim = world.npcs.find((npc) => npc.id === candidate.victimId);
   const sourceEvents = events.filter((event) => candidate.riskChainEventIds.includes(event.id));
   const chainStages = Array.from(new Set(sourceEvents.map(chainStageForEvent)));
   const completeness = candidate.chainCompleteness || emptyChainCompleteness();
-  const confidence = candidate.validation.memoryConfidence || memoryConfidenceSummary(world, candidate.riskChainEventIds, [candidate.culpritId, candidate.victimId]) || { direct: 0, deduced: 0, rumor: 0, supportScore: 0 };
+  const observationSupport = candidate.validation.observationSupport || observationSupportSummary(runtime, candidate.riskChainEventIds, [candidate.culpritId, candidate.victimId]) || {
+    direct: 0,
+    deduced: 0,
+    rumor: 0,
+    sameLocation: 0,
+    supportScore: 0,
+    observationIds: []
+  };
+  const confidence = candidate.validation.memoryConfidence || memoryConfidenceSummary(world, candidate.riskChainEventIds, [candidate.culpritId, candidate.victimId], runtime) || { direct: 0, deduced: 0, rumor: 0, supportScore: 0 };
   const hasMotive = completeness.motive || candidate.pressureScore >= 7 || sourceEvents.some((event) => event.tags.includes("secret_leak") || event.tags.includes("tension"));
   const hasMeans = completeness.means || events.some((event) => event.actorIds.includes(candidate.culpritId) && (event.tags.includes("means_access") || event.type === "obtain_item"));
   const hasOpportunity = completeness.opportunity || sourceEvents.some((event) => event.tags.includes("opportunity_window") || event.locationId);
   const hasCoverUp = completeness["cover-up"] || sourceEvents.some((event) => event.tags.includes("cover_up") || event.tags.includes("staging") || event.type === "destroy_evidence");
-  const memoryScopedTestimony = (completeness.memory || candidate.memoryIds.length > 0) && confidence.supportScore >= 55 && candidate.memoryIds.every((id) => (world.memories || []).some((memory) => memory.id === id));
-  const hasExclusionSeed = completeness.exclusion || sourceEvents.some((event) => event.tags.includes("alibi_seed") || event.type === "alibi") || events.some((event) => event.type === "alibi" && !event.actorIds.includes(candidate.culpritId));
+  const observationBackedMemory = (observationSupport.direct + observationSupport.deduced + observationSupport.sameLocation) > 0 && observationSupport.supportScore >= 55;
+  const memoryScopedTestimony = (completeness.memory || candidate.memoryIds.length > 0 || observationBackedMemory) && confidence.supportScore >= 55 && candidate.memoryIds.every((id) => (world.memories || []).some((memory) => memory.id === id));
+  const hasObservationExclusion = (runtime?.eventObservations || []).some((observation) =>
+    candidate.riskChainEventIds.includes(observation.eventId) &&
+    (observation.kind === "alibi" || observation.kind === "exclusion") &&
+    observation.observerNpcId !== candidate.culpritId
+  );
+  const hasExclusionSeed = completeness.exclusion || hasObservationExclusion || sourceEvents.some((event) => event.tags.includes("alibi_seed") || event.type === "alibi") || events.some((event) => event.type === "alibi" && !event.actorIds.includes(candidate.culpritId));
   const hasTriggeredCase = Boolean(candidate.triggeredEventId);
   if (!culprit) errors.push("culprit candidate is missing from world");
   if (!victim) errors.push("victim candidate is missing from world");
@@ -1233,6 +1655,7 @@ export function validateCaseCandidate(world: WorldState, events: WorldEvent[] = 
       exclusion: hasExclusionSeed
     },
     memoryConfidence: confidence,
+    observationSupport,
     failureReasons,
     errors,
     warnings
@@ -1278,6 +1701,18 @@ export function buildPersistentCaseExtractionView(world: WorldState, events: Wor
       .filter((memory) => candidate.memoryIds.includes(memory.id) || Object.values(chainStageSourceEventIds).flat().includes(memory.eventId))
       .map((memory) => memory.id)
   );
+  const observationSourceIds = uniqueIds([
+    ...(runtime.eventObservations || [])
+      .filter((observation) =>
+        Object.values(chainStageSourceEventIds).flat().includes(observation.eventId) ||
+        observation.eventId === trigger.eventId ||
+        memorySourceIds.some((memoryId) => (world.memories || []).some((memory) => memory.id === memoryId && memory.sourceObservationId === observation.id))
+      )
+      .map((observation) => observation.id),
+    ...(world.memories || [])
+      .filter((memory) => memorySourceIds.includes(memory.id))
+      .map((memory) => memory.sourceObservationId)
+  ]);
 
   const cloneStageEvent = (stage: CaseChainStage, evidenceId: string, fallbackType?: WorldEvent["type"]): WorldEvent => {
     const sourceId = chainStageSourceEventIds[stage][0];
@@ -1349,7 +1784,8 @@ export function buildPersistentCaseExtractionView(world: WorldState, events: Wor
       evidenceSourceEventIds,
       extractionEventSourceIds,
       chainStageSourceEventIds,
-      memorySourceIds
+      memorySourceIds,
+      observationSourceIds
     }
   };
 }
@@ -1378,7 +1814,8 @@ export function extractPlayableCaseFromCandidate(world: WorldState, events: Worl
       evidenceSourceEventIds: extractionView.sourceMap.evidenceSourceEventIds,
       extractionEventSourceIds: extractionView.sourceMap.extractionEventSourceIds,
       chainStageSourceEventIds: extractionView.sourceMap.chainStageSourceEventIds,
-      memorySourceIds: extractionView.sourceMap.memorySourceIds
+      memorySourceIds: extractionView.sourceMap.memorySourceIds,
+      observationSourceIds: extractionView.sourceMap.observationSourceIds
     };
   }
   const validation = validateWorldCase(caseWorld, allEvents, activeCase.deductionCase);
@@ -1489,6 +1926,7 @@ export function createTownStateSnapshot(
     })),
     eventIds: events.map((event) => event.id),
     memoryIds: (world.memories || []).map((memory) => memory.id),
+    observationIds: (runtime.eventObservations || []).map((observation) => observation.id),
     interventionIds: runtime.interventions.map((intervention) => intervention.id),
     createdAt,
     checkpoint: {
@@ -1542,6 +1980,7 @@ export function diffTownStateSnapshots(from: TownStateSnapshot, to: TownStateSna
     timeDeltaMinutes: (to.day - from.day) * 24 * 60 + timeToMinutes(to.time) - timeToMinutes(from.time),
     addedEventIds: uniqueAdded(to.eventIds, from.eventIds),
     addedMemoryIds: uniqueAdded(to.memoryIds, from.memoryIds),
+    addedObservationIds: uniqueAdded(to.observationIds || [], from.observationIds || []),
     changedAgents,
     candidateStatusChanges,
     branchOnlyInterventionIds: uniqueAdded(to.interventionIds, from.interventionIds)
@@ -1776,6 +2215,173 @@ export function applyTownRuntimeIntervention(world: WorldState, intervention: Om
   return { world: nextWorld, runtime, intervention: created };
 }
 
+function createTownTickContext(world: RuntimeWorld, baseEvents: WorldEvent[], runtime: PersistentTownRuntime, createdEvents: WorldEvent[]): TownTickContext {
+  runtime.simulationPhases = [...TOWN_TICK_PHASES];
+  runtime.pressureLedger ||= [];
+  runtime.eventObservations ||= [];
+  runtime.memoryPropagations ||= [];
+  runtime.consequences ||= [];
+  return {
+    world,
+    baseEvents,
+    runtime,
+    allEvents: [...baseEvents, ...createdEvents],
+    createdEvents,
+    createdMemories: [],
+    createdObservations: [],
+    createdConsequences: [],
+    decisionIds: [],
+    phases: [...TOWN_TICK_PHASES]
+  };
+}
+
+function advanceTownClock(ctx: TownTickContext) {
+  ctx.runtime.tick += 1;
+  const currentMinutes = timeToMinutes(ctx.runtime.currentTime) + ctx.runtime.tickIntervalMinutes;
+  if (currentMinutes >= 24 * 60) ctx.runtime.currentDay += 1;
+  ctx.runtime.currentTime = minutesToTime(currentMinutes);
+  ctx.world.day = ctx.runtime.currentDay;
+  ctx.world.currentTime = ctx.runtime.currentTime;
+}
+
+function phaseObserveTown(ctx: TownTickContext) {
+  for (const pressure of computeSocialPressures(ctx.world, ctx.allEvents).filter((item) => item.score >= 3).slice(0, 6)) {
+    ctx.runtime.pressureLedger!.push({
+      tick: ctx.runtime.tick,
+      npcId: pressure.npcId,
+      targetNpcId: pressure.targetId,
+      score: pressure.score,
+      sourceEventIds: [...pressure.sourceEventIds],
+      reason: `secret ${pressure.secretRisk} / tension ${pressure.relationshipTension} / means ${pressure.meansAccess} / opportunity ${pressure.opportunityWindow}`
+    });
+  }
+  ctx.runtime.pressureLedger = ctx.runtime.pressureLedger!.slice(-120);
+}
+
+function phaseUpdateGoals(ctx: TownTickContext) {
+  ctx.runtime.agentStates = ctx.world.npcs
+    .map((npc) => deriveNpcAgentState(ctx.world, npc, ctx.allEvents, ctx.runtime));
+}
+
+function selectTickActors(ctx: TownTickContext) {
+  const living = ctx.world.npcs.filter((npc) => npc.alive);
+  const random = makeRandom(`${ctx.world.seed}:persistent:${ctx.runtime.tick}`);
+  const actorCount = Math.min(3, living.length);
+  return [...living].sort((a, b) => {
+    const aState = deriveNpcAgentState(ctx.world, a, ctx.allEvents, ctx.runtime);
+    const bState = deriveNpcAgentState(ctx.world, b, ctx.allEvents, ctx.runtime);
+    return bState.goalPriority + random() - (aState.goalPriority + random());
+  }).slice(0, actorCount);
+}
+
+function selectActionCandidate(runtime: PersistentTownRuntime, npc: NPCProfile, candidates: NpcActionCandidate[], actorIndex: number) {
+  const legalCandidates = candidates.filter((candidate) => candidate.legal).sort((a, b) => b.score.total - a.score.total);
+  const topCandidate = legalCandidates[0] || candidates[0];
+  const phaseKinds: NpcActionKind[] = ["pressure", "obtain-resource", "investigate", "cover-up", "spread-rumor", "seek-alibi"];
+  const phasePreferred = legalCandidates.find((candidate) => candidate.kind === phaseKinds[(runtime.tick + actorIndex) % phaseKinds.length]);
+  const biasedCandidate = legalCandidates.find((candidate) => (candidate.score.directorBias || 0) > 0);
+  return biasedCandidate || (phasePreferred && phasePreferred.score.total >= topCandidate.score.total - 12 ? phasePreferred : topCandidate);
+}
+
+function phaseExecuteAgentAction(ctx: TownTickContext, npc: NPCProfile, selectedActors: NPCProfile[], actorIndex: number) {
+  const candidates = scoreNpcActionCandidates(ctx.world, npc, ctx.allEvents, ctx.runtime);
+  const selected = selectActionCandidate(ctx.runtime, npc, candidates, actorIndex);
+  const traceId = `decision-${ctx.world.id}-${ctx.runtime.tick}-${npc.id}`;
+  const intervention = ctx.runtime.interventions.find((item) =>
+    item.actorId === npc.id &&
+    item.tick === ctx.runtime.tick - 1 &&
+    (item.kind !== "action-bias" || item.value === selected.kind)
+  );
+  const definition = getTownActionDefinition(selected.kind);
+  const beforeObservationIds = new Set((ctx.runtime.eventObservations || []).map((observation) => observation.id));
+  const event = definition.execute({ world: ctx.world, runtime: ctx.runtime, npc, candidate: selected, intervention, allEvents: ctx.allEvents });
+  ctx.createdEvents.push(event);
+  ctx.allEvents = [...ctx.baseEvents, ...ctx.createdEvents];
+  const participantMemories = observeEventParticipants(ctx.world, ctx.runtime, event, npc.id, selected.targetNpcId);
+  const propagatedMemories = propagateEventMemories(ctx.world, ctx.runtime, event, npc.id, selected.targetNpcId);
+  const memoryIds = [...participantMemories, ...propagatedMemories].map((item) => item.id);
+  ctx.createdMemories.push(...participantMemories, ...propagatedMemories);
+  const observationIds = (ctx.runtime.eventObservations || [])
+    .filter((observation) => !beforeObservationIds.has(observation.id))
+    .map((observation) => observation.id);
+  ctx.createdObservations.push(...(ctx.runtime.eventObservations || []).filter((observation) => observationIds.includes(observation.id)));
+  const consequence = buildActionConsequence(ctx.runtime, npc.id, selected, event, memoryIds);
+  ctx.runtime.consequences = [consequence, ...(ctx.runtime.consequences || [])].slice(0, 160);
+  ctx.createdConsequences.push(consequence);
+  const trace: AgentDecisionTrace = {
+    id: traceId,
+    tick: ctx.runtime.tick,
+    day: ctx.runtime.currentDay,
+    time: ctx.runtime.currentTime,
+    npcId: npc.id,
+    observedEventIds: deriveNpcAgentState(ctx.world, npc, ctx.allEvents, ctx.runtime).knownFactIds.slice(-5),
+    memoryIds,
+    candidates,
+    selectedCandidateId: selected.id,
+    createdEventId: event.id,
+    interventionId: intervention?.id,
+    phases: [...ctx.phases],
+    propagatedMemoryIds: propagatedMemories.map((item) => item.id),
+    observationIds,
+    consequence
+  };
+  ctx.runtime.decisionTraces.push(trace);
+  ctx.decisionIds.push(trace.id);
+  const agent = deriveNpcAgentState(ctx.world, npc, ctx.allEvents, ctx.runtime);
+  agent.locationId = selected.targetLocationId;
+  agent.lastDecisionId = trace.id;
+  agent.nextActionPreview = selected.description;
+  applyConsequenceToAgent(agent, consequence, event, selected, memoryIds);
+  evolveRelationship(ctx.world, npc.id, selected);
+  ctx.runtime.agentStates = [agent, ...ctx.runtime.agentStates.filter((state) => state.npcId !== npc.id)];
+}
+
+function phaseExecuteActions(ctx: TownTickContext) {
+  const selectedActors = selectTickActors(ctx);
+  selectedActors.forEach((npc, index) => phaseExecuteAgentAction(ctx, npc, selectedActors, index));
+}
+
+function phaseAdvanceCaseChain(ctx: TownTickContext) {
+  triggerLongChainCaseIfReady(ctx.world, ctx.runtime, ctx.allEvents, ctx.createdEvents);
+  ctx.allEvents = [...ctx.baseEvents, ...ctx.createdEvents];
+  refreshLongChainLedger(ctx.world, ctx.allEvents, ctx.runtime);
+}
+
+function phaseExtractCandidates(ctx: TownTickContext) {
+  ctx.runtime.candidates = buildCaseCandidatesFromRuntime(ctx.world, ctx.allEvents, ctx.runtime).slice(0, 8);
+}
+
+function finalizeTownTick(ctx: TownTickContext) {
+  const report: PersistentTownRuntimeReport = {
+    tick: ctx.runtime.tick,
+    status: ctx.runtime.status,
+    eventIds: ctx.createdEvents.slice(-ctx.decisionIds.length).map((event) => event.id),
+    decisionIds: ctx.decisionIds,
+    candidateIds: ctx.runtime.candidates.map((candidate) => candidate.id)
+  };
+  if (!ctx.runtime.candidates.some((candidate) => candidate.validation.valid) && ctx.runtime.tick >= ctx.runtime.maxTicks) {
+    report.blockedReason = "No valid case candidate reached motive + means + opportunity + memory support before max ticks.";
+    ctx.runtime.status = "blocked";
+  }
+  ctx.runtime.reports.push(report);
+  ctx.world.persistentRuntime = ctx.runtime;
+  const tickSnapshot = createTownStateSnapshot(ctx.world, ctx.allEvents, {
+    id: `snapshot-${ctx.world.id}-tick-${ctx.runtime.tick}`,
+    label: `Tick ${ctx.runtime.tick}`
+  });
+  ctx.runtime.snapshots = [tickSnapshot, ...(ctx.runtime.snapshots || []).filter((snapshot) => snapshot.id !== tickSnapshot.id)].slice(0, 30);
+}
+
+function runTownTickPhases(ctx: TownTickContext) {
+  advanceTownClock(ctx);
+  phaseObserveTown(ctx);
+  phaseUpdateGoals(ctx);
+  phaseExecuteActions(ctx);
+  phaseAdvanceCaseChain(ctx);
+  phaseExtractCandidates(ctx);
+  finalizeTownTick(ctx);
+}
+
 export function advancePersistentTownTick(world: WorldState, events: WorldEvent[] = [], options: { steps?: number; status?: PersistentTownRuntimeStatus } = {}) {
   let nextWorld = cloneWorld(world);
   let runtime = nextWorld.persistentRuntime || createPersistentTownRuntime(nextWorld, events);
@@ -1787,127 +2393,7 @@ export function advancePersistentTownTick(world: WorldState, events: WorldEvent[
       runtime.status = "completed";
       break;
     }
-    runtime.tick += 1;
-    const currentMinutes = timeToMinutes(runtime.currentTime) + runtime.tickIntervalMinutes;
-    if (currentMinutes >= 24 * 60) runtime.currentDay += 1;
-    runtime.currentTime = minutesToTime(currentMinutes);
-    nextWorld.day = runtime.currentDay;
-    nextWorld.currentTime = runtime.currentTime;
-    const allEvents = [...events, ...createdEvents];
-    runtime.simulationPhases = ["observe", "propagate", "plan", "score", "execute", "consequence", "candidate-extraction"];
-    runtime.pressureLedger ||= [];
-    for (const pressure of computeSocialPressures(nextWorld, allEvents).filter((item) => item.score >= 3).slice(0, 6)) {
-      runtime.pressureLedger.push({
-        tick: runtime.tick,
-        npcId: pressure.npcId,
-        targetNpcId: pressure.targetId,
-        score: pressure.score,
-        sourceEventIds: [...pressure.sourceEventIds],
-        reason: `secret ${pressure.secretRisk} / tension ${pressure.relationshipTension} / means ${pressure.meansAccess} / opportunity ${pressure.opportunityWindow}`
-      });
-    }
-    runtime.pressureLedger = runtime.pressureLedger.slice(-120);
-    const living = nextWorld.npcs.filter((npc) => npc.alive);
-    const random = makeRandom(`${nextWorld.seed}:persistent:${runtime.tick}`);
-    const actorCount = Math.min(3, living.length);
-    const selectedActors = [...living].sort((a, b) => {
-      const aState = deriveNpcAgentState(nextWorld, a, allEvents, runtime);
-      const bState = deriveNpcAgentState(nextWorld, b, allEvents, runtime);
-      return bState.goalPriority + random() - (aState.goalPriority + random());
-    }).slice(0, actorCount);
-    const decisionIds: string[] = [];
-    for (const npc of selectedActors) {
-      const candidates = scoreNpcActionCandidates(nextWorld, npc, allEvents, runtime);
-      const legalCandidates = candidates.filter((candidate) => candidate.legal).sort((a, b) => b.score.total - a.score.total);
-      const topCandidate = legalCandidates[0] || candidates[0];
-      const phaseKinds: NpcActionKind[] = ["pressure", "obtain-resource", "investigate", "cover-up", "spread-rumor", "seek-alibi"];
-      const phasePreferred = legalCandidates.find((candidate) => candidate.kind === phaseKinds[(runtime.tick + selectedActors.indexOf(npc)) % phaseKinds.length]);
-      const biasedCandidate = legalCandidates.find((candidate) => (candidate.score.directorBias || 0) > 0);
-      const selected = biasedCandidate || (phasePreferred && phasePreferred.score.total >= topCandidate.score.total - 12 ? phasePreferred : topCandidate);
-      const traceId = `decision-${nextWorld.id}-${runtime.tick}-${npc.id}`;
-      const intervention = runtime.interventions.find((item) =>
-        item.actorId === npc.id &&
-        item.tick === runtime.tick - 1 &&
-        (item.kind !== "action-bias" || item.value === selected.kind)
-      );
-      const event: WorldEvent = {
-        id: `agent-${nextWorld.seed.replace(/[^a-z0-9-]/gi, "-").toLowerCase()}-${runtime.tick}-${npc.id}-${selected.kind}`,
-        worldId: nextWorld.id,
-        day: runtime.currentDay,
-        time: runtime.currentTime,
-        type: eventTypeForAction(selected.kind),
-        actorIds: [npc.id, ...(selected.targetNpcId ? [selected.targetNpcId] : [])],
-        locationId: selected.targetLocationId,
-        summary: `${npc.name}: ${selected.description}`,
-        publicSummary:
-          selected.kind === "confront" || selected.kind === "pressure" ? `${npc.name} was seen in a tense exchange.` :
-          selected.kind === "spread-rumor" ? `${npc.name} repeated a partial account of recent events.` :
-          selected.kind === "seek-alibi" ? `${npc.name} made sure someone saw them in public.` :
-          selected.kind === "investigate" ? `${npc.name} checked a location for traces.` :
-          `${npc.name} followed a visible town action.`,
-        hidden: selected.kind === "hide-trace" || selected.kind === "cover-up" || selected.kind === "obtain-resource",
-        relatedCharacterIds: [npc.id, ...(selected.targetNpcId ? [selected.targetNpcId] : [])],
-        tags: [...eventTagsForAction(selected), intervention ? "counterfactual" : "source_backed"],
-        intentId: selected.id,
-        goalId: `goal-${npc.id}-${runtime.tick}`,
-        causedByEventIds: deriveNpcAgentState(nextWorld, npc, allEvents, runtime).knownFactIds.slice(-2),
-        explanation: selected.score.reasons.join(" / ") || "Local agent rules selected the highest scoring legal action."
-      };
-      createdEvents.push(event);
-      const memory = addRuntimeMemory(nextWorld, event, npc.id, event.summary);
-      const targetMemory = selected.targetNpcId ? addRuntimeMemory(nextWorld, event, selected.targetNpcId, event.publicSummary) : null;
-      const propagatedMemories = propagateEventMemories(nextWorld, runtime, event, npc.id, selected.targetNpcId);
-      const memoryIds = [memory.id, ...(targetMemory ? [targetMemory.id] : []), ...propagatedMemories.map((item) => item.id)];
-      const consequence = buildActionConsequence(runtime, npc.id, selected, event, memoryIds);
-      runtime.consequences = [consequence, ...(runtime.consequences || [])].slice(0, 160);
-      const trace: AgentDecisionTrace = {
-        id: traceId,
-        tick: runtime.tick,
-        day: runtime.currentDay,
-        time: runtime.currentTime,
-        npcId: npc.id,
-        observedEventIds: deriveNpcAgentState(nextWorld, npc, allEvents, runtime).knownFactIds.slice(-5),
-        memoryIds,
-        candidates,
-        selectedCandidateId: selected.id,
-        createdEventId: event.id,
-        interventionId: intervention?.id,
-        phases: [...runtime.simulationPhases],
-        propagatedMemoryIds: propagatedMemories.map((item) => item.id),
-        consequence
-      };
-      runtime.decisionTraces.push(trace);
-      decisionIds.push(trace.id);
-      const agent = deriveNpcAgentState(nextWorld, npc, [...allEvents, event], runtime);
-      agent.locationId = selected.targetLocationId;
-      agent.lastDecisionId = trace.id;
-      agent.nextActionPreview = selected.description;
-      applyConsequenceToAgent(agent, consequence, event, selected, memoryIds);
-      evolveRelationship(nextWorld, npc.id, selected);
-      runtime.agentStates = [agent, ...runtime.agentStates.filter((state) => state.npcId !== npc.id)];
-    }
-    triggerLongChainCaseIfReady(nextWorld, runtime, [...events, ...createdEvents], createdEvents);
-    refreshLongChainLedger(nextWorld, [...events, ...createdEvents], runtime);
-    const candidates = buildCaseCandidatesFromRuntime(nextWorld, [...events, ...createdEvents], runtime);
-    runtime.candidates = candidates.slice(0, 8);
-    const report: PersistentTownRuntimeReport = {
-      tick: runtime.tick,
-      status: runtime.status,
-      eventIds: createdEvents.slice(-decisionIds.length).map((event) => event.id),
-      decisionIds,
-      candidateIds: runtime.candidates.map((candidate) => candidate.id)
-    };
-    if (!runtime.candidates.some((candidate) => candidate.validation.valid) && runtime.tick >= runtime.maxTicks) {
-      report.blockedReason = "No valid case candidate reached motive + means + opportunity + memory support before max ticks.";
-      runtime.status = "blocked";
-    }
-    runtime.reports.push(report);
-    nextWorld.persistentRuntime = runtime;
-    const tickSnapshot = createTownStateSnapshot(nextWorld, [...events, ...createdEvents], {
-      id: `snapshot-${nextWorld.id}-tick-${runtime.tick}`,
-      label: `Tick ${runtime.tick}`
-    });
-    runtime.snapshots = [tickSnapshot, ...(runtime.snapshots || []).filter((snapshot) => snapshot.id !== tickSnapshot.id)].slice(0, 30);
+    runTownTickPhases(createTownTickContext(nextWorld, events, runtime, createdEvents));
   }
   runtime.updatedAt = new Date().toISOString();
   nextWorld.updatedAt = runtime.updatedAt;

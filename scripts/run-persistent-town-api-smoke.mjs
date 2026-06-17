@@ -84,7 +84,9 @@ try {
   assert.equal(started.runtime.status, "running", "runtime starts running");
   assert.equal(started.runtime.agentStates.length, 20, "runtime creates 20 agent states by default");
   assert.ok(started.runtime.decisionTraces.length > 0, "runtime creates decisions");
-  assert.ok(started.runtime.decisionTraces[0].phases?.includes("candidate-extraction"), "decision traces expose simulation phases");
+  assert.ok(started.runtime.decisionTraces[0].phases?.includes("extract-candidates"), "decision traces expose simulation phases");
+  assert.ok(started.runtime.decisionTraces[0].observationIds?.length, "decision traces expose event observations");
+  assert.ok(started.runtime.eventObservations?.length > 0, "runtime exposes event observation index");
   assert.ok(started.runtime.decisionTraces[0].consequence?.actionKind, "decision traces expose action consequences");
 
   const stepped = await request("/api/v1/command/town/runtime/step", {
@@ -135,6 +137,7 @@ try {
   assert.ok(candidate.triggeredEventId, "valid candidate is backed by a real triggered case event");
   assert.equal(Object.values(candidate.chainCompleteness || {}).every(Boolean), true, "candidate exposes complete six-stage chain");
   assert.equal(candidate.validation.memoryConfidence.supportScore >= 55, true, "candidate exposes weighted memory support");
+  assert.equal(candidate.validation.observationSupport.supportScore >= 55, true, "candidate exposes observation-backed support");
   assert.ok(Array.isArray(candidate.chainStageTags), "candidate exposes chain stage tags");
   assert.ok(Array.isArray(candidate.validation.failureReasons), "candidate exposes validation failure reasons");
 
@@ -157,6 +160,7 @@ try {
     assert.ok(extracted.activeCase.sourceMap.evidenceSourceEventIds?.[evidenceId]?.length, `${evidenceId} maps to original persistent source events`);
   }
   assert.ok(extracted.activeCase.sourceMap.memorySourceIds?.length, "extracted case exposes memory source ids");
+  assert.ok(extracted.activeCase.sourceMap.observationSourceIds?.length, "extracted case exposes observation source ids");
 
   await request("/api/v1/command/town/runtime/pause", {
     method: "POST",
