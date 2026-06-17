@@ -1468,6 +1468,9 @@ export function PersistentTownCommandCenter({
         exclusion: eventObservations.filter((item) => item.observerNpcId === selectedAgent.npcId && (item.kind === "alibi" || item.kind === "exclusion")).length
       }
     : { direct: 0, sameLocation: 0, rumor: 0, deduced: 0, exclusion: 0 };
+  const socialProfiles = runtime?.socialProfiles || [];
+  const relationshipLedger = runtime?.relationshipLedger || [];
+  const selectedSocial = selectedAgent?.socialProfile;
   const branchSummary = scenarioReport?.branches?.[0];
   const actionPriority = ["investigate", "spread-rumor", "seek-alibi", "pressure", "cover-up", "talk", "observe", "move", "obtain-resource", "confront", "hide-trace"];
   const displayedActionCandidates = [...selectedAgentCandidates].sort((a, b) => actionPriority.indexOf(a.kind) - actionPriority.indexOf(b.kind)).slice(0, 5);
@@ -1590,6 +1593,7 @@ export function PersistentTownCommandCenter({
         <div className="commandHudMetric"><span>活跃 NPC</span><strong>{runtime?.agentStates.length ?? 0}</strong><small>/ 20</small></div>
         <div className="commandHudMetric"><span>传播记忆</span><strong>{runtime?.memoryPropagations?.length ?? 0}</strong><small>+{recentTraces.reduce((sum, trace) => sum + (trace.propagatedMemoryIds?.length || 0), 0)}</small></div>
         <div className="commandHudMetric"><span>观察索引</span><strong>{eventObservations.length}</strong><small>谁知道什么</small></div>
+        <div className="commandHudMetric"><span>社会画像</span><strong>{socialProfiles.length}</strong><small>关系 {relationshipLedger.length}</small></div>
         <div className="commandHudMetric"><span>行动后果</span><strong>{runtime?.consequences?.length ?? 0}</strong><small>最近 {recentConsequences.length}</small></div>
         <div className="commandHudMetric"><span>有效候选</span><strong>{queue?.validCount ?? candidates.filter((candidate) => candidate.validation.valid).length}</strong><small>{candidates.length} 总数</small></div>
         <div className="commandHudMetric hot"><span>案件成熟度</span><strong>{topLongChain?.maturityScore ?? 0}%</strong><small>{triggeredCases.length ? "真实案件已触发" : "六阶段链"}</small></div>
@@ -1728,6 +1732,10 @@ export function PersistentTownCommandCenter({
             <div><h3>观察来源</h3><span>直接 {selectedObservationStats.direct}</span><span>同地 {selectedObservationStats.sameLocation}</span><span>推断 {selectedObservationStats.deduced}</span></div>
             <div><h3>传闻 / 排除</h3><span>传闻 {selectedObservationStats.rumor}</span><span>排除 {selectedObservationStats.exclusion}</span><span>支撑 {selectedAgent?.propagatedMemoryCount ?? 0}</span></div>
           </div>
+          <div className="commandPlanFacts">
+            <div><h3>社会画像</h3><span>主导 {selectedSocial?.dominantTrait || "未知"}</span><span>声誉 {selectedSocial?.reputation ?? 0}</span><span>怀疑 {selectedSocial?.suspicion ?? 0}</span></div>
+            <div><h3>信任 / 传闻</h3><span>可信度 {selectedSocial?.rumorCredibility ?? 0}%</span><span>信任对象 {selectedSocial?.trustedNpcIds?.length ?? 0}</span><span>{selectedSocial?.trustedNpcIds?.slice(0, 2).join(", ") || "暂无"}</span></div>
+          </div>
           <article className="commandConsequence">
             <strong>最近后果</strong>
             <span>{translateRuleText(selectedAgent?.lastConsequence || recentConsequences[0]?.actionKind || "等待行动")}</span>
@@ -1743,6 +1751,7 @@ export function PersistentTownCommandCenter({
                 <span>评分 <b>{candidate.score.total}</b></span>
                 <span>风险 <b>{(candidate.score.risk || 0) > 10 ? "高" : "低"}</b></span>
                 <span>偏置 <b>{candidate.score.directorBias || 0}</b></span>
+                <span>社会倾向 <b>{candidate.score.socialAffinity ?? 0}</b></span>
                 <span>案件影响 <b>{candidate.score.caseImpact}</b></span>
               </div>
               <small>{candidate.score.reasons.slice(0, 3).map(translateRuleText).join(" / ") || translateRuleText(candidate.blockedReason)}</small>

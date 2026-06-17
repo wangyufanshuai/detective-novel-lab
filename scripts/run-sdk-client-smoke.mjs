@@ -62,14 +62,17 @@ try {
 
   const started = await client.startRuntime(worldId, { steps: 2 });
   assert.equal(started.runtime.status, "running", "runtime starts");
+  assert.equal((started.runtime.socialProfiles || []).length, 20, "SDK can observe runtime social profiles");
 
   const stepped = await client.stepRuntime(worldId, { steps: 3 });
   assert.ok(stepped.queue.candidates.length >= 0, "stepRuntime returns queue");
+  assert.equal((stepped.runtime.relationshipLedger || []).length > 0, true, "SDK can observe relationship ledger");
 
   const agents = await client.listAgents(worldId);
   assert.ok(agents.agents.length > 0, "listAgents returns agents");
   const agent = await client.getAgent(worldId, actorId);
   assert.equal(agent.agent.npcId, actorId, "getAgent returns selected actor");
+  assert.ok(agent.agent.socialProfile?.dominantTrait, "getAgent returns social profile summary");
 
   const candidates = await client.listCandidates(worldId);
   assert.ok(Array.isArray(candidates.candidates), "listCandidates returns array");
@@ -91,6 +94,7 @@ try {
   assert.equal((scenario.runtime.triggeredCases || []).length > 0, true, "SDK can observe real triggered case events");
   assert.equal((scenario.runtime.longChainLedger || []).some((entry) => entry.complete && entry.maturityScore >= 90), true, "SDK can observe mature six-stage chains");
   assert.equal((scenario.runtime.eventObservations || []).length > 0, true, "SDK can observe event observation index");
+  assert.equal((scenario.runtime.relationshipLedger || []).length > 0, true, "SDK can observe social relationship changes");
 
   const report = await client.getScenarioReport(worldId, "sdk-smoke-scenario");
   assert.equal(report.report.scenarioId, "sdk-smoke-scenario", "getScenarioReport returns report");

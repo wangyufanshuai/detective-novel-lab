@@ -100,6 +100,8 @@ try {
   assert.equal((scenario.runtime.triggeredCases || []).length > 0, true, "scenario baseline records real triggered case events");
   assert.equal((scenario.runtime.longChainLedger || []).some((entry) => entry.complete && entry.maturityScore >= 90), true, "scenario baseline records mature six-stage chains");
   assert.equal((scenario.runtime.eventObservations || []).length > 0, true, "scenario baseline records event observations");
+  assert.equal((scenario.runtime.socialProfiles || []).length > 0, true, "scenario baseline records social profiles");
+  assert.equal((scenario.runtime.relationshipLedger || []).length > 0, true, "scenario baseline records relationship ledger");
   assert.ok(scenario.snapshots.length >= 4, "scenario returns snapshots");
   assert.equal(scenario.snapshots.some((snapshot) => (snapshot.observationIds || []).length > 0), true, "scenario snapshots expose observations");
   assert.equal(scenario.snapshots.every((snapshot) => !snapshot.checkpoint), true, "public snapshots omit rollback checkpoints");

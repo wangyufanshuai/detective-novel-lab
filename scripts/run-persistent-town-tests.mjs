@@ -30,6 +30,9 @@ const engine = await loadEngine();
   const runtime = engine.createPersistentTownRuntime(daily.world, daily.events, { maxTicks: 48 });
   assert.equal(runtime.status, "paused", "runtime starts paused");
   assert.equal(runtime.agentStates.length, 8, "runtime creates one agent state per living NPC");
+  assert.equal(runtime.socialProfiles.length, 8, "runtime creates one social profile per NPC");
+  assert.equal(runtime.agentStates.every((agent) => agent.socialProfile?.dominantTrait), true, "agent states expose social profile summaries");
+  assert.equal(runtime.socialProfiles.every((profile) => profile.preferredActionKinds.length > 0 && Number.isFinite(profile.reputation) && Number.isFinite(profile.suspicion)), true, "social profiles expose traits, reputation and suspicion");
   assert.equal(runtime.agentStates.every((agent) => agent.currentGoal && agent.currentPlan.length), true, "agents have goals and plans");
   assert.equal(runtime.agentStates.every((agent) => Number.isFinite(agent.secretRisk) && Number.isFinite(agent.alertness)), true, "agents have risk and alertness");
   const actionKinds = new Set(engine.getTownActionDefinitions().map((definition) => definition.kind));
@@ -63,11 +66,17 @@ const engine = await loadEngine();
     "candidate score fields are complete"
   );
   assert.equal(
-    runA.runtime.decisionTraces.every((trace) => trace.candidates.every((candidate) => ["witnessExposure", "rumorValue", "alibiPressure", "coverUpUrgency"].every((field) => Number.isFinite(candidate.score[field] ?? 0)))),
+    runA.runtime.decisionTraces.every((trace) => trace.candidates.every((candidate) => ["witnessExposure", "rumorValue", "alibiPressure", "coverUpUrgency", "socialAffinity"].every((field) => Number.isFinite(candidate.score[field] ?? 0)))),
     true,
     "core simulation score fields are complete"
   );
+  assert.deepEqual(
+    runA.runtime.socialProfiles.map((profile) => [profile.npcId, profile.reputation, profile.suspicion, profile.rumorCredibility, profile.preferredActionKinds.join(",")]),
+    runB.runtime.socialProfiles.map((profile) => [profile.npcId, profile.reputation, profile.suspicion, profile.rumorCredibility, profile.preferredActionKinds.join(",")]),
+    "social profiles are deterministic"
+  );
   assert.equal(runA.runtime.pressureLedger.length > 0, true, "ticks record a pressure ledger");
+  assert.equal(runA.runtime.relationshipLedger.length > 0, true, "ticks record relationship and trust changes");
   assert.equal(runA.runtime.consequences.length > 0, true, "ticks record action consequences");
   assert.equal(runA.runtime.decisionTraces.every((trace) => trace.phases?.includes("extract-candidates") && trace.consequence && trace.observationIds?.length), true, "decision traces include phase, observation and consequence data");
 }
@@ -83,6 +92,8 @@ const engine = await loadEngine();
   assert.equal(run.runtime.eventObservations.some((observation) => observation.kind === "same-location" || observation.kind === "rumor" || observation.kind === "deduced"), true, "runtime records observation kinds beyond direct participation");
   assert.equal(run.world.memories.some((memory) => memory.sourceObservationId), true, "memories reference source observations");
   assert.equal(run.runtime.agentStates.some((agent) => (agent.propagatedMemoryCount || 0) > 0 || agent.lastConsequence), true, "agent state reflects propagation or consequence updates");
+  assert.equal(run.runtime.agentStates.some((agent) => agent.socialProfile?.rumorCredibility >= 0), true, "agent state reflects social profile summary");
+  assert.equal(run.runtime.consequences.some((item) => item.socialShift), true, "consequences record social shifts");
   assert.equal(run.runtime.consequences.some((item) => item.chainStage === "cover-up" || item.chainStage === "memory" || item.chainStage === "alibi"), true, "consequences record case-chain stages");
 }
 

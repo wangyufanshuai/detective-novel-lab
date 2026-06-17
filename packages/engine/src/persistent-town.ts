@@ -46,6 +46,7 @@ export type NpcActionScore = {
   rumorValue?: number;
   alibiPressure?: number;
   coverUpUrgency?: number;
+  socialAffinity?: number;
   directorBias?: number;
   total: number;
   reasons: string[];
@@ -90,6 +91,13 @@ export type NpcAgentState = {
   nextActionPreview?: string;
   propagatedMemoryCount?: number;
   lastConsequence?: string;
+  socialProfile?: {
+    reputation: number;
+    suspicion: number;
+    rumorCredibility: number;
+    dominantTrait: keyof TownSocialTraits;
+    trustedNpcIds: string[];
+  };
 };
 
 export type AgentDecisionTrace = {
@@ -191,6 +199,38 @@ export type TownEventObservation = {
   chainStage?: CaseChainStage | "context";
 };
 
+export type TownSocialTraits = {
+  caution: number;
+  curiosity: number;
+  aggression: number;
+  empathy: number;
+  ambition: number;
+  loyalty: number;
+};
+
+export type TownSocialProfile = {
+  npcId: string;
+  traits: TownSocialTraits;
+  reputation: number;
+  suspicion: number;
+  rumorCredibility: number;
+  trust: Record<string, number>;
+  preferredActionKinds: NpcActionKind[];
+  updatedAtTick: number;
+};
+
+export type TownRelationshipLedgerEntry = {
+  tick: number;
+  actorId: string;
+  targetNpcId?: string;
+  eventId: string;
+  actionKind: NpcActionKind;
+  trustDelta: number;
+  reputationDelta: number;
+  suspicionDelta: number;
+  reason: string;
+};
+
 type TownActionBuildInput = {
   world: WorldState;
   npc: NPCProfile;
@@ -280,6 +320,12 @@ export type AgentConsequenceSummary = {
     before: number;
     after: number;
   };
+  socialShift?: {
+    reputationDelta: number;
+    suspicionDelta: number;
+    trustDelta: number;
+    targetNpcId?: string;
+  };
   rumorConfidenceDelta?: number;
   triggeredCaseId?: string;
 };
@@ -333,6 +379,8 @@ export type PersistentTownRuntime = {
   reports: PersistentTownRuntimeReport[];
   pressureLedger?: TownPressureLedgerEntry[];
   eventObservations?: TownEventObservation[];
+  socialProfiles?: TownSocialProfile[];
+  relationshipLedger?: TownRelationshipLedgerEntry[];
   memoryPropagations?: TownMemoryPropagation[];
   consequences?: AgentConsequenceSummary[];
   longChainLedger?: TownLongChainLedgerEntry[];
@@ -392,7 +440,7 @@ export type ScenarioConfig = {
   passCriteria?: ScenarioPassCriteria;
 };
 
-export type TownStateSnapshotAgent = Pick<NpcAgentState, "npcId" | "currentGoal" | "knownFactIds" | "resources" | "locationId" | "relationshipPressure" | "secretRisk" | "fatigue" | "alertness">;
+export type TownStateSnapshotAgent = Pick<NpcAgentState, "npcId" | "currentGoal" | "knownFactIds" | "resources" | "locationId" | "relationshipPressure" | "secretRisk" | "fatigue" | "alertness" | "socialProfile">;
 
 export type TownStateSnapshotCandidate = Pick<CaseCandidate, "id" | "status" | "culpritId" | "victimId" | "pressureScore"> & {
   valid: boolean;
@@ -430,7 +478,7 @@ export type TownStateAgentDiff = {
   npcId: string;
   before?: TownStateSnapshotAgent;
   after?: TownStateSnapshotAgent;
-  changedFields: Array<"locationId" | "resources" | "relationshipPressure" | "knownFactIds" | "currentGoal" | "secretRisk" | "fatigue" | "alertness">;
+  changedFields: Array<"locationId" | "resources" | "relationshipPressure" | "knownFactIds" | "currentGoal" | "secretRisk" | "fatigue" | "alertness" | "socialProfile">;
 };
 
 export type TownStateCandidateDiff = {
@@ -547,6 +595,149 @@ function clamp(value: number, min = 0, max = 10) {
   return Math.max(min, Math.min(max, value));
 }
 
+function clamp01(value: number) {
+  return Math.max(0, Math.min(1, value));
+}
+
+function dominantTrait(traits: TownSocialTraits): keyof TownSocialTraits {
+  return (Object.entries(traits) as Array<[keyof TownSocialTraits, number]>)
+    .sort((a, b) => b[1] - a[1])[0]?.[0] || "curiosity";
+}
+
+function relationshipTrustValue(relation?: NPCProfile["relationships"][string]) {
+  if (relation === "friend" || relation === "family") return 8;
+  if (relation === "debt") return 5;
+  if (relation === "secret") return 3;
+  if (relation === "rival") return 2;
+  return 5;
+}
+
+function preferredActionsForTraits(traits: TownSocialTraits): NpcActionKind[] {
+  const ranked: Array<[NpcActionKind, number]> = [
+    ["investigate", traits.curiosity + traits.caution * 0.35],
+    ["spread-rumor", traits.ambition + (10 - traits.empathy) * 0.45],
+    ["seek-alibi", traits.caution + traits.loyalty * 0.25],
+    ["pressure", traits.aggression + traits.ambition * 0.5],
+    ["cover-up", traits.caution + traits.ambition * 0.4],
+    ["talk", traits.empathy + traits.loyalty * 0.45],
+    ["obtain-resource", traits.ambition + traits.curiosity * 0.35],
+    ["observe", traits.curiosity + traits.empathy * 0.2]
+  ];
+  return ranked.sort((a, b) => b[1] - a[1]).slice(0, 4).map(([kind]) => kind);
+}
+
+function createTownSocialProfile(world: WorldState, npc: NPCProfile, tick = 0): TownSocialProfile {
+  const random = makeRandom(`${world.seed}:social:${npc.id}`);
+  const trait = () => 2 + Math.floor(random() * 8);
+  const traits: TownSocialTraits = {
+    caution: trait(),
+    curiosity: trait(),
+    aggression: trait(),
+    empathy: trait(),
+    ambition: trait(),
+    loyalty: trait()
+  };
+  const trust = Object.fromEntries(Object.entries(npc.relationships).map(([npcId, relation]) => [npcId, relationshipTrustValue(relation)]));
+  const reputation = clamp(4 + traits.empathy * 0.35 + traits.loyalty * 0.25 - traits.aggression * 0.15);
+  const suspicion = clamp(2 + traits.ambition * 0.35 + traits.aggression * 0.25 - traits.empathy * 0.2);
+  return {
+    npcId: npc.id,
+    traits,
+    reputation,
+    suspicion,
+    rumorCredibility: clamp01(0.35 + traits.empathy * 0.035 + reputation * 0.025 - suspicion * 0.015),
+    trust,
+    preferredActionKinds: preferredActionsForTraits(traits),
+    updatedAtTick: tick
+  };
+}
+
+function ensureSocialProfiles(world: WorldState, runtime: PersistentTownRuntime) {
+  runtime.socialProfiles ||= [];
+  const existing = new Map(runtime.socialProfiles.map((profile) => [profile.npcId, profile]));
+  runtime.socialProfiles = world.npcs.map((npc) => existing.get(npc.id) || createTownSocialProfile(world, npc, runtime.tick));
+  return runtime.socialProfiles;
+}
+
+function socialProfileFor(world: WorldState, npcId: string, runtime?: PersistentTownRuntime | null) {
+  if (!runtime) return null;
+  return runtime.socialProfiles?.find((profile) => profile.npcId === npcId) ||
+    createTownSocialProfile(world, world.npcs.find((npc) => npc.id === npcId) || world.npcs[0], runtime.tick);
+}
+
+function socialAffinityForAction(world: WorldState, npc: NPCProfile, candidate: Omit<NpcActionCandidate, "score">, runtime?: PersistentTownRuntime | null) {
+  const profile = socialProfileFor(world, npc.id, runtime);
+  if (!profile) return 5;
+  const trust = candidate.targetNpcId ? profile.trust[candidate.targetNpcId] ?? relationshipTrustValue(npc.relationships[candidate.targetNpcId]) : 5;
+  const traits = profile.traits;
+  const value =
+    candidate.kind === "investigate" ? traits.curiosity + profile.suspicion * 0.25 :
+    candidate.kind === "observe" ? traits.curiosity + traits.caution * 0.25 :
+    candidate.kind === "talk" ? traits.empathy + traits.loyalty * 0.35 + trust * 0.2 :
+    candidate.kind === "spread-rumor" ? profile.rumorCredibility * 10 + traits.ambition * 0.3 - traits.empathy * 0.15 :
+    candidate.kind === "seek-alibi" ? traits.caution + profile.suspicion * 0.25 :
+    candidate.kind === "pressure" || candidate.kind === "confront" ? traits.aggression + traits.ambition * 0.35 + (10 - trust) * 0.2 :
+    candidate.kind === "cover-up" || candidate.kind === "hide-trace" ? traits.caution + traits.ambition * 0.25 + profile.suspicion * 0.2 :
+    candidate.kind === "obtain-resource" ? traits.ambition + traits.curiosity * 0.3 :
+    5;
+  return clamp(Math.round(value));
+}
+
+function rumorConfidenceFromSocial(world: WorldState, runtime: PersistentTownRuntime, sourceNpcId: string, targetNpcId: string) {
+  const source = socialProfileFor(world, sourceNpcId, runtime);
+  const target = socialProfileFor(world, targetNpcId, runtime);
+  const trust = target?.trust[sourceNpcId] ?? 5;
+  const sourceCredibility = source?.rumorCredibility ?? 0.56;
+  return clamp01(0.28 + sourceCredibility * 0.38 + trust * 0.025);
+}
+
+function updateSocialAfterAction(world: RuntimeWorld, runtime: PersistentTownRuntime, actorId: string, candidate: NpcActionCandidate, event: WorldEvent) {
+  ensureSocialProfiles(world, runtime);
+  const profile = runtime.socialProfiles?.find((item) => item.npcId === actorId);
+  if (!profile) return;
+  const targetNpcId = candidate.targetNpcId;
+  const suspicionDelta =
+    candidate.kind === "cover-up" || candidate.kind === "hide-trace" ? 1.4 :
+    candidate.kind === "pressure" || candidate.kind === "confront" ? 1.1 :
+    candidate.kind === "spread-rumor" ? 0.7 :
+    candidate.kind === "investigate" ? -0.4 :
+    candidate.kind === "talk" ? -0.2 :
+    0;
+  const reputationDelta =
+    candidate.kind === "talk" || candidate.kind === "seek-alibi" ? 0.4 :
+    candidate.kind === "pressure" || candidate.kind === "confront" ? -0.8 :
+    candidate.kind === "cover-up" || candidate.kind === "hide-trace" ? -0.5 :
+    candidate.kind === "investigate" ? 0.2 :
+    0;
+  const trustDelta =
+    candidate.kind === "talk" || candidate.kind === "seek-alibi" ? 1 :
+    candidate.kind === "pressure" || candidate.kind === "confront" ? -2 :
+    candidate.kind === "spread-rumor" || candidate.kind === "cover-up" ? -1 :
+    0;
+  const nextProfile: TownSocialProfile = {
+    ...profile,
+    reputation: clamp(profile.reputation + reputationDelta),
+    suspicion: clamp(profile.suspicion + suspicionDelta),
+    rumorCredibility: clamp01(profile.rumorCredibility + reputationDelta * 0.015 - suspicionDelta * 0.01),
+    trust: targetNpcId ? { ...profile.trust, [targetNpcId]: clamp((profile.trust[targetNpcId] ?? relationshipTrustValue(world.npcs.find((npc) => npc.id === actorId)?.relationships[targetNpcId])) + trustDelta) } : profile.trust,
+    updatedAtTick: runtime.tick
+  };
+  runtime.socialProfiles = (runtime.socialProfiles || []).map((item) => item.npcId === actorId ? nextProfile : item);
+  runtime.relationshipLedger ||= [];
+  runtime.relationshipLedger.push({
+    tick: runtime.tick,
+    actorId,
+    targetNpcId,
+    eventId: event.id,
+    actionKind: candidate.kind,
+    trustDelta,
+    reputationDelta,
+    suspicionDelta,
+    reason: `${candidate.kind} changed trust ${trustDelta}, reputation ${reputationDelta}, suspicion ${suspicionDelta}`
+  });
+  runtime.relationshipLedger = runtime.relationshipLedger.slice(-240);
+}
+
 const TOWN_TICK_PHASES: TownTickPhaseName[] = [
   "observe",
   "update-goals",
@@ -608,6 +799,7 @@ export function deriveNpcAgentState(world: WorldState, npc: NPCProfile, events: 
   const resources = existing?.resources?.length ? existing.resources : npc.skills.map((skill) => `skill:${skill}`);
   const recentConsequence = runtime?.consequences?.find((item) => item.npcId === npc.id);
   const currentGoal = existing?.currentGoal || (secretRisk >= 8 ? "Protect secret before it becomes public" : pressure >= 6 ? "Reduce relationship pressure" : "Follow daily schedule");
+  const social = socialProfileFor(world, npc.id, runtime);
   return {
     npcId: npc.id,
     currentGoal,
@@ -629,7 +821,14 @@ export function deriveNpcAgentState(world: WorldState, npc: NPCProfile, events: 
     lastDecisionId: existing?.lastDecisionId,
     nextActionPreview: existing?.nextActionPreview,
     propagatedMemoryCount: runtime?.memoryPropagations?.filter((item) => item.toNpcId === npc.id).length || existing?.propagatedMemoryCount || 0,
-    lastConsequence: recentConsequence ? `${recentConsequence.actionKind}:${recentConsequence.chainStage || "state"}` : existing?.lastConsequence
+    lastConsequence: recentConsequence ? `${recentConsequence.actionKind}:${recentConsequence.chainStage || "state"}` : existing?.lastConsequence,
+    socialProfile: social ? {
+      reputation: Math.round(social.reputation),
+      suspicion: Math.round(social.suspicion),
+      rumorCredibility: Math.round(social.rumorCredibility * 100),
+      dominantTrait: dominantTrait(social.traits),
+      trustedNpcIds: Object.entries(social.trust).filter(([, trust]) => trust >= 7).map(([npcId]) => npcId).slice(0, 4)
+    } : existing?.socialProfile
   };
 }
 
@@ -643,8 +842,9 @@ function scoreCandidate(input: {
   state: NpcAgentState;
   candidate: Omit<NpcActionCandidate, "score">;
   events: WorldEvent[];
+  runtime?: PersistentTownRuntime | null;
 }) {
-  const { world, npc, state, candidate, events } = input;
+  const { world, npc, state, candidate, events, runtime } = input;
   const visibleKnown = state.knownFactIds.length;
   const resourceOk = !candidate.resourceId || state.resources.includes(candidate.resourceId) || npc.skills.some((skill) => candidate.resourceId?.includes(skill));
   const reachable = locationReachable(world, state.locationId, candidate.targetLocationId);
@@ -656,6 +856,7 @@ function scoreCandidate(input: {
   const rumorValue = candidate.kind === "spread-rumor" || candidate.kind === "talk" ? Math.min(10, knownPublicEventCount(state, events) + Math.ceil(state.relationshipPressure / 2)) : 0;
   const alibiPressure = candidate.kind === "seek-alibi" ? Math.min(10, state.relationshipPressure + Math.floor(state.fatigue / 2)) : 0;
   const coverUpUrgency = candidate.kind === "cover-up" || candidate.kind === "hide-trace" ? Math.min(10, state.secretRisk + events.filter((event) => event.hidden && event.actorIds.includes(npc.id)).length) : 0;
+  const socialAffinity = socialAffinityForAction(world, npc, candidate, runtime);
   const caseImpact =
     candidate.kind === "pressure" ? 10 :
     candidate.kind === "confront" ? 9 :
@@ -676,6 +877,7 @@ function scoreCandidate(input: {
     rumorValue,
     alibiPressure,
     coverUpUrgency,
+    socialAffinity,
     total: 0,
     reasons: []
   };
@@ -687,6 +889,7 @@ function scoreCandidate(input: {
     score.locationReachability +
     score.evidenceConsistency +
     score.caseImpact +
+    Math.ceil(socialAffinity / 2) +
     Math.ceil((witnessExposure + rumorValue + alibiPressure + coverUpUrgency) / 3) -
     Math.floor(score.risk / 2);
   if (!resourceOk) score.reasons.push("required resource is not available");
@@ -699,6 +902,7 @@ function scoreCandidate(input: {
   if (candidate.kind === "seek-alibi") score.reasons.push("agent tries to create an alibi before pressure rises");
   if (candidate.kind === "cover-up") score.reasons.push("secret risk creates cover-up urgency");
   if (candidate.kind === "pressure") score.reasons.push("pressure action can deepen motive and opportunity chain");
+  if (socialAffinity >= 7) score.reasons.push(`social profile favors ${candidate.kind}`);
   return score;
 }
 
@@ -955,7 +1159,7 @@ export function scoreNpcActionCandidates(world: WorldState, npc: NPCProfile, eve
   return townActionDefinitions.map((definition) => {
     const candidate = definition.buildCandidate(buildInput);
     const legality = definition.canStart({ ...buildInput, candidate });
-    const score = definition.score({ world, npc, state, candidate, events });
+    const score = definition.score({ world, npc, state, candidate, events, runtime });
     const directorBias = runtime?.interventions.find((intervention) =>
       intervention.actorId === npc.id &&
       intervention.kind === "action-bias" &&
@@ -1122,10 +1326,11 @@ function propagateEventMemories(world: RuntimeWorld, runtime: PersistentTownRunt
   const created: MemoryRecord[] = [];
   const participantIds = new Set([actorId, ...(targetNpcId ? [targetNpcId] : [])]);
   if (targetNpcId && (event.tags.includes("rumor_spread") || event.type === "conversation")) {
+    const rumorConfidence = rumorConfidenceFromSocial(world, runtime, actorId, targetNpcId);
     const observation = addRuntimeObservation(runtime, event, targetNpcId, "rumor", {
       subjectNpcId: event.relatedCharacterIds.find((id) => id !== targetNpcId) || actorId,
       sourceNpcId: actorId,
-      confidence: 0.56,
+      confidence: rumorConfidence,
       visibleToPlayer: true,
       suffix: `rumor-${runtime.tick}`
     });
@@ -1198,6 +1403,12 @@ function propagateEventMemories(world: RuntimeWorld, runtime: PersistentTownRunt
 
 function buildActionConsequence(runtime: PersistentTownRuntime, npcId: string, candidate: NpcActionCandidate, event: WorldEvent, memoryIds: string[]): AgentConsequenceSummary {
   const stage = chainStageForAction(candidate.kind);
+  const socialShift = {
+    reputationDelta: candidate.kind === "talk" || candidate.kind === "seek-alibi" ? 0.4 : candidate.kind === "pressure" || candidate.kind === "confront" ? -0.8 : candidate.kind === "cover-up" || candidate.kind === "hide-trace" ? -0.5 : candidate.kind === "investigate" ? 0.2 : 0,
+    suspicionDelta: candidate.kind === "cover-up" || candidate.kind === "hide-trace" ? 1.4 : candidate.kind === "pressure" || candidate.kind === "confront" ? 1.1 : candidate.kind === "spread-rumor" ? 0.7 : candidate.kind === "investigate" ? -0.4 : candidate.kind === "talk" ? -0.2 : 0,
+    trustDelta: candidate.kind === "talk" || candidate.kind === "seek-alibi" ? 1 : candidate.kind === "pressure" || candidate.kind === "confront" ? -2 : candidate.kind === "spread-rumor" || candidate.kind === "cover-up" ? -1 : 0,
+    targetNpcId: candidate.targetNpcId
+  };
   return {
     id: `consequence-${event.id}`,
     tick: runtime.tick,
@@ -1211,7 +1422,8 @@ function buildActionConsequence(runtime: PersistentTownRuntime, npcId: string, c
     alertnessDelta: candidate.kind === "investigate" || candidate.kind === "cover-up" ? 1 : candidate.kind === "seek-alibi" ? -1 : 0,
     knownFactDelta: memoryIds.length,
     resourceDelta: candidate.kind === "obtain-resource" ? candidate.resourceId : undefined,
-    chainStage: stage
+    chainStage: stage,
+    socialShift
   };
 }
 
@@ -1267,6 +1479,8 @@ export function createPersistentTownRuntime(world: WorldState, events: WorldEven
     reports: [],
     pressureLedger: [],
     eventObservations: [],
+    socialProfiles: [],
+    relationshipLedger: [],
     memoryPropagations: [],
     consequences: [],
     longChainLedger: [],
@@ -1277,6 +1491,7 @@ export function createPersistentTownRuntime(world: WorldState, events: WorldEven
     createdAt: now,
     updatedAt: now
   };
+  ensureSocialProfiles(world, runtime);
   runtime.agentStates = world.npcs.map((npc) => deriveNpcAgentState(world, npc, events, runtime));
   return runtime;
 }
@@ -1909,7 +2124,8 @@ export function createTownStateSnapshot(
       relationshipPressure: agent.relationshipPressure,
       secretRisk: agent.secretRisk,
       fatigue: agent.fatigue,
-      alertness: agent.alertness
+      alertness: agent.alertness,
+      socialProfile: agent.socialProfile
     })),
     decisionCount: runtime.decisionTraces.length,
     candidateSummaries: runtime.candidates.map((candidate) => ({
@@ -1953,6 +2169,7 @@ export function diffTownStateSnapshots(from: TownStateSnapshot, to: TownStateSna
     if (!before || !after || before.secretRisk !== after.secretRisk) changedFields.push("secretRisk");
     if (!before || !after || before.fatigue !== after.fatigue) changedFields.push("fatigue");
     if (!before || !after || before.alertness !== after.alertness) changedFields.push("alertness");
+    if (!before || !after || JSON.stringify(before.socialProfile || null) !== JSON.stringify(after.socialProfile || null)) changedFields.push("socialProfile");
     if (changedFields.length) changedAgents.push({ npcId, before, after, changedFields });
   }
   const beforeCandidates = new Map(from.candidateSummaries.map((candidate) => [candidate.id, candidate]));
@@ -2259,6 +2476,7 @@ function phaseObserveTown(ctx: TownTickContext) {
 }
 
 function phaseUpdateGoals(ctx: TownTickContext) {
+  ensureSocialProfiles(ctx.world, ctx.runtime);
   ctx.runtime.agentStates = ctx.world.npcs
     .map((npc) => deriveNpcAgentState(ctx.world, npc, ctx.allEvents, ctx.runtime));
 }
@@ -2333,6 +2551,8 @@ function phaseExecuteAgentAction(ctx: TownTickContext, npc: NPCProfile, selected
   agent.nextActionPreview = selected.description;
   applyConsequenceToAgent(agent, consequence, event, selected, memoryIds);
   evolveRelationship(ctx.world, npc.id, selected);
+  updateSocialAfterAction(ctx.world, ctx.runtime, npc.id, selected, event);
+  agent.socialProfile = deriveNpcAgentState(ctx.world, npc, ctx.allEvents, ctx.runtime).socialProfile;
   ctx.runtime.agentStates = [agent, ...ctx.runtime.agentStates.filter((state) => state.npcId !== npc.id)];
 }
 
