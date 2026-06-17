@@ -102,6 +102,8 @@ try {
   assert.equal((scenario.runtime.eventObservations || []).length > 0, true, "scenario baseline records event observations");
   assert.equal((scenario.runtime.socialProfiles || []).length > 0, true, "scenario baseline records social profiles");
   assert.equal((scenario.runtime.relationshipLedger || []).length > 0, true, "scenario baseline records relationship ledger");
+  assert.equal((scenario.runtime.locationProfiles || []).length > 0, true, "scenario baseline records location profiles");
+  assert.equal((scenario.runtime.locationLedger || []).length > 0, true, "scenario baseline records location ledger");
   assert.ok(scenario.snapshots.length >= 4, "scenario returns snapshots");
   assert.equal(scenario.snapshots.some((snapshot) => (snapshot.observationIds || []).length > 0), true, "scenario snapshots expose observations");
   assert.equal(scenario.snapshots.every((snapshot) => !snapshot.checkpoint), true, "public snapshots omit rollback checkpoints");
@@ -121,6 +123,7 @@ try {
   assert.equal(diff.diff.addedEventIds.length >= 1, true, "snapshot diff reports added events");
   assert.equal(diff.diff.addedMemoryIds.length >= 1, true, "snapshot diff reports added memories");
   assert.equal(diff.diff.addedObservationIds.length >= 1, true, "snapshot diff reports added observations");
+  assert.equal((diff.diff.changedLocations || []).length >= 1, true, "snapshot diff reports changed locations");
   assert.equal(diff.to.candidateSummaries.some((candidate) => candidate.triggeredEventId || candidate.maturityScore >= 90), true, "snapshot summaries expose long-chain maturity");
 
   const rolledBack = await request("/api/v1/command/town/snapshot/rollback", {

@@ -84,12 +84,14 @@ try {
   assert.equal(started.runtime.status, "running", "runtime starts running");
   assert.equal(started.runtime.agentStates.length, 20, "runtime creates 20 agent states by default");
   assert.equal(started.runtime.socialProfiles.length, 20, "runtime exposes one social profile per generated NPC");
+  assert.equal(started.runtime.locationProfiles.length > 0, true, "runtime exposes location pressure profiles");
   assert.ok(started.runtime.agentStates[0].socialProfile?.dominantTrait, "agent states expose social profile summaries");
   assert.ok(started.runtime.decisionTraces.length > 0, "runtime creates decisions");
   assert.ok(started.runtime.decisionTraces[0].phases?.includes("extract-candidates"), "decision traces expose simulation phases");
   assert.ok(started.runtime.decisionTraces[0].observationIds?.length, "decision traces expose event observations");
   assert.ok(started.runtime.eventObservations?.length > 0, "runtime exposes event observation index");
   assert.ok(started.runtime.relationshipLedger?.length > 0, "runtime exposes relationship ledger changes");
+  assert.ok(started.runtime.locationLedger?.length > 0, "runtime exposes location ledger changes");
   assert.ok(started.runtime.decisionTraces[0].consequence?.actionKind, "decision traces expose action consequences");
   assert.ok(started.runtime.decisionTraces[0].consequence?.socialShift, "decision traces expose social consequences");
 
@@ -107,6 +109,7 @@ try {
   const agent = await request(`/api/v1/query/town/agent?worldId=${encodeURIComponent(worldId)}&npcId=${encodeURIComponent(actorId)}`);
   assert.ok(agent.candidates.length >= 3, "agent query returns action candidates");
   assert.ok(Number.isFinite(agent.candidates[0].score.socialAffinity), "agent query exposes social action affinity");
+  assert.ok(Number.isFinite(agent.candidates[0].score.locationHeat), "agent query exposes location heat scoring");
   assert.ok(agent.candidates.some((candidate) => ["investigate", "spread-rumor", "seek-alibi", "pressure", "cover-up"].includes(candidate.kind)), "agent query returns core simulation actions");
 
   const biased = await request("/api/v1/command/town/agent/intervene", {

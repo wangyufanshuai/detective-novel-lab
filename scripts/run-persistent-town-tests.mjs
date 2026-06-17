@@ -31,8 +31,10 @@ const engine = await loadEngine();
   assert.equal(runtime.status, "paused", "runtime starts paused");
   assert.equal(runtime.agentStates.length, 8, "runtime creates one agent state per living NPC");
   assert.equal(runtime.socialProfiles.length, 8, "runtime creates one social profile per NPC");
+  assert.equal(runtime.locationProfiles.length, world.locations.length, "runtime creates one location profile per location");
   assert.equal(runtime.agentStates.every((agent) => agent.socialProfile?.dominantTrait), true, "agent states expose social profile summaries");
   assert.equal(runtime.socialProfiles.every((profile) => profile.preferredActionKinds.length > 0 && Number.isFinite(profile.reputation) && Number.isFinite(profile.suspicion)), true, "social profiles expose traits, reputation and suspicion");
+  assert.equal(runtime.locationProfiles.every((profile) => Number.isFinite(profile.heat) && Number.isFinite(profile.security) && profile.factionInfluence), true, "location profiles expose heat, security and influence");
   assert.equal(runtime.agentStates.every((agent) => agent.currentGoal && agent.currentPlan.length), true, "agents have goals and plans");
   assert.equal(runtime.agentStates.every((agent) => Number.isFinite(agent.secretRisk) && Number.isFinite(agent.alertness)), true, "agents have risk and alertness");
   const actionKinds = new Set(engine.getTownActionDefinitions().map((definition) => definition.kind));
@@ -66,7 +68,7 @@ const engine = await loadEngine();
     "candidate score fields are complete"
   );
   assert.equal(
-    runA.runtime.decisionTraces.every((trace) => trace.candidates.every((candidate) => ["witnessExposure", "rumorValue", "alibiPressure", "coverUpUrgency", "socialAffinity"].every((field) => Number.isFinite(candidate.score[field] ?? 0)))),
+    runA.runtime.decisionTraces.every((trace) => trace.candidates.every((candidate) => ["witnessExposure", "rumorValue", "alibiPressure", "coverUpUrgency", "socialAffinity", "locationHeat", "institutionalPressure", "resourceFlow"].every((field) => Number.isFinite(candidate.score[field] ?? 0)))),
     true,
     "core simulation score fields are complete"
   );
@@ -77,6 +79,7 @@ const engine = await loadEngine();
   );
   assert.equal(runA.runtime.pressureLedger.length > 0, true, "ticks record a pressure ledger");
   assert.equal(runA.runtime.relationshipLedger.length > 0, true, "ticks record relationship and trust changes");
+  assert.equal(runA.runtime.locationLedger.length > 0, true, "ticks record location heat and resource changes");
   assert.equal(runA.runtime.consequences.length > 0, true, "ticks record action consequences");
   assert.equal(runA.runtime.decisionTraces.every((trace) => trace.phases?.includes("extract-candidates") && trace.consequence && trace.observationIds?.length), true, "decision traces include phase, observation and consequence data");
 }
@@ -278,6 +281,7 @@ const engine = await loadEngine();
   assert.equal(diff.addedMemoryIds.length >= 1, true, "snapshot diff reports added memories");
   assert.equal(diff.addedObservationIds.length >= 1, true, "snapshot diff reports added observations");
   assert.equal(diff.changedAgents.length >= 1, true, "snapshot diff reports changed agents");
+  assert.equal(diff.changedLocations.length >= 1, true, "snapshot diff reports changed locations");
   const runtime = run.world.persistentRuntime;
   runtime.snapshots = [start, end];
   run.world.persistentRuntime = runtime;

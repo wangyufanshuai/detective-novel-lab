@@ -728,6 +728,7 @@ test("persistent agent town runs, scores agents and extracts a playable case", a
   await expect(page.getByTestId("command-center-hud")).toContainText("20", { timeout: 20_000 });
   await expect(page.getByTestId("command-center-hud")).toContainText("案件成熟度", { timeout: 20_000 });
   await expect(page.getByTestId("command-center-hud")).toContainText("观察索引", { timeout: 20_000 });
+  await expect(page.getByTestId("command-center-hud")).toContainText("地点压力", { timeout: 20_000 });
   await expect(page.getByTestId("command-center-map")).toBeVisible();
   await page.getByTestId("command-center-map").getByRole("button", { name: "放大" }).click();
   await page.getByTestId("command-center-map").getByRole("button", { name: "线索点" }).click();
@@ -739,6 +740,7 @@ test("persistent agent town runs, scores agents and extracts a playable case", a
   await expect(page.getByTestId("command-npc-dossier")).toContainText("社会画像", { timeout: 20_000 });
   await expect(page.getByTestId("command-action-choices")).toContainText(/调查|传闻|不在场|施压|掩盖/, { timeout: 20_000 });
   await expect(page.getByTestId("command-action-choices")).toContainText("社会倾向", { timeout: 20_000 });
+  await expect(page.getByTestId("command-action-choices")).toContainText("地点热度", { timeout: 20_000 });
   if (process.env.CAPTURE_QA && testInfo.project.name === "chromium-desktop") {
     await page.setViewportSize({ width: 1920, height: 1080 });
     await page.screenshot({ path: "test-results/qa-screenshots/command-center-desktop-1920x1080.png", fullPage: false });

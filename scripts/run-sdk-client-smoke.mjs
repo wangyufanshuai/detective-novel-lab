@@ -63,10 +63,12 @@ try {
   const started = await client.startRuntime(worldId, { steps: 2 });
   assert.equal(started.runtime.status, "running", "runtime starts");
   assert.equal((started.runtime.socialProfiles || []).length, 20, "SDK can observe runtime social profiles");
+  assert.equal((started.runtime.locationProfiles || []).length > 0, true, "SDK can observe runtime location profiles");
 
   const stepped = await client.stepRuntime(worldId, { steps: 3 });
   assert.ok(stepped.queue.candidates.length >= 0, "stepRuntime returns queue");
   assert.equal((stepped.runtime.relationshipLedger || []).length > 0, true, "SDK can observe relationship ledger");
+  assert.equal((stepped.runtime.locationLedger || []).length > 0, true, "SDK can observe location ledger");
 
   const agents = await client.listAgents(worldId);
   assert.ok(agents.agents.length > 0, "listAgents returns agents");
@@ -95,6 +97,7 @@ try {
   assert.equal((scenario.runtime.longChainLedger || []).some((entry) => entry.complete && entry.maturityScore >= 90), true, "SDK can observe mature six-stage chains");
   assert.equal((scenario.runtime.eventObservations || []).length > 0, true, "SDK can observe event observation index");
   assert.equal((scenario.runtime.relationshipLedger || []).length > 0, true, "SDK can observe social relationship changes");
+  assert.equal((scenario.runtime.locationLedger || []).length > 0, true, "SDK can observe location pressure changes");
 
   const report = await client.getScenarioReport(worldId, "sdk-smoke-scenario");
   assert.equal(report.report.scenarioId, "sdk-smoke-scenario", "getScenarioReport returns report");
@@ -107,6 +110,7 @@ try {
   const diff = await client.diffSnapshots(worldId, from, to);
   assert.equal(diff.diff.fromSnapshotId, from, "diffSnapshots returns requested from snapshot");
   assert.equal(diff.diff.addedObservationIds.length >= 1, true, "SDK snapshot diff exposes observation growth");
+  assert.equal((diff.diff.changedLocations || []).length >= 1, true, "SDK snapshot diff exposes location pressure changes");
   assert.equal(diff.to.candidateSummaries.some((candidate) => candidate.triggeredEventId || candidate.maturityScore >= 90), true, "SDK snapshot diff exposes long-chain candidate summaries");
 
   const rolledBack = await client.rollbackSnapshot(worldId, from);

@@ -47,6 +47,9 @@ export type NpcActionScore = {
   alibiPressure?: number;
   coverUpUrgency?: number;
   socialAffinity?: number;
+  locationHeat?: number;
+  institutionalPressure?: number;
+  resourceFlow?: number;
   directorBias?: number;
   total: number;
   reasons: string[];
@@ -231,6 +234,27 @@ export type TownRelationshipLedgerEntry = {
   reason: string;
 };
 
+export type TownLocationProfile = {
+  locationId: string;
+  heat: number;
+  security: number;
+  footTraffic: number;
+  resourcePressure: number;
+  factionInfluence: "civic" | "commerce" | "medical" | "culture" | "underground" | "neutral";
+  updatedAtTick: number;
+};
+
+export type TownLocationLedgerEntry = {
+  tick: number;
+  locationId: string;
+  eventId: string;
+  actionKind: NpcActionKind;
+  heatDelta: number;
+  securityDelta: number;
+  resourcePressureDelta: number;
+  reason: string;
+};
+
 type TownActionBuildInput = {
   world: WorldState;
   npc: NPCProfile;
@@ -381,6 +405,8 @@ export type PersistentTownRuntime = {
   eventObservations?: TownEventObservation[];
   socialProfiles?: TownSocialProfile[];
   relationshipLedger?: TownRelationshipLedgerEntry[];
+  locationProfiles?: TownLocationProfile[];
+  locationLedger?: TownLocationLedgerEntry[];
   memoryPropagations?: TownMemoryPropagation[];
   consequences?: AgentConsequenceSummary[];
   longChainLedger?: TownLongChainLedgerEntry[];
@@ -450,6 +476,8 @@ export type TownStateSnapshotCandidate = Pick<CaseCandidate, "id" | "status" | "
   chainCompleteness?: Record<CaseChainStage, boolean>;
 };
 
+export type TownStateSnapshotLocation = Pick<TownLocationProfile, "locationId" | "heat" | "security" | "footTraffic" | "resourcePressure" | "factionInfluence">;
+
 export type TownStateSnapshot = {
   id: string;
   worldId: string;
@@ -461,6 +489,7 @@ export type TownStateSnapshot = {
   day: number;
   time: string;
   agentStates: TownStateSnapshotAgent[];
+  locationProfiles?: TownStateSnapshotLocation[];
   decisionCount: number;
   candidateSummaries: TownStateSnapshotCandidate[];
   eventIds: string[];
@@ -479,6 +508,13 @@ export type TownStateAgentDiff = {
   before?: TownStateSnapshotAgent;
   after?: TownStateSnapshotAgent;
   changedFields: Array<"locationId" | "resources" | "relationshipPressure" | "knownFactIds" | "currentGoal" | "secretRisk" | "fatigue" | "alertness" | "socialProfile">;
+};
+
+export type TownStateLocationDiff = {
+  locationId: string;
+  before?: TownStateSnapshotLocation;
+  after?: TownStateSnapshotLocation;
+  changedFields: Array<"heat" | "security" | "footTraffic" | "resourcePressure" | "factionInfluence">;
 };
 
 export type TownStateCandidateDiff = {
@@ -500,6 +536,7 @@ export type TownStateDiff = {
   addedMemoryIds: string[];
   addedObservationIds: string[];
   changedAgents: TownStateAgentDiff[];
+  changedLocations?: TownStateLocationDiff[];
   candidateStatusChanges: TownStateCandidateDiff[];
   branchOnlyInterventionIds: string[];
 };
@@ -738,6 +775,116 @@ function updateSocialAfterAction(world: RuntimeWorld, runtime: PersistentTownRun
   runtime.relationshipLedger = runtime.relationshipLedger.slice(-240);
 }
 
+function factionForLocation(locationId: string, kind: WorldState["locations"][number]["kind"]): TownLocationProfile["factionInfluence"] {
+  if (locationId.includes("clinic")) return "medical";
+  if (locationId.includes("market") || locationId.includes("inn")) return "commerce";
+  if (locationId.includes("theater") || locationId.includes("archive")) return "culture";
+  if (kind === "restricted" || locationId.includes("clocktower")) return "civic";
+  if (kind === "crime" || locationId.includes("lake")) return "underground";
+  return "neutral";
+}
+
+function createTownLocationProfile(location: WorldState["locations"][number], tick = 0): TownLocationProfile {
+  const publicBase = location.kind === "public" ? 6 : location.kind === "work" ? 5 : location.kind === "restricted" ? 3 : location.kind === "crime" ? 2 : 1;
+  const securityBase = location.kind === "restricted" ? 7 : location.kind === "work" ? 5 : location.kind === "crime" ? 3 : 2;
+  const resourceBase = location.kind === "restricted" || location.kind === "work" ? 5 : location.kind === "public" ? 3 : 2;
+  return {
+    locationId: location.id,
+    heat: location.kind === "crime" ? 5 : 2,
+    security: securityBase,
+    footTraffic: publicBase,
+    resourcePressure: resourceBase,
+    factionInfluence: factionForLocation(location.id, location.kind),
+    updatedAtTick: tick
+  };
+}
+
+function ensureLocationProfiles(world: WorldState, runtime: PersistentTownRuntime) {
+  runtime.locationProfiles ||= [];
+  const existing = new Map(runtime.locationProfiles.map((profile) => [profile.locationId, profile]));
+  runtime.locationProfiles = world.locations.map((location) => existing.get(location.id) || createTownLocationProfile(location, runtime.tick));
+  return runtime.locationProfiles;
+}
+
+function locationProfileFor(world: WorldState, locationId: string, runtime?: PersistentTownRuntime | null) {
+  const location = world.locations.find((item) => item.id === locationId) || world.locations[0];
+  if (!location) return null;
+  return runtime?.locationProfiles?.find((profile) => profile.locationId === locationId) || createTownLocationProfile(location, runtime?.tick || 0);
+}
+
+function locationPressureForAction(world: WorldState, candidate: Omit<NpcActionCandidate, "score">, runtime?: PersistentTownRuntime | null) {
+  const profile = locationProfileFor(world, candidate.targetLocationId, runtime);
+  if (!profile) return { locationHeat: 0, institutionalPressure: 0, resourceFlow: 0 };
+  const locationHeat =
+    candidate.kind === "investigate" || candidate.kind === "observe" ? Math.ceil(profile.heat + profile.footTraffic / 2) :
+    candidate.kind === "spread-rumor" || candidate.kind === "talk" ? Math.ceil(profile.footTraffic + profile.heat / 3) :
+    candidate.kind === "cover-up" || candidate.kind === "hide-trace" ? Math.ceil(profile.heat + profile.security / 2) :
+    candidate.kind === "seek-alibi" ? Math.ceil(profile.footTraffic + profile.security / 3) :
+    profile.heat;
+  const institutionalPressure =
+    candidate.kind === "pressure" || candidate.kind === "confront" ? Math.ceil(profile.heat + profile.security / 2) :
+    candidate.kind === "cover-up" || candidate.kind === "hide-trace" ? profile.security :
+    candidate.kind === "investigate" ? Math.ceil(profile.security / 2) :
+    0;
+  const resourceFlow = candidate.kind === "obtain-resource" ? Math.ceil(profile.resourcePressure + profile.security / 3) : profile.resourcePressure;
+  return {
+    locationHeat: clamp(locationHeat),
+    institutionalPressure: clamp(institutionalPressure),
+    resourceFlow: clamp(resourceFlow)
+  };
+}
+
+function decayLocationProfiles(world: WorldState, runtime: PersistentTownRuntime) {
+  ensureLocationProfiles(world, runtime);
+  runtime.locationProfiles = (runtime.locationProfiles || []).map((profile) => ({
+    ...profile,
+    heat: clamp(profile.heat - 0.1),
+    security: clamp(profile.security - 0.05),
+    resourcePressure: clamp(profile.resourcePressure - 0.05),
+    updatedAtTick: runtime.tick
+  }));
+}
+
+function updateLocationAfterAction(world: RuntimeWorld, runtime: PersistentTownRuntime, candidate: NpcActionCandidate, event: WorldEvent) {
+  ensureLocationProfiles(world, runtime);
+  const profile = locationProfileFor(world, event.locationId, runtime);
+  if (!profile) return;
+  const heatDelta =
+    candidate.kind === "pressure" || candidate.kind === "confront" ? 1.3 :
+    candidate.kind === "spread-rumor" ? 1 :
+    candidate.kind === "investigate" || candidate.kind === "observe" ? 0.6 :
+    candidate.kind === "cover-up" || candidate.kind === "hide-trace" ? 0.8 :
+    candidate.kind === "seek-alibi" ? 0.3 :
+    0.1;
+  const securityDelta =
+    candidate.kind === "cover-up" || candidate.kind === "hide-trace" ? 0.8 :
+    candidate.kind === "pressure" || candidate.kind === "confront" ? 0.5 :
+    candidate.kind === "investigate" ? 0.3 :
+    0;
+  const resourcePressureDelta = candidate.kind === "obtain-resource" ? 1.2 : candidate.kind === "cover-up" ? 0.2 : 0;
+  const nextProfile: TownLocationProfile = {
+    ...profile,
+    heat: clamp(profile.heat + heatDelta),
+    security: clamp(profile.security + securityDelta),
+    footTraffic: clamp(profile.footTraffic + (candidate.kind === "spread-rumor" || candidate.kind === "seek-alibi" ? 0.3 : 0)),
+    resourcePressure: clamp(profile.resourcePressure + resourcePressureDelta),
+    updatedAtTick: runtime.tick
+  };
+  runtime.locationProfiles = (runtime.locationProfiles || []).map((item) => item.locationId === profile.locationId ? nextProfile : item);
+  runtime.locationLedger ||= [];
+  runtime.locationLedger.push({
+    tick: runtime.tick,
+    locationId: profile.locationId,
+    eventId: event.id,
+    actionKind: candidate.kind,
+    heatDelta,
+    securityDelta,
+    resourcePressureDelta,
+    reason: `${candidate.kind} changed heat ${heatDelta}, security ${securityDelta}, resources ${resourcePressureDelta}`
+  });
+  runtime.locationLedger = runtime.locationLedger.slice(-240);
+}
+
 const TOWN_TICK_PHASES: TownTickPhaseName[] = [
   "observe",
   "update-goals",
@@ -857,6 +1004,7 @@ function scoreCandidate(input: {
   const alibiPressure = candidate.kind === "seek-alibi" ? Math.min(10, state.relationshipPressure + Math.floor(state.fatigue / 2)) : 0;
   const coverUpUrgency = candidate.kind === "cover-up" || candidate.kind === "hide-trace" ? Math.min(10, state.secretRisk + events.filter((event) => event.hidden && event.actorIds.includes(npc.id)).length) : 0;
   const socialAffinity = socialAffinityForAction(world, npc, candidate, runtime);
+  const locationPressure = locationPressureForAction(world, candidate, runtime);
   const caseImpact =
     candidate.kind === "pressure" ? 10 :
     candidate.kind === "confront" ? 9 :
@@ -878,6 +1026,9 @@ function scoreCandidate(input: {
     alibiPressure,
     coverUpUrgency,
     socialAffinity,
+    locationHeat: locationPressure.locationHeat,
+    institutionalPressure: locationPressure.institutionalPressure,
+    resourceFlow: locationPressure.resourceFlow,
     total: 0,
     reasons: []
   };
@@ -890,6 +1041,7 @@ function scoreCandidate(input: {
     score.evidenceConsistency +
     score.caseImpact +
     Math.ceil(socialAffinity / 2) +
+    Math.ceil((locationPressure.locationHeat + locationPressure.institutionalPressure + locationPressure.resourceFlow) / 4) +
     Math.ceil((witnessExposure + rumorValue + alibiPressure + coverUpUrgency) / 3) -
     Math.floor(score.risk / 2);
   if (!resourceOk) score.reasons.push("required resource is not available");
@@ -903,6 +1055,8 @@ function scoreCandidate(input: {
   if (candidate.kind === "cover-up") score.reasons.push("secret risk creates cover-up urgency");
   if (candidate.kind === "pressure") score.reasons.push("pressure action can deepen motive and opportunity chain");
   if (socialAffinity >= 7) score.reasons.push(`social profile favors ${candidate.kind}`);
+  if (locationPressure.locationHeat >= 7) score.reasons.push("location heat makes this action more visible");
+  if (locationPressure.institutionalPressure >= 7) score.reasons.push("institutional pressure is high at target location");
   return score;
 }
 
@@ -1351,11 +1505,14 @@ function propagateEventMemories(world: RuntimeWorld, runtime: PersistentTownRunt
     });
   }
   if (!event.hidden) {
+    const profile = locationProfileFor(world, event.locationId, runtime);
     for (const npc of world.npcs.filter((item) => item.alive && !participantIds.has(item.id))) {
       if (runtimeLocationForNpc(world, npc, runtime) !== event.locationId) continue;
+      const baseConfidence = event.type === "alibi" ? 0.74 : 0.7;
+      const locationBoost = ((profile?.footTraffic || 0) * 0.015) + ((profile?.security || 0) * (event.type === "alibi" ? 0.02 : 0.01));
       const observation = addRuntimeObservation(runtime, event, npc.id, event.type === "alibi" ? "exclusion" : "same-location", {
         subjectNpcId: event.actorIds[0],
-        confidence: 0.74,
+        confidence: clamp01(baseConfidence + locationBoost),
         visibleToPlayer: true,
         suffix: `witness-${runtime.tick}`
       });
@@ -1481,6 +1638,8 @@ export function createPersistentTownRuntime(world: WorldState, events: WorldEven
     eventObservations: [],
     socialProfiles: [],
     relationshipLedger: [],
+    locationProfiles: [],
+    locationLedger: [],
     memoryPropagations: [],
     consequences: [],
     longChainLedger: [],
@@ -1492,6 +1651,7 @@ export function createPersistentTownRuntime(world: WorldState, events: WorldEven
     updatedAt: now
   };
   ensureSocialProfiles(world, runtime);
+  ensureLocationProfiles(world, runtime);
   runtime.agentStates = world.npcs.map((npc) => deriveNpcAgentState(world, npc, events, runtime));
   return runtime;
 }
@@ -2127,6 +2287,14 @@ export function createTownStateSnapshot(
       alertness: agent.alertness,
       socialProfile: agent.socialProfile
     })),
+    locationProfiles: (runtime.locationProfiles || []).map((profile) => ({
+      locationId: profile.locationId,
+      heat: profile.heat,
+      security: profile.security,
+      footTraffic: profile.footTraffic,
+      resourcePressure: profile.resourcePressure,
+      factionInfluence: profile.factionInfluence
+    })),
     decisionCount: runtime.decisionTraces.length,
     candidateSummaries: runtime.candidates.map((candidate) => ({
       id: candidate.id,
@@ -2172,6 +2340,20 @@ export function diffTownStateSnapshots(from: TownStateSnapshot, to: TownStateSna
     if (!before || !after || JSON.stringify(before.socialProfile || null) !== JSON.stringify(after.socialProfile || null)) changedFields.push("socialProfile");
     if (changedFields.length) changedAgents.push({ npcId, before, after, changedFields });
   }
+  const beforeLocations = new Map((from.locationProfiles || []).map((location) => [location.locationId, location]));
+  const afterLocations = new Map((to.locationProfiles || []).map((location) => [location.locationId, location]));
+  const changedLocations: TownStateLocationDiff[] = [];
+  for (const locationId of new Set([...beforeLocations.keys(), ...afterLocations.keys()])) {
+    const before = beforeLocations.get(locationId);
+    const after = afterLocations.get(locationId);
+    const changedFields: TownStateLocationDiff["changedFields"] = [];
+    if (!before || !after || before.heat !== after.heat) changedFields.push("heat");
+    if (!before || !after || before.security !== after.security) changedFields.push("security");
+    if (!before || !after || before.footTraffic !== after.footTraffic) changedFields.push("footTraffic");
+    if (!before || !after || before.resourcePressure !== after.resourcePressure) changedFields.push("resourcePressure");
+    if (!before || !after || before.factionInfluence !== after.factionInfluence) changedFields.push("factionInfluence");
+    if (changedFields.length) changedLocations.push({ locationId, before, after, changedFields });
+  }
   const beforeCandidates = new Map(from.candidateSummaries.map((candidate) => [candidate.id, candidate]));
   const afterCandidates = new Map(to.candidateSummaries.map((candidate) => [candidate.id, candidate]));
   const candidateStatusChanges: TownStateCandidateDiff[] = [];
@@ -2199,6 +2381,7 @@ export function diffTownStateSnapshots(from: TownStateSnapshot, to: TownStateSna
     addedMemoryIds: uniqueAdded(to.memoryIds, from.memoryIds),
     addedObservationIds: uniqueAdded(to.observationIds || [], from.observationIds || []),
     changedAgents,
+    changedLocations,
     candidateStatusChanges,
     branchOnlyInterventionIds: uniqueAdded(to.interventionIds, from.interventionIds)
   };
@@ -2462,6 +2645,7 @@ function advanceTownClock(ctx: TownTickContext) {
 }
 
 function phaseObserveTown(ctx: TownTickContext) {
+  decayLocationProfiles(ctx.world, ctx.runtime);
   for (const pressure of computeSocialPressures(ctx.world, ctx.allEvents).filter((item) => item.score >= 3).slice(0, 6)) {
     ctx.runtime.pressureLedger!.push({
       tick: ctx.runtime.tick,
@@ -2552,6 +2736,7 @@ function phaseExecuteAgentAction(ctx: TownTickContext, npc: NPCProfile, selected
   applyConsequenceToAgent(agent, consequence, event, selected, memoryIds);
   evolveRelationship(ctx.world, npc.id, selected);
   updateSocialAfterAction(ctx.world, ctx.runtime, npc.id, selected, event);
+  updateLocationAfterAction(ctx.world, ctx.runtime, selected, event);
   agent.socialProfile = deriveNpcAgentState(ctx.world, npc, ctx.allEvents, ctx.runtime).socialProfile;
   ctx.runtime.agentStates = [agent, ...ctx.runtime.agentStates.filter((state) => state.npcId !== npc.id)];
 }

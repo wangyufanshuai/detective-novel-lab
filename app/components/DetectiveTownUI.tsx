@@ -1470,7 +1470,10 @@ export function PersistentTownCommandCenter({
     : { direct: 0, sameLocation: 0, rumor: 0, deduced: 0, exclusion: 0 };
   const socialProfiles = runtime?.socialProfiles || [];
   const relationshipLedger = runtime?.relationshipLedger || [];
+  const locationProfiles = runtime?.locationProfiles || [];
+  const locationLedger = runtime?.locationLedger || [];
   const selectedSocial = selectedAgent?.socialProfile;
+  const selectedLocationProfile = locationProfiles.find((profile) => profile.locationId === (selectedAgent?.locationId || selectedActor?.locationId));
   const branchSummary = scenarioReport?.branches?.[0];
   const actionPriority = ["investigate", "spread-rumor", "seek-alibi", "pressure", "cover-up", "talk", "observe", "move", "obtain-resource", "confront", "hide-trace"];
   const displayedActionCandidates = [...selectedAgentCandidates].sort((a, b) => actionPriority.indexOf(a.kind) - actionPriority.indexOf(b.kind)).slice(0, 5);
@@ -1594,6 +1597,7 @@ export function PersistentTownCommandCenter({
         <div className="commandHudMetric"><span>传播记忆</span><strong>{runtime?.memoryPropagations?.length ?? 0}</strong><small>+{recentTraces.reduce((sum, trace) => sum + (trace.propagatedMemoryIds?.length || 0), 0)}</small></div>
         <div className="commandHudMetric"><span>观察索引</span><strong>{eventObservations.length}</strong><small>谁知道什么</small></div>
         <div className="commandHudMetric"><span>社会画像</span><strong>{socialProfiles.length}</strong><small>关系 {relationshipLedger.length}</small></div>
+        <div className="commandHudMetric"><span>地点压力</span><strong>{locationProfiles.length}</strong><small>热度 {locationLedger.length}</small></div>
         <div className="commandHudMetric"><span>行动后果</span><strong>{runtime?.consequences?.length ?? 0}</strong><small>最近 {recentConsequences.length}</small></div>
         <div className="commandHudMetric"><span>有效候选</span><strong>{queue?.validCount ?? candidates.filter((candidate) => candidate.validation.valid).length}</strong><small>{candidates.length} 总数</small></div>
         <div className="commandHudMetric hot"><span>案件成熟度</span><strong>{topLongChain?.maturityScore ?? 0}%</strong><small>{triggeredCases.length ? "真实案件已触发" : "六阶段链"}</small></div>
@@ -1626,6 +1630,8 @@ export function PersistentTownCommandCenter({
         <section className="commandPanel commandSceneInfo">
           <h2>场景信息</h2>
           <span>地区：{selectedActor?.locationName || selectedAgent?.locationId || "市中心"}</span>
+          <span>地点热度：{selectedLocationProfile ? Math.round(selectedLocationProfile.heat) : 0}</span>
+          <span>安保/资源：{selectedLocationProfile ? `${Math.round(selectedLocationProfile.security)} / ${Math.round(selectedLocationProfile.resourcePressure)}` : "0 / 0"}</span>
           <span>快照：{snapshots.length}</span>
           <span>可调查点：{snapshot?.markers.length ?? 0}</span>
           <span>Benchmark：{benchmarkSummary ? `${benchmarkSummary.passRate}%` : "未生成"}</span>
@@ -1752,6 +1758,7 @@ export function PersistentTownCommandCenter({
                 <span>风险 <b>{(candidate.score.risk || 0) > 10 ? "高" : "低"}</b></span>
                 <span>偏置 <b>{candidate.score.directorBias || 0}</b></span>
                 <span>社会倾向 <b>{candidate.score.socialAffinity ?? 0}</b></span>
+                <span>地点热度 <b>{candidate.score.locationHeat ?? 0}</b></span>
                 <span>案件影响 <b>{candidate.score.caseImpact}</b></span>
               </div>
               <small>{candidate.score.reasons.slice(0, 3).map(translateRuleText).join(" / ") || translateRuleText(candidate.blockedReason)}</small>
@@ -1815,6 +1822,7 @@ export function PersistentTownCommandCenter({
           <span>记忆 +{snapshotDiff?.addedMemoryIds.length ?? 0}</span>
           <span>观察 +{snapshotDiff?.addedObservationIds?.length ?? 0}</span>
           <span>NPC 变化 {snapshotDiff?.changedAgents.length ?? 0}</span>
+          <span>地点变化 {snapshotDiff?.changedLocations?.length ?? 0}</span>
         </div>
         {branchSummary && (
           <article className="commandBranchSummary">
