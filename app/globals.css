@@ -1276,6 +1276,75 @@ blockquote {
   line-height: 1.4;
 }
 
+.commandSituationBrief {
+  border-color: rgba(210, 154, 78, 0.42);
+}
+
+.commandSituationBrief.urgency-elevated {
+  border-color: rgba(224, 170, 72, 0.66);
+}
+
+.commandSituationBrief.urgency-critical {
+  border-color: rgba(230, 91, 63, 0.72);
+}
+
+.commandSituationBrief > small,
+.situationHeadline {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.situationHeadline {
+  color: #f2d7a1;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.commandSituationBrief > small {
+  color: #a99371;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.situationMetrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.situationMetrics span,
+.situationList button {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 7px;
+  color: #cbb188;
+  text-align: left;
+  background: rgba(3, 7, 7, 0.72);
+  border: 1px solid rgba(151, 103, 50, 0.24);
+  border-radius: 4px;
+  font-size: 10px;
+}
+
+.situationMetrics b,
+.situationList strong {
+  overflow: hidden;
+  color: #f2d7a1;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.situationList {
+  display: grid;
+  gap: 6px;
+}
+
+.situationList button:hover,
+.situationList button:focus-visible {
+  border-color: rgba(229, 166, 79, 0.72);
+}
+
 .commandPanelTitle,
 .commandSceneFeed .panelHeaderLine {
   display: flex;

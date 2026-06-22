@@ -729,6 +729,7 @@ test("persistent agent town runs, scores agents and extracts a playable case", a
   await expect(page.getByTestId("command-center-hud")).toContainText("案件成熟度", { timeout: 20_000 });
   await expect(page.getByTestId("command-center-hud")).toContainText("观察索引", { timeout: 20_000 });
   await expect(page.getByTestId("command-center-hud")).toContainText("地点压力", { timeout: 20_000 });
+  await expect(page.getByTestId("town-situation-brief")).toContainText("Situation Brief", { timeout: 20_000 });
   await expect(page.getByTestId("command-center-map")).toBeVisible();
   await page.getByTestId("command-center-map").getByRole("button", { name: "放大" }).click();
   await page.getByTestId("command-center-map").getByRole("button", { name: "线索点" }).click();
@@ -763,6 +764,12 @@ test("persistent agent town runs, scores agents and extracts a playable case", a
     await page.getByTestId("persistent-command-center").getByRole("button", { name: "快速 x5" }).click();
   }
 
+  await expect(page.getByTestId("town-situation-brief")).toContainText(/chain|ready|grounded/, { timeout: 20_000 });
+  await expect(page.getByTestId("town-situation-brief")).toContainText(/heat|risk/, { timeout: 20_000 });
+  const briefLocationButton = page.getByTestId("town-situation-brief").locator("button").first();
+  const briefLocationName = await briefLocationButton.locator("strong").innerText();
+  await briefLocationButton.click();
+  await expect(page.getByTestId("command-scene-info")).toContainText(`地区：${briefLocationName}`);
   await expect(page.getByTestId("command-candidate-board")).toContainText("案件候选板", { timeout: 20_000 });
   await expect(page.getByTestId("command-candidate-board")).toContainText(/动机|手段|机会/);
   await expect(page.getByTestId("command-candidate-board")).toContainText(/成熟度|记忆可信度|观察支撑/, { timeout: 20_000 });

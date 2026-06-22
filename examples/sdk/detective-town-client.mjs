@@ -78,6 +78,10 @@ export class DetectiveTownClient {
     return this.request(this.query("/api/v1/query/town/candidates", { worldId }));
   }
 
+  getTownBrief(worldId) {
+    return this.request(this.query("/api/v1/query/town/brief", { worldId }));
+  }
+
   runScenario(worldId, config = {}) {
     return this.request("/api/v1/command/town/scenario/run", { method: "POST", body: { worldId, config } });
   }

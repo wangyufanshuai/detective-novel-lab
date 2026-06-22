@@ -112,6 +112,12 @@ try {
   assert.ok(Number.isFinite(agent.candidates[0].score.locationHeat), "agent query exposes location heat scoring");
   assert.ok(agent.candidates.some((candidate) => ["investigate", "spread-rumor", "seek-alibi", "pressure", "cover-up"].includes(candidate.kind)), "agent query returns core simulation actions");
 
+  const brief = await request(`/api/v1/query/town/brief?worldId=${encodeURIComponent(worldId)}`);
+  assert.equal(brief.brief.worldId, worldId, "town brief returns the selected world");
+  assert.ok(brief.brief.hotLocations.length > 0, "town brief ranks hot locations");
+  assert.ok(brief.brief.riskAgents.length > 0, "town brief ranks high-risk agents");
+  assert.ok(Array.isArray(brief.brief.recentSignals), "town brief exposes compact signals");
+
   const biased = await request("/api/v1/command/town/agent/intervene", {
     method: "POST",
     body: JSON.stringify({ worldId, intervention: { actorId, kind: "action-bias", value: "investigate" } })

@@ -82,6 +82,12 @@ const engine = await loadEngine();
   assert.equal(runA.runtime.locationLedger.length > 0, true, "ticks record location heat and resource changes");
   assert.equal(runA.runtime.consequences.length > 0, true, "ticks record action consequences");
   assert.equal(runA.runtime.decisionTraces.every((trace) => trace.phases?.includes("extract-candidates") && trace.consequence && trace.observationIds?.length), true, "decision traces include phase, observation and consequence data");
+  const briefA = engine.buildTownSituationBrief(runA.world, [...dailyA.events, ...runA.events], runA.runtime);
+  const briefB = engine.buildTownSituationBrief(runB.world, [...dailyB.events, ...runB.events], runB.runtime);
+  assert.deepEqual(briefA, briefB, "town situation brief is deterministic for the same seed");
+  assert.equal(briefA.hotLocations.length > 0, true, "town situation brief ranks hot locations");
+  assert.equal(briefA.riskAgents.length > 0, true, "town situation brief ranks high-risk agents");
+  assert.equal(briefA.recentSignals.length >= 2, true, "town situation brief explains current pressure signals");
 }
 
 {

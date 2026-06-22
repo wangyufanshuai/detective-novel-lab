@@ -227,6 +227,7 @@ import type {
   TownStateSnapshot,
   TownRuntimeIntervention,
   TownEmergenceQueue,
+  TownSituationBrief,
   WorldEvent,
   WorldMapActor,
   WorldMapMarker,
@@ -3160,6 +3161,7 @@ export default function Home() {
   const [caseGalleryLoaded, setCaseGalleryLoaded] = useState(false);
   const [townRuntime, setTownRuntime] = useState<PersistentTownRuntime | null>(null);
   const [townQueue, setTownQueue] = useState<TownEmergenceQueue | null>(null);
+  const [townBrief, setTownBrief] = useState<TownSituationBrief | null>(null);
   const [selectedAgentCandidates, setSelectedAgentCandidates] = useState<NpcActionCandidate[]>([]);
   const [townRuntimeBusy, setTownRuntimeBusy] = useState(false);
   const [scenarioRun, setScenarioRun] = useState<ScenarioRun | null>(null);
@@ -3802,6 +3804,12 @@ export default function Home() {
     setScenarioRun(runtimeData.runtime.scenarioRuns?.[0] || null);
     setScenarioReport(runtimeData.runtime.scenarioRuns?.[0]?.report || null);
     setTownSnapshots(runtimeData.runtime.snapshots || []);
+    try {
+      const briefData = await getV1<{ brief: TownSituationBrief }>(`/api/v1/query/town/brief?worldId=${encodeURIComponent(targetWorldId)}`);
+      setTownBrief(briefData.brief);
+    } catch {
+      setTownBrief(null);
+    }
     const latestSnapshots = runtimeData.runtime.snapshots || [];
     if (!selectedSnapshotFromId && latestSnapshots.length >= 2) setSelectedSnapshotFromId(latestSnapshots[1].id);
     if (!selectedSnapshotToId && latestSnapshots.length >= 1) setSelectedSnapshotToId(latestSnapshots[0].id);
@@ -3911,6 +3919,7 @@ export default function Home() {
       const data = await postV1<{ runtime: PersistentTownRuntime }>("/api/v1/command/town/runtime/reset", { worldId: world.id });
       setTownRuntime(data.runtime);
       setTownQueue(null);
+      setTownBrief(null);
       setSelectedAgentCandidates([]);
       setStatus("Persistent Agent Town runtime reset.");
     } catch (error) {
@@ -4943,9 +4952,11 @@ export default function Home() {
         caseTitle={activeCase?.deductionCase.title || "Generated Agent Town"}
         runtime={townRuntime}
         queue={townQueue}
+        brief={townBrief}
         snapshot={snapshot}
         selectedAgent={selectedAgent}
         selectedAgentCandidates={selectedAgentCandidates}
+        selectedLocationId={selectedSceneId}
         selectedCharacterName={selectedCharacter?.name}
         selectedCharacterId={selectedCharacterId}
         runningBusy={townRuntimeBusy}

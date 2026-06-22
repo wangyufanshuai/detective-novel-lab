@@ -276,6 +276,7 @@ OpenAPI contract: [`public/openapi.v1.json`](public/openapi.v1.json), served as 
 - `GET /api/v1/query/town/agents?worldId=...`
 - `GET /api/v1/query/town/agent?worldId=...&npcId=...`
 - `GET /api/v1/query/town/candidates?worldId=...`
+- `GET /api/v1/query/town/brief?worldId=...`
 - `GET /api/v1/query/town/emergence-proof?worldId=...&candidateId=...`
 - `GET /api/v1/query/town/scenario?worldId=...&scenarioId=...`
 - `GET /api/v1/query/town/scenario/report?worldId=...&scenarioId=...`

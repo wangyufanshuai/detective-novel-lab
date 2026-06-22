@@ -52,6 +52,7 @@ import type {
   TownStateSnapshot,
   TownRuntimeIntervention,
   TownEmergenceQueue,
+  TownSituationBrief,
   WorldEvent,
   WorldMapActor,
   WorldMapMarker,
@@ -1333,9 +1334,11 @@ export function PersistentTownCommandCenter({
   caseTitle,
   runtime,
   queue,
+  brief,
   snapshot,
   selectedAgent,
   selectedAgentCandidates,
+  selectedLocationId,
   selectedCharacterName,
   selectedCharacterId,
   runningBusy,
@@ -1365,9 +1368,11 @@ export function PersistentTownCommandCenter({
   caseTitle: string;
   runtime: PersistentTownRuntime | null;
   queue: TownEmergenceQueue | null;
+  brief?: TownSituationBrief | null;
   snapshot: WorldMapSnapshot | null;
   selectedAgent?: NpcAgentState | null;
   selectedAgentCandidates: NpcActionCandidate[];
+  selectedLocationId?: string;
   selectedCharacterName?: string;
   selectedCharacterId?: string;
   runningBusy: boolean;
@@ -1473,7 +1478,9 @@ export function PersistentTownCommandCenter({
   const locationProfiles = runtime?.locationProfiles || [];
   const locationLedger = runtime?.locationLedger || [];
   const selectedSocial = selectedAgent?.socialProfile;
-  const selectedLocationProfile = locationProfiles.find((profile) => profile.locationId === (selectedAgent?.locationId || selectedActor?.locationId));
+  const activeLocationId = selectedLocationId || selectedAgent?.locationId || selectedActor?.locationId;
+  const selectedLocationProfile = locationProfiles.find((profile) => profile.locationId === activeLocationId);
+  const selectedLocationName = snapshot?.tiles.find((tile) => tile.locationId === activeLocationId)?.locationName || selectedActor?.locationName || activeLocationId || "市中心";
   const branchSummary = scenarioReport?.branches?.[0];
   const actionPriority = ["investigate", "spread-rumor", "seek-alibi", "pressure", "cover-up", "talk", "observe", "move", "obtain-resource", "confront", "hide-trace"];
   const displayedActionCandidates = [...selectedAgentCandidates].sort((a, b) => actionPriority.indexOf(a.kind) - actionPriority.indexOf(b.kind)).slice(0, 5);
@@ -1627,9 +1634,34 @@ export function PersistentTownCommandCenter({
           </div>
           <button type="button" onClick={resetRuntime} disabled={runningBusy || !runtime}>重置</button>
         </section>
-        <section className="commandPanel commandSceneInfo">
+        <section className={`commandPanel commandSituationBrief urgency-${brief?.urgency || "stable"}`} data-testid="town-situation-brief">
+          <div className="panelHeaderLine"><h2>Situation Brief</h2><span>{brief?.urgency || "stable"}</span></div>
+          {!brief ? <p>Start the runtime to generate a focused town summary.</p> : <>
+            <strong className="situationHeadline">{brief.headline}</strong>
+            <small>{brief.nextAction}</small>
+            <div className="situationMetrics">
+              <span><b>{brief.caseReadiness.highestMaturityScore}%</b>chain</span>
+              <span><b>{brief.caseReadiness.validCount}</b>ready</span>
+              <span><b>{brief.observationMix.direct + brief.observationMix.deduced}</b>grounded</span>
+            </div>
+            <div className="situationList">
+              {brief.hotLocations.slice(0, 2).map((location) => (
+                <button key={location.locationId} type="button" onClick={() => { onLocationSelect(location.locationId); setActiveSection("map"); }}>
+                  <strong>{location.name}</strong><span>heat {location.heat} / security {location.security}</span>
+                </button>
+              ))}
+              {brief.riskAgents.slice(0, 2).map((agent) => {
+                const actor = snapshot?.actors.find((item) => item.id === agent.npcId);
+                return <button key={agent.npcId} type="button" onClick={() => { if (actor) onActorSelect(actor); setActiveSection("actions"); }}>
+                  <strong>{agent.name}</strong><span>risk {agent.score} / suspicion {agent.suspicion}</span>
+                </button>;
+              })}
+            </div>
+          </>}
+        </section>
+        <section className="commandPanel commandSceneInfo" data-testid="command-scene-info">
           <h2>场景信息</h2>
-          <span>地区：{selectedActor?.locationName || selectedAgent?.locationId || "市中心"}</span>
+          <span>地区：{selectedLocationName}</span>
           <span>地点热度：{selectedLocationProfile ? Math.round(selectedLocationProfile.heat) : 0}</span>
           <span>安保/资源：{selectedLocationProfile ? `${Math.round(selectedLocationProfile.security)} / ${Math.round(selectedLocationProfile.resourcePressure)}` : "0 / 0"}</span>
           <span>快照：{snapshots.length}</span>

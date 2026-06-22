@@ -79,6 +79,11 @@ try {
   const candidates = await client.listCandidates(worldId);
   assert.ok(Array.isArray(candidates.candidates), "listCandidates returns array");
 
+  const brief = await client.getTownBrief(worldId);
+  assert.equal(brief.brief.worldId, worldId, "getTownBrief returns selected world");
+  assert.ok(brief.brief.hotLocations.length > 0, "getTownBrief ranks location pressure");
+  assert.ok(brief.brief.riskAgents.length > 0, "getTownBrief ranks agent risk");
+
   const scenario = await client.runScenario(worldId, {
     id: "sdk-smoke-scenario",
     name: "SDK smoke scenario",

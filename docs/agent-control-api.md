@@ -37,6 +37,7 @@ The SDK is the executable reference for the stable external-agent subset. It is 
 - `GET /api/v1/query/town/agents?worldId=...`
 - `GET /api/v1/query/town/agent?worldId=...&npcId=...`
 - `GET /api/v1/query/town/candidates?worldId=...`
+- `GET /api/v1/query/town/brief?worldId=...`
 - `GET /api/v1/query/town/emergence-proof?worldId=...&candidateId=...`
 - `GET /api/v1/query/town/scenario?worldId=...&scenarioId=...`
 - `GET /api/v1/query/town/scenario/report?worldId=...&scenarioId=...`
@@ -95,6 +96,8 @@ node scripts/run-persistent-town-api-smoke.mjs
 ```
 
 The runtime state is stored inside the persisted world JSON. New actions still become `WorldEvent` records, and extracted cases still use the existing fair-play validation and investigation APIs.
+
+`GET /api/v1/query/town/brief` is a read-only situation summary for agents and the Command Center. It ranks current location pressure and NPC risk, aggregates selected action and observation kinds, reports case-chain readiness, and provides short signals for the next inspection step. It does not advance the runtime or mutate SQLite state.
 
 ## Scenario Runner And Time Machine
 

@@ -428,6 +428,51 @@ export type TownEmergenceQueue = {
   nextAction: string;
 };
 
+export type TownSituationBrief = {
+  worldId: string;
+  runtimeId: string;
+  tick: number;
+  status: PersistentTownRuntimeStatus;
+  currentPhase: TownTickPhaseName;
+  urgency: "stable" | "elevated" | "critical";
+  headline: string;
+  nextAction: string;
+  hotLocations: Array<{
+    locationId: string;
+    name: string;
+    score: number;
+    heat: number;
+    security: number;
+    footTraffic: number;
+    resourcePressure: number;
+    factionInfluence: TownLocationProfile["factionInfluence"];
+  }>;
+  riskAgents: Array<{
+    npcId: string;
+    name: string;
+    score: number;
+    relationshipPressure: number;
+    secretRisk: number;
+    alertness: number;
+    suspicion: number;
+    locationId: string;
+  }>;
+  actionMix: Array<{ kind: NpcActionKind; count: number }>;
+  observationMix: Record<TownObservationKind, number>;
+  caseReadiness: {
+    candidateCount: number;
+    validCount: number;
+    triggeredCaseCount: number;
+    highestMaturityScore: number;
+    strongestCandidateId?: string;
+  };
+  recentSignals: Array<{
+    kind: "case" | "location" | "agent" | "observation";
+    label: string;
+    detail: string;
+  }>;
+};
+
 export type ScenarioWorldOptions = {
   mode?: WorldMode;
   npcCount?: number;
@@ -2231,6 +2276,140 @@ export function buildTownEmergenceQueue(world: WorldState, events: WorldEvent[] 
     validCount,
     blockedCount,
     nextAction: validCount ? "Extract a playable case from the strongest valid candidate." : "Continue stepping the town until motive, means, opportunity, and memory support converge."
+  };
+}
+
+export function buildTownSituationBrief(
+  world: WorldState,
+  events: WorldEvent[] = [],
+  runtime?: PersistentTownRuntime | null,
+  queue?: TownEmergenceQueue | null
+): TownSituationBrief {
+  const activeRuntime = runtime || getRuntime(world as RuntimeWorld) || createPersistentTownRuntime(world, events);
+  const activeQueue = queue || buildTownEmergenceQueue(world, events, activeRuntime);
+  const npcById = new Map(world.npcs.map((npc) => [npc.id, npc]));
+  const locationById = new Map(world.locations.map((location) => [location.id, location]));
+  const socialByNpcId = new Map((activeRuntime.socialProfiles || []).map((profile) => [profile.npcId, profile]));
+  const hotLocations = [...(activeRuntime.locationProfiles || [])]
+    .map((profile) => ({
+      locationId: profile.locationId,
+      name: locationById.get(profile.locationId)?.name || profile.locationId,
+      score: Math.round(profile.heat * 5 + profile.security * 2 + profile.footTraffic * 2 + profile.resourcePressure * 3),
+      heat: Math.round(profile.heat),
+      security: Math.round(profile.security),
+      footTraffic: Math.round(profile.footTraffic),
+      resourcePressure: Math.round(profile.resourcePressure),
+      factionInfluence: profile.factionInfluence
+    }))
+    .sort((a, b) => b.score - a.score || a.locationId.localeCompare(b.locationId))
+    .slice(0, 3);
+  const riskAgents = activeRuntime.agentStates
+    .map((agent) => {
+      const social = socialByNpcId.get(agent.npcId);
+      const suspicion = social?.suspicion || agent.socialProfile?.suspicion || 0;
+      return {
+        npcId: agent.npcId,
+        name: npcById.get(agent.npcId)?.name || agent.npcId,
+        score: Math.round(agent.relationshipPressure * 0.9 + agent.secretRisk * 1.2 + agent.alertness * 0.35 + suspicion * 0.55),
+        relationshipPressure: Math.round(agent.relationshipPressure),
+        secretRisk: Math.round(agent.secretRisk),
+        alertness: Math.round(agent.alertness),
+        suspicion: Math.round(suspicion),
+        locationId: agent.locationId
+      };
+    })
+    .sort((a, b) => b.score - a.score || a.npcId.localeCompare(b.npcId))
+    .slice(0, 3);
+  const actionCounts = new Map<NpcActionKind, number>();
+  for (const trace of activeRuntime.decisionTraces.slice(-40)) {
+    const action = trace.candidates.find((candidate) => candidate.id === trace.selectedCandidateId)?.kind;
+    if (action) actionCounts.set(action, (actionCounts.get(action) || 0) + 1);
+  }
+  const actionMix = [...actionCounts.entries()]
+    .map(([kind, count]) => ({ kind, count }))
+    .sort((a, b) => b.count - a.count || a.kind.localeCompare(b.kind))
+    .slice(0, 4);
+  const observationMix: Record<TownObservationKind, number> = {
+    direct: 0,
+    "same-location": 0,
+    rumor: 0,
+    deduced: 0,
+    alibi: 0,
+    exclusion: 0
+  };
+  for (const observation of activeRuntime.eventObservations || []) observationMix[observation.kind] += 1;
+  const candidates = [...activeQueue.candidates].sort((a, b) => {
+    const validDelta = Number(b.validation.valid) - Number(a.validation.valid);
+    if (validDelta) return validDelta;
+    const maturityDelta = (b.maturityScore || 0) - (a.maturityScore || 0);
+    if (maturityDelta) return maturityDelta;
+    return b.pressureScore - a.pressureScore;
+  });
+  const strongestCandidate = candidates[0];
+  const highestMaturityScore = strongestCandidate?.maturityScore || 0;
+  const triggeredCaseCount = activeRuntime.triggeredCases?.length || 0;
+  const currentPhase = activeRuntime.simulationPhases?.length
+    ? activeRuntime.simulationPhases[Math.max(0, activeRuntime.tick % activeRuntime.simulationPhases.length)]
+    : "finalize";
+  const urgency = triggeredCaseCount || activeQueue.validCount ? "critical" : highestMaturityScore >= 70 || (riskAgents[0]?.score || 0) >= 120 ? "elevated" : "stable";
+  const triggeredCase = activeRuntime.triggeredCases?.[0];
+  const headline = triggeredCase
+    ? `Triggered case: ${(npcById.get(triggeredCase.culpritId)?.name || triggeredCase.culpritId)} -> ${(npcById.get(triggeredCase.victimId)?.name || triggeredCase.victimId)}`
+    : strongestCandidate?.validation.valid
+      ? `Playable case ready: ${(npcById.get(strongestCandidate.culpritId)?.name || strongestCandidate.culpritId)} -> ${(npcById.get(strongestCandidate.victimId)?.name || strongestCandidate.victimId)}`
+      : hotLocations[0]
+        ? `Pressure is concentrating at ${hotLocations[0].name}`
+        : "Town state is collecting its first observable signals";
+  const recentSignals: TownSituationBrief["recentSignals"] = [];
+  if (strongestCandidate) {
+    recentSignals.push({
+      kind: "case",
+      label: strongestCandidate.validation.valid ? "Case ready" : "Case chain forming",
+      detail: `${strongestCandidate.culpritId} -> ${strongestCandidate.victimId}; maturity ${strongestCandidate.maturityScore || 0}%`
+    });
+  }
+  if (hotLocations[0]) {
+    recentSignals.push({
+      kind: "location",
+      label: `Hot location: ${hotLocations[0].name}`,
+      detail: `heat ${hotLocations[0].heat}, security ${hotLocations[0].security}, resource pressure ${hotLocations[0].resourcePressure}`
+    });
+  }
+  if (riskAgents[0]) {
+    recentSignals.push({
+      kind: "agent",
+      label: `High-risk NPC: ${riskAgents[0].name}`,
+      detail: `secret risk ${riskAgents[0].secretRisk}, relationship pressure ${riskAgents[0].relationshipPressure}, suspicion ${riskAgents[0].suspicion}`
+    });
+  }
+  if (observationMix.rumor || observationMix.deduced || observationMix.exclusion) {
+    recentSignals.push({
+      kind: "observation",
+      label: "Observation network is active",
+      detail: `direct ${observationMix.direct}, rumor ${observationMix.rumor}, deduced ${observationMix.deduced}, exclusion ${observationMix.exclusion}`
+    });
+  }
+  return {
+    worldId: world.id,
+    runtimeId: activeRuntime.id,
+    tick: activeRuntime.tick,
+    status: activeRuntime.status,
+    currentPhase,
+    urgency,
+    headline,
+    nextAction: activeQueue.nextAction,
+    hotLocations,
+    riskAgents,
+    actionMix,
+    observationMix,
+    caseReadiness: {
+      candidateCount: activeQueue.candidates.length,
+      validCount: activeQueue.validCount,
+      triggeredCaseCount,
+      highestMaturityScore,
+      strongestCandidateId: strongestCandidate?.id
+    },
+    recentSignals
   };
 }
 

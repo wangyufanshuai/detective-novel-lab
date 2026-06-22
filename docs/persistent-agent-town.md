@@ -19,6 +19,12 @@ observe recent events
 
 DeepSeek is not used for action legality, event creation, culprit selection, evidence placement, case validation, or player judgement. It remains a surface-language layer for server-mode dialogue and optional prose.
 
+## Town Situation Brief
+
+The command center derives a compact, deterministic brief from the persisted runtime. It ranks location pressure and NPC risk, summarizes selected actions and observation provenance, reports case readiness, and points to the next missing emergence condition. Hot locations and risk NPCs are direct navigation targets in the UI.
+
+`GET /api/v1/query/town/brief?worldId=...` exposes the same brief to external agents. The query is read-only: it does not advance ticks, mutate the runtime, or write to SQLite.
+
 ## Agent State
 
 The Agent tab now opens with Review Mode: a compact summary of runtime health, scenario status, branch count, snapshot count, benchmark pass rate, and valid candidate count before the detailed agent cards.
@@ -105,6 +111,7 @@ Main endpoints:
 - `GET /api/v1/query/town/agents?worldId=...`
 - `GET /api/v1/query/town/agent?worldId=...&npcId=...`
 - `GET /api/v1/query/town/candidates?worldId=...`
+- `GET /api/v1/query/town/brief?worldId=...`
 - `GET /api/v1/query/town/emergence-proof?worldId=...&candidateId=...`
 - `GET /api/v1/query/town/scenario?worldId=...&scenarioId=...`
 - `GET /api/v1/query/town/scenario/report?worldId=...&scenarioId=...`

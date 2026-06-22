@@ -79,6 +79,13 @@
         "responses": { "200": { "$ref": "#/components/responses/Ok" } }
       }
     },
+    "/api/v1/query/town/brief": {
+      "get": {
+        "summary": "Read a compact persistent town situation brief",
+        "parameters": [{ "$ref": "#/components/parameters/WorldId" }],
+        "responses": { "200": { "$ref": "#/components/responses/Ok" } }
+      }
+    },
     "/api/v1/command/town/scenario/run": {
       "post": {
         "summary": "Run a deterministic baseline and counterfactual town scenario",

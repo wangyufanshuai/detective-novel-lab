@@ -8,6 +8,7 @@
 - Added a browser-only Local Case Gallery for Authoring mode with built-in template cards, local draft saves, JSON bundle import/export, and Static Demo launch for valid drafts.
 - Added SQLite storage health reporting, transactional world/case/event saves, and a local backup script for Docker Server Runtime.
 - Added a deeper Persistent Agent Town simulation loop with staged tick phases, expanded NPC actions, memory propagation, pressure ledger entries, action consequences, and candidate chain stages.
+- Added a deterministic Town Situation Brief with ranked hot locations, high-risk NPCs, observation mix, and case-readiness guidance for operators and external agents.
 - Added a one-click Living World Lab sample project with five analyzed chapters, evidence indexes, a ready batch queue, and a grounded replay.
 
 ### Changed
