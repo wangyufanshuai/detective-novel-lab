@@ -1,7 +1,15 @@
 import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
-import type { CaseFromLog, InterrogationLogEntry, PlayerSession, WorldEvent, WorldState } from "@/lib/engine";
+import type {
+  CaseFromLog,
+  InterrogationLogEntry,
+  NovelPersistentWorkspace,
+  NovelProjectSummary,
+  PlayerSession,
+  WorldEvent,
+  WorldState
+} from "@/lib/engine";
 
 type Row = {
   id: string;
@@ -13,7 +21,17 @@ type Row = {
   updated_at?: string;
 };
 
-const schemaVersion = 1;
+const schemaVersion = 2;
+
+export class NovelProjectConflictError extends Error {
+  readonly current: NovelProjectSummary;
+
+  constructor(current: NovelProjectSummary) {
+    super(`Novel project ${current.id} changed on the server at ${current.updatedAt}`);
+    this.name = "NovelProjectConflictError";
+    this.current = current;
+  }
+}
 
 export function databasePath() {
   const url = process.env.DATABASE_URL || "file:./data/mystery-town.db";
@@ -68,6 +86,16 @@ export function getDb() {
       value text not null,
       updated_at text not null
     );
+    create table if not exists novel_projects (
+      id text primary key,
+      title text not null,
+      genre_tone text not null,
+      chapter_count integer not null,
+      data text not null,
+      created_at text not null,
+      updated_at text not null
+    );
+    create index if not exists idx_novel_projects_updated on novel_projects(updated_at desc);
   `);
   db.prepare(
     `insert into storage_meta (key, value, updated_at)
@@ -76,6 +104,11 @@ export function getDb() {
   ).run(String(schemaVersion), new Date().toISOString());
   cachedDb = db;
   return db;
+}
+
+export function closeDatabase() {
+  cachedDb?.close();
+  cachedDb = null;
 }
 
 function parseData<T>(row: Row | undefined) {
@@ -95,13 +128,14 @@ export const worldRepository = {
       const worldCount = (db.prepare("select count(*) as count from worlds").get() as { count: number }).count;
       const eventCount = (db.prepare("select count(*) as count from world_events").get() as { count: number }).count;
       const caseCount = (db.prepare("select count(*) as count from cases").get() as { count: number }).count;
+      const novelProjectCount = (db.prepare("select count(*) as count from novel_projects").get() as { count: number }).count;
       return {
         schemaVersion,
         databasePath: databasePath(),
         walEnabled: String(journalMode).toLowerCase() === "wal",
         health: integrity === "ok" ? "ok" : "degraded",
         quickCheck: integrity,
-        counts: { worlds: worldCount, events: eventCount, cases: caseCount }
+        counts: { worlds: worldCount, events: eventCount, cases: caseCount, novelProjects: novelProjectCount }
       };
     } catch (error) {
       return {
@@ -110,7 +144,7 @@ export const worldRepository = {
         walEnabled: false,
         health: "error",
         error: error instanceof Error ? error.message : "Unknown storage error",
-        counts: { worlds: 0, events: 0, cases: 0 }
+        counts: { worlds: 0, events: 0, cases: 0, novelProjects: 0 }
       };
     }
   },
@@ -252,6 +286,74 @@ export const worldRepository = {
     return (getDb().prepare("select id, data from sessions where world_id = ? and case_id = ? order by updated_at desc").all(worldId, caseId) as Row[]).map(
       (row) => JSON.parse(row.data) as PlayerSession
     );
+  },
+
+  saveNovelProject(workspace: NovelPersistentWorkspace, expectedUpdatedAt?: string | null) {
+    const db = getDb();
+    const select = db.prepare("select id, title, genre_tone, chapter_count, updated_at from novel_projects where id = ?");
+    const upsert = db.prepare(
+      `insert into novel_projects (id, title, genre_tone, chapter_count, data, created_at, updated_at)
+       values (@id, @title, @genreTone, @chapterCount, @data, @createdAt, @updatedAt)
+       on conflict(id) do update set
+         title = excluded.title,
+         genre_tone = excluded.genre_tone,
+         chapter_count = excluded.chapter_count,
+         data = excluded.data,
+         updated_at = excluded.updated_at`
+    );
+    const save = db.transaction(() => {
+      const current = select.get(workspace.project.id) as {
+        id: string;
+        title: string;
+        genre_tone: string;
+        chapter_count: number;
+        updated_at: string;
+      } | undefined;
+      if (current && expectedUpdatedAt && current.updated_at !== expectedUpdatedAt) {
+        throw new NovelProjectConflictError({
+          id: current.id,
+          title: current.title,
+          genreTone: current.genre_tone,
+          chapterCount: current.chapter_count,
+          updatedAt: current.updated_at
+        });
+      }
+      const updatedAt = new Date().toISOString();
+      const next: NovelPersistentWorkspace = { ...workspace, version: 1, updatedAt };
+      upsert.run({
+        id: next.project.id,
+        title: next.project.title,
+        genreTone: next.project.genreTone,
+        chapterCount: next.project.chapters.length,
+        data: JSON.stringify(next),
+        createdAt: current ? next.project.createdAt : next.project.createdAt || updatedAt,
+        updatedAt
+      });
+      return next;
+    });
+    return save();
+  },
+
+  getNovelProject(id: string) {
+    const row = getDb().prepare("select id, data from novel_projects where id = ?").get(id) as Row | undefined;
+    return parseData<NovelPersistentWorkspace>(row);
+  },
+
+  getLatestNovelProject() {
+    const row = getDb().prepare("select id, data from novel_projects order by updated_at desc limit 1").get() as Row | undefined;
+    return parseData<NovelPersistentWorkspace>(row);
+  },
+
+  listNovelProjects(): NovelProjectSummary[] {
+    return (getDb().prepare(
+      "select id, title, genre_tone, chapter_count, updated_at from novel_projects order by updated_at desc limit 50"
+    ).all() as Array<{ id: string; title: string; genre_tone: string; chapter_count: number; updated_at: string }>).map((row) => ({
+      id: row.id,
+      title: row.title,
+      genreTone: row.genre_tone,
+      chapterCount: row.chapter_count,
+      updatedAt: row.updated_at
+    }));
   },
 
   appendInterrogation(session: PlayerSession, entry: InterrogationLogEntry) {

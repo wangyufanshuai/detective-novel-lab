@@ -2236,6 +2236,98 @@ blockquote {
   line-height: 1.45;
 }
 
+.projectLibraryPanel {
+  border-color: rgba(126, 190, 151, 0.34);
+}
+
+.projectLibraryPanel .panelHeaderLine > div {
+  display: grid;
+  gap: 3px;
+}
+
+.projectLibraryPanel h2 {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+}
+
+.projectSyncBadge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 3px 7px;
+  color: #b9c7d2;
+  background: #111a22;
+  border: 1px solid #344653;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.projectSyncBadge.saved { color: #a9e9ba; border-color: rgba(94, 190, 119, 0.52); }
+.projectSyncBadge.unsaved { color: #f1cf80; border-color: rgba(218, 169, 68, 0.56); }
+.projectSyncBadge.conflict { color: #ff9b8c; border-color: rgba(220, 85, 64, 0.66); }
+.projectSyncBadge.offline { color: #c3b8ad; border-color: rgba(166, 145, 126, 0.52); }
+.projectSyncBadge.local { color: #9cccf5; border-color: rgba(92, 158, 214, 0.54); }
+
+.projectLibraryActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.projectLibraryActions button {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+}
+
+.serverProjectList {
+  display: grid;
+  gap: 6px;
+  max-height: 238px;
+  overflow-y: auto;
+}
+
+.serverProjectList > button {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 9px;
+  color: #dbe7ef;
+  text-align: left;
+  background: #0a1118;
+  border: 1px solid rgba(124, 157, 178, 0.24);
+  border-radius: 4px;
+}
+
+.serverProjectList > button:hover,
+.serverProjectList > button.active {
+  background: #13212b;
+  border-color: rgba(126, 190, 151, 0.58);
+}
+
+.serverProjectList strong,
+.serverProjectList span,
+.serverProjectList small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.serverProjectList span,
+.serverProjectList small,
+.projectServerStatus {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.projectServerStatus {
+  overflow-wrap: anywhere;
+}
+
 .sampleFlow,
 .queueSummary,
 .replayStateSummary,

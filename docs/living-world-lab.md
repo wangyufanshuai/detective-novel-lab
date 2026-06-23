@@ -22,11 +22,13 @@ Open the app and choose **Living World Lab**.
 
 The workbench has three main areas:
 
-- Left rail: one-click Rain Gate sample, whole-book import, chapter queue summaries, replay runs, ask history, causal focus, theme focus, character focus, project JSON.
+- Left rail: SQLite Project Library, one-click Rain Gate sample, whole-book import, chapter queue summaries, replay runs, ask history, causal focus, theme focus, character focus, project JSON.
 - Center: Audit Studio, Phaser observer canvas, replay controls, world graph canvas, event timeline, ask view, arc view, causality view, writer view.
 - Right inspector: selected entity, event, relationship, character state, audit issue, correction patch, simulation step, game actor, location, evidence, intervention editor, and blueprint detail.
 
 Use **Load sample** to open a five-chapter Rain Gate project with analyzed chapters, paragraph evidence indexes, ready queue state, an Audit Studio report, and a grounded replay. This is the fastest product demo path and does not require a new API route.
+
+In Server Runtime, **Save** writes the current project, chapter text, evidence indexes, batch queue, correction set, and simulation runs to SQLite. **Save copy** creates a new project ID. Opening a server project replaces the current view only after confirmation, while IndexedDB keeps the local draft. A stale `expectedUpdatedAt` revision returns `NOVEL_PROJECT_CONFLICT` instead of overwriting newer data.
 
 The chapter queue shows total, ready, queued, error, and skipped counts. Whole Book Progress also shows the next batch, last batch, and merged graph totals for entities, relationships, events, and developments.
 
@@ -56,6 +58,9 @@ Living World Lab exposes an external observe/intervene loop:
 
 ```text
 POST /api/v1/command/novel/import
+GET  /api/v1/query/novel/projects
+GET  /api/v1/query/novel/project
+POST /api/v1/command/novel/project/save
 GET  /api/v1/query/novel/world-graph
 GET  /api/v1/query/novel/audit
 POST /api/v1/command/novel/correction/suggest
@@ -77,7 +82,7 @@ GET  /api/v1/query/novel/simulation
 
 The endpoint changes actor state only. It does not write new source facts or override Detective Town case truth.
 
-Correction endpoints also stay local and deterministic. They do not call DeepSeek and do not edit source text; they only update the in-memory `correctionSet` for the current runtime project.
+Correction endpoints stay deterministic. They do not call DeepSeek and do not edit source text; in Server Runtime they persist the correction set inside the SQLite project workspace.
 
 ## Tests
 
@@ -87,4 +92,4 @@ node scripts/run-novel-agent-api-smoke.mjs
 npm run test:e2e
 ```
 
-The first command validates the engine helpers. The API smoke starts a local server and verifies the import-through-intervention loop. The E2E suite covers the one-click sample, queue summaries, audit flow, replay provenance, Phaser canvas visibility, and mobile overflow.
+The first command validates the engine helpers. The API smoke starts a local server and verifies project persistence, conflict handling, process restart recovery, and the import-through-intervention loop. The E2E suite covers the Project Library, one-click sample, queue summaries, audit flow, replay provenance, Phaser canvas visibility, and mobile overflow.

@@ -68,7 +68,7 @@ test.beforeEach(async ({ page }, testInfo) => {
       }
     });
   }
-  await page.goto(usesServerApis ? "/" : "/?runtime=static");
+  await page.goto(usesServerApis ? "/?runtime=server" : "/?runtime=static");
 });
 
 test("novel world graph sample project opens a complete workbench", async ({ page }) => {
@@ -104,9 +104,51 @@ test("novel world graph sample project opens a complete workbench", async ({ pag
   expect(overflow).toBeLessThanOrEqual(1);
 });
 
+test("novel world graph saves SQLite projects and surfaces conflicts", async ({ page }) => {
+  test.setTimeout(60_000);
+  await dismissOnboarding(page);
+  await page.getByTestId("open-world-graph").click();
+  await expect(page.getByTestId("novel-project-library")).toBeVisible();
+  await expect(page.getByTestId("server-project-list")).toBeVisible();
+  await page.getByTestId("load-sample-novel").click();
+  await expect(page.getByTestId("novel-project-sync-state")).toHaveText("unsaved");
+  await page.getByTestId("save-server-project-copy").click();
+  await expect(page.getByTestId("novel-project-sync-state")).toHaveText("saved");
+
+  const projectsResponse = await page.request.get("/api/v1/query/novel/projects");
+  const projectsPayload = await projectsResponse.json();
+  const savedProject = projectsPayload.data.projects.find((item: { title: string }) => item.title === "Rain Gate Sample Copy");
+  expect(savedProject?.id).toBeTruthy();
+  const workspaceResponse = await page.request.get(`/api/v1/query/novel/project?projectId=${encodeURIComponent(savedProject.id)}`);
+  const workspacePayload = await workspaceResponse.json();
+  const workspace = workspacePayload.data.workspace;
+  const externalSave = await page.request.post("/api/v1/command/novel/project/save", {
+    data: {
+      workspace: { ...workspace, project: { ...workspace.project, title: "Rain Gate Server Revision" } },
+      expectedUpdatedAt: workspace.updatedAt
+    }
+  });
+  expect(externalSave.ok()).toBeTruthy();
+
+  await page.getByTestId("save-server-project").click();
+  await expect(page.getByTestId("novel-project-sync-state")).toHaveText("conflict");
+  await expect(page.getByTestId("reload-server-project")).toBeVisible();
+  await page.getByTestId("reload-server-project").click();
+  await expect(page.getByTestId("novel-project-sync-state")).toHaveText("saved");
+  await expect(page.getByTestId("novel-project-server-status")).toContainText("Opened Rain Gate Server Revision");
+});
+
+test("living world static runtime keeps a local-only project library", async ({ page }) => {
+  await dismissOnboarding(page);
+  await page.getByTestId("open-world-graph").click();
+  await expect(page.getByTestId("novel-project-sync-state")).toHaveText("local");
+  await expect(page.getByTestId("novel-project-library")).toContainText("IndexedDB");
+  await expect(page.getByTestId("save-server-project")).toHaveCount(0);
+});
+
 test("novel world graph analyzes three chapters, merges changes and restores local project", async ({ page }) => {
   test.setTimeout(90_000);
-  await page.goto("/");
+  await page.goto("/?runtime=server");
   await page.evaluate(async () => {
     localStorage.removeItem("detective-town-novel-world-project-v2");
     await new Promise<void>((resolve) => {

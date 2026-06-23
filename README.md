@@ -103,6 +103,7 @@ Living World Lab is the world-simulation side of the project. It is designed to 
 - Apply a short-branch intervention to actor knowledge, location, resources, relationship pressure, or body capability.
 - Inspect replay fidelity, matched source events, replay gaps, and every step as `source`, `inferred`, `counterfactual`, or `gap`.
 - Use the Phaser observer canvas to see actors, locations, event markers, replay paths, evidence heat, and branch effects.
+- In Server Runtime, save and reopen complete projects through the SQLite Project Library. IndexedDB remains a local draft fallback, and stale server revisions are never overwritten silently.
 
 This is not a replacement for Detective Town. It is the larger world-simulation lab that demonstrates how cases and narratives can emerge from observable state instead of raw LLM prose.
 
@@ -284,6 +285,8 @@ OpenAPI contract: [`public/openapi.v1.json`](public/openapi.v1.json), served as 
 - `GET /api/v1/query/town/snapshot/diff?worldId=...&from=...&to=...`
 - `GET /api/v1/query/benchmark/emergence`
 - `GET /api/v1/query/novel/world-graph?projectId=...`
+- `GET /api/v1/query/novel/projects`
+- `GET /api/v1/query/novel/project?projectId=...`
 - `GET /api/v1/query/novel/audit?projectId=...`
 - `GET /api/v1/query/novel/corrections?projectId=...`
 - `GET /api/v1/query/novel/corrected-world-graph?projectId=...`
@@ -303,6 +306,7 @@ OpenAPI contract: [`public/openapi.v1.json`](public/openapi.v1.json), served as 
 - `POST /api/v1/command/town/scenario/run`
 - `POST /api/v1/command/town/snapshot/rollback`
 - `POST /api/v1/command/novel/import`
+- `POST /api/v1/command/novel/project/save`
 - `POST /api/v1/command/novel/analyze`
 - `POST /api/v1/command/novel/evidence-index`
 - `POST /api/v1/command/novel/ask`

@@ -809,6 +809,25 @@ export type NovelBatchQueueState = {
   updatedAt: string;
 };
 
+export type NovelProjectSummary = {
+  id: string;
+  title: string;
+  genreTone: string;
+  chapterCount: number;
+  updatedAt: string;
+};
+
+export type NovelPersistentWorkspace = {
+  version: 1;
+  project: NovelWorldProject;
+  chapters: NovelLongChapterText[];
+  evidenceIndexes: Record<string, NovelEvidenceIndex>;
+  simulationRuns: NovelSimulationRun[];
+  correctionSet: NovelCorrectionSet;
+  batchQueue: NovelBatchQueueState;
+  updatedAt: string;
+};
+
 const entityKinds = new Set<NovelEntityKind>(["character", "faction", "location", "item", "concept"]);
 const polarities = new Set<NovelRelationship["polarity"]>(["ally", "rival", "family", "debt", "secret", "neutral"]);
 const blueprintPacing = new Set<NovelBlueprintOptions["pacing"]>(["quiet", "balanced", "high-tension"]);

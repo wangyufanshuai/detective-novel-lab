@@ -1,10 +1,18 @@
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
 import process from "node:process";
 
 const port = Number(process.env.NOVEL_AGENT_API_SMOKE_PORT || 3101);
 let baseUrl = process.env.NOVEL_AGENT_API_BASE_URL || `http://127.0.0.1:${port}`;
 const serverOutput = [];
+const smokeRuntimeDir = path.join(process.cwd(), "outputs", "novel-agent-api-smoke");
+const smokeDatabasePath = path.join(smokeRuntimeDir, "novel-agent-api-smoke.db");
+if (!process.env.NOVEL_AGENT_API_BASE_URL) {
+  fs.rmSync(smokeRuntimeDir, { recursive: true, force: true });
+  fs.mkdirSync(smokeRuntimeDir, { recursive: true });
+}
 const smokeTimeout = setTimeout(() => {
   console.error(`Novel Agent API smoke test timed out at ${baseUrl}.`);
   process.exit(1);
@@ -49,30 +57,32 @@ async function requestFailure(method, url, body) {
   return { status: response.status, error: data.error };
 }
 
-async function isReady(url) {
-  try {
-    const response = await fetch(`${url}/api/v1/query/runtime/status`);
-    return response.ok;
-  } catch {
-    return false;
-  }
-}
-
-if (!process.env.NOVEL_AGENT_API_BASE_URL && await isReady("http://127.0.0.1:3000")) {
-  baseUrl = "http://127.0.0.1:3000";
-}
-
-const server = process.env.NOVEL_AGENT_API_BASE_URL || baseUrl === "http://127.0.0.1:3000"
-  ? null
-  : spawn(process.platform === "win32" ? process.env.ComSpec || "cmd.exe" : "npm", process.platform === "win32" ? ["/c", "npm", "run", "dev", "--", "-p", String(port)] : ["run", "dev", "--", "-p", String(port)], {
+function launchServer() {
+  const child = spawn(process.platform === "win32" ? process.env.ComSpec || "cmd.exe" : "npm", process.platform === "win32" ? ["/c", "npm", "run", "dev", "--", "-p", String(port)] : ["run", "dev", "--", "-p", String(port)], {
       cwd: process.cwd(),
       stdio: ["ignore", "pipe", "pipe"],
       detached: process.platform !== "win32",
-      env: { ...process.env, PORT: String(port), AI_PROVIDER: "mock", DEEPSEEK_API_KEY: "", SILICONFLOW_API_KEY: "" }
+      env: { ...process.env, PORT: String(port), DATABASE_URL: smokeDatabasePath, AI_PROVIDER: "mock", DEEPSEEK_API_KEY: "", SILICONFLOW_API_KEY: "" }
     });
+  child.stdout.on("data", (chunk) => serverOutput.push(String(chunk).trim()));
+  child.stderr.on("data", (chunk) => serverOutput.push(String(chunk).trim()));
+  return child;
+}
 
-server?.stdout.on("data", (chunk) => serverOutput.push(String(chunk).trim()));
-server?.stderr.on("data", (chunk) => serverOutput.push(String(chunk).trim()));
+function stopServer(child) {
+  if (!child) return;
+  if (process.platform === "win32") {
+    spawnSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], { stdio: "ignore" });
+  } else {
+    try {
+      process.kill(-child.pid, "SIGTERM");
+    } catch {
+      child.kill("SIGTERM");
+    }
+  }
+}
+
+let server = process.env.NOVEL_AGENT_API_BASE_URL ? null : launchServer();
 
 try {
   await waitForServer();
@@ -93,6 +103,38 @@ try {
   });
   assert.equal(imported.project.version, 2);
   assert.ok(imported.chapters.length >= 1);
+
+  const projectList = await request("GET", "/api/v1/query/novel/projects");
+  assert.equal(projectList.projects.some((project) => project.id === imported.project.id), true, "project library lists imported projects");
+  const persistedWorkspace = await request("GET", `/api/v1/query/novel/project?projectId=${encodeURIComponent(imported.project.id)}`);
+  assert.equal(persistedWorkspace.workspace.project.id, imported.project.id);
+  assert.ok(persistedWorkspace.workspace.chapters.length >= 1, "project endpoint returns chapter text state");
+
+  const savedWorkspace = await request("POST", "/api/v1/command/novel/project/save", {
+    workspace: {
+      ...persistedWorkspace.workspace,
+      project: { ...persistedWorkspace.workspace.project, title: "Rain Gate Smoke Saved" }
+    },
+    expectedUpdatedAt: persistedWorkspace.workspace.updatedAt
+  });
+  assert.equal(savedWorkspace.workspace.project.title, "Rain Gate Smoke Saved");
+  const conflict = await requestFailure("POST", "/api/v1/command/novel/project/save", {
+    workspace: persistedWorkspace.workspace,
+    expectedUpdatedAt: persistedWorkspace.workspace.updatedAt
+  });
+  assert.equal(conflict.status, 409);
+  assert.equal(conflict.error.code, "NOVEL_PROJECT_CONFLICT");
+
+  const copyId = `${imported.project.id}-copy`;
+  const copied = await request("POST", "/api/v1/command/novel/project/save", {
+    workspace: {
+      ...savedWorkspace.workspace,
+      project: { ...savedWorkspace.workspace.project, id: copyId, title: "Rain Gate Smoke Copy" },
+      correctionSet: { ...savedWorkspace.workspace.correctionSet, projectId: copyId },
+      simulationRuns: savedWorkspace.workspace.simulationRuns.map((run) => ({ ...run, projectId: copyId }))
+    }
+  });
+  assert.equal(copied.workspace.project.id, copyId, "save copy creates a second durable project");
 
   const worldGraph = await request("GET", `/api/v1/query/novel/world-graph?projectId=${encodeURIComponent(imported.project.id)}`);
   assert.equal(worldGraph.project.id, imported.project.id);
@@ -192,18 +234,18 @@ try {
   });
   assert.ok(rewound.run.currentStepIndex <= intervened.run.currentStepIndex);
 
+  if (server) {
+    stopServer(server);
+    await sleep(1_000);
+    serverOutput.length = 0;
+    server = launchServer();
+    await waitForServer();
+    const restoredAfterRestart = await request("GET", `/api/v1/query/novel/project?projectId=${encodeURIComponent(copyId)}`);
+    assert.equal(restoredAfterRestart.workspace.project.title, "Rain Gate Smoke Copy", "SQLite project survives a server restart");
+  }
+
   console.log("Novel Agent API smoke test passed.");
 } finally {
   clearTimeout(smokeTimeout);
-  if (server) {
-    if (process.platform === "win32") {
-      spawnSync("taskkill", ["/PID", String(server.pid), "/T", "/F"], { stdio: "ignore" });
-    } else {
-      try {
-        process.kill(-server.pid, "SIGTERM");
-      } catch {
-        server.kill("SIGTERM");
-      }
-    }
-  }
+  stopServer(server);
 }

@@ -12,41 +12,16 @@ import {
   normalizeNovelBatchQueue,
   normalizeNovelCorrectionSet,
   validateNovelWorldGraph,
-  type NovelBatchQueueState,
   type NovelChapterAnalysis,
-  type NovelCorrectionSet,
   type NovelEvidenceIndex,
   type NovelLongChapterText,
-  type NovelSimulationRun,
+  type NovelPersistentWorkspace,
+  type NovelProjectSummary,
   type NovelWorldProject
 } from "@/lib/engine";
+import { worldRepository } from "@/lib/world/repository";
 
-export type NovelRuntimeRecord = {
-  project: NovelWorldProject;
-  chapters: NovelLongChapterText[];
-  evidenceIndexes: Record<string, NovelEvidenceIndex>;
-  simulationRuns: NovelSimulationRun[];
-  correctionSet: NovelCorrectionSet;
-  batchQueue?: NovelBatchQueueState;
-  updatedAt: string;
-};
-
-type NovelRuntimeStore = {
-  records: Map<string, NovelRuntimeRecord>;
-  latestProjectId?: string;
-};
-
-declare global {
-  // eslint-disable-next-line no-var
-  var __detectiveTownNovelRuntimeStore: NovelRuntimeStore | undefined;
-}
-
-function store() {
-  if (!globalThis.__detectiveTownNovelRuntimeStore) {
-    globalThis.__detectiveTownNovelRuntimeStore = { records: new Map() };
-  }
-  return globalThis.__detectiveTownNovelRuntimeStore;
-}
+export type NovelRuntimeRecord = NovelPersistentWorkspace;
 
 function nowIso() {
   return new Date().toISOString();
@@ -81,6 +56,7 @@ function createDemoProject(): NovelRuntimeRecord {
   project = addNovelChapterAnalysis(project, analysis);
   const run = createNovelSimulationRun(project, { seed: "living-world-lab-demo", mode: "grounded-replay" });
   return {
+    version: 1,
     project,
     chapters: [chapter],
     evidenceIndexes: { [chapter.chapterId]: evidenceIndex },
@@ -92,28 +68,27 @@ function createDemoProject(): NovelRuntimeRecord {
 }
 
 export function getNovelRuntimeRecord(projectId?: string | null) {
-  const runtime = store();
-  const id = projectId || runtime.latestProjectId;
-  if (id && runtime.records.has(id)) {
-    const record = runtime.records.get(id) || null;
-    if (!record) return null;
-    if (!record.correctionSet) return saveNovelRuntimeRecord({ ...record, correctionSet: createNovelCorrectionSet(record.project) });
-    return record;
-  }
-  if (!runtime.latestProjectId) {
-    const demo = createDemoProject();
-    saveNovelRuntimeRecord(demo);
-    return demo;
+  const record = projectId ? worldRepository.getNovelProject(projectId) : worldRepository.getLatestNovelProject();
+  if (record) return record;
+  if (!projectId && worldRepository.listNovelProjects().length === 0) {
+    return saveNovelRuntimeRecord(createDemoProject());
   }
   return null;
 }
 
-export function saveNovelRuntimeRecord(record: NovelRuntimeRecord) {
-  const runtime = store();
-  const next = { ...record, correctionSet: normalizeNovelCorrectionSet(record.correctionSet, record.project), updatedAt: nowIso() };
-  runtime.records.set(next.project.id, next);
-  runtime.latestProjectId = next.project.id;
-  return next;
+export function saveNovelRuntimeRecord(record: NovelRuntimeRecord, expectedUpdatedAt?: string | null) {
+  const next: NovelRuntimeRecord = {
+    ...record,
+    version: 1,
+    correctionSet: normalizeNovelCorrectionSet(record.correctionSet, record.project),
+    batchQueue: normalizeNovelBatchQueue(record.project, record.batchQueue),
+    updatedAt: record.updatedAt || nowIso()
+  };
+  return worldRepository.saveNovelProject(next, expectedUpdatedAt);
+}
+
+export function listNovelRuntimeProjects(): NovelProjectSummary[] {
+  return worldRepository.listNovelProjects();
 }
 
 export function updateNovelRuntimeRecord(projectId: string, updater: (record: NovelRuntimeRecord) => NovelRuntimeRecord) {
@@ -129,6 +104,7 @@ export function createNovelRuntimeFromProject(
 ) {
   const run = createNovelSimulationRun(project, { seed: `${project.id}:agent-runtime`, mode: "grounded-replay" });
   return saveNovelRuntimeRecord({
+    version: 1,
     project,
     chapters,
     evidenceIndexes,

@@ -151,6 +151,29 @@
         "responses": { "200": { "$ref": "#/components/responses/Ok" } }
       }
     },
+    "/api/v1/query/novel/projects": {
+      "get": {
+        "summary": "List persisted Living World Lab projects",
+        "responses": { "200": { "$ref": "#/components/responses/Ok" } }
+      }
+    },
+    "/api/v1/query/novel/project": {
+      "get": {
+        "summary": "Load a complete persisted Living World Lab workspace",
+        "parameters": [{ "$ref": "#/components/parameters/ProjectId" }],
+        "responses": { "200": { "$ref": "#/components/responses/Ok" } }
+      }
+    },
+    "/api/v1/command/novel/project/save": {
+      "post": {
+        "summary": "Save a Living World Lab workspace with optimistic conflict detection",
+        "requestBody": { "$ref": "#/components/requestBodies/JsonObject" },
+        "responses": {
+          "200": { "$ref": "#/components/responses/Ok" },
+          "409": { "$ref": "#/components/responses/Ok" }
+        }
+      }
+    },
     "/api/v1/query/novel/audit": {
       "get": {
         "summary": "Query a Living World Audit report",

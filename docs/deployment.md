@@ -35,7 +35,7 @@ Health check:
 curl -fsS http://127.0.0.1:3000/api/v1/query/runtime/status
 ```
 
-The response includes `storage.schemaVersion`, `storage.databasePath`, `storage.walEnabled`, and `storage.health`. Treat any value other than `storage.health: "ok"` as a release blocker before long-running demos.
+The response includes `storage.schemaVersion`, `storage.databasePath`, `storage.walEnabled`, `storage.health`, and counts for worlds, events, cases, and Living World Lab projects. Treat any value other than `storage.health: "ok"` as a release blocker before long-running demos.
 
 Backup:
 
@@ -43,7 +43,7 @@ Backup:
 npm run backup:sqlite
 ```
 
-Backups are written to `outputs/backups/` and are intentionally ignored by Git. For Docker, either run the command inside the container or copy `/app/data/mystery-town.db` from the `detective-town-data` volume after stopping writes.
+Backups are written to `outputs/backups/` and are intentionally ignored by Git. The SQLite backup includes Detective Town state and complete Living World Lab project workspaces. For Docker, either run the command inside the container or copy `/app/data/mystery-town.db` from the `detective-town-data` volume after stopping writes.
 
 Restore:
 

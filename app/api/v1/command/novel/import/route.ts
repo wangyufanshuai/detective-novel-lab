@@ -1,5 +1,5 @@
 import { errorResponse, ok, readJson } from "@/app/api/v1/_utils";
-import { createNovelRuntimeFromProject } from "@/app/api/v1/_novel-store";
+import { createNovelRuntimeFromProject, saveNovelRuntimeRecord } from "@/app/api/v1/_novel-store";
 import {
   addNovelChapterAnalysis,
   attachFallbackEvidenceToGraph,
@@ -60,8 +60,8 @@ export async function POST(request: Request) {
         analyzedAt: new Date().toISOString()
       });
     }
-    const record = createNovelRuntimeFromProject(project, committed.chapters, evidenceIndexes);
-    record.batchQueue = createNovelBatchQueue(record.project, 3);
+    const created = createNovelRuntimeFromProject(project, committed.chapters, evidenceIndexes);
+    const record = saveNovelRuntimeRecord({ ...created, batchQueue: createNovelBatchQueue(created.project, 3) });
     return ok({
       project: record.project,
       chapters: record.chapters.map((chapter) => ({ chapterId: chapter.chapterId, order: chapter.order, title: chapter.title, paragraphCount: chapter.paragraphs.length })),

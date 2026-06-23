@@ -10,6 +10,7 @@
 - Added a deeper Persistent Agent Town simulation loop with staged tick phases, expanded NPC actions, memory propagation, pressure ledger entries, action consequences, and candidate chain stages.
 - Added a deterministic Town Situation Brief with ranked hot locations, high-risk NPCs, observation mix, and case-readiness guidance for operators and external agents.
 - Added a one-click Living World Lab sample project with five analyzed chapters, evidence indexes, a ready batch queue, and a grounded replay.
+- Added a SQLite-backed Living World Lab Project Library with explicit save, open, save-copy, conflict detection, backup coverage, and cross-restart restoration.
 
 ### Changed
 

@@ -6,6 +6,7 @@ import {
   Bot,
   ChevronDown,
   Clock,
+  Copy,
   Database,
   FileSearch,
   Gavel,
@@ -18,6 +19,7 @@ import {
   Pin,
   Play,
   RotateCcw,
+  Save,
   Search,
   SkipBack,
   SkipForward,
@@ -194,6 +196,8 @@ import type {
   NovelGameVisualPreferences,
   NovelGameVisualProfile,
   NovelLongChapterText,
+  NovelPersistentWorkspace,
+  NovelProjectSummary,
   NovelRelationship,
   NovelSceneBeat,
   NovelSimulationExplanation,
@@ -238,6 +242,12 @@ import type {
 
 type ApiResult<T> = T & { ok: boolean; error?: string };
 type V1Result<T> = { ok: boolean; data?: T; error?: { code: string; message: string } };
+class V1RequestError extends Error {
+  constructor(public readonly code: string, public readonly status: number, message: string) {
+    super(message);
+    this.name = "V1RequestError";
+  }
+}
 type AiSafetyState = {
   mock?: boolean;
   promptAudit?: PromptAuditReport;
@@ -322,7 +332,7 @@ async function postJson<T>(url: string, body: unknown) {
 async function getV1<T>(url: string) {
   const response = await fetch(apiUrl(url));
   const data = (await response.json()) as V1Result<T>;
-  if (!data.ok || !data.data) throw new Error(data.error?.message || "Request failed");
+  if (!data.ok || !data.data) throw new V1RequestError(data.error?.code || "INTERNAL_ERROR", response.status, data.error?.message || "Request failed");
   return data.data;
 }
 
@@ -333,7 +343,7 @@ async function postV1<T>(url: string, body: unknown) {
     body: JSON.stringify(body)
   });
   const data = (await response.json()) as V1Result<T>;
-  if (!data.ok || !data.data) throw new Error(data.error?.message || "Request failed");
+  if (!data.ok || !data.data) throw new V1RequestError(data.error?.code || "INTERNAL_ERROR", response.status, data.error?.message || "Request failed");
   return data.data;
 }
 
@@ -416,6 +426,17 @@ type NovelSimulationRunRecord = {
   run: NovelSimulationRun;
   explanationByStepId: Record<string, NovelSimulationExplanation>;
 };
+
+function novelWorkspaceFingerprint(workspace: Omit<NovelPersistentWorkspace, "updatedAt"> | NovelPersistentWorkspace) {
+  return JSON.stringify({
+    project: workspace.project,
+    chapters: workspace.chapters,
+    evidenceIndexes: workspace.evidenceIndexes,
+    simulationRuns: workspace.simulationRuns,
+    correctionSet: workspace.correctionSet,
+    batchQueue: workspace.batchQueue
+  });
+}
 
 function openNovelWorkbenchDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -607,7 +628,7 @@ function loadInitialNovelProject() {
   return saved?.version === 2 ? saved : createDefaultNovelProject();
 }
 
-function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
+function WorldGraphWorkbench({ onBack, runtimeMode }: { onBack: () => void; runtimeMode: RuntimeMode }) {
   const [project, setProject] = useState<NovelWorldProject>(() => loadInitialNovelProject());
   const [activeChapterId, setActiveChapterId] = useState(() => loadInitialNovelProject().chapters[0]?.input.id || "chapter-1");
   const [selected, setSelected] = useState<NovelSelection>(() => {
@@ -664,6 +685,14 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
   const [gameVisualPreferences, setGameVisualPreferences] = useState<NovelGameVisualPreferences>(defaultNovelGameVisualPreferences);
   const [storageReady, setStorageReady] = useState(false);
   const [evidenceStatus, setEvidenceStatus] = useState("IndexedDB not loaded yet.");
+  const [serverProjects, setServerProjects] = useState<NovelProjectSummary[]>([]);
+  const [serverProjectId, setServerProjectId] = useState("");
+  const [serverUpdatedAt, setServerUpdatedAt] = useState("");
+  const [serverSavedFingerprint, setServerSavedFingerprint] = useState("");
+  const [serverBusy, setServerBusy] = useState(false);
+  const [serverOffline, setServerOffline] = useState(false);
+  const [serverConflict, setServerConflict] = useState(false);
+  const [serverStatus, setServerStatus] = useState("Local draft is saved automatically.");
   const projectRef = useRef(project);
   const batchQueueRef = useRef(batchQueue);
 
@@ -789,6 +818,141 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
     if (!storageReady || typeof window === "undefined") return;
     void writeNovelIndexedValue(novelIndexedCorrectionSetKey, correctionSet).catch((error) => setEvidenceStatus(`IndexedDB correction save failed: ${error instanceof Error ? error.message : "unknown error"}`));
   }, [correctionSet, storageReady]);
+
+  const serverWorkspace = useMemo<NovelPersistentWorkspace>(() => ({
+    version: 1,
+    project,
+    chapters: chapterTexts,
+    evidenceIndexes,
+    simulationRuns: simulationRuns.map((record) => record.run),
+    correctionSet,
+    batchQueue,
+    updatedAt: serverUpdatedAt || project.updatedAt
+  }), [batchQueue, chapterTexts, correctionSet, evidenceIndexes, project, serverUpdatedAt, simulationRuns]);
+  const serverWorkspaceFingerprint = useMemo(() => novelWorkspaceFingerprint(serverWorkspace), [serverWorkspace]);
+  const serverSyncState = runtimeMode === "static-demo"
+    ? "local"
+    : serverConflict
+      ? "conflict"
+      : serverOffline
+        ? "offline"
+        : serverSavedFingerprint && serverSavedFingerprint === serverWorkspaceFingerprint
+          ? "saved"
+          : "unsaved";
+
+  useEffect(() => {
+    if (!storageReady || runtimeMode === "static-demo") {
+      setServerProjects([]);
+      setServerOffline(false);
+      return;
+    }
+    let cancelled = false;
+    void getV1<{ projects: NovelProjectSummary[] }>("/api/v1/query/novel/projects")
+      .then((data) => {
+        if (cancelled) return;
+        setServerProjects(data.projects);
+        setServerOffline(false);
+        setServerStatus("Server project library ready.");
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setServerOffline(true);
+        setServerStatus(`Server unavailable; local draft remains safe. ${error instanceof Error ? error.message : ""}`);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [runtimeMode, storageReady]);
+
+  function applyServerWorkspace(workspace: NovelPersistentWorkspace) {
+    setProject(workspace.project);
+    setChapterTexts(workspace.chapters);
+    setEvidenceIndexes(workspace.evidenceIndexes);
+    setBatchQueue(normalizeNovelBatchQueue(workspace.project, workspace.batchQueue));
+    setCorrectionSet(normalizeNovelCorrectionSet(workspace.correctionSet, workspace.project));
+    const runs = workspace.simulationRuns.slice(0, 10).map((run) => ({ run, explanationByStepId: {} }));
+    setSimulationRuns(runs);
+    setActiveSimulationRunId(runs[0]?.run.id || "");
+    setActiveChapterId(workspace.project.chapters[0]?.input.id || "chapter-1");
+    setSelected({ type: "entity", id: workspace.project.mergedGraph.entities[0]?.id || "char-lin-yao" });
+    setServerProjectId(workspace.project.id);
+    setServerUpdatedAt(workspace.updatedAt);
+    setServerSavedFingerprint(novelWorkspaceFingerprint(workspace));
+    setServerConflict(false);
+    setServerOffline(false);
+  }
+
+  async function refreshServerProjects() {
+    const data = await getV1<{ projects: NovelProjectSummary[] }>("/api/v1/query/novel/projects");
+    setServerProjects(data.projects);
+    setServerOffline(false);
+  }
+
+  async function openServerProject(projectId: string, skipConfirmation = false) {
+    if (!skipConfirmation && serverWorkspaceFingerprint !== serverSavedFingerprint && !window.confirm("打开服务器项目会替换当前本地草稿视图。IndexedDB 草稿仍会保留，是否继续？")) return;
+    setServerBusy(true);
+    try {
+      const data = await getV1<{ workspace: NovelPersistentWorkspace }>(`/api/v1/query/novel/project?projectId=${encodeURIComponent(projectId)}`);
+      applyServerWorkspace(data.workspace);
+      setServerStatus(`Opened ${data.workspace.project.title} from SQLite.`);
+    } catch (error) {
+      setServerOffline(true);
+      setServerStatus(error instanceof Error ? error.message : "Failed to open server project.");
+    } finally {
+      setServerBusy(false);
+    }
+  }
+
+  async function saveServerProject() {
+    if (runtimeMode === "static-demo") return;
+    setServerBusy(true);
+    setServerConflict(false);
+    try {
+      const data = await postV1<{ workspace: NovelPersistentWorkspace }>("/api/v1/command/novel/project/save", {
+        workspace: serverWorkspace,
+        expectedUpdatedAt: serverProjectId === project.id ? serverUpdatedAt || undefined : undefined
+      });
+      applyServerWorkspace(data.workspace);
+      await refreshServerProjects();
+      setServerStatus(`Saved ${data.workspace.project.title} to SQLite.`);
+    } catch (error) {
+      if (error instanceof V1RequestError && error.code === "NOVEL_PROJECT_CONFLICT") {
+        setServerConflict(true);
+        setServerStatus("Server copy changed. Reload it or save this draft as a copy.");
+      } else {
+        setServerOffline(true);
+        setServerStatus(error instanceof Error ? error.message : "Failed to save server project.");
+      }
+    } finally {
+      setServerBusy(false);
+    }
+  }
+
+  async function saveServerProjectCopy() {
+    if (runtimeMode === "static-demo") return;
+    const now = new Date().toISOString();
+    const copyId = `${project.id.replace(/[^a-zA-Z0-9-]+/g, "-").replace(/^-+|-+$/g, "") || "novel-project"}-copy-${Date.now().toString(36)}`;
+    const copyProject: NovelWorldProject = { ...project, id: copyId, title: `${project.title} Copy`, createdAt: now, updatedAt: now };
+    const copyWorkspace: NovelPersistentWorkspace = {
+      ...serverWorkspace,
+      project: copyProject,
+      correctionSet: { ...correctionSet, projectId: copyId, createdAt: now, updatedAt: now },
+      simulationRuns: serverWorkspace.simulationRuns.map((run) => ({ ...run, projectId: copyId })),
+      updatedAt: now
+    };
+    setServerBusy(true);
+    try {
+      const data = await postV1<{ workspace: NovelPersistentWorkspace }>("/api/v1/command/novel/project/save", { workspace: copyWorkspace });
+      applyServerWorkspace(data.workspace);
+      await refreshServerProjects();
+      setServerStatus(`Saved a new SQLite copy: ${data.workspace.project.title}.`);
+    } catch (error) {
+      setServerOffline(true);
+      setServerStatus(error instanceof Error ? error.message : "Failed to save project copy.");
+    } finally {
+      setServerBusy(false);
+    }
+  }
 
   const correctionValidation = useMemo(() => validateNovelCorrectionSet(correctionSet, project, chapterTexts), [chapterTexts, correctionSet, project]);
   const correctedProject = useMemo(() => applyNovelCorrectionOverlay(project, correctionSet), [correctionSet, project]);
@@ -1853,6 +2017,51 @@ function WorldGraphWorkbench({ onBack }: { onBack: () => void }) {
           <button onClick={onBack}>Play</button>
           <button className="active">Living World Lab</button>
         </div>
+        <section className="hudPanel projectLibraryPanel" data-testid="novel-project-library">
+          <div className="panelHeaderLine">
+            <div>
+              <span className="eyebrow">Project Library</span>
+              <h2><Database size={16} /> {runtimeMode === "static-demo" ? "Local Draft" : "SQLite Server"}</h2>
+            </div>
+            <span className={`projectSyncBadge ${serverSyncState}`} data-testid="novel-project-sync-state">{serverSyncState}</span>
+          </div>
+          {runtimeMode === "static-demo" ? (
+            <p>Static Runtime keeps this project in IndexedDB. Switch to Server Runtime to create a durable SQLite copy.</p>
+          ) : (
+            <>
+              <div className="projectLibraryActions">
+                <button data-testid="save-server-project" type="button" className="primaryButton compact" onClick={() => void saveServerProject()} disabled={serverBusy || serverOffline} title="Save current project to SQLite">
+                  {serverBusy ? <Loader2 className="spin" size={14} /> : <Save size={14} />} Save
+                </button>
+                <button data-testid="save-server-project-copy" type="button" onClick={() => void saveServerProjectCopy()} disabled={serverBusy || serverOffline} title="Save as a new SQLite project">
+                  <Copy size={14} /> Save copy
+                </button>
+                {serverConflict && serverProjectId && (
+                  <button data-testid="reload-server-project" type="button" onClick={() => void openServerProject(serverProjectId, true)} disabled={serverBusy} title="Discard this view and reload the server copy">
+                    <RotateCcw size={14} /> Reload
+                  </button>
+                )}
+              </div>
+              <div className="serverProjectList" data-testid="server-project-list">
+                {serverProjects.map((item) => (
+                  <button
+                    key={item.id}
+                    data-testid={`open-server-project-${item.id}`}
+                    type="button"
+                    className={item.id === serverProjectId ? "active" : ""}
+                    onClick={() => void openServerProject(item.id)}
+                    disabled={serverBusy}
+                  >
+                    <strong>{item.title}</strong>
+                    <span>{item.chapterCount} chapters / {item.genreTone}</span>
+                    <small>{new Date(item.updatedAt).toLocaleString()}</small>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+          <p className="projectServerStatus" data-testid="novel-project-server-status">{serverStatus}</p>
+        </section>
         <section className="hudPanel sampleProjectPanel" data-testid="sample-project-panel">
           <div className="panelHeaderLine">
             <span className="eyebrow">Demo-ready sample</span>
@@ -4620,7 +4829,7 @@ export default function Home() {
   }
 
   if (appMode === "world-graph") {
-    return <WorldGraphWorkbench onBack={() => setAppMode("play")} />;
+    return <WorldGraphWorkbench runtimeMode={runtimeMode} onBack={() => setAppMode("play")} />;
   }
 
   if (appMode === "authoring") {
