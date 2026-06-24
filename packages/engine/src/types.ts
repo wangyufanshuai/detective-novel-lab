@@ -134,6 +134,63 @@ export type ReasoningCoverage = {
   coverageRatio: number;
 };
 
+export type CaseProofObligationKind =
+  | "motive"
+  | "means"
+  | "opportunity"
+  | "timeline"
+  | "contradiction"
+  | "exclusion"
+  | "source"
+  | "conclusion";
+
+export type CaseProofObligation = {
+  id: string;
+  kind: CaseProofObligationKind;
+  label: string;
+  detail: string;
+  lowSpoilerLabel: string;
+  lowSpoilerDetail: string;
+  required: boolean;
+  characterIds: string[];
+  evidenceIds: string[];
+  eventIds: string[];
+  memoryIds: string[];
+  source: "truth" | "reasoning" | "testimony" | "exclusion" | "sourceMap";
+};
+
+export type CaseProofGap = {
+  obligationId: string;
+  kind: CaseProofObligationKind;
+  label: string;
+  detail: string;
+  missingEvidenceIds: string[];
+  missingEventIds: string[];
+  missingMemoryIds: string[];
+  target: "evidence" | "suspects" | "motive" | "method" | "logic" | "exclusion";
+};
+
+export type CaseProofCoverage = {
+  caseId: string;
+  totalRequired: number;
+  coveredRequired: number;
+  coverageRatio: number;
+  complete: boolean;
+  coveredObligationIds: string[];
+  missingObligationIds: string[];
+  gaps: CaseProofGap[];
+};
+
+export type CaseTruthLedger = {
+  caseId: string;
+  valid: boolean;
+  obligations: CaseProofObligation[];
+  gaps: CaseProofGap[];
+  sourceEventCount: number;
+  discoverableEvidenceCount: number;
+  requiredEvidenceIds: string[];
+};
+
 export type RuleReport = {
   valid: boolean;
   errors: string[];
@@ -200,6 +257,7 @@ export type Judgement = {
   missing: string[];
   contradictions: string[];
   explanation: string;
+  proofCoverage?: CaseProofCoverage;
 };
 
 export type EvidenceChallenge = {

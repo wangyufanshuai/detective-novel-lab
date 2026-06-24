@@ -130,6 +130,10 @@ Main endpoints:
 
 `POST /api/v1/command/town/case/extract` keeps the existing response fields and may also return `playableIntake`. The intake is derived from the extracted `CaseFromLog`, source map, world events, memory counts, and current player session when available.
 
+The intake is now backed by a deterministic Truth Ledger. The ledger rebuilds proof obligations for motive, means, opportunity, timeline, testimony contradiction, non-culprit exclusion, source backing, and final conclusion. Each required obligation must point to discoverable evidence plus a source event or memory before a candidate is considered fully playable. This keeps the candidate gate, player navigation, wrong-theory gaps, and final judgement on the same hard-logic rules.
+
+`GET /api/v1/query/case/proof-ledger?caseId=...&sessionId=...` rebuilds the ledger and optional player coverage without mutating the case. Before the player solves the case, UI surfaces only low-spoiler obligation labels and gap targets. After a correct theory, the Proof Ledger unlocks evidence ids, source events, memory ids, and conclusion links alongside Proof Tour.
+
 The UI shows the intake before the player enters the investigation. It contains readiness score, route integrity, current progress, next action, six-stage chain status, source event and memory counts, evidence route hints, witness challenge planning, and spoiler-safe gaps.
 
 The extraction command now applies a final playable-route gate before writing the extracted case to SQLite. A candidate must have a searchable evidence route, a witness route, at least one discoverable testimony challenge, and source-backed motive / means / opportunity / non-culprit exclusion coverage. Blocked candidates return `CASE_NOT_PLAYABLE` with low-spoiler reasons.

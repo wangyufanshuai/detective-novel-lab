@@ -112,7 +112,13 @@ Emerged Persistent Agent Town candidates can be bridged into the player investig
 
 `GET /api/v1/query/case?caseId=...&includeIntake=true` recomputes the same intake for an existing case. Passing `sessionId` lets the route mark discovered evidence, ready witness challenges, wrong-theory progress, next action, and solved source trail visibility. Omitting `includeIntake` preserves the old response shape.
 
-`playableIntake` may include optional `routeIntegrity`, `progress`, `progressStages`, `nextAction`, and `blockedReasons` fields. These are additive and can be ignored by older clients.
+`playableIntake` may include optional `routeIntegrity`, `proofCoverage`, `progress`, `progressStages`, `nextAction`, and `blockedReasons` fields. These are additive and can be ignored by older clients.
+
+Truth Ledger is the local proof source for emerged cases. It creates motive, means, opportunity, timeline, contradiction, exclusion, source, and conclusion obligations from the extracted case, source map, world events, testimonies, and suspect matrix. The same coverage drives route integrity, wrong-theory gaps, Case Intake next action, and judgement feedback.
+
+- `GET /api/v1/query/case/proof-ledger?caseId=...&sessionId=...`
+
+The endpoint is read-only and returns `{ ledger, coverage }` inside the standard `{ ok: true, data }` envelope. Passing `sessionId` marks obligations covered by discovered evidence, selected theory evidence, challenge hits, and solved status.
 
 ## Scenario Runner And Time Machine
 

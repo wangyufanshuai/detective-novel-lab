@@ -14,7 +14,9 @@ import type {
   WorldEvent,
   WorldState
 } from "./world-types";
+import type { CaseProofCoverage } from "./types";
 import { buildDeductionGraph, deriveSuspectBoard } from "./deduction-graph";
+import { buildCaseTruthLedger, evaluateCaseProofCoverage } from "./proof-ledger";
 
 function characterName(caseFromLog: CaseFromLog, characterId: string) {
   return caseFromLog.deductionCase.characters.find((character) => character.id === characterId)?.name || characterId;
@@ -55,36 +57,16 @@ function evidenceKindLabel(isKey: boolean, index: number) {
   return `${isKey ? "key" : "support"} clue ${index + 1}`;
 }
 
-function textIncludesAny(value: string, terms: string[]) {
-  const normalized = value.toLowerCase();
-  return terms.some((term) => normalized.includes(term.toLowerCase()));
-}
-
-function evidenceSupportsStage(evidence: CaseFromLog["deductionCase"]["evidence"][number], stage: keyof PlayableCaseRouteIntegrity["criticalCoverage"]) {
-  const text = [
-    evidence.title,
-    evidence.visibleDescription,
-    evidence.trueMeaning,
-    ...evidence.supportsConclusion,
-    ...evidence.contradicts,
-    ...evidence.unlocks
-  ].join(" ");
-  if (stage === "motive") return textIncludesAny(text, ["motive", "pressure", "conflict", "grudge"]);
-  if (stage === "means") return textIncludesAny(text, ["means", "method", "weapon", "tool", "poison", "blade"]);
-  if (stage === "opportunity") return textIncludesAny(text, ["opportunity", "timeline", "time", "location", "alibi"]);
-  return textIncludesAny(text, ["exclude", "exclusion", "alibi", "red herring"]);
-}
-
-function buildRouteIntegrity(caseFromLog: CaseFromLog): PlayableCaseRouteIntegrity {
+function buildRouteIntegrity(caseFromLog: CaseFromLog, events: WorldEvent[] = []): PlayableCaseRouteIntegrity {
+  const ledger = buildCaseTruthLedger(caseFromLog, events);
   const discoverable = caseFromLog.deductionCase.evidence.filter((item) => item.discoverable);
   const discoverableIds = new Set(discoverable.map((item) => item.id));
   const contradictionEvidenceIds = new Set(caseFromLog.testimonies.flatMap((item) => item.contradictionEvidenceIds));
-  const chainStageSourceEventIds = caseFromLog.sourceMap?.chainStageSourceEventIds || {};
   const criticalCoverage = {
-    motive: Boolean(chainStageSourceEventIds.motive?.length) || discoverable.some((item) => evidenceSupportsStage(item, "motive")),
-    means: Boolean(chainStageSourceEventIds.means?.length) || discoverable.some((item) => evidenceSupportsStage(item, "means")),
-    opportunity: Boolean(chainStageSourceEventIds.opportunity?.length) || discoverable.some((item) => evidenceSupportsStage(item, "opportunity")),
-    exclusion: Boolean(chainStageSourceEventIds.exclusion?.length) || caseFromLog.deductionCase.logicPuzzle.exclusionChains.some((chain) => chain.evidenceIds.some((id) => discoverableIds.has(id))) || discoverable.some((item) => evidenceSupportsStage(item, "exclusion"))
+    motive: ledger.obligations.some((item) => item.kind === "motive" && item.evidenceIds.some((id) => discoverableIds.has(id)) && (item.eventIds.length || item.memoryIds.length)),
+    means: ledger.obligations.some((item) => item.kind === "means" && item.evidenceIds.some((id) => discoverableIds.has(id)) && (item.eventIds.length || item.memoryIds.length)),
+    opportunity: ledger.obligations.some((item) => item.kind === "opportunity" && item.evidenceIds.some((id) => discoverableIds.has(id)) && (item.eventIds.length || item.memoryIds.length)),
+    exclusion: ledger.obligations.some((item) => item.kind === "exclusion" && item.evidenceIds.some((id) => discoverableIds.has(id)) && (item.eventIds.length || item.memoryIds.length))
   };
   const searchableEvidence = discoverable.length > 0;
   const witnessAvailable = caseFromLog.testimonies.some((item) => item.characterId);
@@ -96,13 +78,15 @@ function buildRouteIntegrity(caseFromLog: CaseFromLog): PlayableCaseRouteIntegri
     !criticalCoverage.motive ? "Motive coverage is not backed by a source event or discoverable clue." : "",
     !criticalCoverage.means ? "Means coverage is not backed by a source event or discoverable clue." : "",
     !criticalCoverage.opportunity ? "Opportunity coverage is not backed by a source event or discoverable clue." : "",
-    !criticalCoverage.exclusion ? "Non-culprit exclusion coverage is missing." : ""
+    !criticalCoverage.exclusion ? "Non-culprit exclusion coverage is missing." : "",
+    !ledger.valid ? `Truth Ledger has ${ledger.gaps.length} unbacked proof obligation(s).` : ""
   ].filter(Boolean);
   return {
     playable: blockers.length === 0,
     searchableEvidence,
     witnessAvailable,
     contradictionAvailable,
+    proofLedgerValid: ledger.valid,
     criticalCoverage,
     blockers
   };
@@ -116,6 +100,22 @@ function buildProgressStages(starterTasks: PlayableCaseTask[], progress: Playabl
     if (task.kind === "submit") return { ...task, complete: progress.solved, locked: !progress.submitReady, detail: progress.submitReady ? "The route has enough discovered material to submit a theory." : task.detail };
     return task;
   });
+}
+
+function spoilerSafeProofCoverage(coverage: CaseProofCoverage, solved: boolean): CaseProofCoverage {
+  if (solved) return coverage;
+  return {
+    ...coverage,
+    coveredObligationIds: coverage.coveredObligationIds.map((_, index) => `covered:${index + 1}`),
+    missingObligationIds: coverage.missingObligationIds.map((_, index) => `missing:${index + 1}`),
+    gaps: coverage.gaps.map((gap, index) => ({
+      ...gap,
+      obligationId: `proof-gap:${gap.kind}:${index + 1}`,
+      missingEvidenceIds: [],
+      missingEventIds: [],
+      missingMemoryIds: []
+    }))
+  };
 }
 
 function buildNextAction(input: {
@@ -189,8 +189,8 @@ function buildNextAction(input: {
   };
 }
 
-export function validatePlayableCaseRoute(caseFromLog: CaseFromLog): PlayableCaseRouteIntegrity {
-  return buildRouteIntegrity(caseFromLog);
+export function validatePlayableCaseRoute(caseFromLog: CaseFromLog, events: WorldEvent[] = []): PlayableCaseRouteIntegrity {
+  return buildRouteIntegrity(caseFromLog, events);
 }
 
 export function buildPlayableCaseIntake(
@@ -206,7 +206,14 @@ export function buildPlayableCaseIntake(
   const sourceEventIds = Array.from(new Set([...(caseFromLog.sourceEventIds || []), ...(sourceMap.sourceEventIds || [])]));
   const evidenceSourceEventIds = sourceMap.evidenceSourceEventIds || {};
   const chainStageSourceEventIds = sourceMap.chainStageSourceEventIds || {};
-  const routeIntegrity = buildRouteIntegrity(caseFromLog);
+  const routeIntegrity = buildRouteIntegrity(caseFromLog, events);
+  const truthLedger = buildCaseTruthLedger(caseFromLog, events);
+  const proofCoverage = evaluateCaseProofCoverage(truthLedger, {
+    discoveredEvidenceIds: session?.discoveredEvidenceIds || [],
+    selectedEvidenceIds: session?.submittedTheory?.evidenceIds,
+    challengedCharacterIds: interrogationLog.filter((entry) => entry.challenge?.hit).map((entry) => entry.characterId),
+    solved
+  });
   const sourceEvents = sourceEventIds.map((id) => events.find((event) => event.id === id)).filter((event): event is WorldEvent => Boolean(event));
   const memorySourceIds = sourceMap.memorySourceIds || [];
   const observationSourceIds = sourceMap.observationSourceIds || [];
@@ -301,13 +308,14 @@ export function buildPlayableCaseIntake(
       id: "intake:submit",
       kind: "submit" as const,
       title: "Submit only after the chain is closed",
-      detail: "Use discovered evidence to cover motive, method, opportunity, and non-culprit exclusions.",
+      detail: proofCoverage.complete ? "The proof ledger is covered; submit the culprit, motive, method, and evidence chain." : "Use discovered evidence to cover motive, method, opportunity, contradictions, and non-culprit exclusions.",
       complete: Boolean(session?.judgement?.accepted),
-      locked: discoveredEvidence.length < Math.min(3, totalEvidence)
+      locked: !proofCoverage.complete && discoveredEvidence.length < Math.min(3, totalEvidence)
     }
   ];
   const spoilerSafeGaps = [
     ...routeIntegrity.blockers,
+    ...proofCoverage.gaps.slice(0, 6).map((gap) => gap.detail),
     ...chainStages.filter((stage) => !stage.complete).map((stage) => `${stage.label} still needs source support.`),
     ...(discoveredEvidence.length ? [] : ["No evidence has been discovered in this session yet."]),
     ...(witnessPlan.some((item) => item.challengeReady) || solved ? [] : ["No testimony challenge is ready until a linked clue is discovered."])
@@ -321,7 +329,7 @@ export function buildPlayableCaseIntake(
     challengeReadyCount: witnessPlan.filter((item) => item.challengeReady).length,
     challengeHitCount: challengeHits.size,
     selectedTheoryEvidence: submittedEvidenceCount,
-    submitReady: discoveredEvidence.length >= Math.min(3, totalEvidence) && interrogationLog.length > 0 && routeIntegrity.playable,
+    submitReady: (proofCoverage.complete || solved) && interrogationLog.length > 0 && routeIntegrity.playable,
     wrongTheorySubmitted: Boolean(session?.judgement && !session.judgement.accepted),
     solved
   };
@@ -362,7 +370,7 @@ export function buildPlayableCaseIntake(
     sourceCandidateId: caseFromLog.sourceCandidateId || sourceMap.sourceCandidateId,
     readiness: {
       status,
-      score: Math.min(100, Math.round((completeStages / Math.max(chainStages.length, 1)) * 70 + (caseFromLog.validation.valid ? 20 : 0) + (caseFromLog.qualityReport?.reasoningTraceComplete ? 10 : 0))),
+      score: Math.min(100, Math.round((completeStages / Math.max(chainStages.length, 1)) * 55 + (proofCoverage.coverageRatio * 25) + (caseFromLog.validation.valid ? 10 : 0) + (caseFromLog.qualityReport?.reasoningTraceComplete ? 10 : 0))),
       summary: solved
         ? "Solved: full source trail is unlocked."
         : "Ready for low-spoiler investigation: source counts, route hints, and witness plans are visible; hidden conclusions stay locked."
@@ -383,6 +391,7 @@ export function buildPlayableCaseIntake(
     ,
     nextAction,
     routeIntegrity,
+    proofCoverage: spoilerSafeProofCoverage(proofCoverage, solved),
     progress,
     progressStages,
     blockedReasons: spoilerSafeGaps

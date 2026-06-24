@@ -191,7 +191,16 @@ try {
   assert.equal(queriedCase.caseFromLog.id, extracted.activeCase.id, "case query returns saved extracted case");
   assert.equal(queriedCase.playableIntake.caseId, extracted.activeCase.id, "case query can rebuild playable intake");
   assert.equal(queriedCase.playableIntake.routeIntegrity.playable, true, "case query rebuilds route integrity");
+  assert.equal(queriedCase.playableIntake.routeIntegrity.proofLedgerValid, true, "case query rebuilds truth-ledger route validity");
+  assert.ok(queriedCase.playableIntake.proofCoverage.totalRequired >= 8, "case query returns proof coverage in intake");
   assert.ok(queriedCase.playableIntake.nextAction.buttonLabel, "case query rebuilds next action");
+
+  const proofLedger = await request(`/api/v1/query/case/proof-ledger?caseId=${encodeURIComponent(extracted.activeCase.id)}`);
+  assert.equal(proofLedger.ledger.caseId, extracted.activeCase.id, "proof ledger query returns the saved case ledger");
+  assert.equal(proofLedger.ledger.valid, true, "proof ledger query validates extracted case");
+  assert.ok(proofLedger.ledger.obligations.some((item) => item.kind === "conclusion"), "proof ledger query includes conclusion obligations");
+  assert.ok(proofLedger.coverage.gaps.length, "proof ledger query exposes sessionless coverage gaps");
+  assert.equal(JSON.stringify(proofLedger).includes(extracted.activeCase.deductionCase.truth.culpritId), false, "sessionless proof ledger query stays low-spoiler");
 
   await request("/api/v1/command/town/runtime/pause", {
     method: "POST",

@@ -11,6 +11,7 @@ import {
   Gavel,
   GitBranch,
   HelpCircle,
+  ListTree,
   Loader2,
   Map as MapIcon,
   MessageSquare,
@@ -28,6 +29,8 @@ import type {
   CaseTemplateId,
   CaseCandidate,
   CaseChainStage,
+  CaseProofCoverage,
+  CaseTruthLedger,
   AgentDecisionTrace,
   DeductionCase,
   DeductionGraphNode,
@@ -687,6 +690,8 @@ export function CaseLogicPanel({
   logicReport,
   emergenceScore,
   causalComplete,
+  proofLedger,
+  proofCoverage,
   graph,
   selectedGraphExplanation,
   solutionChain,
@@ -697,6 +702,8 @@ export function CaseLogicPanel({
   logicReport: CaseLogicReport | null;
   emergenceScore: number;
   causalComplete: boolean;
+  proofLedger?: CaseTruthLedger | null;
+  proofCoverage?: CaseProofCoverage | null;
   graph: ReactNode;
   selectedGraphExplanation?: GraphNodeExplanation | null;
   solutionChain: string[];
@@ -716,6 +723,43 @@ export function CaseLogicPanel({
           <span>Causal: {causalComplete ? "Pass" : "Pending"}</span>
         </div>
       </section>
+      {proofLedger && proofCoverage && (
+        <section className="actionPanel proofLedgerPanel" data-testid="proof-ledger">
+          <div className="panelHeaderLine">
+            <h2><ListTree size={16} /> Proof Ledger</h2>
+            <span className={`runtimePill ${proofCoverage.complete ? "ready" : "investigating"}`}>
+              {proofCoverage.coveredRequired}/{proofCoverage.totalRequired}
+            </span>
+          </div>
+          <p>
+            {accepted
+              ? "Solved: full evidence, source events, and proof obligations are unlocked."
+              : "Low-spoiler proof obligations are visible. Evidence names, source events, and conclusion links unlock after a correct theory."}
+          </p>
+          <div className="logicBadges">
+            <span>Ledger: {proofLedger.valid ? "Pass" : "Gap"}</span>
+            <span>Coverage: {Math.round(proofCoverage.coverageRatio * 100)}%</span>
+            <span>Gaps: {proofCoverage.gaps.length}</span>
+            <span>Required clues: {proofLedger.requiredEvidenceIds.length}</span>
+          </div>
+          <div className="proofLedgerGrid">
+            {proofLedger.obligations.slice(0, accepted ? 24 : 12).map((item) => {
+              const covered = proofCoverage.coveredObligationIds.includes(item.id);
+              const blocked = proofCoverage.missingObligationIds.includes(item.id) || proofLedger.gaps.some((gap) => gap.obligationId === item.id);
+              return (
+                <article key={item.id} className={`${covered ? "complete" : ""} ${blocked ? "locked" : ""}`}>
+                  <span>{covered ? "Covered" : blocked ? "Gap" : "Open"} / {item.kind}</span>
+                  <b>{accepted ? item.label : item.lowSpoilerLabel}</b>
+                  <small>{accepted ? item.detail : item.lowSpoilerDetail}</small>
+                  {accepted && (
+                    <em>{[...item.evidenceIds.slice(0, 3), ...item.eventIds.slice(0, 2), ...item.memoryIds.slice(0, 1)].join(" / ") || "structure-only"}</em>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      )}
       <section className="actionPanel deductionGraphPanel">
         <h2><Database size={16} /> Deduction Graph</h2>
         {graph}
@@ -2005,11 +2049,19 @@ function CaseIntakePanel({
           <span><b>{progress.submitReady ? "ready" : "not ready"}</b>submit</span>
         </div>
       )}
+      {intake.proofCoverage && (
+        <div className="caseIntakeProgress proofCoverage" data-testid="case-intake-proof-coverage">
+          <span><b>{intake.proofCoverage.coveredRequired}/{intake.proofCoverage.totalRequired}</b>ledger coverage</span>
+          <span><b>{Math.round(intake.proofCoverage.coverageRatio * 100)}%</b>proof</span>
+          <span><b>{intake.proofCoverage.gaps.length}</b>proof gaps</span>
+        </div>
+      )}
       {intake.routeIntegrity && (
         <div className={`routeIntegrity ${intake.routeIntegrity.playable ? "pass" : "fail"}`} data-testid="case-route-integrity">
           <span>{intake.routeIntegrity.playable ? "Route complete" : "Route blocked"}</span>
           <small>
             motive {intake.routeIntegrity.criticalCoverage.motive ? "ok" : "gap"} / means {intake.routeIntegrity.criticalCoverage.means ? "ok" : "gap"} / opportunity {intake.routeIntegrity.criticalCoverage.opportunity ? "ok" : "gap"} / exclusion {intake.routeIntegrity.criticalCoverage.exclusion ? "ok" : "gap"}
+            {typeof intake.routeIntegrity.proofLedgerValid === "boolean" ? ` / ledger ${intake.routeIntegrity.proofLedgerValid ? "ok" : "gap"}` : ""}
           </small>
         </div>
       )}
@@ -2056,7 +2108,7 @@ function CaseIntakePanel({
       </div>
       {!!intake.spoilerSafeGaps.length && (
         <div className="caseIntakeGaps" data-testid="case-intake-gaps">
-          {intake.spoilerSafeGaps.slice(0, 4).map((gap) => <span key={gap}>{gap}</span>)}
+          {intake.spoilerSafeGaps.slice(0, 4).map((gap, index) => <span key={`${index}:${gap}`}>{gap}</span>)}
         </div>
       )}
       <div className="sourceTrail" data-testid="case-intake-source-trail">

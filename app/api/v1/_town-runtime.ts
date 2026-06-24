@@ -65,7 +65,7 @@ export function applyRuntimeIntervention(world: RuntimeWorld, intervention: Omit
 
 export function extractCase(world: RuntimeWorld, events: WorldEvent[], candidate: CaseCandidate) {
   const result = extractPlayableCaseFromCandidate(world, events, candidate);
-  const routeIntegrity = validatePlayableCaseRoute(result.activeCase);
+  const routeIntegrity = validatePlayableCaseRoute(result.activeCase, result.events);
   if (!routeIntegrity.playable) {
     throw new Error(`CASE_NOT_PLAYABLE: ${routeIntegrity.blockers.join("; ")}`);
   }

@@ -1,5 +1,6 @@
 import { deriveSuspectMatrix } from "./validators";
 import type { DeductionCase, Judgement, PlayerTheory } from "./types";
+import { buildDeductionCaseTruthLedger, evaluateCaseProofCoverage } from "./proof-ledger";
 
 function textHits(userText: string, targetText: string) {
   const user = userText.trim();
@@ -15,6 +16,11 @@ export function judgeTheory(deductionCase: DeductionCase, theory: PlayerTheory, 
   const discovered = new Set(discoveredEvidenceIds);
   const selected = new Set(theory.evidenceIds);
   const decisive = deductionCase.truth.decisiveEvidenceIds || [];
+  const proofLedger = buildDeductionCaseTruthLedger(deductionCase);
+  const proofCoverage = evaluateCaseProofCoverage(proofLedger, {
+    discoveredEvidenceIds,
+    selectedEvidenceIds: theory.evidenceIds
+  });
 
   if (theory.culpritId !== deductionCase.truth.culpritId) contradictions.push("The accused culprit does not match the truth.");
   if (!theory.motive.trim()) missing.push("Missing motive explanation.");
@@ -31,6 +37,12 @@ export function judgeTheory(deductionCase: DeductionCase, theory: PlayerTheory, 
   for (const row of matrix.filter((item) => !item.isCulprit)) {
     if (row.excludedByEvidenceIds.length && !row.excludedByEvidenceIds.some((id) => selected.has(id) && discovered.has(id))) {
       missing.push(`Missing evidence to exclude suspect "${row.name}".`);
+    }
+  }
+
+  for (const gap of proofCoverage.gaps) {
+    if (gap.missingEvidenceIds.length) {
+      missing.push(`${gap.label}: ${gap.detail}`);
     }
   }
 
@@ -54,6 +66,7 @@ export function judgeTheory(deductionCase: DeductionCase, theory: PlayerTheory, 
     contradictions,
     explanation: accepted
       ? "Theory accepted: culprit, motive, method, key evidence, and exclusion chain are closed."
-      : "Theory is incomplete: culprit, motive, method, key evidence, or exclusion chain still needs work."
+      : "Theory is incomplete: culprit, motive, method, key evidence, or exclusion chain still needs work.",
+    proofCoverage
   };
 }

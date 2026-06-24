@@ -13,6 +13,7 @@
 - Added a SQLite-backed Living World Lab Project Library with explicit save, open, save-copy, conflict detection, backup coverage, and cross-restart restoration.
 - Added a durable canonical entity identity registry, pending identity review, and baseline-linked novel replay branches with actor and causal state diffs.
 - Added Playable Case Intake for emerged Persistent Agent Town candidates, including low-spoiler route tasks, source counts, witness challenge planning, and source-backed investigation entry.
+- Added a deterministic Truth Ledger for emerged cases, with proof obligations, player coverage, gap mapping, and a read-only `/api/v1/query/case/proof-ledger` endpoint.
 
 ### Changed
 
@@ -25,6 +26,7 @@
 - Benchmark Dashboard now has clearer pass/fail/unavailable states.
 - Emerged case extraction can now return a spoiler-safe `playableIntake`, and `GET /api/v1/query/case` can include it with `includeIntake=true`.
 - Playable Case Intake now includes route integrity, player progress, next action, and pre-persistence blocking for candidates that cannot support a complete search -> witness -> challenge -> theory loop.
+- Playable Case Intake, wrong-theory gap cards, route integrity, and judgement feedback now derive from Truth Ledger proof coverage instead of separate lightweight stage heuristics.
 
 ## v0.1.0 - 2026-06-11
 

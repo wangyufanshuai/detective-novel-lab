@@ -68,6 +68,7 @@ import {
   buildDeductionGraph,
   buildEvidenceNotebook,
   buildEmergenceProofTrace,
+  buildCaseTruthLedger,
   buildPlayableCaseIntake,
   buildPlayerProofTour,
   buildWorldMapSnapshot,
@@ -82,6 +83,7 @@ import {
   exportCaseGalleryBundle,
   importCaseGalleryEntries,
   interrogateDemoNpc,
+  evaluateCaseProofCoverage,
   listCaseTemplates,
   markDemoCrimeObserved,
   addNovelChapterAnalysis,
@@ -3672,6 +3674,13 @@ export default function Home() {
       if (/exclude/i.test(label)) return "exclusion";
       return "logic";
     };
+    const proofCards = session?.judgement?.proofCoverage?.gaps.map((gap) => ({
+      id: `proof-gap:${gap.obligationId}`,
+      label: `${gap.kind}: ${gap.label}`,
+      detail: gap.detail,
+      target: gap.target === "suspects" ? "suspects" : gap.target
+    } satisfies GapCard)) || [];
+    if (proofCards.length) return proofCards;
     return judgementGaps.map((label) => {
       const target = mapTarget(label);
       const detail: Record<GapCard["target"], string> = {
@@ -3684,7 +3693,7 @@ export default function Home() {
       };
       return { id: `gap:${label}`, label, detail: detail[target], target };
     });
-  }, [judgementGaps]);
+  }, [judgementGaps, session?.judgement?.proofCoverage?.gaps]);
   const nextStepAdvice = useMemo(() => {
     if (!session?.judgement || session.judgement.accepted) return "";
     if (discoveredEvidence.length > 0 && !progress.challengedTestimony) {
@@ -3745,6 +3754,19 @@ export default function Home() {
   const playableIntake: PlayableCaseIntake | null = useMemo(
     () => (activeCase?.sourceCandidateId ? buildPlayableCaseIntake(activeCase, events, world, session) : null),
     [activeCase, events, session, world]
+  );
+  const caseTruthLedger = useMemo(
+    () => (activeCase ? buildCaseTruthLedger(activeCase, events) : null),
+    [activeCase, events]
+  );
+  const caseProofCoverage = useMemo(
+    () => caseTruthLedger ? evaluateCaseProofCoverage(caseTruthLedger, {
+      discoveredEvidenceIds: session?.discoveredEvidenceIds || [],
+      selectedEvidenceIds: session?.submittedTheory?.evidenceIds,
+      challengedCharacterIds: session?.interrogationLog.filter((entry) => entry.challenge?.hit).map((entry) => entry.characterId) || [],
+      solved: Boolean(session?.judgement?.accepted)
+    }) : null,
+    [caseTruthLedger, session]
   );
   const mapInteractiveTargets: MapInteractiveTarget[] = useMemo(
     () => (world ? deriveMapInteractiveTargets(world, activeCase || undefined, events, session) : []),
@@ -5542,6 +5564,8 @@ export default function Home() {
                     logicReport={logicReport}
                     emergenceScore={quality?.emergenceScore ?? causalTrace?.emergenceScore ?? 0}
                     causalComplete={Boolean(quality?.causalTraceComplete || causalTrace?.complete)}
+                    proofLedger={caseTruthLedger}
+                    proofCoverage={caseProofCoverage}
                     graph={graphView}
                     selectedGraphExplanation={graphExplanation}
                     solutionChain={solutionChain}

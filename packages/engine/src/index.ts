@@ -12,6 +12,7 @@ export * from "./world-analysis";
 export * from "./world-map";
 export * from "./world-causal-trace";
 export * from "./deduction-graph";
+export * from "./proof-ledger";
 export * from "./investigation-views";
 export * from "./premium-showcase";
 export * from "./demo-runtime";

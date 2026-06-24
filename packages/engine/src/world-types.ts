@@ -1,4 +1,4 @@
-import type { DeductionCase, EvidenceChallenge, Judgement, PlayerTheory, RuleReport } from "./types";
+import type { CaseProofCoverage, DeductionCase, EvidenceChallenge, Judgement, PlayerTheory, RuleReport } from "./types";
 
 export type WorldLocation = {
   id: string;
@@ -510,6 +510,7 @@ export type PlayableCaseRouteIntegrity = {
   searchableEvidence: boolean;
   witnessAvailable: boolean;
   contradictionAvailable: boolean;
+  proofLedgerValid?: boolean;
   criticalCoverage: {
     motive: boolean;
     means: boolean;
@@ -561,6 +562,7 @@ export type PlayableCaseIntake = {
   sourceTrail: PlayableCaseSourceTrail[];
   nextAction?: PlayableCaseNextAction;
   routeIntegrity?: PlayableCaseRouteIntegrity;
+  proofCoverage?: CaseProofCoverage;
   progress?: PlayableCaseProgress;
   progressStages?: PlayableCaseTask[];
   blockedReasons?: string[];

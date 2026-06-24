@@ -3660,6 +3660,12 @@ blockquote {
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
+.caseIntakeProgress.proofCoverage {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-color: rgba(96, 165, 250, 0.34);
+  background: rgba(30, 41, 59, 0.72);
+}
+
 .caseIntakeProgress span {
   display: grid;
   gap: 2px;
@@ -3749,6 +3755,60 @@ blockquote {
   display: grid;
   gap: 8px;
   margin-top: 12px;
+}
+
+.proofLedgerPanel {
+  border-color: rgba(96, 165, 250, 0.34);
+}
+
+.proofLedgerGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.proofLedgerGrid article {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.62);
+}
+
+.proofLedgerGrid article.complete {
+  border-color: rgba(83, 183, 136, 0.46);
+}
+
+.proofLedgerGrid article.locked {
+  border-style: dashed;
+  border-color: rgba(251, 191, 36, 0.38);
+}
+
+.proofLedgerGrid span {
+  color: #93c5fd;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.proofLedgerGrid b,
+.proofLedgerGrid small,
+.proofLedgerGrid em {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.proofLedgerGrid small {
+  color: var(--muted);
+}
+
+.proofLedgerGrid em {
+  color: #c4d5e7;
+  font-size: 11px;
+  font-style: normal;
 }
 
 @media (max-width: 720px) {

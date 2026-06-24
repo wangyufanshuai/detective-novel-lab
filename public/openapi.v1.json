@@ -84,8 +84,18 @@
         "summary": "Load a case, optionally with spoiler-safe playable intake",
         "parameters": [
           { "name": "caseId", "in": "query", "required": true, "schema": { "type": "string" } },
-          { "name": "includeIntake", "in": "query", "required": false, "schema": { "type": "boolean" }, "description": "When true, data includes playableIntake with optional routeIntegrity, progress, progressStages, nextAction, and blockedReasons." },
+          { "name": "includeIntake", "in": "query", "required": false, "schema": { "type": "boolean" }, "description": "When true, data includes playableIntake with optional routeIntegrity, proofCoverage, progress, progressStages, nextAction, and blockedReasons." },
           { "name": "sessionId", "in": "query", "required": false, "schema": { "type": "string" }, "description": "Optional player session used to mark discovered evidence, route progress, next action, and solved visibility." }
+        ],
+        "responses": { "200": { "$ref": "#/components/responses/Ok" } }
+      }
+    },
+    "/api/v1/query/case/proof-ledger": {
+      "get": {
+        "summary": "Rebuild the deterministic Truth Ledger and proof coverage for a case",
+        "parameters": [
+          { "name": "caseId", "in": "query", "required": true, "schema": { "type": "string" } },
+          { "name": "sessionId", "in": "query", "required": false, "schema": { "type": "string" }, "description": "Optional player session used to mark covered obligations and proof gaps." }
         ],
         "responses": { "200": { "$ref": "#/components/responses/Ok" } }
       }

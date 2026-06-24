@@ -45,7 +45,7 @@ The app avoids giving away the answer before the player earns it:
 - Deduction Graph nodes explain why discovered evidence is valid, which WorldEvent created it, and what testimony or exclusion it can support.
 - Suspect Board rows show motive / means / opportunity status plus non-spoiler exclusion state.
 - NPC replies show `Prompt Safe`, memory count, discovered evidence count, and contradiction status.
-- Wrong theories show gap categories: culprit, motive, method, key evidence chain, and exclusion chain.
+- Wrong theories show Truth Ledger gap categories: culprit, motive, method, timeline, contradiction, key evidence chain, and exclusion chain.
 - Gap cards are clickable: they jump to the relevant board, form field, evidence list, or graph area without revealing the correct answer.
 - The final culprit conclusion in the Deduction Graph stays locked until the local rule engine accepts the theory.
 - Proof Tour stays player-safe: locked steps never expose hidden evidence titles or culprit-specific conclusions.
@@ -56,6 +56,7 @@ Use the right-side Inspector as a reasoning workspace:
 
 - **Graph explanation card**: click an unlocked graph node to see the public reason it exists and its source event.
 - **Evidence Notebook**: use `查看来源` to jump to the source location/event, `用于质询` to set up a memory-scoped NPC challenge, and `加入推理链` to add a discovered clue to the theory.
+- **Proof Ledger**: inspect low-spoiler proof obligations before solving, then review the full evidence/source/conclusion chain after the theory is accepted.
 - **Proof Tour**: read the player proof as event -> memory -> evidence -> contradiction -> elimination -> conclusion -> validation. Switch to the developer proof only when you want the full engine trace.
 - **Suspect explanation card**: click a suspect row to see surface suspicion, MMO status, visible exclusion evidence, and any still-locked evidence count.
 - **Wrong theory gap cards**: after a failed submission, click a gap card to jump to the area that needs work.
@@ -79,4 +80,4 @@ The guided case is not a tutorial pasted on top of a generated story. It is a pr
 
 `?runtime=server` keeps the same investigation surface, but uses the local server runtime, SQLite persistence, Agent API endpoints, and optional DeepSeek dialogue surface.
 
-Static Runtime starts from a curated premium case so the first player action can be guided immediately. Server Runtime can also start from Persistent Agent Town: run the town until a valid candidate appears, extract it, review the Case Intake, then use Next action to join and follow the investigation route. The intake is intentionally low-spoiler: it shows route integrity, progress, source counts, next safe action, and missing logic stages, but keeps hidden event titles, culprit identity, and decisive conclusions locked until the player solves the case.
+Static Runtime starts from a curated premium case so the first player action can be guided immediately. Server Runtime can also start from Persistent Agent Town: run the town until a valid candidate appears, extract it, review the Case Intake, then use Next action to join and follow the investigation route. The intake is intentionally low-spoiler: it shows route integrity, Proof Ledger coverage, progress, source counts, next safe action, and missing proof obligations, but keeps hidden event titles, culprit identity, and decisive conclusions locked until the player solves the case.
