@@ -118,6 +118,18 @@ export class DetectiveTownClient {
     return this.request(this.query("/api/v1/query/novel/audit", { projectId }));
   }
 
+  getNovelIdentities(projectId) {
+    return this.request(this.query("/api/v1/query/novel/identities", { projectId }));
+  }
+
+  resolveNovelIdentity(projectId, decisionId, status) {
+    return this.request("/api/v1/command/novel/identity/resolve", { method: "POST", body: { projectId, decisionId, status } });
+  }
+
+  branchNovelSimulation(payload = {}) {
+    return this.request("/api/v1/command/novel/simulation/branch", { method: "POST", body: payload });
+  }
+
   suggestCorrections(payload = {}) {
     return this.request("/api/v1/command/novel/correction/suggest", { method: "POST", body: payload });
   }

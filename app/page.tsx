@@ -62,7 +62,6 @@ import {
 import {
   applyAuthoringPatch,
   advanceNovelSimulation,
-  applyNovelSimulationIntervention,
   buildNovelAskQueryPlan,
   buildCaseLogicReport,
   buildNovelCausalityReport,
@@ -104,6 +103,8 @@ import {
   createSuggestedNovelCorrectionPatches,
   createNovelLongChapterText,
   createNovelSimulationRun,
+  createNovelSimulationBranch,
+  createNovelProjectRevision,
   createNovelWorldProject,
   createNovelStateSimulation,
   getNextNovelBatchChapterIds,
@@ -119,6 +120,7 @@ import {
   normalizeNovelChapterBlueprint,
   normalizeNovelCorrectionPatch,
   normalizeNovelCorrectionSet,
+  normalizeNovelEntityIdentityRegistry,
   normalizeNovelThemeRegistry,
   normalizeNovelThemeSignals,
   normalizeNovelWorldGraph,
@@ -130,6 +132,8 @@ import {
   revertNovelCorrectionPatch,
   searchNovelAskEvidence,
   rewindNovelSimulation,
+  resolveNovelEntityIdentity,
+  compareNovelSimulationBranch,
   splitNovelChapterParagraphs,
   splitWholeNovelIntoChapterCandidates,
   submitDemoTheory,
@@ -189,6 +193,8 @@ import type {
   NovelChapterImportCandidate,
   NovelEvidenceIndex,
   NovelEvidenceSnippet,
+  NovelEntityIdentityDecision,
+  NovelEntityIdentityRegistry,
   NovelEntity,
   NovelEvent,
   NovelForeshadowingPayoff,
@@ -203,6 +209,7 @@ import type {
   NovelSimulationExplanation,
   NovelSimulationInterventionKind,
   NovelSimulationRun,
+  NovelSimulationBranchComparison,
   NovelSimulationStep,
   NovelStateSimulation,
   NovelChapterAnalysis,
@@ -956,6 +963,11 @@ function WorldGraphWorkbench({ onBack, runtimeMode }: { onBack: () => void; runt
 
   const correctionValidation = useMemo(() => validateNovelCorrectionSet(correctionSet, project, chapterTexts), [chapterTexts, correctionSet, project]);
   const correctedProject = useMemo(() => applyNovelCorrectionOverlay(project, correctionSet), [correctionSet, project]);
+  const identityRegistry = useMemo(() => normalizeNovelEntityIdentityRegistry(project.identityRegistry), [project.identityRegistry]);
+  const pendingIdentityDecisions = useMemo(() => identityRegistry.decisions.filter((decision) => decision.status === "pending"), [identityRegistry.decisions]);
+  const autoIdentityDecisions = useMemo(() => identityRegistry.decisions.filter((decision) => decision.status === "auto-merged" || decision.status === "confirmed"), [identityRegistry.decisions]);
+  const rejectedIdentityDecisions = useMemo(() => identityRegistry.decisions.filter((decision) => decision.status === "rejected"), [identityRegistry.decisions]);
+  const effectiveProjectRevision = useMemo(() => createNovelProjectRevision(correctedProject), [correctedProject]);
   const auditReport = useMemo(() => buildNovelQualityAuditReport(correctedProject, correctionSet, chapterTexts), [chapterTexts, correctedProject, correctionSet]);
   const suggestedCorrectionPatches = useMemo(() => {
     const appliedOrDismissed = new Set(correctionSet.patches.map((patch) => patch.id));
@@ -968,6 +980,9 @@ function WorldGraphWorkbench({ onBack, runtimeMode }: { onBack: () => void; runt
   const validation = useMemo(() => validateNovelWorldProject(correctedProject), [correctedProject]);
   const activeSimulationRecord = simulationRuns.find((record) => record.run.id === activeSimulationRunId) || simulationRuns[0] || null;
   const activeSimulationRun = activeSimulationRecord?.run || null;
+  const activeBaselineRun = activeSimulationRun?.parentRunId
+    ? simulationRuns.find((record) => record.run.id === activeSimulationRun.parentRunId)?.run || null
+    : activeSimulationRun;
   const gameSelection = selected.type === "game-actor"
     ? { type: "actor" as const, id: selected.id }
     : selected.type === "game-location"
@@ -1117,9 +1132,32 @@ function WorldGraphWorkbench({ onBack, runtimeMode }: { onBack: () => void; runt
   const replayMatchedCount = activeSimulationRun?.comparison.completedCheckpointCount || 0;
 
   useEffect(() => {
+    setSimulationRuns((records) => {
+      let changed = false;
+      const next = records.map((record) => {
+        if (!record.run.projectRevision || record.run.projectRevision === effectiveProjectRevision || record.run.stale) return record;
+        changed = true;
+        return {
+          ...record,
+          run: {
+            ...record.run,
+            status: "blocked" as const,
+            stale: true,
+            staleReason: "The effective world graph changed. Rebuild this replay before advancing.",
+            warnings: Array.from(new Set([...record.run.warnings, "Replay is stale because the effective project revision changed."]))
+          }
+        };
+      });
+      return changed ? next : records;
+    });
+  }, [effectiveProjectRevision]);
+
+  useEffect(() => {
     if (!simulationPlaying || !activeSimulationRun || activeSimulationRun.status === "complete" || activeSimulationRun.status === "blocked") return;
     const timer = window.setTimeout(() => {
-      const next = advanceNovelSimulation(applyNovelCorrectionOverlay(projectRef.current, correctionSet), activeSimulationRun);
+      let next = advanceNovelSimulation(applyNovelCorrectionOverlay(projectRef.current, correctionSet), activeSimulationRun);
+      const baseline = next.parentRunId ? activeBaselineRun || undefined : undefined;
+      if (baseline) next = { ...next, branchComparison: compareNovelSimulationBranch(baseline, next) };
       setSimulationRuns((records) => [
         {
           run: next,
@@ -1135,7 +1173,7 @@ function WorldGraphWorkbench({ onBack, runtimeMode }: { onBack: () => void; runt
       if (next.status === "complete" || next.status === "blocked") setSimulationPlaying(false);
     }, Math.round(1200 / simulationSpeed));
     return () => window.clearTimeout(timer);
-  }, [activeSimulationRun, correctionSet, simulationPlaying, simulationSpeed]);
+  }, [activeBaselineRun, activeSimulationRun, correctionSet, simulationPlaying, simulationSpeed]);
 
   function chapterTitle(chapterId?: string) {
     return correctedProject.chapters.find((chapter) => chapter.input.id === chapterId)?.input.title || chapterId || "n/a";
@@ -1678,7 +1716,8 @@ function WorldGraphWorkbench({ onBack, runtimeMode }: { onBack: () => void; runt
       createSimulationReplay();
       return;
     }
-    const next = advanceNovelSimulation(correctedProject, activeSimulationRun);
+    let next = advanceNovelSimulation(correctedProject, activeSimulationRun);
+    if (next.parentRunId && activeBaselineRun) next = { ...next, branchComparison: compareNovelSimulationBranch(activeBaselineRun, next) };
     replaceSimulationRun(next);
     const latest = next.steps[next.steps.length - 1];
     if (latest) selectWorldItem({ type: "simulation-step", id: latest.id });
@@ -1688,7 +1727,8 @@ function WorldGraphWorkbench({ onBack, runtimeMode }: { onBack: () => void; runt
 
   function rewindSimulationReplay() {
     if (!activeSimulationRun) return;
-    const next = rewindNovelSimulation(correctedProject, activeSimulationRun);
+    let next = rewindNovelSimulation(correctedProject, activeSimulationRun);
+    if (next.parentRunId && activeBaselineRun) next = { ...next, branchComparison: compareNovelSimulationBranch(activeBaselineRun, next) };
     replaceSimulationRun(next);
     const latest = next.steps[next.steps.length - 1];
     if (latest) selectWorldItem({ type: "simulation-step", id: latest.id });
@@ -1701,33 +1741,62 @@ function WorldGraphWorkbench({ onBack, runtimeMode }: { onBack: () => void; runt
       createSimulationReplay();
       return;
     }
-    const next = createNovelSimulationRun(correctedProject, {
-      seed: activeSimulationRun.seed,
-      mode: "grounded-replay",
-      throughChapterId: activeSimulationRun.throughChapterId,
-      branchStepLimit: activeSimulationRun.branchStepLimit
-    });
+    let next: NovelSimulationRun;
+    if (activeSimulationRun.parentRunId && activeBaselineRun) {
+      const intervention = activeSimulationRun.interventions[0];
+      next = createNovelSimulationBranch(correctedProject, activeBaselineRun, {
+        stepIndex: activeSimulationRun.branchFromStepIndex,
+        seed: activeSimulationRun.seed,
+        branchStepLimit: activeSimulationRun.branchStepLimit,
+        intervention: intervention ? { kind: intervention.kind, actorEntityId: intervention.actorEntityId, value: intervention.value } : undefined
+      });
+    } else {
+      next = createNovelSimulationRun(correctedProject, {
+        seed: activeSimulationRun.seed,
+        mode: "grounded-replay",
+        throughChapterId: activeSimulationRun.throughChapterId,
+        branchStepLimit: activeSimulationRun.branchStepLimit
+      });
+    }
     replaceSimulationRun(next, {});
     setSimulationPlaying(false);
     setSimulationStatus("Replay reset to its initial grounded state.");
   }
 
   function applySimulationIntervention() {
-    if (!activeSimulationRun || !simulationInterventionActorId) {
+    if (!activeSimulationRun || !activeBaselineRun || !simulationInterventionActorId) {
       setSimulationStatus("Create a replay and select an actor before applying an intervention.");
       return;
     }
     let value: string | number | boolean = simulationInterventionValue;
     if (simulationInterventionKind === "relationship-pressure" || simulationInterventionKind === "body-capability") value = Number(simulationInterventionValue);
     if (simulationInterventionKind === "knowledge") value = simulationInterventionValue !== "false";
-    const next = applyNovelSimulationIntervention(correctedProject, activeSimulationRun, {
-      kind: simulationInterventionKind,
-      actorEntityId: simulationInterventionActorId,
-      value
+    const branchFromStepIndex = selectedSimulationStep
+      ? Math.min(selectedSimulationStep.index, activeBaselineRun.steps.length)
+      : activeBaselineRun.currentStepIndex;
+    const next = createNovelSimulationBranch(correctedProject, activeBaselineRun, {
+      stepIndex: branchFromStepIndex,
+      seed: `${activeBaselineRun.seed}:branch:${branchFromStepIndex}:${Date.now()}`,
+      branchStepLimit: 1,
+      intervention: {
+        kind: simulationInterventionKind,
+        actorEntityId: simulationInterventionActorId,
+        value
+      }
     });
     replaceSimulationRun(next);
     setSimulationPlaying(false);
-    setSimulationStatus(next.interventions.length ? "Short branch intervention applied. The next step will be counterfactual and bounded to one scene." : next.warnings[next.warnings.length - 1] || "Intervention was not applied.");
+    setSimulationStatus(next.interventions.length ? `Branch created from checkpoint ${branchFromStepIndex}. The baseline remains unchanged.` : next.warnings[next.warnings.length - 1] || "Intervention was not applied.");
+  }
+
+  function resolveIdentityDecision(decision: NovelEntityIdentityDecision, status: "confirmed" | "rejected") {
+    const nextProject = resolveNovelEntityIdentity(project, decision.id, status);
+    setProject(nextProject);
+    projectRef.current = nextProject;
+    setSimulationPlaying(false);
+    setStatus(status === "confirmed"
+      ? `${decision.sourceName} confirmed as ${decision.canonicalName}. Existing replays are now stale.`
+      : `${decision.sourceName} kept separate from ${decision.canonicalName}. Existing replays are now stale.`);
   }
 
   async function explainSimulationStep(step = selectedSimulationStep) {
@@ -2472,6 +2541,22 @@ function WorldGraphWorkbench({ onBack, runtimeMode }: { onBack: () => void; runt
                   </article>
                 ))}
               </div>
+              <section className="identityReview" data-testid="identity-review">
+                <div className="panelHeaderLine">
+                  <div><span className="eyebrow">Canonical entity registry</span><h3>Identity Review</h3></div>
+                  <small>{autoIdentityDecisions.length} auto / {pendingIdentityDecisions.length} pending / {rejectedIdentityDecisions.length} rejected</small>
+                </div>
+                {pendingIdentityDecisions.length === 0 && <p className="evidenceNote">No medium-confidence entity matches need review. High-confidence identity matches were merged automatically.</p>}
+                <div className="identityDecisionList">
+                  {pendingIdentityDecisions.slice(0, 12).map((decision) => (
+                    <article key={decision.id}>
+                      <div><strong>{decision.sourceName}</strong><span>candidate: {decision.canonicalName} / {decision.confidence}%</span><small>{decision.reasons.join(" / ")}</small></div>
+                      <div><button data-testid={`confirm-identity-${decision.id}`} type="button" onClick={() => resolveIdentityDecision(decision, "confirmed")}>Confirm</button><button data-testid={`reject-identity-${decision.id}`} type="button" onClick={() => resolveIdentityDecision(decision, "rejected")}>Keep separate</button></div>
+                    </article>
+                  ))}
+                  {autoIdentityDecisions.slice(0, 6).map((decision) => <small key={decision.id} className="identityAutoMerge">Auto merged: {decision.sourceName} to {decision.canonicalName} ({decision.confidence}%)</small>)}
+                </div>
+              </section>
               <div className="auditFilterBar" data-testid="audit-filter-bar">
                 {(["all", "evidence", "entity", "relationship", "event", "character", "theme", "causality", "replay-readiness"] as NovelAuditFilter[]).map((filter) => (
                   <button key={filter} type="button" className={auditFilter === filter ? "active" : ""} onClick={() => setAuditFilter(filter)}>{filter}</button>
@@ -2643,6 +2728,15 @@ function WorldGraphWorkbench({ onBack, runtimeMode }: { onBack: () => void; runt
                       <small>replay gaps</small>
                     </span>
                   </div>
+                  {activeSimulationRun.stale && <div className="replayWarningStrip" data-testid="replay-stale-warning"><span>{activeSimulationRun.staleReason || "Replay is stale. Rebuild it before advancing."}</span></div>}
+                  {activeSimulationRun.branchComparison && (
+                    <section className="branchComparisonPanel" data-testid="branch-state-diff">
+                      <div className="panelHeaderLine"><h3>Baseline / Branch State Diff</h3><small>{activeSimulationRun.branchComparison.materialDivergence ? "material divergence" : "no material divergence"}</small></div>
+                      <p>{activeSimulationRun.branchComparison.summary}</p>
+                      <div className="branchComparisonMetrics"><span>baseline: {activeSimulationRun.branchComparison.baselineAction || "pending"}</span><span>branch: {activeSimulationRun.branchComparison.branchAction || "pending"}</span><span>{activeSimulationRun.branchComparison.causalClaimsAdded.length} causal added</span></div>
+                      {activeSimulationRun.branchComparison.actorDiffs.map((diff) => <article key={diff.actorEntityId}><strong>{diff.actorName}</strong><span>{diff.location ? `${entityById.get(diff.location.baseline || "")?.name || "unknown"} -> ${entityById.get(diff.location.branch || "")?.name || "unknown"}` : "location unchanged"}</span><small>knowledge +{diff.knowledgeAdded.length} / -{diff.knowledgeRemoved.length}; resources +{diff.resourcesAdded.length} / -{diff.resourcesRemoved.length}; pressure {diff.relationshipPressureDelta}; body {diff.bodyCapabilityDelta}</small></article>)}
+                    </section>
+                  )}
                   <section className="replayCheckpointLane" data-testid="replay-checkpoints">
                     <div className="panelHeaderLine">
                       <h3>Source checkpoints</h3>
@@ -3172,6 +3266,8 @@ function WorldGraphWorkbench({ onBack, runtimeMode }: { onBack: () => void; runt
                         <article key={candidate.id} className={candidate.id === selectedSimulationStep.selectedCandidateId ? "selected" : candidate.legal ? "" : "blocked"}>
                           <div><strong>{candidate.label}</strong><span>{candidate.action} / score {candidate.score}</span></div>
                           <small>{candidate.legal ? candidate.ruleReasons.join(" / ") : candidate.blockedReasons.join(" / ")}</small>
+                          {candidate.scoreBreakdown && <small>score: {Object.entries(candidate.scoreBreakdown).filter(([, value]) => value).map(([key, value]) => `${key} ${value}`).join(" / ")}</small>}
+                          {candidate.stateEffects?.length && <small>effects: {candidate.stateEffects.join(" / ")}</small>}
                         </article>
                       ))}
                     </div>
@@ -3217,7 +3313,7 @@ function WorldGraphWorkbench({ onBack, runtimeMode }: { onBack: () => void; runt
                       <input data-testid="simulation-intervention-value" value={simulationInterventionValue} onChange={(event) => setSimulationInterventionValue(event.target.value)} />
                     )}
                   </label>
-                  <button data-testid="apply-simulation-intervention" type="button" onClick={applySimulationIntervention} disabled={activeSimulationRun.interventions.length > 0}>Apply intervention</button>
+                  <button data-testid="apply-simulation-intervention" type="button" onClick={applySimulationIntervention} disabled={Boolean(activeSimulationRun.parentRunId && activeSimulationRun.interventions.length)}>Create branch</button>
                   {activeSimulationRun.interventions[0] && <p className="evidenceNote">{activeSimulationRun.interventions[0].summary}</p>}
                 </section>
               </>

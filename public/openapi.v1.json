@@ -164,6 +164,13 @@
         "responses": { "200": { "$ref": "#/components/responses/Ok" } }
       }
     },
+    "/api/v1/query/novel/identities": {
+      "get": {
+        "summary": "Inspect persisted canonical entity identity decisions",
+        "parameters": [{ "$ref": "#/components/parameters/ProjectId" }],
+        "responses": { "200": { "$ref": "#/components/responses/Ok" } }
+      }
+    },
     "/api/v1/command/novel/project/save": {
       "post": {
         "summary": "Save a Living World Lab workspace with optimistic conflict detection",
@@ -198,6 +205,20 @@
     "/api/v1/command/novel/correction/revert": {
       "post": {
         "summary": "Revert an applied correction patch",
+        "requestBody": { "$ref": "#/components/requestBodies/JsonObject" },
+        "responses": { "200": { "$ref": "#/components/responses/Ok" } }
+      }
+    },
+    "/api/v1/command/novel/identity/resolve": {
+      "post": {
+        "summary": "Confirm or reject a pending entity identity match",
+        "requestBody": { "$ref": "#/components/requestBodies/JsonObject" },
+        "responses": { "200": { "$ref": "#/components/responses/Ok" } }
+      }
+    },
+    "/api/v1/command/novel/simulation/branch": {
+      "post": {
+        "summary": "Create a bounded counterfactual branch from a completed replay checkpoint",
         "requestBody": { "$ref": "#/components/requestBodies/JsonObject" },
         "responses": { "200": { "$ref": "#/components/responses/Ok" } }
       }

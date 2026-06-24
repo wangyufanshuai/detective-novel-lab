@@ -11,11 +11,13 @@
 - Added a deterministic Town Situation Brief with ranked hot locations, high-risk NPCs, observation mix, and case-readiness guidance for operators and external agents.
 - Added a one-click Living World Lab sample project with five analyzed chapters, evidence indexes, a ready batch queue, and a grounded replay.
 - Added a SQLite-backed Living World Lab Project Library with explicit save, open, save-copy, conflict detection, backup coverage, and cross-restart restoration.
+- Added a durable canonical entity identity registry, pending identity review, and baseline-linked novel replay branches with actor and causal state diffs.
 
 ### Changed
 
 - Docker Server smoke now validates runtime storage health, premium case creation, and Scenario Runner execution.
 - Productized Living World Lab with chapter queue summaries, merged-graph progress, Audit Studio flow steps, and replay provenance counts for source, inferred, counterfactual, and gap steps.
+- Novel replay now accumulates evidence-backed knowledge and owned resources checkpoint by checkpoint; identity or correction changes mark older replays stale instead of silently continuing on mismatched state.
 - Polished Persistent Agent Town's Agent panel into a compact Review Mode for technical evaluation.
 - Scenario Runner now surfaces checks, branch comparison, and copyable report JSON in the workbench.
 - Time Machine now shows a snapshot timeline, expanded diff details, baseline quick selection, and rollback confirmation.

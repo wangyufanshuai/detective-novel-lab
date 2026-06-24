@@ -550,6 +550,7 @@ test("novel world graph analyzes three chapters, merges changes and restores loc
   await expect(page.getByTestId("correction-mode-pill")).toContainText("Original Extracted Graph");
   await expect(page.getByTestId("audit-metrics")).toContainText("Evidence coverage");
   await expect(page.getByTestId("audit-issue-queue")).toBeVisible();
+  await expect(page.getByTestId("identity-review")).toContainText("Identity Review");
   await page.getByTestId("quick-rename-entity").click();
   await expect(page.getByTestId("correction-inspector")).toContainText("rename-entity");
   await expect(page.getByTestId("correction-mode-pill")).toContainText("Corrected View");
@@ -620,12 +621,13 @@ test("novel world graph analyzes three chapters, merges changes and restores loc
   await expect(page.getByTestId("replay-event-stream")).not.toContainText("Evidence-guided replay matched");
   await page.getByTestId("replay-step").click();
   await page.getByTestId("simulation-intervention-actor").selectOption({ index: 1 });
-  await page.getByTestId("simulation-intervention-kind").selectOption("knowledge");
-  await page.getByTestId("simulation-intervention-value").selectOption("false");
+  await page.getByTestId("simulation-intervention-kind").selectOption("body-capability");
+  await page.getByTestId("simulation-intervention-value").fill("0");
   await page.getByTestId("apply-simulation-intervention").click();
   await page.getByTestId("replay-step").click();
   await expect(page.getByTestId("replay-event-stream")).toContainText("counterfactual");
   await expect(page.getByTestId("simulation-run-panel")).toContainText("Short Branch");
+  await expect(page.getByTestId("branch-state-diff")).toContainText("Baseline / Branch State Diff");
   await page.getByTestId("world-view-tabs").getByRole("button", { name: "Game" }).click();
   await expect(page.getByTestId("novel-game-canvas").locator(".gameHitEvent.counterfactual")).toHaveCount(1);
   await page.getByTestId("world-view-tabs").getByRole("button", { name: "Ask" }).click();

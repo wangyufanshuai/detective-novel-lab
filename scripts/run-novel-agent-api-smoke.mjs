@@ -144,6 +144,9 @@ try {
   assert.equal(audit.projectId, imported.project.id);
   assert.ok(audit.auditReport.metrics.length >= 5, "audit exposes weighted metrics");
 
+  const identities = await request("GET", `/api/v1/query/novel/identities?projectId=${encodeURIComponent(imported.project.id)}`);
+  assert.equal(identities.registry.version, 1, "identity endpoint returns a compatible registry");
+
   const suggestions = await request("POST", "/api/v1/command/novel/correction/suggest", {
     projectId: imported.project.id,
     limit: 5
@@ -211,6 +214,22 @@ try {
 
   const actor = advanced.run.currentSnapshot.actorStates[0];
   assert.ok(actor?.actorEntityId, "simulation exposes an actor for intervention");
+
+  const branched = await request("POST", "/api/v1/command/novel/simulation/branch", {
+    projectId: imported.project.id,
+    baselineRunId: advanced.run.id,
+    stepIndex: advanced.run.currentStepIndex,
+    seed: "novel-agent-api-smoke-branch",
+    intervention: {
+      actorEntityId: actor.actorEntityId,
+      kind: "body-capability",
+      value: 0
+    }
+  });
+  assert.equal(branched.run.parentRunId, advanced.run.id, "branch endpoint preserves its baseline reference");
+  assert.equal(branched.run.interventions.length, 1, "branch endpoint stores its bounded intervention");
+  const baselineAfterBranch = await request("GET", `/api/v1/query/novel/simulation?projectId=${encodeURIComponent(imported.project.id)}&runId=${encodeURIComponent(advanced.run.id)}`);
+  assert.equal(baselineAfterBranch.run.id, advanced.run.id, "creating a branch leaves the baseline run available");
 
   const intervened = await request("POST", "/api/v1/command/novel/simulation/intervene", {
     projectId: imported.project.id,

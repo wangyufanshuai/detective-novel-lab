@@ -12,6 +12,7 @@ The goal is to prove that the project can model more than one fixed murder case:
 - audit extraction quality and apply local correction overlays;
 - run a grounded replay where local rules score action candidates;
 - apply a bounded intervention and inspect the counterfactual branch;
+- resolve entity identity across renamed or abbreviated chapter references;
 - keep every claim marked as `source`, `inferred`, `counterfactual`, or `gap`.
 
 DeepSeek can help extract or explain structure, but the replay state and action legality are local TypeScript decisions.
@@ -52,6 +53,12 @@ Replay Runs show fidelity, matched source events, replay gaps, and intervention 
 
 The Replay tab keeps the existing comparison metrics and adds a provenance strip for `source`, `inferred`, `counterfactual`, and `gap` steps. After an intervention, counterfactual steps remain bounded and visible in both Replay and the Phaser observer.
 
+## Identity And Branch Integrity
+
+The project keeps a canonical entity identity registry. Exact and high-confidence matches are merged automatically; medium-confidence renamed or abbreviated candidates appear in **Identity Review** for confirmation or rejection. The registry remaps character states, events, relationships, themes, and causal references to one canonical entity while preserving chapter-local source evidence.
+
+Replay state is accumulated checkpoint by checkpoint. Knowledge is gained only from completed public or participant events, and resources require an evidenced ownership relationship or source event. A branch is created from a completed baseline checkpoint with a new run id; it never overwrites the baseline. Replay shows the branch state diff for actor location, knowledge, resources, relationship pressure, body capability, and causal claims. Any identity or correction change marks older runs stale until rebuilt.
+
 ## Agent API
 
 Living World Lab exposes an external observe/intervene loop:
@@ -60,13 +67,16 @@ Living World Lab exposes an external observe/intervene loop:
 POST /api/v1/command/novel/import
 GET  /api/v1/query/novel/projects
 GET  /api/v1/query/novel/project
+GET  /api/v1/query/novel/identities
 POST /api/v1/command/novel/project/save
+POST /api/v1/command/novel/identity/resolve
 GET  /api/v1/query/novel/world-graph
 GET  /api/v1/query/novel/audit
 POST /api/v1/command/novel/correction/suggest
 POST /api/v1/command/novel/correction/apply
 GET  /api/v1/query/novel/corrected-world-graph
 POST /api/v1/command/novel/simulation/start
+POST /api/v1/command/novel/simulation/branch
 POST /api/v1/command/novel/simulation/advance
 POST /api/v1/command/novel/simulation/intervene
 GET  /api/v1/query/novel/simulation

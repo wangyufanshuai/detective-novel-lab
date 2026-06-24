@@ -365,6 +365,27 @@ export type NovelWorldMergeReport = {
   conflicts: NovelWorldMergeConflict[];
 };
 
+export type NovelEntityIdentityDecision = {
+  id: string;
+  sourceChapterId: string;
+  sourceEntityId: string;
+  sourceName: string;
+  canonicalEntityId: string;
+  canonicalName: string;
+  confidence: number;
+  status: "auto-merged" | "pending" | "confirmed" | "rejected";
+  reasons: string[];
+  evidence: NovelEvidenceSnippet[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type NovelEntityIdentityRegistry = {
+  version: 1;
+  decisions: NovelEntityIdentityDecision[];
+  updatedAt: string;
+};
+
 export type NovelWorldProject = {
   version: 2;
   id: string;
@@ -372,6 +393,7 @@ export type NovelWorldProject = {
   genreTone: string;
   chapters: NovelChapterAnalysis[];
   themeRegistry?: NovelThemeDefinition[];
+  identityRegistry?: NovelEntityIdentityRegistry;
   mergedGraph: NovelWorldGraph;
   mergeReport: NovelWorldMergeReport;
   createdAt: string;
@@ -586,8 +608,10 @@ export type NovelSimulationActionCandidate = {
   chapterId?: string;
   legal: boolean;
   score: number;
+  scoreBreakdown?: Record<string, number>;
   ruleReasons: string[];
   blockedReasons: string[];
+  stateEffects?: string[];
   evidence: NovelEvidenceSnippet[];
 };
 
@@ -634,6 +658,31 @@ export type NovelReplayComparisonReport = {
   divergenceReasons: string[];
 };
 
+export type NovelSimulationStateDiff = {
+  actorEntityId: string;
+  actorName: string;
+  location?: { baseline?: string; branch?: string };
+  knowledgeAdded: string[];
+  knowledgeRemoved: string[];
+  resourcesAdded: string[];
+  resourcesRemoved: string[];
+  relationshipPressureDelta: number;
+  bodyCapabilityDelta: number;
+};
+
+export type NovelSimulationBranchComparison = {
+  baselineRunId: string;
+  branchRunId: string;
+  branchFromStepIndex: number;
+  materialDivergence: boolean;
+  baselineAction?: string;
+  branchAction?: string;
+  actorDiffs: NovelSimulationStateDiff[];
+  causalClaimsAdded: string[];
+  causalClaimsRemoved: string[];
+  summary: string;
+};
+
 export type NovelSimulationRun = {
   version: 1;
   id: string;
@@ -641,6 +690,11 @@ export type NovelSimulationRun = {
   seed: string;
   mode: NovelSimulationMode;
   status: "ready" | "running" | "paused" | "complete" | "blocked";
+  parentRunId?: string;
+  branchFromStepIndex?: number;
+  projectRevision?: string;
+  stale?: boolean;
+  staleReason?: string;
   throughChapterId?: string;
   checkpointEventIds: string[];
   currentStepIndex: number;
@@ -650,6 +704,7 @@ export type NovelSimulationRun = {
   interventions: NovelSimulationIntervention[];
   branchStepLimit: number;
   comparison: NovelReplayComparisonReport;
+  branchComparison?: NovelSimulationBranchComparison;
   warnings: string[];
   createdAt: string;
   updatedAt: string;
@@ -2829,6 +2884,7 @@ export function createNovelWorldProject(input: { title?: string; genreTone?: str
     genreTone: input.genreTone || "Unspecified",
     chapters: [],
     themeRegistry: createDefaultNovelThemeDefinitions(),
+    identityRegistry: { version: 1, decisions: [], updatedAt: createdAt },
     mergedGraph: graph,
     mergeReport: emptyMergeReport(),
     createdAt,
@@ -2838,6 +2894,126 @@ export function createNovelWorldProject(input: { title?: string; genreTone?: str
 
 function entityKey(entity: NovelEntity) {
   return `${entity.kind}:${stableSlug(entity.name)}`;
+}
+
+function identityWords(value: string) {
+  return new Set(stableSlug(value).split("-").filter((word) => word.length > 1));
+}
+
+function identityOverlap(left: string, right: string) {
+  const leftWords = identityWords(left);
+  const rightWords = identityWords(right);
+  if (!leftWords.size || !rightWords.size) return 0;
+  const matches = Array.from(leftWords).filter((word) => rightWords.has(word)).length;
+  return matches / Math.max(leftWords.size, rightWords.size);
+}
+
+function entityNeighborNames(graph: NovelWorldGraph, entityId: string) {
+  const entityNames = new Map(graph.entities.map((entity) => [entity.id, entity.name]));
+  return unique(graph.relationships.flatMap((relationship) => {
+    if (relationship.fromEntityId === entityId) return [entityNames.get(relationship.toEntityId) || ""];
+    if (relationship.toEntityId === entityId) return [entityNames.get(relationship.fromEntityId) || ""];
+    return [];
+  }).filter(Boolean).map(stableSlug));
+}
+
+function scoreIdentityCandidate(
+  source: NovelEntity,
+  canonical: NovelEntity,
+  sourceNeighbors: string[],
+  canonicalNeighbors: string[]
+) {
+  if (source.kind !== canonical.kind) return { confidence: 0, reasons: ["entity-kind-conflict"] };
+  const sourceName = stableSlug(source.name);
+  const canonicalName = stableSlug(canonical.name);
+  const reasons: string[] = ["entity-kind-match"];
+  let score = 12;
+  if (sourceName === canonicalName) {
+    score += 70;
+    reasons.push("exact-name-match");
+  } else if (sourceName.includes(canonicalName) || canonicalName.includes(sourceName)) {
+    score += 42;
+    reasons.push("name-containment");
+  } else {
+    const overlap = identityOverlap(source.name, canonical.name);
+    score += Math.round(overlap * 35);
+    if (overlap > 0) reasons.push("name-token-overlap");
+  }
+  const roleOverlap = identityOverlap(source.role, canonical.role);
+  if (roleOverlap > 0) {
+    score += Math.round(roleOverlap * 14);
+    reasons.push("role-overlap");
+  } else if (source.role && canonical.role && sourceName === canonicalName) {
+    score -= 26;
+    reasons.push("same-name-role-conflict");
+  }
+  const traitOverlap = source.traits.filter((trait) => canonical.traits.some((candidate) => stableSlug(candidate) === stableSlug(trait))).length;
+  if (traitOverlap) {
+    score += Math.min(10, traitOverlap * 5);
+    reasons.push("trait-overlap");
+  }
+  const neighborOverlap = sourceNeighbors.filter((name) => canonicalNeighbors.includes(name)).length;
+  if (neighborOverlap) {
+    score += Math.min(14, neighborOverlap * 7);
+    reasons.push("relationship-neighborhood-overlap");
+  }
+  const sourceEvidence = (source.evidence || []).map((item) => stableSlug(item.source.quote));
+  const canonicalEvidence = (canonical.evidence || []).map((item) => stableSlug(item.source.quote));
+  if (sourceEvidence.some((quote) => canonicalEvidence.includes(quote))) {
+    score += 8;
+    reasons.push("paragraph-evidence-overlap");
+  }
+  return { confidence: Math.min(100, score), reasons };
+}
+
+export function normalizeNovelEntityIdentityRegistry(input?: NovelEntityIdentityRegistry | null): NovelEntityIdentityRegistry {
+  const now = nowIso();
+  return {
+    version: 1,
+    decisions: Array.isArray(input?.decisions) ? input.decisions.map((decision, index) => ({
+      id: text(decision.id) || `identity-decision-${index + 1}`,
+      sourceChapterId: text(decision.sourceChapterId),
+      sourceEntityId: text(decision.sourceEntityId),
+      sourceName: text(decision.sourceName),
+      canonicalEntityId: text(decision.canonicalEntityId),
+      canonicalName: text(decision.canonicalName),
+      confidence: numberInRange(decision.confidence, 0, 0, 100),
+      status: ["auto-merged", "pending", "confirmed", "rejected"].includes(decision.status) ? decision.status : "pending",
+      reasons: stringArray(decision.reasons),
+      evidence: Array.isArray(decision.evidence) ? decision.evidence.map((item) => normalizeEvidenceSnippet(item)) : [],
+      createdAt: text(decision.createdAt) || now,
+      updatedAt: text(decision.updatedAt) || now
+    })) : [],
+    updatedAt: text(input?.updatedAt) || now
+  };
+}
+
+export function canonicalNovelEntityId(project: NovelWorldProject, sourceEntityId: string, chapterId?: string) {
+  const decision = normalizeNovelEntityIdentityRegistry(project.identityRegistry).decisions.find((item) =>
+    item.sourceEntityId === sourceEntityId
+    && (!chapterId || item.sourceChapterId === chapterId)
+    && (item.status === "auto-merged" || item.status === "confirmed")
+  );
+  return decision?.canonicalEntityId || sourceEntityId;
+}
+
+export function resolveNovelEntityIdentity(
+  project: NovelWorldProject,
+  decisionId: string,
+  status: "confirmed" | "rejected"
+): NovelWorldProject {
+  const registry = normalizeNovelEntityIdentityRegistry(project.identityRegistry);
+  const now = nowIso();
+  const decisions = registry.decisions.map((decision) => decision.id === decisionId ? { ...decision, status, updatedAt: now } : decision);
+  if (!decisions.some((decision) => decision.id === decisionId)) return project;
+  const identityRegistry = { version: 1 as const, decisions, updatedAt: now };
+  const { graph, report, registry: nextRegistry } = mergeNovelWorldGraphs(project.chapters, {
+    id: `${project.id}-graph`,
+    title: project.title,
+    genreTone: project.genreTone,
+    identityRegistry
+  });
+  return { ...project, identityRegistry: nextRegistry, mergedGraph: graph, mergeReport: report, updatedAt: now };
 }
 
 function relationshipKey(relationship: NovelRelationship) {
@@ -2852,8 +3028,8 @@ function mergeSummary(current: string, next: string) {
 
 export function mergeNovelWorldGraphs(
   chapters: NovelChapterAnalysis[],
-  input: { title?: string; genreTone?: string; id?: string } = {}
-): { graph: NovelWorldGraph; report: NovelWorldMergeReport } {
+  input: { title?: string; genreTone?: string; id?: string; identityRegistry?: NovelEntityIdentityRegistry } = {}
+): { graph: NovelWorldGraph; report: NovelWorldMergeReport; registry: NovelEntityIdentityRegistry } {
   const analyzed = chapters.filter((chapter) => chapter.status === "ready" && chapter.graph);
   const report: NovelWorldMergeReport = {
     ...emptyMergeReport(),
@@ -2879,6 +3055,12 @@ export function mergeNovelWorldGraphs(
   const relationshipsByKey = new Map<string, NovelRelationship>();
   const events: NovelEvent[] = [];
   const developmentByKey = new Map<string, NovelWorldDevelopmentStep>();
+  const canonicalNeighbors = new Map<string, string[]>();
+  const existingRegistry = normalizeNovelEntityIdentityRegistry(input.identityRegistry);
+  const identityDecisions = new Map(existingRegistry.decisions.map((decision) => [
+    `${decision.sourceChapterId}:${decision.sourceEntityId}:${decision.canonicalEntityId}`,
+    decision
+  ]));
 
   for (const chapter of analyzed) {
     const chapterId = chapter.input.id;
@@ -2888,7 +3070,43 @@ export function mergeNovelWorldGraphs(
 
     for (const entity of sourceGraph.entities) {
       const key = entityKey(entity);
-      const existingId = entitiesById.has(entity.id) ? entity.id : idsByKey.get(key);
+      const sourceNeighbors = entityNeighborNames(sourceGraph, entity.id);
+      const forcedDecision = existingRegistry.decisions.find((decision) =>
+        decision.sourceChapterId === chapterId
+        && decision.sourceEntityId === entity.id
+        && (decision.status === "confirmed" || decision.status === "auto-merged")
+        && entitiesById.has(decision.canonicalEntityId)
+      );
+      const scoredCandidates = Array.from(entitiesById.values())
+        .map((candidate) => ({ candidate, ...scoreIdentityCandidate(entity, candidate, sourceNeighbors, canonicalNeighbors.get(candidate.id) || []) }))
+        .filter((candidate) => candidate.confidence >= 52)
+        .sort((a, b) => b.confidence - a.confidence || a.candidate.id.localeCompare(b.candidate.id));
+      const bestCandidate = scoredCandidates[0];
+      const rejected = bestCandidate ? identityDecisions.get(`${chapterId}:${entity.id}:${bestCandidate.candidate.id}`)?.status === "rejected" : false;
+      const autoCandidate = bestCandidate && bestCandidate.confidence >= 78 && !rejected ? bestCandidate : undefined;
+      const existingId = forcedDecision?.canonicalEntityId || (!rejected
+        ? (entitiesById.has(entity.id) ? entity.id : idsByKey.get(key) || autoCandidate?.candidate.id)
+        : undefined);
+      if (bestCandidate && !forcedDecision) {
+        const decisionKey = `${chapterId}:${entity.id}:${bestCandidate.candidate.id}`;
+        const previous = identityDecisions.get(decisionKey);
+        const status = previous?.status || (bestCandidate.confidence >= 78 ? "auto-merged" : "pending");
+        const timestamp = previous?.createdAt || nowIso();
+        identityDecisions.set(decisionKey, {
+          id: previous?.id || `identity-${stableSlug(chapterId)}-${stableSlug(entity.id)}-${stableSlug(bestCandidate.candidate.id)}`,
+          sourceChapterId: chapterId,
+          sourceEntityId: entity.id,
+          sourceName: entity.name,
+          canonicalEntityId: bestCandidate.candidate.id,
+          canonicalName: bestCandidate.candidate.name,
+          confidence: bestCandidate.confidence,
+          status,
+          reasons: bestCandidate.reasons,
+          evidence: entity.evidence || [],
+          createdAt: timestamp,
+          updatedAt: nowIso()
+        });
+      }
       if (!existingId) {
         const next: NovelEntity = {
           ...entity,
@@ -2901,6 +3119,7 @@ export function mergeNovelWorldGraphs(
         chapterRemap.set(entity.id, next.id);
         report.addedEntityIds.push(next.id);
         report.changes.push({ chapterId, kind: "entity", id: next.id, action: "added", label: next.name, detail: "New entity introduced." });
+        canonicalNeighbors.set(next.id, sourceNeighbors);
         continue;
       }
 
@@ -2927,6 +3146,8 @@ export function mergeNovelWorldGraphs(
       existing.y = typeof existing.y === "number" && typeof entity.y === "number" ? Math.round((existing.y + entity.y) / 2) : existing.y ?? entity.y;
       existing.sourceChapterIds = unique([...(existing.sourceChapterIds || []), chapterId]);
       existing.lastUpdatedChapterId = chapterId;
+      existing.evidence = [...(existing.evidence || []), ...(entity.evidence || [])];
+      canonicalNeighbors.set(existingId, unique([...(canonicalNeighbors.get(existingId) || []), ...sourceNeighbors]));
       report.mergedEntityIds.push(existingId);
       report.changes.push({
         chapterId,
@@ -3035,20 +3256,30 @@ export function mergeNovelWorldGraphs(
   const validation = validateNovelWorldGraph(graph);
   report.valid = validation.valid && report.conflicts.length === 0;
   graph.warnings = unique([...graph.warnings, ...validation.warnings]);
-  return { graph, report };
+  return {
+    graph,
+    report,
+    registry: {
+      version: 1,
+      decisions: Array.from(identityDecisions.values()).sort((a, b) => a.sourceChapterId.localeCompare(b.sourceChapterId) || b.confidence - a.confidence),
+      updatedAt: nowIso()
+    }
+  };
 }
 
 export function addNovelChapterAnalysis(project: NovelWorldProject, analysis: NovelChapterAnalysis): NovelWorldProject {
   const chapters = [...project.chapters.filter((chapter) => chapter.input.id !== analysis.input.id), analysis].sort((a, b) => a.input.order - b.input.order);
-  const { graph, report } = mergeNovelWorldGraphs(chapters, {
+  const { graph, report, registry } = mergeNovelWorldGraphs(chapters, {
     id: `${project.id}-graph`,
     title: project.title,
-    genreTone: project.genreTone
+    genreTone: project.genreTone,
+    identityRegistry: project.identityRegistry
   });
   return {
     ...project,
     chapters,
     themeRegistry: normalizeNovelThemeRegistry(project.themeRegistry),
+    identityRegistry: registry,
     mergedGraph: graph,
     mergeReport: report,
     updatedAt: nowIso()
@@ -3062,6 +3293,15 @@ export function validateNovelWorldProject(project: NovelWorldProject): NovelWorl
   if (!project.title.trim()) errors.push("project title is required.");
   const chapterIds = new Set<string>();
   const registry = normalizeNovelThemeRegistry(project.themeRegistry);
+  const identityRegistry = normalizeNovelEntityIdentityRegistry(project.identityRegistry);
+  const canonicalEntityIds = new Set(project.mergedGraph.entities.map((entity) => entity.id));
+  const identityDecisionIds = new Set<string>();
+  for (const decision of identityRegistry.decisions) {
+    if (identityDecisionIds.has(decision.id)) errors.push(`duplicate identity decision id: ${decision.id}`);
+    identityDecisionIds.add(decision.id);
+    if (!decision.sourceChapterId || !decision.sourceEntityId) errors.push(`identity decision ${decision.id} has no source reference.`);
+    if (!canonicalEntityIds.has(decision.canonicalEntityId) && decision.status !== "rejected") warnings.push(`identity decision ${decision.id} references a non-current canonical entity.`);
+  }
   for (const chapter of project.chapters) {
     if (chapterIds.has(chapter.input.id)) errors.push(`duplicate chapter id: ${chapter.input.id}`);
     chapterIds.add(chapter.input.id);

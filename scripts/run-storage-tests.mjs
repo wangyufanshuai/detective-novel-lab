@@ -22,6 +22,7 @@ const workspace = {
     title: "Storage Smoke Novel",
     genreTone: "test",
     chapters: [{ input: { id: "chapter-1" } }],
+    identityRegistry: { version: 1, decisions: [{ id: "identity-1", sourceChapterId: "chapter-1", sourceEntityId: "lin-alias", sourceName: "Lin Alias", canonicalEntityId: "lin", canonicalName: "Lin", confidence: 84, status: "auto-merged", reasons: ["name-containment"], evidence: [], createdAt: now, updatedAt: now }], updatedAt: now },
     mergedGraph: {},
     mergeReport: {},
     createdAt: now,
@@ -29,7 +30,7 @@ const workspace = {
   },
   chapters: [{ chapterId: "chapter-1", rawText: "Persistent chapter text" }],
   evidenceIndexes: { "chapter-1": { chapterId: "chapter-1", paragraphCount: 1, snippets: [], warnings: [] } },
-  simulationRuns: [{ id: "run-1", projectId: "novel-storage-smoke" }],
+  simulationRuns: [{ id: "run-1", projectId: "novel-storage-smoke", projectRevision: "novel-revision-storage", parentRunId: "baseline-1", branchFromStepIndex: 1, branchComparison: { baselineRunId: "baseline-1", branchRunId: "run-1", branchFromStepIndex: 1, materialDivergence: true, actorDiffs: [], causalClaimsAdded: [], causalClaimsRemoved: [], summary: "storage branch" } }],
   correctionSet: { version: 1, projectId: "novel-storage-smoke", patches: [], createdAt: now, updatedAt: now },
   batchQueue: { batchSize: 3, paused: false, running: false, chapterStatuses: { "chapter-1": "ready" }, lastBatchChapterIds: ["chapter-1"], updatedAt: now },
   updatedAt: now
@@ -46,6 +47,8 @@ closeDatabase();
 const restored = worldRepository.getNovelProject("novel-storage-smoke");
 assert.equal(restored.chapters[0].rawText, "Persistent chapter text", "workspace survives database reopen");
 assert.equal(restored.simulationRuns[0].id, "run-1", "simulation state survives database reopen");
+assert.equal(restored.project.identityRegistry.decisions[0].status, "auto-merged", "identity registry survives database reopen");
+assert.equal(restored.simulationRuns[0].branchComparison.materialDivergence, true, "branch comparison survives database reopen");
 assert.equal(restored.updatedAt, saved.updatedAt, "repository keeps the saved revision timestamp");
 closeDatabase();
 

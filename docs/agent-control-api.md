@@ -45,6 +45,9 @@ The SDK is the executable reference for the stable external-agent subset. It is 
 - `GET /api/v1/query/town/snapshot/diff?worldId=...&from=...&to=...`
 - `GET /api/v1/query/benchmark/emergence`
 - `GET /api/v1/query/novel/world-graph?projectId=...`
+- `GET /api/v1/query/novel/projects`
+- `GET /api/v1/query/novel/project?projectId=...`
+- `GET /api/v1/query/novel/identities?projectId=...`
 - `GET /api/v1/query/novel/audit?projectId=...`
 - `GET /api/v1/query/novel/corrections?projectId=...`
 - `GET /api/v1/query/novel/corrected-world-graph?projectId=...`
@@ -71,11 +74,14 @@ The SDK is the executable reference for the stable external-agent subset. It is 
 - `POST /api/v1/command/novel/evidence-index`
 - `POST /api/v1/command/novel/ask`
 - `POST /api/v1/command/novel/blueprint`
+- `POST /api/v1/command/novel/project/save`
+- `POST /api/v1/command/novel/identity/resolve`
 - `POST /api/v1/command/novel/correction/suggest`
 - `POST /api/v1/command/novel/correction/apply`
 - `POST /api/v1/command/novel/correction/dismiss`
 - `POST /api/v1/command/novel/correction/revert`
 - `POST /api/v1/command/novel/simulation/start`
+- `POST /api/v1/command/novel/simulation/branch`
 - `POST /api/v1/command/novel/simulation/advance`
 - `POST /api/v1/command/novel/simulation/intervene`
 - `POST /api/v1/command/novel/simulation/rewind`
@@ -138,7 +144,7 @@ Correction commands update only the runtime `correctionSet`. They do not mutate 
 The novel/world endpoints expose the same loop used by agentic simulation projects:
 
 ```text
-import text -> query world graph -> start replay -> advance -> intervene -> query changed branch
+import text -> query world graph -> start replay -> advance baseline -> create branch at a completed checkpoint -> advance branch -> compare state diff
 ```
 
 Minimal smoke flow:
@@ -147,7 +153,9 @@ Minimal smoke flow:
 node scripts/run-novel-agent-api-smoke.mjs
 ```
 
-The server keeps a lightweight in-memory runtime record for these endpoints. Browser workbench state still uses IndexedDB, and Detective Town server mode still uses SQLite.
+Server Runtime persists complete Living World Lab workspaces in SQLite. Browser workbench state still keeps an IndexedDB draft fallback. A branch always receives a new `runId` and a `parentRunId`; its source replay remains available for comparison.
+
+Identity decisions are deterministic project data. High-confidence same-identity candidates are stored as `auto-merged`; agents can confirm or reject pending candidates through `/api/v1/command/novel/identity/resolve`. Changing identity or an active correction makes replay runs stale, so clients must rebuild them before advancing.
 
 ## Smoke Test
 

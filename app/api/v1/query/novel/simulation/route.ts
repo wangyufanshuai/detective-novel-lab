@@ -1,5 +1,5 @@
 import { errorResponse, fail, ok } from "@/app/api/v1/_utils";
-import { getNovelRuntimeRecord } from "@/app/api/v1/_novel-store";
+import { getEffectiveNovelProject, getNovelRuntimeRecord } from "@/app/api/v1/_novel-store";
 import { createNovelGameSceneState, createNovelGameVisualProfile, validateNovelSimulationRun } from "@/lib/engine";
 
 export async function GET(request: Request) {
@@ -11,9 +11,10 @@ export async function GET(request: Request) {
     if (!record) return fail("NOVEL_PROJECT_NOT_FOUND", "Novel project not found", 404);
     const run = runId ? record.simulationRuns.find((item) => item.id === runId) : record.simulationRuns[0];
     if (!run) return fail("NOVEL_SIMULATION_NOT_FOUND", "Novel simulation not found", 404);
-    const validation = validateNovelSimulationRun(run, record.project, record.chapters);
-    const scene = createNovelGameSceneState(run, record.project.mergedGraph);
-    const visualProfile = createNovelGameVisualProfile(scene, record.project.mergedGraph);
+    const effectiveProject = getEffectiveNovelProject(record);
+    const validation = validateNovelSimulationRun(run, effectiveProject, record.chapters);
+    const scene = createNovelGameSceneState(run, effectiveProject.mergedGraph);
+    const visualProfile = createNovelGameVisualProfile(scene, effectiveProject.mergedGraph);
     return ok({
       projectId: record.project.id,
       run,

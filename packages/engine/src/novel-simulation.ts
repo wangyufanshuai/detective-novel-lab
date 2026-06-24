@@ -1,5 +1,6 @@
 import {
   buildNovelCausalityReport,
+  canonicalNovelEntityId,
   novelEvidenceQuoteLimit,
   type NovelCharacterStatePoint,
   type NovelEvidenceSnippet,
@@ -8,6 +9,7 @@ import {
   type NovelReplayComparisonReport,
   type NovelSimulationActionCandidate,
   type NovelSimulationActorState,
+  type NovelSimulationBranchComparison,
   type NovelSimulationExplanation,
   type NovelSimulationIntervention,
   type NovelSimulationKnowledgeFact,
@@ -39,6 +41,19 @@ function hash(value: string) {
     result = Math.imul(result, 16777619);
   }
   return result >>> 0;
+}
+
+export function createNovelProjectRevision(project: NovelWorldProject) {
+  return `novel-revision-${hash(JSON.stringify({
+    graph: project.mergedGraph,
+    identities: project.identityRegistry?.decisions || [],
+    chapters: project.chapters.map((chapter) => ({
+      id: chapter.input.id,
+      status: chapter.status,
+      analyzedAt: chapter.analyzedAt,
+      validation: chapter.validation
+    }))
+  })).toString(36)}`;
 }
 
 function cloneSnapshot(snapshot: NovelSimulationSnapshot, id: string, stepIndex: number): NovelSimulationSnapshot {
@@ -77,9 +92,22 @@ function eventEvidence(event: NovelEvent) {
 function actorPoint(project: NovelWorldProject, actorEntityId: string, chapterId?: string): NovelCharacterStatePoint | undefined {
   const points = project.chapters
     .flatMap((chapter) => chapter.characterStates || [])
-    .filter((point) => point.characterEntityId === actorEntityId && (!chapterId || point.chapterId === chapterId))
+    .filter((point) => canonicalNovelEntityId(project, point.characterEntityId, point.chapterId) === actorEntityId && (!chapterId || point.chapterId === chapterId))
     .sort((a, b) => a.chapterOrder - b.chapterOrder);
   return points[points.length - 1];
+}
+
+function ownershipResources(project: NovelWorldProject, actorEntityId: string, allowedChapterIds: Set<string>) {
+  const items = new Set(project.mergedGraph.entities.filter((entity) => entity.kind === "item").map((entity) => entity.id));
+  return unique(project.mergedGraph.relationships.flatMap((relationship) => {
+    const searchable = `${relationship.label} ${relationship.evidence}`.toLowerCase();
+    const ownership = /own|possess|carry|hold|keep|wield|belong|inventory|拥有|持有|携带|保管|所属/.test(searchable);
+    const inScope = !(relationship.sourceChapterIds || []).length || (relationship.sourceChapterIds || []).some((id) => allowedChapterIds.has(id));
+    if (!ownership || !inScope) return [];
+    if (relationship.fromEntityId === actorEntityId && items.has(relationship.toEntityId)) return [relationship.toEntityId];
+    if (relationship.toEntityId === actorEntityId && items.has(relationship.fromEntityId)) return [relationship.fromEntityId];
+    return [];
+  }));
 }
 
 export function compileNovelSimulationState(project: NovelWorldProject, throughChapterId?: string): NovelSimulationSnapshot {
@@ -92,7 +120,8 @@ export function compileNovelSimulationState(project: NovelWorldProject, throughC
   for (const event of events) {
     const evidence = eventEvidence(event);
     if (!evidence.length) continue;
-    const informedActors = event.publicKnowledge ? actors.map((actor) => actor.id) : event.participantEntityIds;
+    const actorIds = new Set(actors.map((actor) => actor.id));
+    const informedActors = event.publicKnowledge ? actors.map((actor) => actor.id) : event.participantEntityIds.filter((id) => actorIds.has(id));
     for (const actorEntityId of informedActors) {
       knowledgeFacts.push({
         id: `sim-fact-${event.id}-${actorEntityId}`,
@@ -119,13 +148,10 @@ export function compileNovelSimulationState(project: NovelWorldProject, throughC
       goal: point?.dimensions.goal.summary || actor.role || actor.summary,
       belief: point?.dimensions.belief.summary || actor.summary,
       relationshipPressure: Math.round(relationshipPressure),
-      resources: project.mergedGraph.entities
-        .filter((entity) => entity.kind === "item" && (entity.sourceChapterIds || []).some((id) => allowedChapterIds.has(id)))
-        .slice(0, 4)
-        .map((entity) => entity.id),
       bodyCapability: point ? Math.max(0, 100 - point.dimensions.bodyCapability.intensity) : 65,
       socialPosition: point?.dimensions.socialPosition.intensity || Math.max(20, 100 - (actor.tension || 50)),
-      knowledgeFactIds: knowledgeFacts.filter((fact) => fact.actorEntityId === actor.id && fact.sourceEventId === firstEvent?.id).map((fact) => fact.id)
+      resources: ownershipResources(project, actor.id, allowedChapterIds),
+      knowledgeFactIds: []
     };
   });
 
@@ -152,26 +178,37 @@ function actionForEvent(event: NovelEvent): NovelSimulationActionCandidate["acti
 }
 
 function scoreCandidate(candidate: NovelSimulationActionCandidate, actor: NovelSimulationActorState | undefined, seed: string) {
-  let score = candidate.sourceEventId ? 58 : 18;
-  score += Math.min(20, candidate.evidence.length * 8);
+  const breakdown: Record<string, number> = {
+    sourceAlignment: candidate.sourceEventId ? 42 : 14,
+    evidence: Math.min(20, candidate.evidence.length * 8),
+    goal: 0,
+    pressure: 0,
+    capability: 0,
+    socialPosition: 0,
+    location: 0,
+    deterministicTieBreak: hash(`${seed}:${candidate.id}`) % 5
+  };
   if (actor) {
     const searchable = `${candidate.label} ${candidate.ruleReasons.join(" ")}`.toLowerCase();
     const goalTerms = actor.goal.toLowerCase().split(/\W+/).filter((term) => term.length > 3);
-    score += Math.min(12, goalTerms.filter((term) => searchable.includes(term)).length * 4);
-    if (candidate.action === "confront") score += Math.round(actor.relationshipPressure / 10);
-    if (candidate.action === "investigate") score += Math.round(actor.bodyCapability / 20);
-    if (candidate.action === "communicate") score += Math.round(actor.socialPosition / 20);
-    if (candidate.targetLocationEntityId === actor.locationEntityId) score += 4;
+    breakdown.goal = Math.min(12, goalTerms.filter((term) => searchable.includes(term)).length * 4);
+    if (candidate.action === "confront") breakdown.pressure = Math.round(actor.relationshipPressure / 8);
+    if (candidate.action === "investigate") breakdown.capability = Math.round(actor.bodyCapability / 15);
+    if (candidate.action === "communicate") breakdown.socialPosition = Math.round(actor.socialPosition / 18);
+    if (candidate.targetLocationEntityId === actor.locationEntityId) breakdown.location = 5;
   }
-  score += hash(`${seed}:${candidate.id}`) % 5;
-  return candidate.legal ? score : 0;
+  const score = Object.values(breakdown).reduce((sum, value) => sum + value, 0);
+  return { score: candidate.legal ? score : 0, breakdown };
 }
 
 export function scoreNovelActionCandidates(candidates: NovelSimulationActionCandidate[], snapshot: NovelSimulationSnapshot, seed = "novel-replay") {
   return candidates
     .map((candidate) => ({
       ...candidate,
-      score: scoreCandidate(candidate, snapshot.actorStates.find((actor) => actor.actorEntityId === candidate.actorEntityId), seed)
+      ...(() => {
+        const scored = scoreCandidate(candidate, snapshot.actorStates.find((actor) => actor.actorEntityId === candidate.actorEntityId), seed);
+        return { score: scored.score, scoreBreakdown: scored.breakdown };
+      })()
     }))
     .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
 }
@@ -182,8 +219,12 @@ export function generateNovelActionCandidates(project: NovelWorldProject, snapsh
     || snapshot.actorStates[0]?.actorEntityId
     || "";
   const actor = snapshot.actorStates.find((item) => item.actorEntityId === actorEntityId);
-  const hasKnowledge = Boolean(actor?.knowledgeFactIds.length || checkpointEvent.publicKnowledge || evidence.length);
+  const priorKnowledge = actor?.knowledgeFactIds.some((factId) => snapshot.knowledgeFacts.some((fact) => fact.id === factId)) || false;
+  const hasKnowledge = Boolean(checkpointEvent.publicKnowledge || priorKnowledge || checkpointEvent.causes.length === 0);
   const bodyEnough = (actor?.bodyCapability || 0) >= 20;
+  const itemIds = new Set(project.mergedGraph.entities.filter((entity) => entity.kind === "item").map((entity) => entity.id));
+  const requiredResources = checkpointEvent.participantEntityIds.filter((id) => itemIds.has(id));
+  const hasResources = requiredResources.every((id) => actor?.resources.includes(id));
   const sourceCandidate: NovelSimulationActionCandidate = {
     id: `sim-action-source-${checkpointEvent.id}`,
     actorEntityId,
@@ -193,19 +234,26 @@ export function generateNovelActionCandidates(project: NovelWorldProject, snapsh
     targetLocationEntityId: checkpointEvent.locationEntityId,
     sourceEventId: checkpointEvent.id,
     chapterId: checkpointEvent.sourceChapterId,
-    legal: Boolean(actor && evidence.length && hasKnowledge && bodyEnough),
+    legal: Boolean(actor && evidence.length && hasKnowledge && bodyEnough && hasResources),
     score: 0,
     ruleReasons: [
       "source-checkpoint",
       hasKnowledge ? "knowledge-supported" : "knowledge-missing",
       bodyEnough ? "body-capability-sufficient" : "body-capability-insufficient",
+      hasResources ? "required-resources-present" : "required-resource-missing",
       checkpointEvent.locationEntityId ? "location-transition-allowed" : "location-unchanged"
     ],
     blockedReasons: [
       ...(!actor ? ["actor-missing"] : []),
       ...(!evidence.length ? ["paragraph-evidence-missing"] : []),
       ...(!hasKnowledge ? ["actor-does-not-know-required-fact"] : []),
-      ...(!bodyEnough ? ["body-capability-too-low"] : [])
+      ...(!bodyEnough ? ["body-capability-too-low"] : []),
+      ...(!hasResources ? requiredResources.map((id) => `missing-resource:${id}`) : [])
+    ],
+    stateEffects: [
+      checkpointEvent.locationEntityId ? `location:${checkpointEvent.locationEntityId}` : "location:unchanged",
+      `knowledge:${checkpointEvent.id}`,
+      ...requiredResources.map((id) => `resource-retained:${id}`)
     ],
     evidence
   };
@@ -222,6 +270,7 @@ export function generateNovelActionCandidates(project: NovelWorldProject, snapsh
       score: 0,
       ruleReasons: ["low-risk-observation", "evidence-present"],
       blockedReasons: actor && evidence.length ? [] : ["actor-or-evidence-missing"],
+      stateEffects: ["knowledge:unchanged", "location:unchanged"],
       evidence
     },
     {
@@ -236,6 +285,7 @@ export function generateNovelActionCandidates(project: NovelWorldProject, snapsh
       score: 0,
       ruleReasons: ["evidence-seeking", "body-capability-check"],
       blockedReasons: actor && evidence.length && actor.bodyCapability >= 15 ? [] : ["investigation-prerequisite-missing"],
+      stateEffects: ["body-capability:-2", `knowledge:${checkpointEvent.id}`],
       evidence
     },
     {
@@ -250,6 +300,7 @@ export function generateNovelActionCandidates(project: NovelWorldProject, snapsh
       score: 0,
       ruleReasons: ["risk-avoidance", "counterfactual-alternative"],
       blockedReasons: actor && evidence.length ? [] : ["actor-or-evidence-missing"],
+      stateEffects: ["relationship-pressure:-4", "location:unchanged"],
       evidence
     }
   ];
@@ -270,14 +321,26 @@ function applyCandidate(project: NovelWorldProject, snapshot: NovelSimulationSna
   const next = cloneSnapshot(snapshot, `simulation-snapshot-${slug(project.id)}-${nextIndex}`, nextIndex);
   next.chapterId = event.sourceChapterId;
   const participants = new Set(event.participantEntityIds);
+  const itemIds = new Set(project.mergedGraph.entities.filter((entity) => entity.kind === "item").map((entity) => entity.id));
+  const eventResources = event.participantEntityIds.filter((id) => itemIds.has(id));
   next.actorStates = next.actorStates.map((actor) => {
-    if (!participants.has(actor.actorEntityId) && actor.actorEntityId !== candidate.actorEntityId) return actor;
+    const receivesPublicKnowledge = event.publicKnowledge;
+    if (!participants.has(actor.actorEntityId) && actor.actorEntityId !== candidate.actorEntityId && !receivesPublicKnowledge) return actor;
     const facts = next.knowledgeFacts.filter((fact) => fact.sourceEventId === event.id && fact.actorEntityId === actor.actorEntityId).map((fact) => fact.id);
+    const point = actorPoint(project, actor.actorEntityId, event.sourceChapterId);
+    const isSelectedActor = actor.actorEntityId === candidate.actorEntityId;
     return {
       ...actor,
-      locationEntityId: candidate.targetLocationEntityId || actor.locationEntityId,
-      relationshipPressure: clamp(actor.relationshipPressure + (candidate.action === "confront" ? 8 : candidate.action === "withdraw" ? -4 : 2), actor.relationshipPressure),
-      bodyCapability: clamp(actor.bodyCapability - (candidate.action === "confront" ? 5 : candidate.action === "investigate" ? 2 : 0), actor.bodyCapability),
+      locationEntityId: isSelectedActor ? candidate.targetLocationEntityId || actor.locationEntityId : actor.locationEntityId,
+      goal: point?.dimensions.goal.summary || actor.goal,
+      belief: point?.dimensions.belief.summary || actor.belief,
+      relationshipPressure: isSelectedActor
+        ? clamp(actor.relationshipPressure + (candidate.action === "confront" ? 8 : candidate.action === "withdraw" ? -4 : 2), actor.relationshipPressure)
+        : actor.relationshipPressure,
+      bodyCapability: isSelectedActor
+        ? clamp(actor.bodyCapability - (candidate.action === "confront" ? 5 : candidate.action === "investigate" ? 2 : 0), actor.bodyCapability)
+        : actor.bodyCapability,
+      resources: isSelectedActor && candidate.sourceEventId ? unique([...actor.resources, ...eventResources]) : actor.resources,
       knowledgeFactIds: unique([...actor.knowledgeFactIds, ...facts])
     };
   });
@@ -341,6 +404,7 @@ export function createNovelSimulationRun(
     seed,
     mode: options.mode || "grounded-replay",
     status: checkpointEventIds.length ? "ready" : "blocked",
+    projectRevision: createNovelProjectRevision(project),
     throughChapterId: options.throughChapterId,
     checkpointEventIds,
     currentStepIndex: 0,
@@ -370,6 +434,17 @@ export function createNovelSimulationRun(
 }
 
 export function advanceNovelSimulation(project: NovelWorldProject, run: NovelSimulationRun): NovelSimulationRun {
+  const currentRevision = createNovelProjectRevision(project);
+  if (run.projectRevision && run.projectRevision !== currentRevision) {
+    return {
+      ...run,
+      status: "blocked",
+      stale: true,
+      staleReason: "The effective world graph changed after this replay was created. Rebuild the replay before advancing.",
+      warnings: unique([...run.warnings, "Replay is stale because the effective project revision changed."]),
+      updatedAt: new Date().toISOString()
+    };
+  }
   if (run.status === "complete" || run.status === "blocked") return run;
   const branchStart = run.interventions[0]?.appliedAtStepIndex;
   if (run.mode === "short-branch" && branchStart !== undefined && run.steps.length - branchStart >= run.branchStepLimit) {
@@ -380,9 +455,9 @@ export function advanceNovelSimulation(project: NovelWorldProject, run: NovelSim
   if (!event) return { ...run, status: "blocked", warnings: unique([...run.warnings, `Missing checkpoint event ${eventId}.`]), updatedAt: new Date().toISOString() };
   const candidates = generateNovelActionCandidates(project, run.currentSnapshot, event, run.seed);
   const legal = candidates.filter((candidate) => candidate.legal);
-  const sourceCandidate = legal.find((candidate) => candidate.sourceEventId === event.id);
   const interventionActive = run.mode === "short-branch" && run.interventions.length > 0;
-  const selected = interventionActive ? legal.find((candidate) => !candidate.sourceEventId) || sourceCandidate : sourceCandidate || legal[0];
+  const sourceCandidate = legal.find((candidate) => candidate.sourceEventId === event.id);
+  const selected = interventionActive ? legal[0] : sourceCandidate || legal[0];
   const nextIndex = run.currentStepIndex + 1;
   if (!selected || !selected.evidence.length) {
     const gapSnapshot = cloneSnapshot(run.currentSnapshot, `simulation-snapshot-${slug(project.id)}-${nextIndex}`, nextIndex);
@@ -464,7 +539,13 @@ export function applyNovelSimulationIntervention(
     if (intervention.kind === "relationship-pressure") return { ...item, relationshipPressure: clamp(intervention.value, item.relationshipPressure) };
     if (intervention.kind === "resource") return { ...item, resources: intervention.value ? unique([...item.resources, String(intervention.value)]) : item.resources };
     if (intervention.kind === "body-capability") return { ...item, bodyCapability: clamp(intervention.value, item.bodyCapability) };
-    if (intervention.kind === "knowledge" && !Boolean(intervention.value)) return { ...item, knowledgeFactIds: [] };
+    if (intervention.kind === "knowledge") {
+      if (!Boolean(intervention.value)) return { ...item, knowledgeFactIds: [] };
+      const requestedFactId = typeof intervention.value === "string" ? intervention.value : "";
+      return requestedFactId && snapshot.knowledgeFacts.some((fact) => fact.id === requestedFactId && fact.actorEntityId === item.actorEntityId)
+        ? { ...item, knowledgeFactIds: unique([...item.knowledgeFactIds, requestedFactId]) }
+        : item;
+    }
     return item;
   });
   const applied: NovelSimulationIntervention = {
@@ -482,6 +563,101 @@ export function applyNovelSimulationIntervention(
     updatedAt: new Date().toISOString()
   };
   return { ...nextRun, comparison: compareNovelReplayToSource(project, nextRun) };
+}
+
+export function compareNovelSimulationBranch(
+  baseline: NovelSimulationRun,
+  branch: NovelSimulationRun
+): NovelSimulationBranchComparison {
+  const branchFromStepIndex = branch.branchFromStepIndex ?? 0;
+  const baselineSnapshot = baseline.steps[branch.currentStepIndex - 1]?.afterSnapshot
+    || baseline.steps[branchFromStepIndex - 1]?.afterSnapshot
+    || baseline.initialSnapshot;
+  const branchSnapshot = branch.currentSnapshot;
+  const baselineActors = new Map(baselineSnapshot.actorStates.map((actor) => [actor.actorEntityId, actor]));
+  const actorDiffs = branchSnapshot.actorStates.flatMap((actor) => {
+    const base = baselineActors.get(actor.actorEntityId);
+    if (!base) return [];
+    const knowledgeAdded = actor.knowledgeFactIds.filter((id) => !base.knowledgeFactIds.includes(id));
+    const knowledgeRemoved = base.knowledgeFactIds.filter((id) => !actor.knowledgeFactIds.includes(id));
+    const resourcesAdded = actor.resources.filter((id) => !base.resources.includes(id));
+    const resourcesRemoved = base.resources.filter((id) => !actor.resources.includes(id));
+    const locationChanged = base.locationEntityId !== actor.locationEntityId;
+    const relationshipPressureDelta = actor.relationshipPressure - base.relationshipPressure;
+    const bodyCapabilityDelta = actor.bodyCapability - base.bodyCapability;
+    if (!locationChanged && !knowledgeAdded.length && !knowledgeRemoved.length && !resourcesAdded.length && !resourcesRemoved.length && !relationshipPressureDelta && !bodyCapabilityDelta) return [];
+    return [{
+      actorEntityId: actor.actorEntityId,
+      actorName: actor.name,
+      location: locationChanged ? { baseline: base.locationEntityId, branch: actor.locationEntityId } : undefined,
+      knowledgeAdded,
+      knowledgeRemoved,
+      resourcesAdded,
+      resourcesRemoved,
+      relationshipPressureDelta,
+      bodyCapabilityDelta
+    }];
+  });
+  const baselineStep = baseline.steps[branch.currentStepIndex - 1];
+  const branchStep = branch.steps[branch.currentStepIndex - 1];
+  const baselineAction = baselineStep?.candidates.find((candidate) => candidate.id === baselineStep.selectedCandidateId)?.action;
+  const branchAction = branchStep?.candidates.find((candidate) => candidate.id === branchStep.selectedCandidateId)?.action;
+  const causalClaimsAdded = branchSnapshot.activeCausalClaimIds.filter((id) => !baselineSnapshot.activeCausalClaimIds.includes(id));
+  const causalClaimsRemoved = baselineSnapshot.activeCausalClaimIds.filter((id) => !branchSnapshot.activeCausalClaimIds.includes(id));
+  const materialDivergence = Boolean(actorDiffs.length || causalClaimsAdded.length || causalClaimsRemoved.length || (baselineAction && branchAction && baselineAction !== branchAction));
+  return {
+    baselineRunId: baseline.id,
+    branchRunId: branch.id,
+    branchFromStepIndex,
+    materialDivergence,
+    baselineAction,
+    branchAction,
+    actorDiffs,
+    causalClaimsAdded,
+    causalClaimsRemoved,
+    summary: materialDivergence
+      ? `${actorDiffs.length} actor state(s) diverged from the baseline.`
+      : "The intervention produced no material divergence at the current checkpoint."
+  };
+}
+
+export function createNovelSimulationBranch(
+  project: NovelWorldProject,
+  baseline: NovelSimulationRun,
+  options: {
+    stepIndex?: number;
+    seed?: string;
+    branchStepLimit?: number;
+    intervention?: Omit<NovelSimulationIntervention, "id" | "appliedAtStepIndex" | "summary">;
+  } = {}
+) {
+  const stepIndex = Math.max(0, Math.min(options.stepIndex ?? baseline.currentStepIndex, baseline.steps.length));
+  const steps = baseline.steps.slice(0, stepIndex);
+  const currentSnapshot = steps[steps.length - 1]?.afterSnapshot || baseline.initialSnapshot;
+  const seed = options.seed?.trim() || `${baseline.seed}:branch:${stepIndex}:${Date.now()}`;
+  let branch: NovelSimulationRun = {
+    ...baseline,
+    id: `simulation-branch-${slug(project.id)}-${hash(seed).toString(36)}`,
+    seed,
+    mode: "short-branch",
+    status: "paused",
+    parentRunId: baseline.id,
+    branchFromStepIndex: stepIndex,
+    projectRevision: createNovelProjectRevision(project),
+    stale: false,
+    staleReason: undefined,
+    currentStepIndex: stepIndex,
+    currentSnapshot: cloneSnapshot(currentSnapshot, `simulation-snapshot-${slug(project.id)}-branch-${stepIndex}`, stepIndex),
+    steps,
+    interventions: [],
+    branchStepLimit: Math.max(1, Math.min(12, options.branchStepLimit || baseline.branchStepLimit || 1)),
+    branchComparison: undefined,
+    warnings: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  if (options.intervention) branch = applyNovelSimulationIntervention(project, branch, options.intervention);
+  return { ...branch, branchComparison: compareNovelSimulationBranch(baseline, branch) };
 }
 
 export function validateNovelSimulationRun(run: NovelSimulationRun, project: NovelWorldProject, chapters: NovelLongChapterText[] = []): NovelWorldValidationReport {

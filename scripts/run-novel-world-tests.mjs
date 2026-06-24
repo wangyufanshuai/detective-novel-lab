@@ -40,6 +40,7 @@ const {
   collectGraphEvidence,
   commitNovelImportDraftToProject,
   createNovelBatchQueue,
+  canonicalNovelEntityId,
   createNovelCorrectionSet,
   createDefaultNovelThemeDefinitions,
   createFallbackEvidenceIndex,
@@ -67,12 +68,14 @@ const {
   normalizeNovelCorrectionPatch,
   normalizeNovelThemeRegistry,
   normalizeNovelThemeSignals,
+  normalizeNovelEntityIdentityRegistry,
   normalizeNovelWorldGraph,
   rankNovelCharacterArcs,
   rankNovelCausalChains,
   rankNovelThemeArcs,
   remapNovelThemeSignals,
   revertNovelCorrectionPatch,
+  resolveNovelEntityIdentity,
   searchNovelAskEvidence,
   splitNovelChapterParagraphs,
   splitWholeNovelIntoChapterCandidates,
@@ -92,10 +95,12 @@ const {
 const {
   advanceNovelSimulation,
   applyNovelSimulationIntervention,
+  compareNovelSimulationBranch,
   compareNovelReplayToSource,
   compileNovelSimulationState,
   createFallbackNovelSimulationExplanation,
   createNovelSimulationRun,
+  createNovelSimulationBranch,
   generateNovelActionCandidates,
   rewindNovelSimulation,
   scoreNovelActionCandidates,
@@ -273,6 +278,32 @@ assert.equal(merged.graph.events.length, 2, "chapter events should append into u
 assert.equal(merged.graph.events.every((event) => event.sourceChapterId), true, "merged events should keep chapter provenance");
 assert.equal(merged.report.conflicts.some((conflict) => conflict.kind === "relationship"), true, "relationship polarity conflicts should be reported");
 assert.equal(merged.report.changedEntityIds.includes("char-lin"), true, "changed merged entity should be tracked");
+assert.equal(merged.registry.decisions.some((decision) => decision.status === "auto-merged"), true, "exact identity matches should become durable auto-merge decisions");
+assert.equal(canonicalNovelEntityId({ ...createNovelWorldProject({ title: "Identity" }), identityRegistry: merged.registry }, "char-lin-renamed", "c2"), "char-lin", "canonical identity lookup should remap chapter-local ids");
+assert.equal(normalizeNovelEntityIdentityRegistry(merged.registry).version, 1, "identity registry should normalize to a compatible version");
+
+const pendingIdentityGraph = normalizeNovelWorldGraph({
+  id: "chapter-identity-pending",
+  title: "Identity Pending",
+  genreTone: "test",
+  premise: "third",
+  observerBrief: "brief",
+  entities: [
+    { id: "char-lin-gate", kind: "character", name: "Lin", role: "warden", summary: "waits", traits: [], x: 35, y: 50 }
+  ],
+  relationships: [],
+  events: [],
+  development: [],
+  warnings: []
+});
+let identityProject = createNovelWorldProject({ title: "Identity Project", genreTone: "test" });
+identityProject = addNovelChapterAnalysis(identityProject, chapterAnalyses[0]);
+identityProject = addNovelChapterAnalysis(identityProject, { input: { id: "c-identity", order: 2, title: "Identity", fragment: "Lin waits." }, status: "ready", graph: pendingIdentityGraph, validation: validateNovelWorldGraph(pendingIdentityGraph) });
+const pendingIdentity = identityProject.identityRegistry?.decisions.find((decision) => decision.sourceEntityId === "char-lin-gate");
+assert.equal(pendingIdentity?.status, "pending", "same-name but conflicting roles should require review instead of auto-merging");
+const rejectedIdentityProject = resolveNovelEntityIdentity(identityProject, pendingIdentity.id, "rejected");
+assert.equal(rejectedIdentityProject.identityRegistry?.decisions.find((decision) => decision.id === pendingIdentity.id)?.status, "rejected", "identity rejection should persist");
+assert.equal(rejectedIdentityProject.mergedGraph.entities.some((entity) => entity.id === "char-lin-gate"), true, "rejected identity candidate must remain separate");
 
 let project = createNovelWorldProject({ title: "Project", genreTone: "test" });
 project = addNovelChapterAnalysis(project, chapterAnalyses[0]);
@@ -611,6 +642,8 @@ simulationProject = addNovelChapterAnalysis(simulationProject, { ...chapterAnaly
 const initialSimulationState = compileNovelSimulationState(simulationProject, "c2");
 assert.equal(initialSimulationState.actorStates.length > 0, true, "simulation should compile character actor states");
 assert.equal(initialSimulationState.knowledgeFacts.length > 0, true, "simulation should compile paragraph-grounded knowledge facts");
+assert.equal(initialSimulationState.actorStates.every((actor) => actor.knowledgeFactIds.length === 0), true, "initial snapshot must not pre-grant future event knowledge");
+assert.equal(initialSimulationState.actorStates.every((actor) => actor.resources.length === 0), true, "actors must not receive every in-scope item without ownership evidence");
 
 const replayA = createNovelSimulationRun(simulationProject, { seed: "fixed-replay", throughChapterId: "c2" });
 const replayB = createNovelSimulationRun(simulationProject, { seed: "fixed-replay", throughChapterId: "c2" });
@@ -639,20 +672,31 @@ const rewoundReplay = rewindNovelSimulation(simulationProject, replayAStepOne);
 assert.equal(rewoundReplay.steps.length, 0, "rewind should remove exactly one completed step");
 assert.deepEqual(rewoundReplay.currentSnapshot, rewoundReplay.initialSnapshot, "rewind to zero should restore the initial snapshot");
 
-const branchBase = createNovelSimulationRun(simulationProject, { seed: "fixed-branch", mode: "grounded-replay", throughChapterId: "c2", branchStepLimit: 1 });
+const branchBase = advanceNovelSimulation(simulationProject, createNovelSimulationRun(simulationProject, { seed: "fixed-branch", mode: "grounded-replay", throughChapterId: "c2", branchStepLimit: 1 }));
 const branchActor = branchBase.currentSnapshot.actorStates[0];
-const intervenedRun = applyNovelSimulationIntervention(simulationProject, branchBase, {
-  kind: "knowledge",
+const intervenedRun = createNovelSimulationBranch(simulationProject, branchBase, {
+  stepIndex: branchBase.currentStepIndex,
+  seed: "fixed-branch-derived",
+  intervention: {
+    kind: "body-capability",
   actorEntityId: branchActor.actorEntityId,
-  value: false
+    value: 0
+  }
 });
 const branchStep = advanceNovelSimulation(simulationProject, intervenedRun);
 assert.equal(branchStep.mode, "short-branch", "intervention should convert replay into a short branch");
 assert.equal(branchStep.interventions.length, 1, "short branch should store one intervention");
-assert.equal(branchStep.steps[0].provenance, "counterfactual", "post-intervention step should be marked counterfactual");
+assert.equal(branchStep.parentRunId, branchBase.id, "branch should retain the baseline run id");
+assert.equal(branchBase.steps.length, 1, "creating a branch must not mutate its baseline");
+assert.equal(branchStep.steps.at(-1)?.provenance, "counterfactual", "relevant body intervention should select a counterfactual action");
 assert.equal(branchStep.status, "complete", "one-scene short branch should stop at its configured boundary");
-assert.equal(branchStep.steps[0].sourceEventId, undefined, "counterfactual step must not be stored as a source event");
+assert.equal(branchStep.steps.at(-1)?.sourceEventId, undefined, "counterfactual step must not be stored as a source event");
 assert.equal(validateNovelSimulationRun(branchStep, simulationProject, [arcChapterOne, arcChapterTwo]).valid, true, "short branch should validate without mutating source graph");
+const branchComparison = compareNovelSimulationBranch(branchBase, branchStep);
+assert.equal(branchComparison.materialDivergence, true, "relevant branch must report a material state divergence");
+const noOpBranch = createNovelSimulationBranch(simulationProject, branchBase, { stepIndex: branchBase.currentStepIndex, seed: "fixed-branch-noop", intervention: { kind: "knowledge", actorEntityId: branchActor.actorEntityId, value: true } });
+const noOpStep = advanceNovelSimulation(simulationProject, noOpBranch);
+assert.equal(noOpStep.steps.at(-1)?.provenance, "source", "irrelevant intervention may retain the source action instead of forcing divergence");
 
 const comparison = compareNovelReplayToSource(simulationProject, replayAStepOne);
 assert.equal(comparison.completedCheckpointCount, 1, "comparison should count completed source checkpoints");

@@ -1,5 +1,6 @@
 import {
   addNovelChapterAnalysis,
+  applyNovelCorrectionOverlay,
   attachFallbackEvidenceToGraph,
   createFallbackEvidenceIndex,
   createFallbackNovelCharacterStates,
@@ -9,8 +10,10 @@ import {
   createNovelLongChapterText,
   createNovelSimulationRun,
   createNovelWorldProject,
+  createNovelProjectRevision,
   normalizeNovelBatchQueue,
   normalizeNovelCorrectionSet,
+  normalizeNovelEntityIdentityRegistry,
   validateNovelWorldGraph,
   type NovelChapterAnalysis,
   type NovelEvidenceIndex,
@@ -77,11 +80,28 @@ export function getNovelRuntimeRecord(projectId?: string | null) {
 }
 
 export function saveNovelRuntimeRecord(record: NovelRuntimeRecord, expectedUpdatedAt?: string | null) {
+  const project = {
+    ...record.project,
+    identityRegistry: normalizeNovelEntityIdentityRegistry(record.project.identityRegistry)
+  };
+  const correctionSet = normalizeNovelCorrectionSet(record.correctionSet, project);
+  const effectiveProject = applyNovelCorrectionOverlay(project, correctionSet);
+  const effectiveRevision = createNovelProjectRevision(effectiveProject);
   const next: NovelRuntimeRecord = {
     ...record,
     version: 1,
-    correctionSet: normalizeNovelCorrectionSet(record.correctionSet, record.project),
-    batchQueue: normalizeNovelBatchQueue(record.project, record.batchQueue),
+    project,
+    correctionSet,
+    simulationRuns: record.simulationRuns.map((run) => run.projectRevision && run.projectRevision !== effectiveRevision
+      ? {
+          ...run,
+          status: "blocked",
+          stale: true,
+          staleReason: "The effective world graph changed after this replay was created. Rebuild the replay before advancing.",
+          warnings: Array.from(new Set([...run.warnings, "Replay is stale because the effective project revision changed."]))
+        }
+      : run),
+    batchQueue: normalizeNovelBatchQueue(project, record.batchQueue),
     updatedAt: record.updatedAt || nowIso()
   };
   return worldRepository.saveNovelProject(next, expectedUpdatedAt);
@@ -89,6 +109,13 @@ export function saveNovelRuntimeRecord(record: NovelRuntimeRecord, expectedUpdat
 
 export function listNovelRuntimeProjects(): NovelProjectSummary[] {
   return worldRepository.listNovelProjects();
+}
+
+export function getEffectiveNovelProject(record: NovelRuntimeRecord) {
+  return applyNovelCorrectionOverlay(
+    { ...record.project, identityRegistry: normalizeNovelEntityIdentityRegistry(record.project.identityRegistry) },
+    normalizeNovelCorrectionSet(record.correctionSet, record.project)
+  );
 }
 
 export function updateNovelRuntimeRecord(projectId: string, updater: (record: NovelRuntimeRecord) => NovelRuntimeRecord) {

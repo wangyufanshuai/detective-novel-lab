@@ -104,6 +104,8 @@ Living World Lab is the world-simulation side of the project. It is designed to 
 - Inspect replay fidelity, matched source events, replay gaps, and every step as `source`, `inferred`, `counterfactual`, or `gap`.
 - Use the Phaser observer canvas to see actors, locations, event markers, replay paths, evidence heat, and branch effects.
 - In Server Runtime, save and reopen complete projects through the SQLite Project Library. IndexedDB remains a local draft fallback, and stale server revisions are never overwritten silently.
+- Identity resolution is deterministic and durable: high-confidence aliases merge into canonical entities, ambiguous candidates enter Identity Review, and every decision remains auditable.
+- Replay state accumulates knowledge and resources event by event. Counterfactual work creates a separate baseline-linked branch with visible actor and causal state diffs; it never overwrites the grounded replay.
 
 This is not a replacement for Detective Town. It is the larger world-simulation lab that demonstrates how cases and narratives can emerge from observable state instead of raw LLM prose.
 
