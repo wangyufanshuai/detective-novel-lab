@@ -849,8 +849,14 @@ test("persistent agent town runs, scores agents and extracts a playable case", a
   await expect(page.getByTestId("case-intake")).toContainText("Case Intake", { timeout: 20_000 });
   await expect(page.getByTestId("case-intake")).toContainText("source events");
   await expect(page.getByTestId("case-intake")).not.toContainText("culpritId");
-  await page.getByTestId("case-intake-join").click();
+  await expect(page.getByTestId("case-route-integrity")).toContainText("Route complete");
+  await expect(page.getByTestId("case-intake-progress")).toContainText("join");
+  await expect(page.getByTestId("case-intake-next-action")).toContainText("Join the investigation");
+  await page.getByTestId("case-intake-next").click();
   await expect(page.getByTestId("source-backed-case")).toContainText("source-backed");
+  await expect(page.getByTestId("case-intake-progress")).toContainText("search", { timeout: 20_000 });
+  await expect(page.getByTestId("case-intake-next-action")).toContainText(/Search|Question/);
+  await page.getByTestId("case-intake-next").click();
 
   const savedState = await page.evaluate(() => JSON.parse(localStorage.getItem("detective-town-launch-v1") || "{}") as { worldId?: string; sessionId?: string });
   expect(savedState.worldId).toBeTruthy();
@@ -862,18 +868,22 @@ test("persistent agent town runs, scores agents and extracts a playable case", a
     return result.data.caseFromLog;
   }, savedState);
   const evidenceIds = activeCase.deductionCase.evidence.map((item: { id: string }) => item.id);
-  const locationIdsByName = new Map<string, string>(activeCase.deductionCase.scenes.map((scene: { id: string; name: string }) => [scene.name, scene.id]));
-  for (const [index, evidence] of (activeCase.deductionCase.evidence as Array<{ id: string; location: string }>).entries()) {
-    const locationId = locationIdsByName.get(evidence.location) || evidence.location;
-    const clicked = await page.evaluate((locationId) => {
-      const tile = document.querySelector<HTMLButtonElement>(`.mapTile[data-location-id="${CSS.escape(locationId)}"]`);
-      if (!tile) return false;
-      tile.click();
+  const discoverableEvidence = activeCase.deductionCase.evidence.filter((item: { discoverable: boolean }) => item.discoverable);
+  const targetProgressText = `${discoverableEvidence.length}/${evidenceIds.length}`;
+  for (let guard = 0; guard < discoverableEvidence.length + 2; guard += 1) {
+    const intakeText = await page.getByTestId("case-intake").textContent();
+    if (intakeText?.includes(targetProgressText)) break;
+    await page.getByTestId("case-intake-next").click();
+    const clickedEvidence = await page.waitForFunction(() => {
+      const button = Array.from(document.querySelectorAll<HTMLButtonElement>(".evidenceList button")).find((item) => !item.disabled);
+      if (!button) return false;
+      button.click();
       return true;
-    }, locationId);
-    expect(clicked).toBeTruthy();
-    await expect.poll(async () => page.getByTestId("case-intake").textContent(), { timeout: 20_000 }).toContain(`${index + 1}/${evidenceIds.length}`);
+    }, null, { timeout: 10_000 }).catch(() => false);
+    expect(Boolean(clickedEvidence)).toBeTruthy();
+    await page.waitForTimeout(600);
   }
+  await expect.poll(async () => page.getByTestId("case-intake").textContent(), { timeout: 20_000 }).toContain(targetProgressText);
   const wrongCulpritId = activeCase.deductionCase.characters.find(
     (character: { id: string }) => character.id !== activeCase.deductionCase.truth.culpritId,
   )?.id;

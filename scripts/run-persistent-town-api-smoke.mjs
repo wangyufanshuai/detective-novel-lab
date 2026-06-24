@@ -171,6 +171,9 @@ try {
   assert.ok(extracted.playableIntake.starterTasks.length >= 5, "playable intake exposes starter tasks");
   assert.ok(extracted.playableIntake.evidenceRoute.length >= 5, "playable intake exposes evidence route");
   assert.ok(extracted.playableIntake.witnessPlan.length > 0, "playable intake exposes witness plan");
+  assert.equal(extracted.playableIntake.routeIntegrity.playable, true, "playable intake exposes passing route integrity");
+  assert.equal(extracted.playableIntake.progress.currentStage, "join", "playable intake exposes player progress");
+  assert.equal(extracted.playableIntake.nextAction.kind, "join", "playable intake exposes next action");
   assert.equal(JSON.stringify(extracted.playableIntake).includes(extracted.activeCase.deductionCase.truth.culpritId), false, "playable intake does not leak culprit id before solve");
   assert.equal(extracted.activeCase.triggeredEventId, candidate.triggeredEventId, "extracted case preserves the triggered event id");
   assert.equal(extracted.activeCase.sourceCandidateId, candidate.id, "extracted case preserves the source candidate id");
@@ -187,6 +190,8 @@ try {
   const queriedCase = await request(`/api/v1/query/case?caseId=${encodeURIComponent(extracted.activeCase.id)}&includeIntake=true`);
   assert.equal(queriedCase.caseFromLog.id, extracted.activeCase.id, "case query returns saved extracted case");
   assert.equal(queriedCase.playableIntake.caseId, extracted.activeCase.id, "case query can rebuild playable intake");
+  assert.equal(queriedCase.playableIntake.routeIntegrity.playable, true, "case query rebuilds route integrity");
+  assert.ok(queriedCase.playableIntake.nextAction.buttonLabel, "case query rebuilds next action");
 
   await request("/api/v1/command/town/runtime/pause", {
     method: "POST",

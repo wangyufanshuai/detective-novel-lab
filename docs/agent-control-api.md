@@ -108,9 +108,11 @@ The runtime state is stored inside the persisted world JSON. New actions still b
 
 ## Playable Case Intake
 
-Emerged Persistent Agent Town candidates can be bridged into the player investigation loop with a spoiler-safe intake. `POST /api/v1/command/town/case/extract` still returns `world`, `events`, `activeCase`, `candidate`, and `queue`; it may also return `playableIntake`.
+Emerged Persistent Agent Town candidates can be bridged into the player investigation loop with a spoiler-safe intake. `POST /api/v1/command/town/case/extract` still returns `world`, `events`, `activeCase`, `candidate`, and `queue`; it may also return `playableIntake`. Before persistence, extraction checks route integrity; failures return `CASE_NOT_PLAYABLE` with low-spoiler blockers.
 
-`GET /api/v1/query/case?caseId=...&includeIntake=true` recomputes the same intake for an existing case. Passing `sessionId` lets the route mark discovered evidence, ready witness challenges, and solved source trail visibility. Omitting `includeIntake` preserves the old response shape.
+`GET /api/v1/query/case?caseId=...&includeIntake=true` recomputes the same intake for an existing case. Passing `sessionId` lets the route mark discovered evidence, ready witness challenges, wrong-theory progress, next action, and solved source trail visibility. Omitting `includeIntake` preserves the old response shape.
+
+`playableIntake` may include optional `routeIntegrity`, `progress`, `progressStages`, `nextAction`, and `blockedReasons` fields. These are additive and can be ignored by older clients.
 
 ## Scenario Runner And Time Machine
 

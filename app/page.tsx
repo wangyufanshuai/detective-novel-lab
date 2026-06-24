@@ -225,6 +225,7 @@ import type {
   NovelWritingRisk,
   NpcDialogueEvalReport,
   PlayableCaseIntake,
+  PlayableCaseNextAction,
   PlayerSession,
   PlayerTheory,
   ProofTourStep,
@@ -3666,7 +3667,7 @@ export default function Home() {
     const mapTarget = (label: string): GapCard["target"] => {
       if (/culprit|suspect/i.test(label)) return "suspects";
       if (/motive/i.test(label)) return "motive";
-      if (/method|means/i.test(label)) return "method";
+      if (/method|means|opportunity/i.test(label)) return "method";
       if (/evidence/i.test(label)) return "evidence";
       if (/exclude/i.test(label)) return "exclusion";
       return "logic";
@@ -4598,6 +4599,32 @@ export default function Home() {
     setInspectorTab("investigation");
   }
 
+  function handleIntakeNextAction(action: PlayableCaseNextAction) {
+    if (action.targetLocationId) {
+      setSelectedSceneId(action.targetLocationId);
+      highlightSelection({ locationId: action.targetLocationId, evidenceId: action.targetEvidenceId });
+    }
+    if (action.targetEvidenceId) {
+      setSelectedEvidenceId(action.targetEvidenceId);
+      setTheory((current) => current.evidenceIds.includes(action.targetEvidenceId as string) ? current : { ...current, evidenceIds: [...current.evidenceIds, action.targetEvidenceId as string] });
+    }
+    if (action.targetCharacterId) {
+      setSelectedCharacterId(action.targetCharacterId);
+      setSelectedSuspectId(action.targetCharacterId);
+      setQuestion(action.kind === "challenge" && action.targetEvidenceId
+        ? "Please explain this evidence and whether it changes your earlier statement."
+        : "Where were you during the incident window, and what did you observe?");
+      highlightSelection({ locationId: action.targetLocationId, evidenceId: action.targetEvidenceId, characterId: action.targetCharacterId });
+    }
+    if (action.kind === "review") {
+      setInspectorTab(session?.judgement?.accepted ? "logic" : "investigation");
+    } else {
+      setInspectorTab("investigation");
+    }
+    pushToast({ tone: "info", title: action.label, detail: action.detail });
+    setStatus(action.detail);
+  }
+
   function handleNotebookAction(item: EvidenceNotebookItem, action: "source" | "challenge" | "chain") {
     setSelectedEvidenceId(item.evidenceId);
     setSelectedSceneId(item.locationId);
@@ -5463,6 +5490,7 @@ export default function Home() {
               content: (
                 <InvestigationPanel
                   playableIntake={playableIntake}
+                  onIntakeNextAction={handleIntakeNextAction}
                   notebookItems={evidenceNotebook}
                   onNotebookAction={handleNotebookAction}
                   selectedSceneName={selectedScene?.name || "\u9009\u62e9\u5730\u56fe\u5730\u70b9"}

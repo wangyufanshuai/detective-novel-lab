@@ -19,6 +19,9 @@ export async function POST(request: Request) {
     const playableIntake = buildPlayableCaseIntake(result.activeCase, result.events, result.world);
     return ok({ world: publicWorld(result.world), events: result.events, activeCase: result.activeCase, candidate: result.candidate, queue: result.queue, playableIntake });
   } catch (error) {
+    if (error instanceof Error && error.message.startsWith("CASE_NOT_PLAYABLE:")) {
+      return fail("CASE_NOT_PLAYABLE", error.message.replace("CASE_NOT_PLAYABLE: ", ""), 422);
+    }
     return errorResponse(error);
   }
 }

@@ -4,7 +4,11 @@ import type {
   EvidenceNotebookItem,
   MapInteractiveTarget,
   PlayableCaseIntake,
+  PlayableCaseNextAction,
+  PlayableCaseProgress,
+  PlayableCaseRouteIntegrity,
   PlayableCaseSourceTrail,
+  PlayableCaseTask,
   PlayerSession,
   ProofTourStep,
   WorldEvent,
@@ -51,6 +55,144 @@ function evidenceKindLabel(isKey: boolean, index: number) {
   return `${isKey ? "key" : "support"} clue ${index + 1}`;
 }
 
+function textIncludesAny(value: string, terms: string[]) {
+  const normalized = value.toLowerCase();
+  return terms.some((term) => normalized.includes(term.toLowerCase()));
+}
+
+function evidenceSupportsStage(evidence: CaseFromLog["deductionCase"]["evidence"][number], stage: keyof PlayableCaseRouteIntegrity["criticalCoverage"]) {
+  const text = [
+    evidence.title,
+    evidence.visibleDescription,
+    evidence.trueMeaning,
+    ...evidence.supportsConclusion,
+    ...evidence.contradicts,
+    ...evidence.unlocks
+  ].join(" ");
+  if (stage === "motive") return textIncludesAny(text, ["motive", "pressure", "conflict", "grudge"]);
+  if (stage === "means") return textIncludesAny(text, ["means", "method", "weapon", "tool", "poison", "blade"]);
+  if (stage === "opportunity") return textIncludesAny(text, ["opportunity", "timeline", "time", "location", "alibi"]);
+  return textIncludesAny(text, ["exclude", "exclusion", "alibi", "red herring"]);
+}
+
+function buildRouteIntegrity(caseFromLog: CaseFromLog): PlayableCaseRouteIntegrity {
+  const discoverable = caseFromLog.deductionCase.evidence.filter((item) => item.discoverable);
+  const discoverableIds = new Set(discoverable.map((item) => item.id));
+  const contradictionEvidenceIds = new Set(caseFromLog.testimonies.flatMap((item) => item.contradictionEvidenceIds));
+  const chainStageSourceEventIds = caseFromLog.sourceMap?.chainStageSourceEventIds || {};
+  const criticalCoverage = {
+    motive: Boolean(chainStageSourceEventIds.motive?.length) || discoverable.some((item) => evidenceSupportsStage(item, "motive")),
+    means: Boolean(chainStageSourceEventIds.means?.length) || discoverable.some((item) => evidenceSupportsStage(item, "means")),
+    opportunity: Boolean(chainStageSourceEventIds.opportunity?.length) || discoverable.some((item) => evidenceSupportsStage(item, "opportunity")),
+    exclusion: Boolean(chainStageSourceEventIds.exclusion?.length) || caseFromLog.deductionCase.logicPuzzle.exclusionChains.some((chain) => chain.evidenceIds.some((id) => discoverableIds.has(id))) || discoverable.some((item) => evidenceSupportsStage(item, "exclusion"))
+  };
+  const searchableEvidence = discoverable.length > 0;
+  const witnessAvailable = caseFromLog.testimonies.some((item) => item.characterId);
+  const contradictionAvailable = discoverable.some((item) => contradictionEvidenceIds.has(item.id));
+  const blockers = [
+    !searchableEvidence ? "No discoverable evidence route is available." : "",
+    !witnessAvailable ? "No witness testimony route is available." : "",
+    !contradictionAvailable ? "No discoverable clue can challenge testimony yet." : "",
+    !criticalCoverage.motive ? "Motive coverage is not backed by a source event or discoverable clue." : "",
+    !criticalCoverage.means ? "Means coverage is not backed by a source event or discoverable clue." : "",
+    !criticalCoverage.opportunity ? "Opportunity coverage is not backed by a source event or discoverable clue." : "",
+    !criticalCoverage.exclusion ? "Non-culprit exclusion coverage is missing." : ""
+  ].filter(Boolean);
+  return {
+    playable: blockers.length === 0,
+    searchableEvidence,
+    witnessAvailable,
+    contradictionAvailable,
+    criticalCoverage,
+    blockers
+  };
+}
+
+function buildProgressStages(starterTasks: PlayableCaseTask[], progress: PlayableCaseProgress): PlayableCaseTask[] {
+  return starterTasks.map((task) => {
+    if (task.kind === "search") return { ...task, complete: progress.discoveredEvidence > 0, detail: `${progress.discoveredEvidence}/${progress.totalEvidence} discoverable clues found. ${task.detail}` };
+    if (task.kind === "question") return { ...task, complete: progress.questionedWitnesses > 0, detail: `${progress.questionedWitnesses}/${progress.totalWitnesses} witnesses questioned. ${task.detail}` };
+    if (task.kind === "challenge") return { ...task, complete: progress.challengeHitCount > 0, detail: `${progress.challengeReadyCount} testimony challenge(s) ready; ${progress.challengeHitCount} hit. ${task.detail}` };
+    if (task.kind === "submit") return { ...task, complete: progress.solved, locked: !progress.submitReady, detail: progress.submitReady ? "The route has enough discovered material to submit a theory." : task.detail };
+    return task;
+  });
+}
+
+function buildNextAction(input: {
+  session?: PlayerSession | null;
+  evidenceRoute: PlayableCaseIntake["evidenceRoute"];
+  witnessPlan: PlayableCaseIntake["witnessPlan"];
+  progress: PlayableCaseProgress;
+  routeIntegrity: PlayableCaseRouteIntegrity;
+}): PlayableCaseNextAction {
+  if (!input.session) {
+    return {
+      kind: "join",
+      label: "Join the investigation",
+      detail: "Create a player session before searching source-backed clues.",
+      buttonLabel: "Join investigation"
+    };
+  }
+  if (input.progress.solved) {
+    return {
+      kind: "review",
+      label: "Review unlocked source trail",
+      detail: "The case is solved; inspect the full source chain and proof tour.",
+      buttonLabel: "Review source trail"
+    };
+  }
+  const nextEvidence = input.evidenceRoute.find((item) => !item.discovered);
+  if (nextEvidence) {
+    return {
+      kind: "search",
+      label: "Search the next linked scene",
+      detail: nextEvidence.hint,
+      buttonLabel: "Focus search location",
+      targetLocationId: nextEvidence.locationId,
+      targetEvidenceId: nextEvidence.id
+    };
+  }
+  const challenge = input.witnessPlan.find((item) => item.challengeReady);
+  if (challenge) {
+    return {
+      kind: "challenge",
+      label: "Challenge testimony",
+      detail: challenge.hint,
+      buttonLabel: "Prepare challenge",
+      targetCharacterId: challenge.characterId === "locked-suspect" ? undefined : challenge.characterId,
+      targetEvidenceId: challenge.suggestedEvidenceIds[0]
+    };
+  }
+  const witness = input.witnessPlan.find((item) => !item.questioned && item.characterId !== "locked-suspect");
+  if (witness) {
+    return {
+      kind: "question",
+      label: "Question a memory source",
+      detail: witness.hint,
+      buttonLabel: "Focus witness",
+      targetCharacterId: witness.characterId
+    };
+  }
+  if (input.progress.submitReady) {
+    return {
+      kind: "submit",
+      label: input.progress.wrongTheorySubmitted ? "Revise and submit again" : "Submit a complete theory",
+      detail: input.progress.wrongTheorySubmitted ? "Use the gap cards to repair the missing stage before resubmitting." : "Use the discovered evidence chain to cover motive, method, opportunity, and exclusions.",
+      buttonLabel: "Review theory form"
+    };
+  }
+  return {
+    kind: "review",
+    label: "Repair route blockers",
+    detail: input.routeIntegrity.blockers[0] || "Continue reviewing evidence and testimony until the route is complete.",
+    buttonLabel: "Review gaps"
+  };
+}
+
+export function validatePlayableCaseRoute(caseFromLog: CaseFromLog): PlayableCaseRouteIntegrity {
+  return buildRouteIntegrity(caseFromLog);
+}
+
 export function buildPlayableCaseIntake(
   caseFromLog: CaseFromLog,
   events: WorldEvent[] = [],
@@ -64,6 +206,7 @@ export function buildPlayableCaseIntake(
   const sourceEventIds = Array.from(new Set([...(caseFromLog.sourceEventIds || []), ...(sourceMap.sourceEventIds || [])]));
   const evidenceSourceEventIds = sourceMap.evidenceSourceEventIds || {};
   const chainStageSourceEventIds = sourceMap.chainStageSourceEventIds || {};
+  const routeIntegrity = buildRouteIntegrity(caseFromLog);
   const sourceEvents = sourceEventIds.map((id) => events.find((event) => event.id === id)).filter((event): event is WorldEvent => Boolean(event));
   const memorySourceIds = sourceMap.memorySourceIds || [];
   const observationSourceIds = sourceMap.observationSourceIds || [];
@@ -71,6 +214,7 @@ export function buildPlayableCaseIntake(
   const discoveredEvidence = caseFromLog.deductionCase.evidence.filter((item) => discovered.has(item.id));
   const questioned = new Set(interrogationLog.map((entry) => entry.characterId));
   const challengeHits = new Set(interrogationLog.filter((entry) => entry.challenge?.hit).map((entry) => entry.characterId));
+  const submittedEvidenceCount = session?.submittedTheory?.evidenceIds?.length || 0;
   const chainStageIds = ["motive", "means", "opportunity", "cover-up", "memory", "exclusion"];
   const chainStages = chainStageIds.map((id) => ({
     id,
@@ -163,10 +307,26 @@ export function buildPlayableCaseIntake(
     }
   ];
   const spoilerSafeGaps = [
+    ...routeIntegrity.blockers,
     ...chainStages.filter((stage) => !stage.complete).map((stage) => `${stage.label} still needs source support.`),
     ...(discoveredEvidence.length ? [] : ["No evidence has been discovered in this session yet."]),
     ...(witnessPlan.some((item) => item.challengeReady) || solved ? [] : ["No testimony challenge is ready until a linked clue is discovered."])
   ];
+  const progress: PlayableCaseProgress = {
+    currentStage: !session ? "join" : solved ? "solved" : discoveredEvidence.length < Math.min(totalEvidence, 1) ? "search" : interrogationLog.length < 1 ? "question" : challengeHits.size < 1 && witnessPlan.some((item) => item.challengeReady) ? "challenge" : "submit",
+    discoveredEvidence: discoveredEvidence.length,
+    totalEvidence,
+    questionedWitnesses: questioned.size,
+    totalWitnesses: witnessPlan.length,
+    challengeReadyCount: witnessPlan.filter((item) => item.challengeReady).length,
+    challengeHitCount: challengeHits.size,
+    selectedTheoryEvidence: submittedEvidenceCount,
+    submitReady: discoveredEvidence.length >= Math.min(3, totalEvidence) && interrogationLog.length > 0 && routeIntegrity.playable,
+    wrongTheorySubmitted: Boolean(session?.judgement && !session.judgement.accepted),
+    solved
+  };
+  const progressStages = buildProgressStages(starterTasks, progress);
+  const nextAction = buildNextAction({ session, evidenceRoute, witnessPlan, progress, routeIntegrity });
   const sourceTrail: PlayableCaseSourceTrail[] = [
     {
       id: `candidate:${caseFromLog.sourceCandidateId || caseFromLog.id}`,
@@ -220,6 +380,12 @@ export function buildPlayableCaseIntake(
       totalEvidence
     },
     sourceTrail
+    ,
+    nextAction,
+    routeIntegrity,
+    progress,
+    progressStages,
+    blockedReasons: spoilerSafeGaps
   };
 }
 

@@ -481,6 +481,44 @@ export type PlayableCaseSourceTrail = {
   characterIds: string[];
 };
 
+export type PlayableCaseNextAction = {
+  kind: "join" | PlayableCaseTask["kind"];
+  label: string;
+  detail: string;
+  buttonLabel: string;
+  targetLocationId?: string;
+  targetCharacterId?: string;
+  targetEvidenceId?: string;
+};
+
+export type PlayableCaseProgress = {
+  currentStage: "join" | "search" | "question" | "challenge" | "submit" | "review" | "solved";
+  discoveredEvidence: number;
+  totalEvidence: number;
+  questionedWitnesses: number;
+  totalWitnesses: number;
+  challengeReadyCount: number;
+  challengeHitCount: number;
+  selectedTheoryEvidence: number;
+  submitReady: boolean;
+  wrongTheorySubmitted: boolean;
+  solved: boolean;
+};
+
+export type PlayableCaseRouteIntegrity = {
+  playable: boolean;
+  searchableEvidence: boolean;
+  witnessAvailable: boolean;
+  contradictionAvailable: boolean;
+  criticalCoverage: {
+    motive: boolean;
+    means: boolean;
+    opportunity: boolean;
+    exclusion: boolean;
+  };
+  blockers: string[];
+};
+
 export type PlayableCaseIntake = {
   caseId: string;
   sourceCandidateId?: string;
@@ -521,6 +559,11 @@ export type PlayableCaseIntake = {
     totalEvidence: number;
   };
   sourceTrail: PlayableCaseSourceTrail[];
+  nextAction?: PlayableCaseNextAction;
+  routeIntegrity?: PlayableCaseRouteIntegrity;
+  progress?: PlayableCaseProgress;
+  progressStages?: PlayableCaseTask[];
+  blockedReasons?: string[];
 };
 
 export type MapInteractiveTarget = {

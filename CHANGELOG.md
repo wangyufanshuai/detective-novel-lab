@@ -24,6 +24,7 @@
 - Time Machine now shows a snapshot timeline, expanded diff details, baseline quick selection, and rollback confirmation.
 - Benchmark Dashboard now has clearer pass/fail/unavailable states.
 - Emerged case extraction can now return a spoiler-safe `playableIntake`, and `GET /api/v1/query/case` can include it with `includeIntake=true`.
+- Playable Case Intake now includes route integrity, player progress, next action, and pre-persistence blocking for candidates that cannot support a complete search -> witness -> challenge -> theory loop.
 
 ## v0.1.0 - 2026-06-11
 

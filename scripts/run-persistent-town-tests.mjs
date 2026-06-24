@@ -204,10 +204,37 @@ const engine = await loadEngine();
   assert.equal(intake.starterTasks.length >= 5, true, "playable intake builds starter tasks");
   assert.equal(intake.evidenceRoute.length >= 5, true, "playable intake builds evidence route");
   assert.equal(intake.witnessPlan.length > 0, true, "playable intake builds witness plan");
+  assert.equal(intake.routeIntegrity.playable, true, "playable intake route integrity passes for extracted cases");
+  assert.equal(intake.routeIntegrity.searchableEvidence, true, "route integrity requires a searchable evidence route");
+  assert.equal(intake.routeIntegrity.witnessAvailable, true, "route integrity requires a witness route");
+  assert.equal(intake.routeIntegrity.contradictionAvailable, true, "route integrity requires a testimony challenge route");
+  assert.deepEqual(Object.values(intake.routeIntegrity.criticalCoverage), [true, true, true, true], "route integrity covers motive, means, opportunity, and exclusion");
+  assert.equal(intake.progress.currentStage, "join", "intake progress starts before join");
+  assert.equal(intake.nextAction.kind, "join", "intake next action starts with joining investigation");
+  assert.equal(intake.progressStages.length >= 5, true, "playable intake builds progress stages");
   assert.equal(intake.sourceCounts.events > 0 && intake.sourceCounts.memories > 0 && intake.sourceCounts.observations > 0, true, "playable intake summarizes source counts");
   const hiddenIntakeText = JSON.stringify(intake);
   assert.equal(hiddenIntakeText.includes(extracted.activeCase.deductionCase.truth.culpritId), false, "unsolved intake does not expose culprit id");
   assert.equal(intake.sourceTrail.filter((item) => item.hidden).every((item) => item.label === "Hidden source event" || item.label === "Locked memory source"), true, "unsolved intake hides source labels");
+  const noEvidenceCase = structuredClone(extracted.activeCase);
+  noEvidenceCase.deductionCase.evidence = noEvidenceCase.deductionCase.evidence.map((item) => ({ ...item, discoverable: false }));
+  const noEvidenceIntegrity = engine.validatePlayableCaseRoute(noEvidenceCase);
+  assert.equal(noEvidenceIntegrity.searchableEvidence, false, "route integrity fails cases without discoverable evidence");
+  assert.equal(noEvidenceIntegrity.playable, false, "route integrity blocks cases without discoverable evidence");
+  const noWitnessCase = structuredClone(extracted.activeCase);
+  noWitnessCase.testimonies = [];
+  const noWitnessIntegrity = engine.validatePlayableCaseRoute(noWitnessCase);
+  assert.equal(noWitnessIntegrity.witnessAvailable, false, "route integrity fails cases without witnesses");
+  const noChallengeCase = structuredClone(extracted.activeCase);
+  noChallengeCase.testimonies = noChallengeCase.testimonies.map((item) => ({ ...item, contradictionEvidenceIds: [] }));
+  const noChallengeIntegrity = engine.validatePlayableCaseRoute(noChallengeCase);
+  assert.equal(noChallengeIntegrity.contradictionAvailable, false, "route integrity fails cases without discoverable contradiction evidence");
+  const noExclusionCase = structuredClone(extracted.activeCase);
+  noExclusionCase.sourceMap.chainStageSourceEventIds.exclusion = [];
+  noExclusionCase.deductionCase.logicPuzzle.exclusionChains = [];
+  noExclusionCase.deductionCase.evidence = noExclusionCase.deductionCase.evidence.map((item) => ({ ...item, title: "neutral clue", visibleDescription: "neutral scene context", trueMeaning: "neutral context", supportsConclusion: [], contradicts: [], unlocks: [] }));
+  const noExclusionIntegrity = engine.validatePlayableCaseRoute(noExclusionCase);
+  assert.equal(noExclusionIntegrity.criticalCoverage.exclusion, false, "route integrity fails cases without exclusion coverage");
   const challengeEvidenceId = extracted.activeCase.testimonies.flatMap((item) => item.contradictionEvidenceIds)[0] || extracted.activeCase.deductionCase.evidence[0].id;
   const discoveredSession = {
     id: "intake-session",
@@ -224,12 +251,23 @@ const engine = await loadEngine();
   assert.equal(discoveredIntake.sourceCounts.discoveredEvidence, 1, "intake updates discovered evidence count from session");
   assert.equal(discoveredIntake.evidenceRoute.some((item) => item.id === challengeEvidenceId && item.discovered), true, "intake marks discovered evidence in the route");
   assert.equal(discoveredIntake.starterTasks.some((item) => item.kind === "search" && item.complete), true, "discovered evidence updates starter task state");
+  assert.equal(discoveredIntake.progress.currentStage, "question", "discovered evidence advances intake progress toward questioning");
+  assert.equal(discoveredIntake.nextAction.kind === "search" || discoveredIntake.nextAction.kind === "question", true, "next action advances the investigation route without spoilers");
+  const wrongTheoryIntake = engine.buildPlayableCaseIntake(extracted.activeCase, extracted.events, extracted.world, {
+    ...discoveredSession,
+    discoveredEvidenceIds: extracted.activeCase.deductionCase.evidence.map((item) => item.id),
+    submittedTheory: { culpritId: "wrong", motive: "", method: "", evidenceIds: [] },
+    judgement: { accepted: false, score: 10, missing: ["Missing motive explanation."], contradictions: [], explanation: "Rejected by test" }
+  });
+  assert.equal(wrongTheoryIntake.progress.wrongTheorySubmitted, true, "wrong submissions are reflected in intake progress");
   const solvedIntake = engine.buildPlayableCaseIntake(extracted.activeCase, extracted.events, extracted.world, {
     ...discoveredSession,
     discoveredEvidenceIds: extracted.activeCase.deductionCase.evidence.map((item) => item.id),
     judgement: { accepted: true, score: 100, missing: [], contradictions: [], explanation: "Solved by test" }
   });
   assert.equal(solvedIntake.readiness.status, "solved", "solved intake unlocks solved status");
+  assert.equal(solvedIntake.progress.currentStage, "solved", "solved intake marks progress solved");
+  assert.equal(solvedIntake.nextAction.kind, "review", "solved intake points to source review");
   assert.equal(solvedIntake.sourceTrail.some((item) => item.hidden), false, "solved intake unlocks full source trail labels");
 }
 

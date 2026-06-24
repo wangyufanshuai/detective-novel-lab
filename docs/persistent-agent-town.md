@@ -130,7 +130,9 @@ Main endpoints:
 
 `POST /api/v1/command/town/case/extract` keeps the existing response fields and may also return `playableIntake`. The intake is derived from the extracted `CaseFromLog`, source map, world events, memory counts, and current player session when available.
 
-The UI shows the intake before the player enters the investigation. It contains readiness score, six-stage chain status, source event and memory counts, starter tasks, evidence route hints, witness challenge planning, and spoiler-safe gaps.
+The UI shows the intake before the player enters the investigation. It contains readiness score, route integrity, current progress, next action, six-stage chain status, source event and memory counts, evidence route hints, witness challenge planning, and spoiler-safe gaps.
+
+The extraction command now applies a final playable-route gate before writing the extracted case to SQLite. A candidate must have a searchable evidence route, a witness route, at least one discoverable testimony challenge, and source-backed motive / means / opportunity / non-culprit exclusion coverage. Blocked candidates return `CASE_NOT_PLAYABLE` with low-spoiler reasons.
 
 Before the case is solved, hidden source events are labeled generically and culprit-specific witness details are masked. After a correct theory is accepted, the same intake can expose the full source trail and conclusion nodes.
 

@@ -40,6 +40,7 @@ import type {
   NpcActionCandidate,
   NpcAgentState,
   PlayableCaseIntake,
+  PlayableCaseNextAction,
   PlayerSession,
   PlayerTheory,
   PersistentTownRuntime,
@@ -1954,7 +1955,24 @@ function CandidatePlayabilityPreview({ candidate }: { candidate: CaseCandidate }
   );
 }
 
-function CaseIntakePanel({ intake, session, joinCase }: { intake: PlayableCaseIntake; session: PlayerSession | null; joinCase: () => void }) {
+function CaseIntakePanel({
+  intake,
+  session,
+  joinCase,
+  onNextAction
+}: {
+  intake: PlayableCaseIntake;
+  session: PlayerSession | null;
+  joinCase: () => void;
+  onNextAction: (action: PlayableCaseNextAction) => void;
+}) {
+  const nextAction = intake.nextAction || {
+    kind: session ? "review" : "join",
+    label: session ? "Review route" : "Join the investigation",
+    detail: intake.readiness.summary,
+    buttonLabel: session ? "Review route" : "Join investigation"
+  } satisfies PlayableCaseNextAction;
+  const progress = intake.progress;
   return (
     <section className="actionPanel caseIntakePanel" data-testid="case-intake">
       <div className="panelHeaderLine">
@@ -1965,6 +1983,36 @@ function CaseIntakePanel({ intake, session, joinCase }: { intake: PlayableCaseIn
         <span className={`runtimePill ${intake.readiness.status}`}>{intake.readiness.score}%</span>
       </div>
       <p>{intake.readiness.summary}</p>
+      <article className="caseIntakeNext" data-testid="case-intake-next-action">
+        <span>Next action</span>
+        <strong>{nextAction.label}</strong>
+        <small>{nextAction.detail}</small>
+        <button
+          type="button"
+          className="primaryButton full"
+          data-testid="case-intake-next"
+          onClick={() => nextAction.kind === "join" ? joinCase() : onNextAction(nextAction)}
+        >
+          {nextAction.buttonLabel}
+        </button>
+      </article>
+      {progress && (
+        <div className="caseIntakeProgress" data-testid="case-intake-progress">
+          <span><b>{progress.currentStage}</b>stage</span>
+          <span><b>{progress.discoveredEvidence}/{progress.totalEvidence}</b>evidence</span>
+          <span><b>{progress.questionedWitnesses}/{progress.totalWitnesses}</b>witnesses</span>
+          <span><b>{progress.challengeReadyCount}</b>challenges ready</span>
+          <span><b>{progress.submitReady ? "ready" : "not ready"}</b>submit</span>
+        </div>
+      )}
+      {intake.routeIntegrity && (
+        <div className={`routeIntegrity ${intake.routeIntegrity.playable ? "pass" : "fail"}`} data-testid="case-route-integrity">
+          <span>{intake.routeIntegrity.playable ? "Route complete" : "Route blocked"}</span>
+          <small>
+            motive {intake.routeIntegrity.criticalCoverage.motive ? "ok" : "gap"} / means {intake.routeIntegrity.criticalCoverage.means ? "ok" : "gap"} / opportunity {intake.routeIntegrity.criticalCoverage.opportunity ? "ok" : "gap"} / exclusion {intake.routeIntegrity.criticalCoverage.exclusion ? "ok" : "gap"}
+          </small>
+        </div>
+      )}
       <div className="reviewMetricGrid compact">
         <span><b>{intake.sourceCounts.events}</b>source events</span>
         <span><b>{intake.sourceCounts.memories}</b>memories</span>
@@ -1976,8 +2024,8 @@ function CaseIntakePanel({ intake, session, joinCase }: { intake: PlayableCaseIn
       </div>
       <div className="caseIntakeGrid">
         <section>
-          <strong>Starter route</strong>
-          {intake.starterTasks.slice(0, 5).map((task) => (
+          <strong>Investigation route</strong>
+          {(intake.progressStages || intake.starterTasks).slice(0, 5).map((task) => (
             <article key={task.id} className={task.complete ? "complete" : task.locked ? "locked" : ""}>
               <span>{task.complete ? "Done" : task.locked ? "Locked" : "Next"}</span>
               <b>{task.title}</b>
@@ -2028,6 +2076,7 @@ function CaseIntakePanel({ intake, session, joinCase }: { intake: PlayableCaseIn
 
 export function InvestigationPanel({
   playableIntake,
+  onIntakeNextAction,
   notebookItems,
   onNotebookAction,
   selectedSceneName,
@@ -2067,6 +2116,7 @@ export function InvestigationPanel({
   busy
 }: {
   playableIntake?: PlayableCaseIntake | null;
+  onIntakeNextAction: (action: PlayableCaseNextAction) => void;
   notebookItems: EvidenceNotebookItem[];
   onNotebookAction: (item: EvidenceNotebookItem, action: NotebookAction) => void;
   selectedSceneName: string;
@@ -2107,7 +2157,7 @@ export function InvestigationPanel({
 }) {
   return (
     <div className="stackedInspector">
-      {playableIntake && <CaseIntakePanel intake={playableIntake} session={session} joinCase={joinCase} />}
+      {playableIntake && <CaseIntakePanel intake={playableIntake} session={session} joinCase={joinCase} onNextAction={onIntakeNextAction} />}
       <EvidenceNotebookPanel items={notebookItems} onAction={onNotebookAction} />
       <section className="actionPanel">
         <h2><FileSearch size={16} /> 地点与证据</h2>
@@ -2180,8 +2230,7 @@ export function InvestigationPanel({
             <label className="checkRow" key={item.id}><input type="checkbox" checked={playerTheoryEvidence.has(item.id)} onChange={() => toggleTheoryEvidence(item.id)} />{item.title}</label>
           ))}
         </div>
-        <button className="primaryButton full" onClick={submitTheory} disabled={!session || busy}><ShieldCheck size={16} /> 判定推理</button>
-        <button data-testid="submit-theory" className="primaryButton full" onClick={submitTheory} disabled={!session || busy}><ShieldCheck size={16} /> Submit theory</button>
+        <button data-testid="submit-theory" className="primaryButton full" onClick={submitTheory} disabled={!session || busy}><ShieldCheck size={16} /> 判定推理</button>
         {session?.judgement && (
           <div className={`judgement ${session.judgement.accepted ? "pass" : "fail"}`} data-testid="judgement-result">
             <strong>{session.judgement.accepted ? "推理成立" : "推理不成立"}</strong>

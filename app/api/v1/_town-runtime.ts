@@ -8,6 +8,7 @@ import {
   extractPlayableCaseFromCandidate,
   rollbackTownRuntimeToSnapshot,
   runTownScenario,
+  validatePlayableCaseRoute,
   type CaseCandidate,
   type PersistentTownRuntime,
   type ScenarioConfig,
@@ -64,6 +65,10 @@ export function applyRuntimeIntervention(world: RuntimeWorld, intervention: Omit
 
 export function extractCase(world: RuntimeWorld, events: WorldEvent[], candidate: CaseCandidate) {
   const result = extractPlayableCaseFromCandidate(world, events, candidate);
+  const routeIntegrity = validatePlayableCaseRoute(result.activeCase);
+  if (!routeIntegrity.playable) {
+    throw new Error(`CASE_NOT_PLAYABLE: ${routeIntegrity.blockers.join("; ")}`);
+  }
   const nextWorld = result.world as RuntimeWorld;
   nextWorld.persistentRuntime = world.persistentRuntime;
   if (nextWorld.persistentRuntime) {
