@@ -68,6 +68,7 @@ import {
   buildDeductionGraph,
   buildEvidenceNotebook,
   buildEmergenceProofTrace,
+  buildPlayableCaseIntake,
   buildPlayerProofTour,
   buildWorldMapSnapshot,
   createCaseGalleryEntry,
@@ -223,6 +224,7 @@ import type {
   NovelQualityIssue,
   NovelWritingRisk,
   NpcDialogueEvalReport,
+  PlayableCaseIntake,
   PlayerSession,
   PlayerTheory,
   ProofTourStep,
@@ -3739,6 +3741,10 @@ export default function Home() {
     () => (activeCase ? buildPlayerProofTour(activeCase, events, emergenceProofTrace, session) : []),
     [activeCase, emergenceProofTrace, events, session]
   );
+  const playableIntake: PlayableCaseIntake | null = useMemo(
+    () => (activeCase?.sourceCandidateId ? buildPlayableCaseIntake(activeCase, events, world, session) : null),
+    [activeCase, events, session, world]
+  );
   const mapInteractiveTargets: MapInteractiveTarget[] = useMemo(
     () => (world ? deriveMapInteractiveTargets(world, activeCase || undefined, events, session) : []),
     [activeCase, events, session, world]
@@ -4259,7 +4265,7 @@ export default function Home() {
     if (!world) return;
     setTownRuntimeBusy(true);
     try {
-      const data = await postV1<{ world: WorldState; events: WorldEvent[]; activeCase: CaseFromLog; candidate: CaseCandidate; queue: TownEmergenceQueue }>("/api/v1/command/town/case/extract", {
+      const data = await postV1<{ world: WorldState; events: WorldEvent[]; activeCase: CaseFromLog; candidate: CaseCandidate; queue: TownEmergenceQueue; playableIntake?: PlayableCaseIntake }>("/api/v1/command/town/case/extract", {
         worldId: world.id,
         candidateId: candidate.id
       });
@@ -4269,7 +4275,7 @@ export default function Home() {
       setRevealText("");
       setInspectorTab("investigation");
       setAppMode("play");
-      setStatus(`Playable case extracted from candidate ${data.candidate.id}. Join the investigation to play it.`);
+      setStatus(`Playable case extracted from candidate ${data.candidate.id}. Review the Case Intake, then join the investigation.`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to extract playable case");
     } finally {
@@ -5155,7 +5161,7 @@ export default function Home() {
                     const actors = authoringActorsByTile.get(`${tile.x}:${tile.y}`) || [];
                     const markers = authoringMarkersByTile.get(`${tile.x}:${tile.y}`) || [];
                     return (
-                      <button key={tile.id} className={`mapTile terrain-${tile.terrain} ${tile.searchable ? "searchable" : ""}`} title={tile.locationName || tile.terrain}>
+                      <button key={tile.id} className={`mapTile terrain-${tile.terrain} ${tile.searchable ? "searchable" : ""}`} data-location-id={tile.locationId || undefined} title={tile.locationName || tile.terrain}>
                         {tile.locationName && <span className="placeName">{tile.locationName}</span>}
                         {markers.slice(0, 2).map((marker) => <span key={marker.id} className={`marker marker-${marker.type}`}>?</span>)}
                         <span className="actorStack">{actors.slice(0, 3).map((actor) => <span key={actor.id} className={`actorPin actor-${actor.status}`}>{actorInitial(actor.name)}</span>)}</span>
@@ -5456,6 +5462,7 @@ export default function Home() {
               label: "\u8c03\u67e5",
               content: (
                 <InvestigationPanel
+                  playableIntake={playableIntake}
                   notebookItems={evidenceNotebook}
                   onNotebookAction={handleNotebookAction}
                   selectedSceneName={selectedScene?.name || "\u9009\u62e9\u5730\u56fe\u5730\u70b9"}
@@ -5491,6 +5498,7 @@ export default function Home() {
                   gapCards={gapCards}
                   onGapSelect={handleGapCard}
                   nextStepAdvice={nextStepAdvice}
+                  joinCase={() => void joinCase()}
                   busy={busy}
                 />
               )

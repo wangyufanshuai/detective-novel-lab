@@ -63,6 +63,8 @@ Current design focus: **Evidence Notebook + Playable Proof Tour**. The UI should
 
 Current Agent workbench focus: **Review Mode**. The Persistent Agent Town `Agent` panel should let a technical evaluator quickly scan runtime health, scenario checks, counterfactual branch comparison, Time Machine diffs, and benchmark status without leaving the existing investigative UI.
 
+Current emergence focus: **Playable Case Intake**. Valid Persistent Agent Town candidates now get a low-spoiler intake before the player joins the investigation: playability score, six-stage chain readiness, source event and memory counts, starter route, evidence route, witness challenge plan, and spoiler-safe gaps. The culprit id, hidden event titles, and decisive evidence conclusions remain locked until the player solves the case.
+
 ## Why Not Just Ask An LLM?
 
 Direct LLM mystery generation is easy to demo but hard to trust: the model can invent clues after the fact, leak the culprit through dialogue, create multiple valid suspects, or rely on facts the player could never discover.
@@ -82,6 +84,7 @@ Detective Town uses the LLM only as a surface language layer. The durable case l
 - **Memory-scoped testimony**: NPCs can only answer from visible memories and discovered evidence.
 - **Explainable emergence**: goals, intents, and causal links show how the case came out of simulated life events.
 - **Persistent agent runtime**: NPCs observe, update memory, score actions locally, write new events, and surface case candidates with validation failures or playable extraction.
+- **Emerged case intake**: valid candidates become player-readable investigation entries with source-backed route hints before entering the existing Evidence Notebook, Suspect Board, wrong-theory gap, and Proof Tour loop.
 - **Living World Lab**: imported chapters become observable entities, relationships, events, evidence spans, causal chains, and replayable simulations.
 - **Audit Studio**: extracted novel worlds get a trust score, issue queue, suggested fixes, applied correction patches, and a corrected view without mutating the original source graph.
 - **Agent intervention loop**: scripts can query the world, start a replay, intervene in actor state, then query the changed branch.
@@ -139,7 +142,7 @@ The UI exposes this through **持续小镇 / Persistent Agent Town**:
 - `Agent` tab: current NPC goal, short-term plan, known facts, risk, alertness, resources, propagated memories, consequences, and action candidate scores.
 - `Emergence Queue`: candidate culprit/victim chains, source event count, memory count, validation status, chain stages, and failure reasons.
 - bounded intervention: changing an NPC resource creates a counterfactual branch without overwriting original world facts.
-- extraction: a valid candidate can be converted into the existing playable investigation flow.
+- extraction: a valid candidate can be converted into a Case Intake page, then into the existing playable investigation flow.
 
 See [docs/persistent-agent-town.md](docs/persistent-agent-town.md).
 

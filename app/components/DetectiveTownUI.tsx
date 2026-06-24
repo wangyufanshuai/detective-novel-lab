@@ -39,6 +39,7 @@ import type {
   MurderArchetype,
   NpcActionCandidate,
   NpcAgentState,
+  PlayableCaseIntake,
   PlayerSession,
   PlayerTheory,
   PersistentTownRuntime,
@@ -519,6 +520,7 @@ export function TownMapStage({
               <button
                 key={tile.id}
                 className={`mapTile terrain-${tile.terrain} ${tile.searchable ? "searchable" : ""} ${selected ? "selected" : ""} ${highlighted ? "spotlight" : ""}`}
+                data-location-id={tile.locationId || undefined}
                 title={tile.locationName || tile.terrain}
                 aria-label={interactive ? (tile.locationName || tile.terrain) : undefined}
                 aria-hidden={!interactive}
@@ -1319,6 +1321,7 @@ export function AgentControlPanel({
             </div>
             {!!candidate.validation.errors.length && <small>{candidate.validation.errors.slice(0, 2).join(" / ")}</small>}
             {!!candidate.validation.failureReasons?.length && <small>{candidate.validation.failureReasons.slice(0, 2).join(" / ")}</small>}
+            <CandidatePlayabilityPreview candidate={candidate} />
             <button type="button" className="secondaryButton full" onClick={() => extractCase(candidate)} disabled={runningBusy}>
               抽取可玩案件
             </button>
@@ -1821,6 +1824,7 @@ export function PersistentTownCommandCenter({
               </div>
               <small>记忆可信度 {candidate.validation.memoryConfidence?.supportScore ?? 0}% / 观察支撑 {candidate.validation.observationSupport?.supportScore ?? 0}% / 触发链 {candidate.riskChainEventIds.length} 事件</small>
               <small>{candidate.validation.failureReasons?.[0] ? translateRuleText(candidate.validation.failureReasons[0]) : (candidate.validation.valid ? "可抽取案件" : "仍阻塞")}</small>
+              <CandidatePlayabilityPreview candidate={candidate} />
               <button type="button" onClick={() => extractCase(candidate)} disabled={runningBusy || !candidate.validation.valid}>抽取可玩案件</button>
             </article>
           ))}
@@ -1933,7 +1937,97 @@ export function EvidenceNotebookPanel({
   );
 }
 
+function CandidatePlayabilityPreview({ candidate }: { candidate: CaseCandidate }) {
+  const stages = ["motive", "means", "opportunity", "cover-up", "memory", "exclusion"];
+  const complete = stages.filter((stage) => candidate.chainCompleteness?.[stage as CaseChainStage] || candidate.validation.chainCompleteness?.[stage as CaseChainStage] || candidate.chainStageTags?.includes(stage) || candidate.validation.chainStages?.includes(stage));
+  return (
+    <div className="playabilityPreview" data-testid="playability-preview">
+      <strong>Playability Preview</strong>
+      <span>{candidate.validation.valid ? "Ready for low-spoiler intake" : "Still forming"}</span>
+      <div className="logicBadges">
+        <span>{complete.length}/6 chain stages</span>
+        <span>{candidate.riskChainEventIds.length} source events</span>
+        <span>{candidate.memoryIds.length} memories</span>
+        <span>{candidate.validation.failureReasons?.[0] || (candidate.validation.valid ? "extractable" : "validation pending")}</span>
+      </div>
+    </div>
+  );
+}
+
+function CaseIntakePanel({ intake, session, joinCase }: { intake: PlayableCaseIntake; session: PlayerSession | null; joinCase: () => void }) {
+  return (
+    <section className="actionPanel caseIntakePanel" data-testid="case-intake">
+      <div className="panelHeaderLine">
+        <div>
+          <span className="eyebrow">Emerged from town runtime</span>
+          <h2><GitBranch size={16} /> Case Intake</h2>
+        </div>
+        <span className={`runtimePill ${intake.readiness.status}`}>{intake.readiness.score}%</span>
+      </div>
+      <p>{intake.readiness.summary}</p>
+      <div className="reviewMetricGrid compact">
+        <span><b>{intake.sourceCounts.events}</b>source events</span>
+        <span><b>{intake.sourceCounts.memories}</b>memories</span>
+        <span><b>{intake.sourceCounts.observations}</b>observations</span>
+        <span><b>{intake.sourceCounts.discoveredEvidence}/{intake.sourceCounts.totalEvidence}</b>evidence</span>
+      </div>
+      <div className="questChain intakeChain" data-testid="case-intake-chain">
+        {intake.chainStages.map((stage) => <span key={stage.id} className={stage.complete ? "on" : ""}>{stage.label}</span>)}
+      </div>
+      <div className="caseIntakeGrid">
+        <section>
+          <strong>Starter route</strong>
+          {intake.starterTasks.slice(0, 5).map((task) => (
+            <article key={task.id} className={task.complete ? "complete" : task.locked ? "locked" : ""}>
+              <span>{task.complete ? "Done" : task.locked ? "Locked" : "Next"}</span>
+              <b>{task.title}</b>
+              <small>{task.detail}</small>
+            </article>
+          ))}
+        </section>
+        <section>
+          <strong>Evidence route</strong>
+          {intake.evidenceRoute.slice(0, 5).map((item) => (
+            <article key={item.id} className={item.discovered ? "complete" : ""}>
+              <span>{item.discovered ? "Found" : item.isKey ? "Key clue" : "Support"}</span>
+              <b>{item.locationName}</b>
+              <small>{item.hint}</small>
+            </article>
+          ))}
+        </section>
+        <section>
+          <strong>Witness plan</strong>
+          {intake.witnessPlan.slice(0, 4).map((item) => (
+            <article key={item.characterId} className={item.challengeReady ? "ready" : item.questioned ? "complete" : ""}>
+              <span>{item.challengeReady ? "Challenge ready" : item.questioned ? "Questioned" : "Question"}</span>
+              <b>{item.characterName}</b>
+              <small>{item.hint}</small>
+            </article>
+          ))}
+        </section>
+      </div>
+      {!!intake.spoilerSafeGaps.length && (
+        <div className="caseIntakeGaps" data-testid="case-intake-gaps">
+          {intake.spoilerSafeGaps.slice(0, 4).map((gap) => <span key={gap}>{gap}</span>)}
+        </div>
+      )}
+      <div className="sourceTrail" data-testid="case-intake-source-trail">
+        {intake.sourceTrail.slice(0, 6).map((item) => (
+          <article key={item.id} className={item.hidden ? "locked" : ""}>
+            <span>{item.kind}</span>
+            <b>{item.label}</b>
+            <small>{item.detail}</small>
+          </article>
+        ))}
+      </div>
+      {!session && <button type="button" className="primaryButton full" data-testid="case-intake-join" onClick={joinCase}>Join investigation</button>}
+      {session && <small className="sourceBackedPill" data-testid="source-backed-case">source-backed / emerged from town runtime</small>}
+    </section>
+  );
+}
+
 export function InvestigationPanel({
+  playableIntake,
   notebookItems,
   onNotebookAction,
   selectedSceneName,
@@ -1969,8 +2063,10 @@ export function InvestigationPanel({
   gapCards,
   onGapSelect,
   nextStepAdvice,
+  joinCase,
   busy
 }: {
+  playableIntake?: PlayableCaseIntake | null;
   notebookItems: EvidenceNotebookItem[];
   onNotebookAction: (item: EvidenceNotebookItem, action: NotebookAction) => void;
   selectedSceneName: string;
@@ -2006,10 +2102,12 @@ export function InvestigationPanel({
   gapCards: GapCard[];
   onGapSelect: (card: GapCard) => void;
   nextStepAdvice?: string;
+  joinCase: () => void;
   busy: boolean;
 }) {
   return (
     <div className="stackedInspector">
+      {playableIntake && <CaseIntakePanel intake={playableIntake} session={session} joinCase={joinCase} />}
       <EvidenceNotebookPanel items={notebookItems} onAction={onNotebookAction} />
       <section className="actionPanel">
         <h2><FileSearch size={16} /> 地点与证据</h2>
@@ -2070,19 +2168,20 @@ export function InvestigationPanel({
       <section className="actionPanel">
         <h2><Gavel size={16} /> 提交推理</h2>
         <label>凶手
-          <select value={theory.culpritId} onChange={(event) => setTheory((current) => ({ ...current, culpritId: event.target.value }))}>
+          <select data-testid="theory-culprit" value={theory.culpritId} onChange={(event) => setTheory((current) => ({ ...current, culpritId: event.target.value }))}>
             <option value="">选择嫌疑人</option>
             {characters.map((character) => <option key={character.id} value={character.id}>{character.name}</option>)}
           </select>
         </label>
         <textarea placeholder="动机" value={theory.motive} onChange={(event) => setTheory((current) => ({ ...current, motive: event.target.value }))} />
         <textarea placeholder="手法" value={theory.method} onChange={(event) => setTheory((current) => ({ ...current, method: event.target.value }))} />
-        <div className="checkList">
+        <div className="checkList" data-testid="theory-evidence-list">
           {discoveredEvidence.map((item) => (
             <label className="checkRow" key={item.id}><input type="checkbox" checked={playerTheoryEvidence.has(item.id)} onChange={() => toggleTheoryEvidence(item.id)} />{item.title}</label>
           ))}
         </div>
         <button className="primaryButton full" onClick={submitTheory} disabled={!session || busy}><ShieldCheck size={16} /> 判定推理</button>
+        <button data-testid="submit-theory" className="primaryButton full" onClick={submitTheory} disabled={!session || busy}><ShieldCheck size={16} /> Submit theory</button>
         {session?.judgement && (
           <div className={`judgement ${session.judgement.accepted ? "pass" : "fail"}`} data-testid="judgement-result">
             <strong>{session.judgement.accepted ? "推理成立" : "推理不成立"}</strong>

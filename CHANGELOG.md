@@ -12,6 +12,7 @@
 - Added a one-click Living World Lab sample project with five analyzed chapters, evidence indexes, a ready batch queue, and a grounded replay.
 - Added a SQLite-backed Living World Lab Project Library with explicit save, open, save-copy, conflict detection, backup coverage, and cross-restart restoration.
 - Added a durable canonical entity identity registry, pending identity review, and baseline-linked novel replay branches with actor and causal state diffs.
+- Added Playable Case Intake for emerged Persistent Agent Town candidates, including low-spoiler route tasks, source counts, witness challenge planning, and source-backed investigation entry.
 
 ### Changed
 
@@ -22,6 +23,7 @@
 - Scenario Runner now surfaces checks, branch comparison, and copyable report JSON in the workbench.
 - Time Machine now shows a snapshot timeline, expanded diff details, baseline quick selection, and rollback confirmation.
 - Benchmark Dashboard now has clearer pass/fail/unavailable states.
+- Emerged case extraction can now return a spoiler-safe `playableIntake`, and `GET /api/v1/query/case` can include it with `includeIntake=true`.
 
 ## v0.1.0 - 2026-06-11
 

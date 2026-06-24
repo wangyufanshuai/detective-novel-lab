@@ -164,6 +164,14 @@ try {
   });
   assert.ok(extracted.activeCase.id, "case extraction returns active case");
   assert.equal(extracted.activeCase.validation.valid, true, "extracted case validates");
+  assert.ok(extracted.playableIntake?.caseId, "case extraction returns playable intake");
+  assert.equal(extracted.playableIntake.caseId, extracted.activeCase.id, "playable intake binds to extracted case");
+  assert.equal(extracted.playableIntake.sourceCandidateId, candidate.id, "playable intake preserves source candidate id");
+  assert.equal(extracted.playableIntake.chainStages.filter((stage) => stage.complete).length >= 6, true, "playable intake exposes complete chain stages");
+  assert.ok(extracted.playableIntake.starterTasks.length >= 5, "playable intake exposes starter tasks");
+  assert.ok(extracted.playableIntake.evidenceRoute.length >= 5, "playable intake exposes evidence route");
+  assert.ok(extracted.playableIntake.witnessPlan.length > 0, "playable intake exposes witness plan");
+  assert.equal(JSON.stringify(extracted.playableIntake).includes(extracted.activeCase.deductionCase.truth.culpritId), false, "playable intake does not leak culprit id before solve");
   assert.equal(extracted.activeCase.triggeredEventId, candidate.triggeredEventId, "extracted case preserves the triggered event id");
   assert.equal(extracted.activeCase.sourceCandidateId, candidate.id, "extracted case preserves the source candidate id");
   assert.equal(extracted.events.filter((event) => event.type === "death").length, 1, "extraction response contains one selected death event");
@@ -175,6 +183,10 @@ try {
   }
   assert.ok(extracted.activeCase.sourceMap.memorySourceIds?.length, "extracted case exposes memory source ids");
   assert.ok(extracted.activeCase.sourceMap.observationSourceIds?.length, "extracted case exposes observation source ids");
+
+  const queriedCase = await request(`/api/v1/query/case?caseId=${encodeURIComponent(extracted.activeCase.id)}&includeIntake=true`);
+  assert.equal(queriedCase.caseFromLog.id, extracted.activeCase.id, "case query returns saved extracted case");
+  assert.equal(queriedCase.playableIntake.caseId, extracted.activeCase.id, "case query can rebuild playable intake");
 
   await request("/api/v1/command/town/runtime/pause", {
     method: "POST",

@@ -3598,6 +3598,115 @@ blockquote {
   font-size: 11px;
 }
 
+.playabilityPreview {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 10px 0;
+  padding: 10px;
+  border: 1px solid rgba(83, 183, 136, 0.34);
+  border-radius: 8px;
+  background: rgba(83, 183, 136, 0.08);
+}
+
+.playabilityPreview strong,
+.caseIntakePanel strong,
+.caseIntakePanel b,
+.caseIntakePanel small,
+.caseIntakePanel span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.playabilityPreview > span {
+  color: #9bd7bb;
+  font-size: 12px;
+}
+
+.caseIntakePanel {
+  border-color: rgba(83, 183, 136, 0.42);
+  background: linear-gradient(180deg, rgba(18, 42, 35, 0.72), rgba(8, 17, 28, 0.92));
+}
+
+.caseIntakePanel h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0 0;
+}
+
+.intakeChain span.on {
+  border-color: rgba(83, 183, 136, 0.7);
+  background: rgba(83, 183, 136, 0.16);
+  color: #b7f0d2;
+}
+
+.caseIntakeGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.caseIntakeGrid section,
+.sourceTrail article {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.caseIntakeGrid article,
+.sourceTrail article {
+  padding: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.58);
+}
+
+.caseIntakeGrid article.complete {
+  border-color: rgba(83, 183, 136, 0.42);
+}
+
+.caseIntakeGrid article.ready {
+  border-color: rgba(251, 191, 36, 0.5);
+}
+
+.caseIntakeGrid article.locked,
+.sourceTrail article.locked {
+  border-style: dashed;
+  opacity: 0.78;
+}
+
+.caseIntakeGrid article > span,
+.sourceTrail article > span {
+  color: #93c5fd;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.caseIntakeGaps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.caseIntakeGaps span,
+.sourceBackedPill {
+  padding: 6px 8px;
+  border-radius: 999px;
+  background: rgba(251, 191, 36, 0.12);
+  color: #fde68a;
+  font-size: 12px;
+}
+
+.sourceTrail {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
 @media (max-width: 720px) {
   .agentDirectorPanel {
     grid-template-columns: 1fr;
@@ -6975,6 +7084,10 @@ blockquote {
 
   .auditMetricGrid {
     grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  }
+
+  .caseIntakeGrid {
+    grid-template-columns: 1fr;
   }
 
   .auditColumns {

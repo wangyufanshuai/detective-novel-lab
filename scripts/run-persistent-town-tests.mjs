@@ -197,6 +197,40 @@ const engine = await loadEngine();
   assert.equal((extracted.activeCase.sourceMap.memorySourceIds || []).length > 0, true, "extracted case records memory sources from the selected chain");
   assert.equal((extracted.activeCase.sourceMap.observationSourceIds || []).length > 0, true, "extracted case records observation sources from the selected chain");
   assert.equal(extracted.activeCase.deductionCase.logicPuzzle.exclusionChains.every((chain) => chain.evidenceIds.length > 0), true, "all non-culprit exclusions keep evidence ids");
+  const intake = engine.buildPlayableCaseIntake(extracted.activeCase, extracted.events, extracted.world);
+  assert.equal(intake.caseId, extracted.activeCase.id, "playable intake binds to extracted case");
+  assert.equal(intake.sourceCandidateId, selected.id, "playable intake exposes source candidate id");
+  assert.equal(intake.chainStages.filter((stage) => stage.complete).length >= 6, true, "playable intake exposes complete chain stages");
+  assert.equal(intake.starterTasks.length >= 5, true, "playable intake builds starter tasks");
+  assert.equal(intake.evidenceRoute.length >= 5, true, "playable intake builds evidence route");
+  assert.equal(intake.witnessPlan.length > 0, true, "playable intake builds witness plan");
+  assert.equal(intake.sourceCounts.events > 0 && intake.sourceCounts.memories > 0 && intake.sourceCounts.observations > 0, true, "playable intake summarizes source counts");
+  const hiddenIntakeText = JSON.stringify(intake);
+  assert.equal(hiddenIntakeText.includes(extracted.activeCase.deductionCase.truth.culpritId), false, "unsolved intake does not expose culprit id");
+  assert.equal(intake.sourceTrail.filter((item) => item.hidden).every((item) => item.label === "Hidden source event" || item.label === "Locked memory source"), true, "unsolved intake hides source labels");
+  const challengeEvidenceId = extracted.activeCase.testimonies.flatMap((item) => item.contradictionEvidenceIds)[0] || extracted.activeCase.deductionCase.evidence[0].id;
+  const discoveredSession = {
+    id: "intake-session",
+    worldId: extracted.world.id,
+    caseId: extracted.activeCase.id,
+    playerId: "tester",
+    displayName: "Tester",
+    discoveredEvidenceIds: [challengeEvidenceId],
+    interrogationLog: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  const discoveredIntake = engine.buildPlayableCaseIntake(extracted.activeCase, extracted.events, extracted.world, discoveredSession);
+  assert.equal(discoveredIntake.sourceCounts.discoveredEvidence, 1, "intake updates discovered evidence count from session");
+  assert.equal(discoveredIntake.evidenceRoute.some((item) => item.id === challengeEvidenceId && item.discovered), true, "intake marks discovered evidence in the route");
+  assert.equal(discoveredIntake.starterTasks.some((item) => item.kind === "search" && item.complete), true, "discovered evidence updates starter task state");
+  const solvedIntake = engine.buildPlayableCaseIntake(extracted.activeCase, extracted.events, extracted.world, {
+    ...discoveredSession,
+    discoveredEvidenceIds: extracted.activeCase.deductionCase.evidence.map((item) => item.id),
+    judgement: { accepted: true, score: 100, missing: [], contradictions: [], explanation: "Solved by test" }
+  });
+  assert.equal(solvedIntake.readiness.status, "solved", "solved intake unlocks solved status");
+  assert.equal(solvedIntake.sourceTrail.some((item) => item.hidden), false, "solved intake unlocks full source trail labels");
 }
 
 {

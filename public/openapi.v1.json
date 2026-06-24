@@ -79,6 +79,17 @@
         "responses": { "200": { "$ref": "#/components/responses/Ok" } }
       }
     },
+    "/api/v1/query/case": {
+      "get": {
+        "summary": "Load a case, optionally with spoiler-safe playable intake",
+        "parameters": [
+          { "name": "caseId", "in": "query", "required": true, "schema": { "type": "string" } },
+          { "name": "includeIntake", "in": "query", "required": false, "schema": { "type": "boolean" }, "description": "When true, data includes playableIntake." },
+          { "name": "sessionId", "in": "query", "required": false, "schema": { "type": "string" }, "description": "Optional player session used to mark discovered evidence and solved visibility." }
+        ],
+        "responses": { "200": { "$ref": "#/components/responses/Ok" } }
+      }
+    },
     "/api/v1/query/town/brief": {
       "get": {
         "summary": "Read a compact persistent town situation brief",
@@ -89,6 +100,13 @@
     "/api/v1/command/town/scenario/run": {
       "post": {
         "summary": "Run a deterministic baseline and counterfactual town scenario",
+        "requestBody": { "$ref": "#/components/requestBodies/JsonObject" },
+        "responses": { "200": { "$ref": "#/components/responses/Ok" } }
+      }
+    },
+    "/api/v1/command/town/case/extract": {
+      "post": {
+        "summary": "Extract a playable case from an emergence candidate; response may include playableIntake",
         "requestBody": { "$ref": "#/components/requestBodies/JsonObject" },
         "responses": { "200": { "$ref": "#/components/responses/Ok" } }
       }

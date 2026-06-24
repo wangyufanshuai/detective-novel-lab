@@ -33,6 +33,7 @@ The SDK is the executable reference for the stable external-agent subset. It is 
 - `GET /api/v1/query/world/events?worldId=...`
 - `GET /api/v1/query/world/memories?worldId=...&npcId=...`
 - `GET /api/v1/query/case?caseId=...`
+- `GET /api/v1/query/case?caseId=...&includeIntake=true&sessionId=...`
 - `GET /api/v1/query/town/runtime?worldId=...`
 - `GET /api/v1/query/town/agents?worldId=...`
 - `GET /api/v1/query/town/agent?worldId=...&npcId=...`
@@ -104,6 +105,12 @@ node scripts/run-persistent-town-api-smoke.mjs
 The runtime state is stored inside the persisted world JSON. New actions still become `WorldEvent` records, and extracted cases still use the existing fair-play validation and investigation APIs.
 
 `GET /api/v1/query/town/brief` is a read-only situation summary for agents and the Command Center. It ranks current location pressure and NPC risk, aggregates selected action and observation kinds, reports case-chain readiness, and provides short signals for the next inspection step. It does not advance the runtime or mutate SQLite state.
+
+## Playable Case Intake
+
+Emerged Persistent Agent Town candidates can be bridged into the player investigation loop with a spoiler-safe intake. `POST /api/v1/command/town/case/extract` still returns `world`, `events`, `activeCase`, `candidate`, and `queue`; it may also return `playableIntake`.
+
+`GET /api/v1/query/case?caseId=...&includeIntake=true` recomputes the same intake for an existing case. Passing `sessionId` lets the route mark discovered evidence, ready witness challenges, and solved source trail visibility. Omitting `includeIntake` preserves the old response shape.
 
 ## Scenario Runner And Time Machine
 

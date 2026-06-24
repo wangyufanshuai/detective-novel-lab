@@ -78,3 +78,5 @@ The guided case is not a tutorial pasted on top of a generated story. It is a pr
 `?runtime=static` runs the whole first case in the browser. It does not call `/api/*`, DeepSeek, or SQLite.
 
 `?runtime=server` keeps the same investigation surface, but uses the local server runtime, SQLite persistence, Agent API endpoints, and optional DeepSeek dialogue surface.
+
+Static Runtime starts from a curated premium case so the first player action can be guided immediately. Server Runtime can also start from Persistent Agent Town: run the town until a valid candidate appears, extract it, review the Case Intake, then join the investigation. The intake is intentionally low-spoiler: it shows route hints, source counts, and missing logic stages, but keeps hidden event titles, culprit identity, and decisive conclusions locked until the player solves the case.

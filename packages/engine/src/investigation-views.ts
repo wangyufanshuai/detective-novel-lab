@@ -3,6 +3,8 @@ import type {
   EmergenceProofTrace,
   EvidenceNotebookItem,
   MapInteractiveTarget,
+  PlayableCaseIntake,
+  PlayableCaseSourceTrail,
   PlayerSession,
   ProofTourStep,
   WorldEvent,
@@ -24,6 +26,201 @@ function eventByEvidence(events: WorldEvent[], evidenceId: string) {
 
 function hiddenEvidenceTitle(index: number) {
   return `未发现线索 ${index + 1}`;
+}
+
+const intakeStageLabels: Record<string, string> = {
+  motive: "Motive",
+  means: "Means",
+  opportunity: "Opportunity",
+  "cover-up": "Cover-up",
+  memory: "Memory support",
+  exclusion: "Non-culprit exclusion"
+};
+
+function eventLabelForIntake(event: WorldEvent, solved: boolean) {
+  if (solved || !event.hidden) return event.publicSummary;
+  return "Hidden source event";
+}
+
+function eventDetailForIntake(event: WorldEvent, solved: boolean) {
+  if (solved || !event.hidden) return `${event.time} at ${event.locationId}: ${event.publicSummary}`;
+  return "Locked until the player proves the case; the intake keeps the source chain count visible without revealing the hidden action.";
+}
+
+function evidenceKindLabel(isKey: boolean, index: number) {
+  return `${isKey ? "key" : "support"} clue ${index + 1}`;
+}
+
+export function buildPlayableCaseIntake(
+  caseFromLog: CaseFromLog,
+  events: WorldEvent[] = [],
+  world?: WorldState | null,
+  session?: PlayerSession | null
+): PlayableCaseIntake {
+  const solved = Boolean(session?.judgement?.accepted);
+  const discovered = new Set(session?.discoveredEvidenceIds || []);
+  const interrogationLog = session?.interrogationLog || [];
+  const sourceMap = caseFromLog.sourceMap || {};
+  const sourceEventIds = Array.from(new Set([...(caseFromLog.sourceEventIds || []), ...(sourceMap.sourceEventIds || [])]));
+  const evidenceSourceEventIds = sourceMap.evidenceSourceEventIds || {};
+  const chainStageSourceEventIds = sourceMap.chainStageSourceEventIds || {};
+  const sourceEvents = sourceEventIds.map((id) => events.find((event) => event.id === id)).filter((event): event is WorldEvent => Boolean(event));
+  const memorySourceIds = sourceMap.memorySourceIds || [];
+  const observationSourceIds = sourceMap.observationSourceIds || [];
+  const totalEvidence = caseFromLog.deductionCase.evidence.length;
+  const discoveredEvidence = caseFromLog.deductionCase.evidence.filter((item) => discovered.has(item.id));
+  const questioned = new Set(interrogationLog.map((entry) => entry.characterId));
+  const challengeHits = new Set(interrogationLog.filter((entry) => entry.challenge?.hit).map((entry) => entry.characterId));
+  const chainStageIds = ["motive", "means", "opportunity", "cover-up", "memory", "exclusion"];
+  const chainStages = chainStageIds.map((id) => ({
+    id,
+    label: intakeStageLabels[id] || id,
+    complete: id === "memory"
+      ? memorySourceIds.length > 0 || Boolean(chainStageSourceEventIds[id]?.length)
+      : Boolean(chainStageSourceEventIds[id]?.length),
+    sourceEventCount: chainStageSourceEventIds[id]?.length || 0
+  }));
+  const completeStages = chainStages.filter((stage) => stage.complete).length;
+  const status = solved ? "solved" : session ? "investigating" : "ready";
+  const sceneById = new Map(caseFromLog.deductionCase.scenes.map((scene) => [scene.id, scene]));
+  const sceneByName = new Map(caseFromLog.deductionCase.scenes.map((scene) => [scene.name, scene]));
+  const characterById = new Map(caseFromLog.deductionCase.characters.map((character) => [character.id, character]));
+  const evidenceRoute = caseFromLog.deductionCase.evidence
+    .filter((evidence) => evidence.discoverable)
+    .map((evidence, index) => {
+      const sourceCount = evidenceSourceEventIds[evidence.id]?.length || 0;
+      const scene = sceneById.get(evidence.location) || sceneByName.get(evidence.location);
+      const locationId = scene?.id || world?.locations.find((location) => location.name === evidence.location)?.id || evidence.location;
+      const locationName = scene?.name || world?.locations.find((location) => location.id === evidence.location)?.name || evidence.location;
+      return {
+        id: evidence.id,
+        locationId,
+        locationName,
+        discovered: discovered.has(evidence.id),
+        isKey: evidence.isKey,
+        hint: discovered.has(evidence.id)
+          ? `${evidence.title} is available for the reasoning chain.`
+          : `Search ${locationName} for ${evidenceKindLabel(evidence.isKey, index)}${sourceCount ? ` backed by ${sourceCount} source event${sourceCount === 1 ? "" : "s"}` : ""}.`
+      };
+    });
+  const witnessPlan = caseFromLog.testimonies.slice(0, 6).map((testimony) => {
+    const character = characterById.get(testimony.characterId);
+    const readyEvidenceIds = testimony.contradictionEvidenceIds.filter((id) => discovered.has(id));
+    const masksTruth = !solved && testimony.characterId === caseFromLog.deductionCase.truth.culpritId;
+    const displayName = masksTruth ? "A linked suspect" : character?.name || testimony.characterId;
+    return {
+      characterId: masksTruth ? "locked-suspect" : testimony.characterId,
+      characterName: displayName,
+      questioned: questioned.has(testimony.characterId),
+      challengeReady: readyEvidenceIds.length > 0 && !challengeHits.has(testimony.characterId),
+      suggestedEvidenceIds: solved ? testimony.contradictionEvidenceIds : readyEvidenceIds,
+      hint: readyEvidenceIds.length
+        ? `Present ${readyEvidenceIds.length} discovered clue${readyEvidenceIds.length === 1 ? "" : "s"} to test this memory-scoped testimony.`
+        : `Question ${displayName} after searching linked scenes; hidden contradiction evidence is not named yet.`
+    };
+  });
+  const starterTasks = [
+    {
+      id: "intake:observe",
+      kind: "observe" as const,
+      title: "Read the public incident window",
+      detail: "Start from the visible crime marker and the public event log before opening hidden source details.",
+      complete: true,
+      targetLocationId: caseFromLog.generationProfile.sceneLocationId
+    },
+    {
+      id: "intake:search",
+      kind: "search" as const,
+      title: "Search the first linked scene",
+      detail: evidenceRoute.find((item) => !item.discovered)?.hint || "All discoverable clues are already in the notebook.",
+      complete: discoveredEvidence.length > 0,
+      targetLocationId: evidenceRoute.find((item) => !item.discovered)?.locationId || evidenceRoute[0]?.locationId,
+      targetEvidenceId: evidenceRoute.find((item) => !item.discovered)?.id || evidenceRoute[0]?.id
+    },
+    {
+      id: "intake:question",
+      kind: "question" as const,
+      title: "Question a memory source",
+      detail: witnessPlan.find((item) => !item.questioned)?.hint || "All listed witnesses have been questioned.",
+      complete: interrogationLog.length > 0,
+      targetCharacterId: witnessPlan.find((item) => !item.questioned)?.characterId || witnessPlan[0]?.characterId
+    },
+    {
+      id: "intake:challenge",
+      kind: "challenge" as const,
+      title: "Challenge testimony with a discovered clue",
+      detail: witnessPlan.find((item) => item.challengeReady)?.hint || "Find a contradiction clue before challenging testimony.",
+      complete: Boolean(interrogationLog.some((entry) => entry.challenge?.hit)),
+      targetCharacterId: witnessPlan.find((item) => item.challengeReady)?.characterId
+    },
+    {
+      id: "intake:submit",
+      kind: "submit" as const,
+      title: "Submit only after the chain is closed",
+      detail: "Use discovered evidence to cover motive, method, opportunity, and non-culprit exclusions.",
+      complete: Boolean(session?.judgement?.accepted),
+      locked: discoveredEvidence.length < Math.min(3, totalEvidence)
+    }
+  ];
+  const spoilerSafeGaps = [
+    ...chainStages.filter((stage) => !stage.complete).map((stage) => `${stage.label} still needs source support.`),
+    ...(discoveredEvidence.length ? [] : ["No evidence has been discovered in this session yet."]),
+    ...(witnessPlan.some((item) => item.challengeReady) || solved ? [] : ["No testimony challenge is ready until a linked clue is discovered."])
+  ];
+  const sourceTrail: PlayableCaseSourceTrail[] = [
+    {
+      id: `candidate:${caseFromLog.sourceCandidateId || caseFromLog.id}`,
+      kind: "candidate",
+      label: "Emergence candidate",
+      detail: `Extracted from ${sourceEventIds.length} source events and ${memorySourceIds.length} memory records.`,
+      hidden: false,
+      characterIds: []
+    },
+    ...sourceEvents.slice(0, solved ? 12 : 6).map((event, index) => ({
+      id: solved ? `event:${event.id}` : `event:source-${index + 1}`,
+      kind: "event" as const,
+      label: eventLabelForIntake(event, solved),
+      detail: eventDetailForIntake(event, solved),
+      hidden: event.hidden && !solved,
+      eventId: solved ? event.id : undefined,
+      time: event.time,
+      locationId: event.locationId,
+      characterIds: solved ? event.relatedCharacterIds : event.relatedCharacterIds.filter((id) => id !== caseFromLog.deductionCase.truth.culpritId)
+    })),
+    ...memorySourceIds.slice(0, solved ? 8 : 3).map((id, index) => ({
+      id: solved ? `memory:${id}` : `memory:source-${index + 1}`,
+      kind: "memory" as const,
+      label: solved ? id : "Locked memory source",
+      detail: solved ? "Memory source used by the extracted testimony chain." : "Memory id is hidden until the case is solved.",
+      hidden: !solved,
+      memoryId: solved ? id : undefined,
+      characterIds: []
+    }))
+  ];
+  return {
+    caseId: caseFromLog.id,
+    sourceCandidateId: caseFromLog.sourceCandidateId || sourceMap.sourceCandidateId,
+    readiness: {
+      status,
+      score: Math.min(100, Math.round((completeStages / Math.max(chainStages.length, 1)) * 70 + (caseFromLog.validation.valid ? 20 : 0) + (caseFromLog.qualityReport?.reasoningTraceComplete ? 10 : 0))),
+      summary: solved
+        ? "Solved: full source trail is unlocked."
+        : "Ready for low-spoiler investigation: source counts, route hints, and witness plans are visible; hidden conclusions stay locked."
+    },
+    chainStages,
+    starterTasks,
+    evidenceRoute,
+    witnessPlan,
+    spoilerSafeGaps,
+    sourceCounts: {
+      events: sourceEventIds.length,
+      memories: memorySourceIds.length,
+      observations: observationSourceIds.length,
+      discoveredEvidence: discoveredEvidence.length,
+      totalEvidence
+    },
+    sourceTrail
+  };
 }
 
 export function buildEvidenceNotebook(caseFromLog: CaseFromLog, events: WorldEvent[] = [], session?: PlayerSession | null): EvidenceNotebookItem[] {

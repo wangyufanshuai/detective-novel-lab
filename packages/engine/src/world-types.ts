@@ -456,6 +456,73 @@ export type ProofTourStep = {
   memoryIds: string[];
 };
 
+export type PlayableCaseTask = {
+  id: string;
+  kind: "observe" | "search" | "question" | "challenge" | "organize" | "submit" | "review";
+  title: string;
+  detail: string;
+  complete: boolean;
+  targetLocationId?: string;
+  targetCharacterId?: string;
+  targetEvidenceId?: string;
+  locked?: boolean;
+};
+
+export type PlayableCaseSourceTrail = {
+  id: string;
+  kind: "event" | "memory" | "observation" | "candidate";
+  label: string;
+  detail: string;
+  hidden: boolean;
+  eventId?: string;
+  memoryId?: string;
+  time?: string;
+  locationId?: string;
+  characterIds: string[];
+};
+
+export type PlayableCaseIntake = {
+  caseId: string;
+  sourceCandidateId?: string;
+  readiness: {
+    status: "ready" | "investigating" | "solved";
+    score: number;
+    summary: string;
+  };
+  chainStages: Array<{
+    id: string;
+    label: string;
+    complete: boolean;
+    sourceEventCount: number;
+  }>;
+  starterTasks: PlayableCaseTask[];
+  evidenceRoute: Array<{
+    id: string;
+    locationId: string;
+    locationName: string;
+    discovered: boolean;
+    isKey: boolean;
+    hint: string;
+  }>;
+  witnessPlan: Array<{
+    characterId: string;
+    characterName: string;
+    questioned: boolean;
+    challengeReady: boolean;
+    suggestedEvidenceIds: string[];
+    hint: string;
+  }>;
+  spoilerSafeGaps: string[];
+  sourceCounts: {
+    events: number;
+    memories: number;
+    observations: number;
+    discoveredEvidence: number;
+    totalEvidence: number;
+  };
+  sourceTrail: PlayableCaseSourceTrail[];
+};
+
 export type MapInteractiveTarget = {
   id: string;
   kind: "location" | "npc" | "evidence" | "event";

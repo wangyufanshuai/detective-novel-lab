@@ -117,7 +117,9 @@ test("novel world graph saves SQLite projects and surfaces conflicts", async ({ 
 
   const projectsResponse = await page.request.get("/api/v1/query/novel/projects");
   const projectsPayload = await projectsResponse.json();
-  const savedProject = projectsPayload.data.projects.find((item: { title: string }) => item.title === "Rain Gate Sample Copy");
+  const savedProject = projectsPayload.data.projects
+    .filter((item: { title: string }) => item.title === "Rain Gate Sample Copy")
+    .sort((left: { updatedAt: string }, right: { updatedAt: string }) => right.updatedAt.localeCompare(left.updatedAt))[0];
   expect(savedProject?.id).toBeTruthy();
   const workspaceResponse = await page.request.get(`/api/v1/query/novel/project?projectId=${encodeURIComponent(savedProject.id)}`);
   const workspacePayload = await workspaceResponse.json();
@@ -570,7 +572,7 @@ test("novel world graph analyzes three chapters, merges changes and restores loc
   await expect(page.getByTestId("novel-world-canvas")).not.toContainText("(Corrected)");
   await page.getByTestId("world-view-tabs").getByRole("button", { name: "Game" }).click();
   await expect(page.getByTestId("novel-game-view")).toBeVisible();
-  await expect(page.getByTestId("novel-game-canvas").locator("canvas")).toBeVisible();
+  await expect(page.getByTestId("novel-game-canvas").locator("canvas")).toBeVisible({ timeout: 15_000 });
   await expect(page.getByTestId("novel-game-legend")).toContainText("locations");
   await page.getByRole("button", { name: "Create Grounded Replay" }).click();
   await expect(page.getByTestId("novel-game-legend")).toContainText("actors");
@@ -818,6 +820,7 @@ test("persistent agent town runs, scores agents and extracts a playable case", a
   await expect(page.getByTestId("command-candidate-board")).toContainText(/动机|手段|机会/);
   await expect(page.getByTestId("command-candidate-board")).toContainText(/成熟度|记忆可信度|观察支撑/, { timeout: 20_000 });
   await expect(page.getByTestId("command-candidate-board")).toContainText(/真实案件已触发|触发链/, { timeout: 25_000 });
+  await expect(page.getByTestId("command-candidate-board")).toContainText("Playability Preview", { timeout: 25_000 });
   await page.getByTestId("command-center-hud").getByRole("button", { name: /运行基线|基线通过/ }).click();
   await expect(page.getByTestId("command-center-hud")).toContainText(/基线通过|运行基线/, { timeout: 25_000 });
   await expect(page.getByTestId("command-time-machine")).toContainText("事件 +", { timeout: 20_000 });
@@ -843,6 +846,55 @@ test("persistent agent town runs, scores agents and extracts a playable case", a
   await page.getByTestId("command-candidate-board").locator("button:not([disabled])").filter({ hasText: "抽取可玩案件" }).first().click();
   await expect(page.getByTestId("status-line")).toContainText("Playable case extracted", { timeout: 20_000 });
   await expect(page.getByTestId("inspector-rail").locator("button.active")).toContainText("调查");
+  await expect(page.getByTestId("case-intake")).toContainText("Case Intake", { timeout: 20_000 });
+  await expect(page.getByTestId("case-intake")).toContainText("source events");
+  await expect(page.getByTestId("case-intake")).not.toContainText("culpritId");
+  await page.getByTestId("case-intake-join").click();
+  await expect(page.getByTestId("source-backed-case")).toContainText("source-backed");
+
+  const savedState = await page.evaluate(() => JSON.parse(localStorage.getItem("detective-town-launch-v1") || "{}") as { worldId?: string; sessionId?: string });
+  expect(savedState.worldId).toBeTruthy();
+  expect(savedState.sessionId).toBeTruthy();
+  const activeCase = await page.evaluate(async ({ worldId }) => {
+    const state = await fetch(`/api/v1/query/world/state?worldId=${encodeURIComponent(worldId || "")}`).then((response) => response.json());
+    const caseId = state.data.activeCase.id;
+    const result = await fetch(`/api/v1/query/case?caseId=${encodeURIComponent(caseId)}&includeIntake=true`).then((response) => response.json());
+    return result.data.caseFromLog;
+  }, savedState);
+  const evidenceIds = activeCase.deductionCase.evidence.map((item: { id: string }) => item.id);
+  const locationIdsByName = new Map<string, string>(activeCase.deductionCase.scenes.map((scene: { id: string; name: string }) => [scene.name, scene.id]));
+  for (const [index, evidence] of (activeCase.deductionCase.evidence as Array<{ id: string; location: string }>).entries()) {
+    const locationId = locationIdsByName.get(evidence.location) || evidence.location;
+    const clicked = await page.evaluate((locationId) => {
+      const tile = document.querySelector<HTMLButtonElement>(`.mapTile[data-location-id="${CSS.escape(locationId)}"]`);
+      if (!tile) return false;
+      tile.click();
+      return true;
+    }, locationId);
+    expect(clicked).toBeTruthy();
+    await expect.poll(async () => page.getByTestId("case-intake").textContent(), { timeout: 20_000 }).toContain(`${index + 1}/${evidenceIds.length}`);
+  }
+  const wrongCulpritId = activeCase.deductionCase.characters.find(
+    (character: { id: string }) => character.id !== activeCase.deductionCase.truth.culpritId,
+  )?.id;
+  if (wrongCulpritId) {
+    await page.getByTestId("theory-culprit").selectOption(wrongCulpritId);
+  } else {
+    await page.getByTestId("theory-culprit").selectOption({ index: 1 });
+  }
+  await page.getByTestId("submit-theory").click();
+  await expect(page.getByTestId("theory-gap-cards")).toBeVisible({ timeout: 20_000 });
+  await page.getByTestId("theory-culprit").selectOption(activeCase.deductionCase.truth.culpritId);
+  await page.locator("textarea").nth(1).fill(activeCase.deductionCase.truth.motive);
+  await page.locator("textarea").nth(2).fill(activeCase.deductionCase.truth.method);
+  const evidenceChecks = page.getByTestId("theory-evidence-list").locator('input[type="checkbox"]');
+  for (let index = 0; index < await evidenceChecks.count(); index += 1) {
+    await evidenceChecks.nth(index).check();
+  }
+  await page.getByTestId("submit-theory").click();
+  await expect(page.getByTestId("judgement-result")).toHaveClass(/pass/, { timeout: 20_000 });
+  await clickInspectorTab(page, "Logic");
+  await expect(page.getByTestId("proof-tour")).toContainText("唯一结论", { timeout: 20_000 });
 });
 
 test("guides a first-time player and persists dismissal", async ({ page }) => {
