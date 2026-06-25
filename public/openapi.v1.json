@@ -95,7 +95,8 @@
         "summary": "Rebuild the deterministic Truth Ledger and proof coverage for a case",
         "parameters": [
           { "name": "caseId", "in": "query", "required": true, "schema": { "type": "string" } },
-          { "name": "sessionId", "in": "query", "required": false, "schema": { "type": "string" }, "description": "Optional player session used to mark covered obligations and proof gaps." }
+          { "name": "sessionId", "in": "query", "required": false, "schema": { "type": "string" }, "description": "Optional player session used to mark covered obligations and proof gaps." },
+          { "name": "includeCertificate", "in": "query", "required": false, "schema": { "type": "boolean" }, "description": "When true, data includes the spoiler-safe route certificate unless the session has solved the case." }
         ],
         "responses": { "200": { "$ref": "#/components/responses/Ok" } }
       }

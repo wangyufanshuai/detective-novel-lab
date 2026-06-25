@@ -191,6 +191,53 @@ export type CaseTruthLedger = {
   requiredEvidenceIds: string[];
 };
 
+export type CaseRouteCertificateStepKind = "search" | "question" | "challenge" | "select-evidence" | "submit";
+
+export type CaseRouteCertificateStep = {
+  id: string;
+  kind: CaseRouteCertificateStepKind;
+  label: string;
+  detail: string;
+  lowSpoilerLabel: string;
+  lowSpoilerDetail: string;
+  complete: boolean;
+  obligationIds: string[];
+  evidenceIds: string[];
+  eventIds: string[];
+  memoryIds: string[];
+  characterIds: string[];
+  locationId?: string;
+};
+
+export type CaseRouteCertificateBlocker = {
+  kind: "search" | "witness" | "challenge" | "exclusion" | "source" | "submit";
+  label: string;
+  detail: string;
+  missingEvidenceIds: string[];
+  missingObligationIds: string[];
+  target: "evidence" | "suspects" | "motive" | "method" | "logic" | "exclusion";
+};
+
+export type CaseRouteCertificate = {
+  caseId: string;
+  sourceMode: "emerged" | "static";
+  valid: boolean;
+  routeCertified: boolean;
+  sourceBacked: boolean;
+  autoTheoryAccepted: boolean;
+  totalRequiredObligations: number;
+  coveredRequiredObligations: number;
+  routeStepCount: number;
+  requiredEvidenceIds: string[];
+  requiredWitnessIds: string[];
+  challengeEvidenceIds: string[];
+  theoryEvidenceIds: string[];
+  coveredObligationIds: string[];
+  steps: CaseRouteCertificateStep[];
+  blockers: CaseRouteCertificateBlocker[];
+  judgement?: Judgement;
+};
+
 export type RuleReport = {
   valid: boolean;
   errors: string[];

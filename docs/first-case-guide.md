@@ -56,7 +56,7 @@ Use the right-side Inspector as a reasoning workspace:
 
 - **Graph explanation card**: click an unlocked graph node to see the public reason it exists and its source event.
 - **Evidence Notebook**: use `查看来源` to jump to the source location/event, `用于质询` to set up a memory-scoped NPC challenge, and `加入推理链` to add a discovered clue to the theory.
-- **Proof Ledger**: inspect low-spoiler proof obligations before solving, then review the full evidence/source/conclusion chain after the theory is accepted.
+- **Proof Ledger**: inspect low-spoiler proof obligations and Route Certificate counts before solving, then review the full evidence/source/conclusion route after the theory is accepted.
 - **Proof Tour**: read the player proof as event -> memory -> evidence -> contradiction -> elimination -> conclusion -> validation. Switch to the developer proof only when you want the full engine trace.
 - **Suspect explanation card**: click a suspect row to see surface suspicion, MMO status, visible exclusion evidence, and any still-locked evidence count.
 - **Wrong theory gap cards**: after a failed submission, click a gap card to jump to the area that needs work.
@@ -80,4 +80,4 @@ The guided case is not a tutorial pasted on top of a generated story. It is a pr
 
 `?runtime=server` keeps the same investigation surface, but uses the local server runtime, SQLite persistence, Agent API endpoints, and optional DeepSeek dialogue surface.
 
-Static Runtime starts from a curated premium case so the first player action can be guided immediately. Server Runtime can also start from Persistent Agent Town: run the town until a valid candidate appears, extract it, review the Case Intake, then use Next action to join and follow the investigation route. The intake is intentionally low-spoiler: it shows route integrity, Proof Ledger coverage, progress, source counts, next safe action, and missing proof obligations, but keeps hidden event titles, culprit identity, and decisive conclusions locked until the player solves the case.
+Static Runtime starts from a curated premium case so the first player action can be guided immediately. Server Runtime can also start from Persistent Agent Town: run the town until a valid candidate appears, extract it, review the Case Intake, then use Next action to join and follow the investigation route. The intake is intentionally low-spoiler: it shows route integrity, Proof Ledger coverage, Route Certificate status, progress, source counts, next safe action, and missing proof obligations, but keeps hidden event titles, culprit identity, and decisive conclusions locked until the player solves the case.

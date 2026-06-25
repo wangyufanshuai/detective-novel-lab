@@ -15,7 +15,7 @@ Included:
 - Runtime status and capability discovery.
 - Persistent Agent Town create/start/step/pause/reset flows.
 - Agent and candidate inspection.
-- Case Proof Ledger inspection.
+- Case Proof Ledger and Route Certificate inspection.
 - Scenario Runner and Time Machine endpoints.
 - Emergence benchmark summary endpoint.
 - Living World import, audit, and correction patch loop.

@@ -14,6 +14,7 @@
 - Added a durable canonical entity identity registry, pending identity review, and baseline-linked novel replay branches with actor and causal state diffs.
 - Added Playable Case Intake for emerged Persistent Agent Town candidates, including low-spoiler route tasks, source counts, witness challenge planning, and source-backed investigation entry.
 - Added a deterministic Truth Ledger for emerged cases, with proof obligations, player coverage, gap mapping, and a read-only `/api/v1/query/case/proof-ledger` endpoint.
+- Added a Route Certificate that proves a case can be completed through search, witness questioning, testimony challenge, evidence selection, and accepted theory submission.
 
 ### Changed
 
@@ -27,6 +28,7 @@
 - Emerged case extraction can now return a spoiler-safe `playableIntake`, and `GET /api/v1/query/case` can include it with `includeIntake=true`.
 - Playable Case Intake now includes route integrity, player progress, next action, and pre-persistence blocking for candidates that cannot support a complete search -> witness -> challenge -> theory loop.
 - Playable Case Intake, wrong-theory gap cards, route integrity, and judgement feedback now derive from Truth Ledger proof coverage instead of separate lightweight stage heuristics.
+- Emerged case extraction now requires a passing Route Certificate before persistence, and Proof Ledger can reveal the full certified route after a correct solution.
 
 ## v0.1.0 - 2026-06-11
 

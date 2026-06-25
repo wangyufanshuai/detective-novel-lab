@@ -195,12 +195,41 @@ try {
   assert.ok(queriedCase.playableIntake.proofCoverage.totalRequired >= 8, "case query returns proof coverage in intake");
   assert.ok(queriedCase.playableIntake.nextAction.buttonLabel, "case query rebuilds next action");
 
-  const proofLedger = await request(`/api/v1/query/case/proof-ledger?caseId=${encodeURIComponent(extracted.activeCase.id)}`);
+  const proofLedger = await request(`/api/v1/query/case/proof-ledger?caseId=${encodeURIComponent(extracted.activeCase.id)}&includeCertificate=true`);
   assert.equal(proofLedger.ledger.caseId, extracted.activeCase.id, "proof ledger query returns the saved case ledger");
   assert.equal(proofLedger.ledger.valid, true, "proof ledger query validates extracted case");
   assert.ok(proofLedger.ledger.obligations.some((item) => item.kind === "conclusion"), "proof ledger query includes conclusion obligations");
   assert.ok(proofLedger.coverage.gaps.length, "proof ledger query exposes sessionless coverage gaps");
+  assert.equal(proofLedger.certificate.routeCertified, true, "proof ledger query can include route certificate");
+  assert.equal(proofLedger.certificate.steps.some((item) => item.evidenceIds.length > 0), false, "sessionless route certificate hides evidence ids");
   assert.equal(JSON.stringify(proofLedger).includes(extracted.activeCase.deductionCase.truth.culpritId), false, "sessionless proof ledger query stays low-spoiler");
+
+  const joined = await request("/api/v1/command/player/join", {
+    method: "POST",
+    body: JSON.stringify({ worldId, caseId: extracted.activeCase.id, displayName: "Persistent Smoke" })
+  });
+  const allEvidenceIds = extracted.activeCase.deductionCase.evidence.map((item) => item.id);
+  for (const evidenceId of allEvidenceIds) {
+    await request("/api/v1/command/investigation/discover", {
+      method: "POST",
+      body: JSON.stringify({ sessionId: joined.session.id, evidenceId })
+    });
+  }
+  const solved = await request("/api/v1/command/investigation/submit-theory", {
+    method: "POST",
+    body: JSON.stringify({
+      sessionId: joined.session.id,
+      theory: {
+        culpritId: extracted.activeCase.deductionCase.truth.culpritId,
+        motive: extracted.activeCase.deductionCase.truth.motive,
+        method: extracted.activeCase.deductionCase.truth.method,
+        evidenceIds: allEvidenceIds
+      }
+    })
+  });
+  assert.equal(solved.judgement.accepted, true, "smoke session can solve extracted case");
+  const solvedProofLedger = await request(`/api/v1/query/case/proof-ledger?caseId=${encodeURIComponent(extracted.activeCase.id)}&sessionId=${encodeURIComponent(joined.session.id)}&includeCertificate=true`);
+  assert.equal(solvedProofLedger.certificate.steps.some((item) => item.evidenceIds.length > 0), true, "solved route certificate unlocks evidence ids");
 
   await request("/api/v1/command/town/runtime/pause", {
     method: "POST",

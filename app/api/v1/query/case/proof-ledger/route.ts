@@ -1,5 +1,12 @@
 import { errorResponse, fail, ok } from "@/app/api/v1/_utils";
-import { buildCaseTruthLedger, evaluateCaseProofCoverage, spoilerSafeCaseProofCoverage, spoilerSafeCaseTruthLedger } from "@/lib/engine";
+import {
+  buildCaseTruthLedger,
+  certifyPlayableCase,
+  evaluateCaseProofCoverage,
+  spoilerSafeCaseProofCoverage,
+  spoilerSafeCaseRouteCertificate,
+  spoilerSafeCaseTruthLedger
+} from "@/lib/engine";
 import { worldRepository } from "@/lib/world/repository";
 
 export async function GET(request: Request) {
@@ -7,6 +14,7 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const caseId = url.searchParams.get("caseId");
     const sessionId = url.searchParams.get("sessionId");
+    const includeCertificate = url.searchParams.get("includeCertificate") === "true";
     if (!caseId) return fail("BAD_REQUEST", "caseId is required");
     const caseFromLog = worldRepository.getCase(caseId);
     if (!caseFromLog) return fail("CASE_NOT_FOUND", "Case not found", 404);
@@ -20,10 +28,17 @@ export async function GET(request: Request) {
       challengedCharacterIds: session?.interrogationLog.filter((entry) => entry.challenge?.hit).map((entry) => entry.characterId) || [],
       solved
     });
-    return ok({
+    const data = {
       ledger: spoilerSafeCaseTruthLedger(ledger, solved),
       coverage: spoilerSafeCaseProofCoverage(coverage, solved)
-    });
+    };
+    if (includeCertificate) {
+      return ok({
+        ...data,
+        certificate: spoilerSafeCaseRouteCertificate(certifyPlayableCase(caseFromLog, events, session), solved)
+      });
+    }
+    return ok(data);
   } catch (error) {
     return errorResponse(error);
   }

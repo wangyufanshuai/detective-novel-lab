@@ -210,7 +210,14 @@ const engine = await loadEngine();
   assert.equal(intake.routeIntegrity.contradictionAvailable, true, "route integrity requires a testimony challenge route");
   assert.deepEqual(Object.values(intake.routeIntegrity.criticalCoverage), [true, true, true, true], "route integrity covers motive, means, opportunity, and exclusion");
   assert.equal(intake.routeIntegrity.proofLedgerValid, true, "route integrity is backed by a valid truth ledger");
+  assert.equal(intake.routeIntegrity.routeCertified, true, "route integrity requires a passing route certificate");
   assert.ok(intake.proofCoverage.totalRequired >= 8, "playable intake exposes proof obligation coverage");
+  assert.equal(intake.routeCertificate.routeCertified, true, "playable intake exposes a passing route certificate");
+  assert.equal(intake.routeCertificate.autoTheoryAccepted, true, "route certificate auto theory is accepted");
+  assert.equal(intake.routeCertificate.steps.some((step) => step.kind === "search"), true, "route certificate contains search steps");
+  assert.equal(intake.routeCertificate.steps.some((step) => step.kind === "question"), true, "route certificate contains question steps");
+  assert.equal(intake.routeCertificate.steps.some((step) => step.kind === "challenge"), true, "route certificate contains challenge steps");
+  assert.equal(intake.routeCertificate.steps.some((step) => step.kind === "submit"), true, "route certificate contains submit step");
   const ledger = engine.buildCaseTruthLedger(extracted.activeCase, extracted.events);
   const ledgerKinds = new Set(ledger.obligations.map((item) => item.kind));
   for (const kind of ["motive", "means", "opportunity", "timeline", "contradiction", "exclusion", "source", "conclusion"]) {
@@ -224,31 +231,39 @@ const engine = await loadEngine();
   const hiddenIntakeText = JSON.stringify(intake);
   assert.equal(hiddenIntakeText.includes(extracted.activeCase.deductionCase.truth.culpritId), false, "unsolved intake does not expose culprit id");
   assert.equal(intake.sourceTrail.filter((item) => item.hidden).every((item) => item.label === "Hidden source event" || item.label === "Locked memory source"), true, "unsolved intake hides source labels");
+  const certificate = engine.certifyPlayableCase(extracted.activeCase, extracted.events);
+  assert.equal(certificate.routeCertified, true, "route certificate passes complete extracted cases");
+  assert.equal(certificate.judgement.accepted, true, "route certificate proves accepted local judgement");
   const noEvidenceCase = structuredClone(extracted.activeCase);
   noEvidenceCase.deductionCase.evidence = noEvidenceCase.deductionCase.evidence.map((item) => ({ ...item, discoverable: false }));
   const noEvidenceIntegrity = engine.validatePlayableCaseRoute(noEvidenceCase, extracted.events);
   assert.equal(noEvidenceIntegrity.searchableEvidence, false, "route integrity fails cases without discoverable evidence");
   assert.equal(noEvidenceIntegrity.playable, false, "route integrity blocks cases without discoverable evidence");
   assert.equal(engine.buildCaseTruthLedger(noEvidenceCase, extracted.events).valid, false, "truth ledger rejects cases without discoverable proof evidence");
+  assert.equal(engine.certifyPlayableCase(noEvidenceCase, extracted.events).blockers.some((item) => item.kind === "search"), true, "route certificate blocks cases without searchable evidence");
   const noWitnessCase = structuredClone(extracted.activeCase);
   noWitnessCase.testimonies = [];
   const noWitnessIntegrity = engine.validatePlayableCaseRoute(noWitnessCase, extracted.events);
   assert.equal(noWitnessIntegrity.witnessAvailable, false, "route integrity fails cases without witnesses");
+  assert.equal(engine.certifyPlayableCase(noWitnessCase, extracted.events).blockers.some((item) => item.kind === "witness"), true, "route certificate blocks cases without witness routes");
   const noChallengeCase = structuredClone(extracted.activeCase);
   noChallengeCase.testimonies = noChallengeCase.testimonies.map((item) => ({ ...item, contradictionEvidenceIds: [] }));
   const noChallengeIntegrity = engine.validatePlayableCaseRoute(noChallengeCase, extracted.events);
   assert.equal(noChallengeIntegrity.contradictionAvailable, false, "route integrity fails cases without discoverable contradiction evidence");
   assert.equal(engine.buildCaseTruthLedger(noChallengeCase, extracted.events).obligations.some((item) => item.kind === "contradiction" && item.evidenceIds.length > 0), false, "truth ledger exposes missing testimony contradiction obligations");
+  assert.equal(engine.certifyPlayableCase(noChallengeCase, extracted.events).blockers.some((item) => item.kind === "challenge"), true, "route certificate blocks cases without challenge routes");
   const noSourceCase = structuredClone(extracted.activeCase);
   noSourceCase.sourceMap.evidenceSourceEventIds = {};
   const noSourceLedger = engine.buildCaseTruthLedger(noSourceCase, []);
   assert.equal(noSourceLedger.valid, false, "truth ledger rejects decisive evidence without source backing");
+  assert.equal(engine.certifyPlayableCase(noSourceCase, []).blockers.some((item) => item.kind === "source"), true, "route certificate blocks emerged cases without source backing");
   const noExclusionCase = structuredClone(extracted.activeCase);
   noExclusionCase.sourceMap.chainStageSourceEventIds.exclusion = [];
   noExclusionCase.deductionCase.logicPuzzle.exclusionChains = [];
   noExclusionCase.deductionCase.evidence = noExclusionCase.deductionCase.evidence.map((item) => ({ ...item, title: "neutral clue", visibleDescription: "neutral scene context", trueMeaning: "neutral context", supportsConclusion: [], contradicts: [], unlocks: [] }));
   const noExclusionIntegrity = engine.validatePlayableCaseRoute(noExclusionCase, extracted.events);
   assert.equal(noExclusionIntegrity.criticalCoverage.exclusion, false, "route integrity fails cases without exclusion coverage");
+  assert.equal(engine.certifyPlayableCase(noExclusionCase, extracted.events).blockers.some((item) => item.kind === "exclusion" || item.kind === "submit"), true, "route certificate blocks cases without exclusion route");
   const challengeEvidenceId = extracted.activeCase.testimonies.flatMap((item) => item.contradictionEvidenceIds)[0] || extracted.activeCase.deductionCase.evidence[0].id;
   const discoveredSession = {
     id: "intake-session",
@@ -286,6 +301,7 @@ const engine = await loadEngine();
   assert.equal(solvedIntake.progress.currentStage, "solved", "solved intake marks progress solved");
   assert.equal(solvedIntake.nextAction.kind, "review", "solved intake points to source review");
   assert.equal(solvedIntake.sourceTrail.some((item) => item.hidden), false, "solved intake unlocks full source trail labels");
+  assert.equal(solvedIntake.routeCertificate.steps.some((step) => step.evidenceIds.length > 0), true, "solved intake unlocks full route certificate steps");
 }
 
 {

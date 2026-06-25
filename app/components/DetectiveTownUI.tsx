@@ -30,6 +30,7 @@ import type {
   CaseCandidate,
   CaseChainStage,
   CaseProofCoverage,
+  CaseRouteCertificate,
   CaseTruthLedger,
   AgentDecisionTrace,
   DeductionCase,
@@ -692,6 +693,7 @@ export function CaseLogicPanel({
   causalComplete,
   proofLedger,
   proofCoverage,
+  routeCertificate,
   graph,
   selectedGraphExplanation,
   solutionChain,
@@ -704,6 +706,7 @@ export function CaseLogicPanel({
   causalComplete: boolean;
   proofLedger?: CaseTruthLedger | null;
   proofCoverage?: CaseProofCoverage | null;
+  routeCertificate?: CaseRouteCertificate | null;
   graph: ReactNode;
   selectedGraphExplanation?: GraphNodeExplanation | null;
   solutionChain: string[];
@@ -741,7 +744,16 @@ export function CaseLogicPanel({
             <span>Coverage: {Math.round(proofCoverage.coverageRatio * 100)}%</span>
             <span>Gaps: {proofCoverage.gaps.length}</span>
             <span>Required clues: {proofLedger.requiredEvidenceIds.length}</span>
+            {routeCertificate && <span>Route: {routeCertificate.routeCertified ? "Certified" : "Blocked"}</span>}
           </div>
+          {routeCertificate && (
+            <div className="routeCertificateSummary" data-testid="route-certificate-summary">
+              <span>{routeCertificate.routeCertified ? "Route certified" : "Route blocked"}</span>
+              <small>
+                {routeCertificate.routeStepCount} steps / {routeCertificate.coveredRequiredObligations}/{routeCertificate.totalRequiredObligations} obligations / {routeCertificate.blockers.length} blockers
+              </small>
+            </div>
+          )}
           <div className="proofLedgerGrid">
             {proofLedger.obligations.slice(0, accepted ? 24 : 12).map((item) => {
               const covered = proofCoverage.coveredObligationIds.includes(item.id);
@@ -758,6 +770,18 @@ export function CaseLogicPanel({
               );
             })}
           </div>
+          {accepted && routeCertificate && (
+            <div className="proofLedgerGrid routeCertificateSteps" data-testid="route-certificate-steps">
+              {routeCertificate.steps.slice(0, 16).map((step) => (
+                <article key={step.id} className={step.complete ? "complete" : "locked"}>
+                  <span>{step.complete ? "Complete" : "Blocked"} / {step.kind}</span>
+                  <b>{step.label}</b>
+                  <small>{step.detail}</small>
+                  <em>{[...step.evidenceIds.slice(0, 2), ...step.characterIds.slice(0, 1), ...step.eventIds.slice(0, 1)].join(" / ") || "route step"}</em>
+                </article>
+              ))}
+            </div>
+          )}
         </section>
       )}
       <section className="actionPanel deductionGraphPanel">
@@ -2056,12 +2080,21 @@ function CaseIntakePanel({
           <span><b>{intake.proofCoverage.gaps.length}</b>proof gaps</span>
         </div>
       )}
+      {intake.routeCertificate && (
+        <div className="caseIntakeProgress routeCertificate" data-testid="case-intake-route-certificate">
+          <span><b>{intake.routeCertificate.routeCertified ? "certified" : "blocked"}</b>route</span>
+          <span><b>{intake.routeCertificate.routeStepCount}</b>steps</span>
+          <span><b>{intake.routeCertificate.coveredRequiredObligations}/{intake.routeCertificate.totalRequiredObligations}</b>obligations</span>
+          <span><b>{intake.routeCertificate.blockers.length}</b>blockers</span>
+        </div>
+      )}
       {intake.routeIntegrity && (
         <div className={`routeIntegrity ${intake.routeIntegrity.playable ? "pass" : "fail"}`} data-testid="case-route-integrity">
           <span>{intake.routeIntegrity.playable ? "Route complete" : "Route blocked"}</span>
           <small>
             motive {intake.routeIntegrity.criticalCoverage.motive ? "ok" : "gap"} / means {intake.routeIntegrity.criticalCoverage.means ? "ok" : "gap"} / opportunity {intake.routeIntegrity.criticalCoverage.opportunity ? "ok" : "gap"} / exclusion {intake.routeIntegrity.criticalCoverage.exclusion ? "ok" : "gap"}
             {typeof intake.routeIntegrity.proofLedgerValid === "boolean" ? ` / ledger ${intake.routeIntegrity.proofLedgerValid ? "ok" : "gap"}` : ""}
+            {typeof intake.routeIntegrity.routeCertified === "boolean" ? ` / certificate ${intake.routeIntegrity.routeCertified ? "ok" : "gap"}` : ""}
           </small>
         </div>
       )}

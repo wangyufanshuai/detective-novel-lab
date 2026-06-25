@@ -107,6 +107,12 @@ const engine = await loadEngine();
       allEvidenceIds
     );
     assert.equal(correct.accepted, true, `${templateId} correct theory passes`);
+    const certificate = engine.certifyPlayableCase(activeCase, events);
+    assert.equal(certificate.routeCertified, true, `${templateId} route certificate passes`);
+    assert.equal(certificate.autoTheoryAccepted, true, `${templateId} route certificate auto theory passes`);
+    assert.equal(certificate.sourceMode, "static", `${templateId} is marked as static certificate source`);
+    assert.equal(certificate.steps.some((step) => step.kind === "search"), true, `${templateId} certificate includes search`);
+    assert.equal(certificate.steps.some((step) => step.kind === "challenge"), true, `${templateId} certificate includes challenge`);
     const wrongCulprit = activeCase.deductionCase.characters.find((item) => item.id !== activeCase.deductionCase.truth.culpritId && item.role !== "死者")?.id;
     const wrong = engine.judgeTheory(
       activeCase.deductionCase,

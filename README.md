@@ -63,7 +63,7 @@ Current design focus: **Evidence Notebook + Playable Proof Tour**. The UI should
 
 Current Agent workbench focus: **Review Mode**. The Persistent Agent Town `Agent` panel should let a technical evaluator quickly scan runtime health, scenario checks, counterfactual branch comparison, Time Machine diffs, and benchmark status without leaving the existing investigative UI.
 
-Current emergence focus: **Truth Ledger-backed Case Intake**. Valid Persistent Agent Town candidates now get a low-spoiler intake before the player joins the investigation: playability score, Truth Ledger coverage, route integrity, current progress, next action, six-stage chain readiness, source event and memory counts, evidence route, witness challenge plan, and spoiler-safe proof gaps. The culprit id, hidden event titles, and decisive evidence conclusions remain locked until the player solves the case.
+Current emergence focus: **Truth Ledger-backed Case Intake**. Valid Persistent Agent Town candidates now get a low-spoiler intake before the player joins the investigation: playability score, Truth Ledger coverage, Route Certificate status, current progress, next action, six-stage chain readiness, source event and memory counts, evidence route, witness challenge plan, and spoiler-safe proof gaps. The culprit id, hidden event titles, and decisive evidence conclusions remain locked until the player solves the case.
 
 ## Why Not Just Ask An LLM?
 
@@ -84,7 +84,7 @@ Detective Town uses the LLM only as a surface language layer. The durable case l
 - **Memory-scoped testimony**: NPCs can only answer from visible memories and discovered evidence.
 - **Explainable emergence**: goals, intents, and causal links show how the case came out of simulated life events.
 - **Persistent agent runtime**: NPCs observe, update memory, score actions locally, write new events, and surface case candidates with validation failures or playable extraction.
-- **Emerged case intake**: valid candidates become player-readable investigation entries with source-backed route hints, Truth Ledger blockers, and a next-action navigator before entering the existing Evidence Notebook, Suspect Board, wrong-theory gap, Proof Ledger, and Proof Tour loop.
+- **Emerged case intake**: valid candidates become player-readable investigation entries with source-backed route hints, Truth Ledger blockers, a Route Certificate, and a next-action navigator before entering the existing Evidence Notebook, Suspect Board, wrong-theory gap, Proof Ledger, and Proof Tour loop.
 - **Living World Lab**: imported chapters become observable entities, relationships, events, evidence spans, causal chains, and replayable simulations.
 - **Audit Studio**: extracted novel worlds get a trust score, issue queue, suggested fixes, applied correction patches, and a corrected view without mutating the original source graph.
 - **Agent intervention loop**: scripts can query the world, start a replay, intervene in actor state, then query the changed branch.
@@ -277,7 +277,7 @@ OpenAPI contract: [`public/openapi.v1.json`](public/openapi.v1.json), served as 
 - `GET /api/v1/query/world/memories?worldId=...&npcId=...`
 - `GET /api/v1/query/world/map?worldId=...&caseId=...&sessionId=...&day=1&time=21:30`
 - `GET /api/v1/query/case?caseId=...`
-- `GET /api/v1/query/case/proof-ledger?caseId=...&sessionId=...`
+- `GET /api/v1/query/case/proof-ledger?caseId=...&sessionId=...&includeCertificate=true`
 - `GET /api/v1/query/case/deduction-graph?caseId=...`
 - `GET /api/v1/query/town/runtime?worldId=...`
 - `GET /api/v1/query/town/agents?worldId=...`
@@ -394,7 +394,7 @@ Core exports are available from `packages/engine/src` and `lib/engine`:
 - World engine: `createInitialWorld`, `simulateDailyLife`, `simulateWorldTick`, `extractCaseFromWorld`, `validateWorldCase`, `buildNpcKnowledgeContext`, `makeRuleBoundInterrogation`, `updateTestimonyWithContradiction`, `buildTravelConstraint`, `analyzeReachability`, `buildCaseQualityReport`, `buildReasoningTrace`, `submitWorldTheory`.
 - Evaluation: `runEval`, `renderEvalMarkdown`.
 - Emergence proof: `buildEmergenceProofTrace`, `evaluateWorldEmergence`, `runEmergenceBenchmark`.
-- Persistent Agent Town: `createPersistentTownRuntime`, `advancePersistentTownTick`, `deriveNpcAgentState`, `scoreNpcActionCandidates`, `buildCaseCandidatesFromRuntime`, `validateCaseCandidate`, `extractPlayableCaseFromCandidate`, `buildCaseTruthLedger`, `evaluateCaseProofCoverage`, `buildAgentDecisionTrace`, `buildTownEmergenceQueue`, `runTownScenario`, `createTownStateSnapshot`, `diffTownStateSnapshots`, `rollbackTownRuntimeToSnapshot`.
+- Persistent Agent Town: `createPersistentTownRuntime`, `advancePersistentTownTick`, `deriveNpcAgentState`, `scoreNpcActionCandidates`, `buildCaseCandidatesFromRuntime`, `validateCaseCandidate`, `extractPlayableCaseFromCandidate`, `buildCaseTruthLedger`, `evaluateCaseProofCoverage`, `certifyPlayableCase`, `buildAgentDecisionTrace`, `buildTownEmergenceQueue`, `runTownScenario`, `createTownStateSnapshot`, `diffTownStateSnapshots`, `rollbackTownRuntimeToSnapshot`.
 - Static runtime: `createStaticDemoRuntime`, `discoverDemoEvidence`, `interrogateDemoNpc`, `submitDemoTheory`, `revealDemoSolution`.
 - Visual logic: `buildWorldMapSnapshot`, `buildDeductionGraph`, `deriveSuspectBoard`, `buildCaseLogicReport`, `validateHardCaseLogic`.
 - Case library and emergence: `createCaseLibrary`, `createCaseTemplate`, `listCaseTemplates`, `buildWorldCausalTrace`, `validateCausalTrace`, `deriveNpcIntentTimeline`.

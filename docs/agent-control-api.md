@@ -114,11 +114,11 @@ Emerged Persistent Agent Town candidates can be bridged into the player investig
 
 `playableIntake` may include optional `routeIntegrity`, `proofCoverage`, `progress`, `progressStages`, `nextAction`, and `blockedReasons` fields. These are additive and can be ignored by older clients.
 
-Truth Ledger is the local proof source for emerged cases. It creates motive, means, opportunity, timeline, contradiction, exclusion, source, and conclusion obligations from the extracted case, source map, world events, testimonies, and suspect matrix. The same coverage drives route integrity, wrong-theory gaps, Case Intake next action, and judgement feedback.
+Truth Ledger is the local proof source for emerged cases. It creates motive, means, opportunity, timeline, contradiction, exclusion, source, and conclusion obligations from the extracted case, source map, world events, testimonies, and suspect matrix. Route Certificate then proves the player can complete the route through search, witness questioning, challenge, evidence selection, and accepted local judgement. The same coverage drives route integrity, wrong-theory gaps, Case Intake next action, and judgement feedback.
 
-- `GET /api/v1/query/case/proof-ledger?caseId=...&sessionId=...`
+- `GET /api/v1/query/case/proof-ledger?caseId=...&sessionId=...&includeCertificate=true`
 
-The endpoint is read-only and returns `{ ledger, coverage }` inside the standard `{ ok: true, data }` envelope. Passing `sessionId` marks obligations covered by discovered evidence, selected theory evidence, challenge hits, and solved status.
+The endpoint is read-only and returns `{ ledger, coverage }`, plus `certificate` when requested, inside the standard `{ ok: true, data }` envelope. Passing `sessionId` marks obligations covered by discovered evidence, selected theory evidence, challenge hits, and solved status. Without a solved session, certificate ids and route details stay low-spoiler.
 
 ## Scenario Runner And Time Machine
 

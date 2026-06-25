@@ -850,6 +850,7 @@ test("persistent agent town runs, scores agents and extracts a playable case", a
   await expect(page.getByTestId("case-intake")).toContainText("source events");
   await expect(page.getByTestId("case-intake")).not.toContainText("culpritId");
   await expect(page.getByTestId("case-route-integrity")).toContainText("Route complete");
+  await expect(page.getByTestId("case-intake-route-certificate")).toContainText("certified");
   await expect(page.getByTestId("case-intake-progress")).toContainText("join");
   await expect(page.getByTestId("case-intake-next-action")).toContainText("Join the investigation");
   await page.getByTestId("case-intake-next").click();
@@ -904,6 +905,8 @@ test("persistent agent town runs, scores agents and extracts a playable case", a
   await page.getByTestId("submit-theory").click();
   await expect(page.getByTestId("judgement-result")).toHaveClass(/pass/, { timeout: 20_000 });
   await clickInspectorTab(page, "Logic");
+  await expect(page.getByTestId("route-certificate-summary")).toContainText("Route certified", { timeout: 20_000 });
+  await expect(page.getByTestId("route-certificate-steps")).toContainText("submit", { timeout: 20_000 });
   await expect(page.getByTestId("proof-tour")).toContainText("唯一结论", { timeout: 20_000 });
 });
 

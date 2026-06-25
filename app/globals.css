@@ -3666,6 +3666,12 @@ blockquote {
   background: rgba(30, 41, 59, 0.72);
 }
 
+.caseIntakeProgress.routeCertificate {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-color: rgba(83, 183, 136, 0.42);
+  background: rgba(18, 42, 35, 0.64);
+}
+
 .caseIntakeProgress span {
   display: grid;
   gap: 2px;
@@ -3766,6 +3772,35 @@ blockquote {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   margin-top: 12px;
+}
+
+.routeCertificateSummary {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid rgba(83, 183, 136, 0.36);
+  border-radius: 8px;
+  background: rgba(18, 42, 35, 0.58);
+}
+
+.routeCertificateSummary span {
+  color: #b7f0d2;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.routeCertificateSummary small {
+  min-width: 0;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.routeCertificateSteps {
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
+  padding-top: 10px;
 }
 
 .proofLedgerGrid article {

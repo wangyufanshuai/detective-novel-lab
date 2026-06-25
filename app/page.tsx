@@ -72,6 +72,7 @@ import {
   buildPlayableCaseIntake,
   buildPlayerProofTour,
   buildWorldMapSnapshot,
+  certifyPlayableCase,
   createCaseGalleryEntry,
   createPremiumAuthoringDraft,
   createStaticDemoRuntime,
@@ -3768,6 +3769,10 @@ export default function Home() {
     }) : null,
     [caseTruthLedger, session]
   );
+  const caseRouteCertificate = useMemo(
+    () => (activeCase ? certifyPlayableCase(activeCase, events, session) : null),
+    [activeCase, events, session]
+  );
   const mapInteractiveTargets: MapInteractiveTarget[] = useMemo(
     () => (world ? deriveMapInteractiveTargets(world, activeCase || undefined, events, session) : []),
     [activeCase, events, session, world]
@@ -5566,6 +5571,7 @@ export default function Home() {
                     causalComplete={Boolean(quality?.causalTraceComplete || causalTrace?.complete)}
                     proofLedger={caseTruthLedger}
                     proofCoverage={caseProofCoverage}
+                    routeCertificate={caseRouteCertificate}
                     graph={graphView}
                     selectedGraphExplanation={graphExplanation}
                     solutionChain={solutionChain}

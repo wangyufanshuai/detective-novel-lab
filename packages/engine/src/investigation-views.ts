@@ -17,6 +17,7 @@ import type {
 import type { CaseProofCoverage } from "./types";
 import { buildDeductionGraph, deriveSuspectBoard } from "./deduction-graph";
 import { buildCaseTruthLedger, evaluateCaseProofCoverage } from "./proof-ledger";
+import { certifyPlayableCase, spoilerSafeCaseRouteCertificate } from "./route-certificate";
 
 function characterName(caseFromLog: CaseFromLog, characterId: string) {
   return caseFromLog.deductionCase.characters.find((character) => character.id === characterId)?.name || characterId;
@@ -59,6 +60,7 @@ function evidenceKindLabel(isKey: boolean, index: number) {
 
 function buildRouteIntegrity(caseFromLog: CaseFromLog, events: WorldEvent[] = []): PlayableCaseRouteIntegrity {
   const ledger = buildCaseTruthLedger(caseFromLog, events);
+  const certificate = certifyPlayableCase(caseFromLog, events);
   const discoverable = caseFromLog.deductionCase.evidence.filter((item) => item.discoverable);
   const discoverableIds = new Set(discoverable.map((item) => item.id));
   const contradictionEvidenceIds = new Set(caseFromLog.testimonies.flatMap((item) => item.contradictionEvidenceIds));
@@ -79,7 +81,8 @@ function buildRouteIntegrity(caseFromLog: CaseFromLog, events: WorldEvent[] = []
     !criticalCoverage.means ? "Means coverage is not backed by a source event or discoverable clue." : "",
     !criticalCoverage.opportunity ? "Opportunity coverage is not backed by a source event or discoverable clue." : "",
     !criticalCoverage.exclusion ? "Non-culprit exclusion coverage is missing." : "",
-    !ledger.valid ? `Truth Ledger has ${ledger.gaps.length} unbacked proof obligation(s).` : ""
+    !ledger.valid ? `Truth Ledger has ${ledger.gaps.length} unbacked proof obligation(s).` : "",
+    !certificate.routeCertified ? `Route Certificate has ${certificate.blockers.length} blocker(s).` : ""
   ].filter(Boolean);
   return {
     playable: blockers.length === 0,
@@ -87,6 +90,7 @@ function buildRouteIntegrity(caseFromLog: CaseFromLog, events: WorldEvent[] = []
     witnessAvailable,
     contradictionAvailable,
     proofLedgerValid: ledger.valid,
+    routeCertified: certificate.routeCertified,
     criticalCoverage,
     blockers
   };
@@ -208,6 +212,7 @@ export function buildPlayableCaseIntake(
   const chainStageSourceEventIds = sourceMap.chainStageSourceEventIds || {};
   const routeIntegrity = buildRouteIntegrity(caseFromLog, events);
   const truthLedger = buildCaseTruthLedger(caseFromLog, events);
+  const routeCertificate = certifyPlayableCase(caseFromLog, events, session);
   const proofCoverage = evaluateCaseProofCoverage(truthLedger, {
     discoveredEvidenceIds: session?.discoveredEvidenceIds || [],
     selectedEvidenceIds: session?.submittedTheory?.evidenceIds,
@@ -308,13 +313,14 @@ export function buildPlayableCaseIntake(
       id: "intake:submit",
       kind: "submit" as const,
       title: "Submit only after the chain is closed",
-      detail: proofCoverage.complete ? "The proof ledger is covered; submit the culprit, motive, method, and evidence chain." : "Use discovered evidence to cover motive, method, opportunity, contradictions, and non-culprit exclusions.",
+      detail: routeCertificate.routeCertified ? "The route certificate is complete; submit the culprit, motive, method, and evidence chain." : "Use discovered evidence to cover motive, method, opportunity, contradictions, and non-culprit exclusions.",
       complete: Boolean(session?.judgement?.accepted),
       locked: !proofCoverage.complete && discoveredEvidence.length < Math.min(3, totalEvidence)
     }
   ];
   const spoilerSafeGaps = [
     ...routeIntegrity.blockers,
+    ...routeCertificate.blockers.slice(0, 6).map((item) => item.detail),
     ...proofCoverage.gaps.slice(0, 6).map((gap) => gap.detail),
     ...chainStages.filter((stage) => !stage.complete).map((stage) => `${stage.label} still needs source support.`),
     ...(discoveredEvidence.length ? [] : ["No evidence has been discovered in this session yet."]),
@@ -329,7 +335,7 @@ export function buildPlayableCaseIntake(
     challengeReadyCount: witnessPlan.filter((item) => item.challengeReady).length,
     challengeHitCount: challengeHits.size,
     selectedTheoryEvidence: submittedEvidenceCount,
-    submitReady: (proofCoverage.complete || solved) && interrogationLog.length > 0 && routeIntegrity.playable,
+    submitReady: (proofCoverage.complete || routeCertificate.routeCertified || solved) && interrogationLog.length > 0 && routeIntegrity.playable,
     wrongTheorySubmitted: Boolean(session?.judgement && !session.judgement.accepted),
     solved
   };
@@ -370,10 +376,12 @@ export function buildPlayableCaseIntake(
     sourceCandidateId: caseFromLog.sourceCandidateId || sourceMap.sourceCandidateId,
     readiness: {
       status,
-      score: Math.min(100, Math.round((completeStages / Math.max(chainStages.length, 1)) * 55 + (proofCoverage.coverageRatio * 25) + (caseFromLog.validation.valid ? 10 : 0) + (caseFromLog.qualityReport?.reasoningTraceComplete ? 10 : 0))),
+      score: Math.min(100, Math.round((completeStages / Math.max(chainStages.length, 1)) * 45 + (proofCoverage.coverageRatio * 20) + (routeCertificate.routeCertified ? 15 : 0) + (caseFromLog.validation.valid ? 10 : 0) + (caseFromLog.qualityReport?.reasoningTraceComplete ? 10 : 0))),
       summary: solved
         ? "Solved: full source trail is unlocked."
-        : "Ready for low-spoiler investigation: source counts, route hints, and witness plans are visible; hidden conclusions stay locked."
+        : routeCertificate.routeCertified
+          ? "Route certified: the case has a complete low-spoiler path through search, testimony, challenge, evidence selection, and theory submission."
+          : "Route not certified yet: source counts, route hints, and low-spoiler blockers are visible; hidden conclusions stay locked."
     },
     chainStages,
     starterTasks,
@@ -392,6 +400,7 @@ export function buildPlayableCaseIntake(
     nextAction,
     routeIntegrity,
     proofCoverage: spoilerSafeProofCoverage(proofCoverage, solved),
+    routeCertificate: spoilerSafeCaseRouteCertificate(routeCertificate, solved),
     progress,
     progressStages,
     blockedReasons: spoilerSafeGaps
