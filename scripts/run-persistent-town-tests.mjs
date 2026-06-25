@@ -225,11 +225,18 @@ const engine = await loadEngine();
   }
   assert.equal(ledger.valid, true, "truth ledger validates complete extracted cases");
   assert.equal(intake.progress.currentStage, "join", "intake progress starts before join");
+  assert.equal(intake.progress.coachStage, "join", "intake exposes coach stage before join");
   assert.equal(intake.nextAction.kind, "join", "intake next action starts with joining investigation");
+  assert.equal(intake.nextAction.coachStepId, intake.coach.nextStep.id, "intake next action is backed by coach step");
+  assert.equal(intake.coach.stage, "join", "coach starts at join");
+  assert.equal(intake.coach.coverage.routeCertified, true, "coach coverage includes route certificate state");
+  assert.equal(intake.coach.coverage.autoSolvePassed, true, "coach coverage includes auto-solve state");
+  assert.equal(intake.coach.nextStep.buttonLabel, "Join investigation", "coach exposes a low-spoiler action button");
   assert.equal(intake.progressStages.length >= 5, true, "playable intake builds progress stages");
   assert.equal(intake.sourceCounts.events > 0 && intake.sourceCounts.memories > 0 && intake.sourceCounts.observations > 0, true, "playable intake summarizes source counts");
   const hiddenIntakeText = JSON.stringify(intake);
   assert.equal(hiddenIntakeText.includes(extracted.activeCase.deductionCase.truth.culpritId), false, "unsolved intake does not expose culprit id");
+  assert.equal(hiddenIntakeText.includes("hidden-memory"), false, "unsolved coach/intake does not expose hidden memory ids");
   assert.equal(intake.sourceTrail.filter((item) => item.hidden).every((item) => item.label === "Hidden source event" || item.label === "Locked memory source"), true, "unsolved intake hides source labels");
   const certificate = engine.certifyPlayableCase(extracted.activeCase, extracted.events);
   assert.equal(certificate.routeCertified, true, "route certificate passes complete extracted cases");
@@ -294,6 +301,7 @@ const engine = await loadEngine();
   assert.equal(discoveredIntake.evidenceRoute.some((item) => item.id === challengeEvidenceId && item.discovered), true, "intake marks discovered evidence in the route");
   assert.equal(discoveredIntake.starterTasks.some((item) => item.kind === "search" && item.complete), true, "discovered evidence updates starter task state");
   assert.equal(discoveredIntake.progress.currentStage, "question", "discovered evidence advances intake progress toward questioning");
+  assert.equal(["search", "question"].includes(discoveredIntake.coach.stage), true, "coach advances after the first discovered clue without skipping the route");
   assert.equal(discoveredIntake.nextAction.kind === "search" || discoveredIntake.nextAction.kind === "question", true, "next action advances the investigation route without spoilers");
   const wrongTheoryIntake = engine.buildPlayableCaseIntake(extracted.activeCase, extracted.events, extracted.world, {
     ...discoveredSession,
@@ -302,6 +310,8 @@ const engine = await loadEngine();
     judgement: { accepted: false, score: 10, missing: ["Missing motive explanation."], contradictions: [], explanation: "Rejected by test" }
   });
   assert.equal(wrongTheoryIntake.progress.wrongTheorySubmitted, true, "wrong submissions are reflected in intake progress");
+  assert.equal(["question", "challenge", "select-evidence", "submit"].includes(wrongTheoryIntake.coach.stage), true, "coach routes wrong submissions toward a repairable investigation stage");
+  assert.equal(wrongTheoryIntake.coach.blockers.some((item) => item.kind === "submit" || item.kind === "coverage" || item.kind === "challenge"), true, "coach maps wrong submissions to proof repair blockers");
   const wrongTheory = engine.judgeTheory(extracted.activeCase.deductionCase, { culpritId: "wrong", motive: "", method: "", evidenceIds: [] }, extracted.activeCase.deductionCase.evidence.map((item) => item.id));
   assert.ok(wrongTheory.proofCoverage?.gaps.length, "wrong theory judgement returns proof coverage gaps");
   assert.equal(wrongTheory.missing.some((item) => item.includes("missing")), true, "wrong theory missing reasons include proof obligation gaps");
@@ -312,7 +322,9 @@ const engine = await loadEngine();
   });
   assert.equal(solvedIntake.readiness.status, "solved", "solved intake unlocks solved status");
   assert.equal(solvedIntake.progress.currentStage, "solved", "solved intake marks progress solved");
-  assert.equal(solvedIntake.nextAction.kind, "review", "solved intake points to source review");
+  assert.equal(solvedIntake.progress.coachStage, "review-source", "solved intake exposes source review coach stage");
+  assert.equal(solvedIntake.coach.stage, "review-source", "coach unlocks source review after solve");
+  assert.equal(solvedIntake.nextAction.kind, "review-source", "solved intake points to source review");
   assert.equal(solvedIntake.sourceTrail.some((item) => item.hidden), false, "solved intake unlocks full source trail labels");
   assert.equal(solvedIntake.routeCertificate.steps.some((step) => step.evidenceIds.length > 0), true, "solved intake unlocks full route certificate steps");
 }

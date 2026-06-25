@@ -4659,7 +4659,7 @@ export default function Home() {
         : "Where were you during the incident window, and what did you observe?");
       highlightSelection({ locationId: action.targetLocationId, evidenceId: action.targetEvidenceId, characterId: action.targetCharacterId });
     }
-    if (action.kind === "review") {
+    if (action.kind === "review" || action.kind === "review-source") {
       setInspectorTab(session?.judgement?.accepted ? "logic" : "investigation");
     } else {
       setInspectorTab("investigation");

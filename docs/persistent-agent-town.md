@@ -136,9 +136,11 @@ Route Certificate is the next gate on top of Truth Ledger. It proves that a cand
 
 Auto-solve is the regression layer on top of Route Certificate. It builds a synthetic local player session, executes the certified search, witness, challenge, evidence-selection, and theory-submission steps, and requires the resulting `judgeTheory` plus proof coverage to pass. The default API path is dry-run; `persist=true` saves an isolated `auto-player` session only when the report passes, without touching real player progress.
 
+Investigation Coach is the player completion layer on top of those checks. It converts the certified route, proof coverage, current session progress, and auto-solve report into a low-spoiler next step: join, search, question, challenge, select evidence, submit, or review source. The coach never calls DeepSeek and stays masked until the case is solved.
+
 `GET /api/v1/query/case/proof-ledger?caseId=...&sessionId=...&includeCertificate=true` rebuilds the ledger, optional player coverage, and optional route certificate without mutating the case. Before the player solves the case, UI surfaces only low-spoiler obligation labels, certificate counts, and gap targets. After a correct theory, the Proof Ledger unlocks evidence ids, source events, memory ids, conclusion links, and the full certified route alongside Proof Tour.
 
-The UI shows the intake before the player enters the investigation. It contains readiness score, route integrity, Route Certificate status, current progress, next action, six-stage chain status, source event and memory counts, evidence route hints, witness challenge planning, and spoiler-safe gaps.
+The UI shows the intake before the player enters the investigation. It contains readiness score, route integrity, Route Certificate status, current progress, Coach step, six-stage chain status, source event and memory counts, evidence route hints, witness challenge planning, and spoiler-safe gaps.
 
 The extraction command now applies a final playable-route gate before writing the extracted case to SQLite. A candidate must have a searchable evidence route, a witness route, at least one discoverable testimony challenge, and source-backed motive / means / opportunity / non-culprit exclusion coverage. Blocked candidates return `CASE_NOT_PLAYABLE` with low-spoiler reasons.
 

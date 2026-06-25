@@ -456,9 +456,58 @@ export type ProofTourStep = {
   memoryIds: string[];
 };
 
+export type PlayableInvestigationCoachStage = "join" | "search" | "question" | "challenge" | "select-evidence" | "submit" | "review-source";
+
+export type PlayableInvestigationCoachBlocker = {
+  kind: "search" | "witness" | "challenge" | "exclusion" | "source" | "submit" | "coverage" | "route";
+  label: string;
+  detail: string;
+  target: "evidence" | "suspects" | "motive" | "method" | "logic" | "exclusion";
+};
+
+export type PlayableInvestigationCoachCoverage = {
+  coveredRequired: number;
+  totalRequired: number;
+  proofCoverageRatio: number;
+  discoveredEvidence: number;
+  totalEvidence: number;
+  questionedWitnesses: number;
+  totalWitnesses: number;
+  challengeHitCount: number;
+  challengeReadyCount: number;
+  selectedTheoryEvidence: number;
+  submitReady: boolean;
+  autoSolvePassed: boolean;
+  routeCertified: boolean;
+};
+
+export type PlayableInvestigationCoachStep = {
+  id: string;
+  stage: PlayableInvestigationCoachStage;
+  label: string;
+  detail: string;
+  buttonLabel: string;
+  completion: string;
+  targetKind: "session" | "location" | "character" | "evidence" | "theory" | "ledger" | "source";
+  targetLocationId?: string;
+  targetCharacterId?: string;
+  targetEvidenceId?: string;
+  relatedObligationIds: string[];
+  complete: boolean;
+};
+
+export type PlayableInvestigationCoach = {
+  stage: PlayableInvestigationCoachStage;
+  summary: string;
+  nextStep: PlayableInvestigationCoachStep;
+  coverage: PlayableInvestigationCoachCoverage;
+  blockers: PlayableInvestigationCoachBlocker[];
+  steps: PlayableInvestigationCoachStep[];
+};
+
 export type PlayableCaseTask = {
   id: string;
-  kind: "observe" | "search" | "question" | "challenge" | "organize" | "submit" | "review";
+  kind: "observe" | "search" | "question" | "challenge" | "organize" | "select-evidence" | "submit" | "review" | "review-source";
   title: string;
   detail: string;
   complete: boolean;
@@ -486,13 +535,15 @@ export type PlayableCaseNextAction = {
   label: string;
   detail: string;
   buttonLabel: string;
+  coachStepId?: string;
   targetLocationId?: string;
   targetCharacterId?: string;
   targetEvidenceId?: string;
 };
 
 export type PlayableCaseProgress = {
-  currentStage: "join" | "search" | "question" | "challenge" | "submit" | "review" | "solved";
+  currentStage: "join" | "search" | "question" | "challenge" | "select-evidence" | "submit" | "review" | "review-source" | "solved";
+  coachStage?: PlayableInvestigationCoachStage;
   discoveredEvidence: number;
   totalEvidence: number;
   questionedWitnesses: number;
@@ -568,6 +619,7 @@ export type PlayableCaseIntake = {
   progress?: PlayableCaseProgress;
   progressStages?: PlayableCaseTask[];
   blockedReasons?: string[];
+  coach?: PlayableInvestigationCoach;
 };
 
 export type MapInteractiveTarget = {

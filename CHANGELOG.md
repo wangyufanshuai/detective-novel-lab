@@ -16,6 +16,7 @@
 - Added a deterministic Truth Ledger for emerged cases, with proof obligations, player coverage, gap mapping, and a read-only `/api/v1/query/case/proof-ledger` endpoint.
 - Added a Route Certificate that proves a case can be completed through search, witness questioning, testimony challenge, evidence selection, and accepted theory submission.
 - Added deterministic auto-solve regression for playable cases, including a dry-run `/api/v1/command/investigation/autosolve` endpoint and optional persisted `auto-player` sessions.
+- Added a low-spoiler Investigation Coach for playable case intake, turning the certified route into player-facing search, question, challenge, evidence-selection, submit, and source-review guidance.
 
 ### Changed
 
@@ -31,6 +32,7 @@
 - Playable Case Intake, wrong-theory gap cards, route integrity, and judgement feedback now derive from Truth Ledger proof coverage instead of separate lightweight stage heuristics.
 - Emerged case extraction now requires a passing Route Certificate before persistence, and Proof Ledger can reveal the full certified route after a correct solution.
 - Emergence benchmark reports now include route-certified rate, auto-solve pass rate, average auto-solve steps, and per-seed auto-solve failure kinds.
+- Playable Case Intake next actions now come from the Investigation Coach so UI guidance, API state, proof gaps, Route Certificate, and auto-solve regression stay aligned.
 
 ## v0.1.0 - 2026-06-11
 

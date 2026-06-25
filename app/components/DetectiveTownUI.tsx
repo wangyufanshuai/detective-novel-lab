@@ -2060,6 +2060,7 @@ function CaseIntakePanel({
     buttonLabel: session ? "Review route" : "Join investigation"
   } satisfies PlayableCaseNextAction;
   const progress = intake.progress;
+  const coach = intake.coach;
   return (
     <section className="actionPanel caseIntakePanel" data-testid="case-intake">
       <div className="panelHeaderLine">
@@ -2070,6 +2071,26 @@ function CaseIntakePanel({
         <span className={`runtimePill ${intake.readiness.status}`}>{intake.readiness.score}%</span>
       </div>
       <p>{intake.readiness.summary}</p>
+      {coach && (
+        <article className="caseIntakeNext coachPanel" data-testid="investigation-coach">
+          <span>Investigation Coach</span>
+          <strong>{coach.nextStep.label}</strong>
+          <small>{coach.summary}</small>
+          <small>{coach.nextStep.completion}</small>
+          <div className="caseIntakeProgress compact" data-testid="investigation-coach-coverage">
+            <span><b>{coach.stage}</b>coach stage</span>
+            <span><b>{coach.coverage.coveredRequired}/{coach.coverage.totalRequired}</b>ledger</span>
+            <span><b>{coach.coverage.discoveredEvidence}/{coach.coverage.totalEvidence}</b>evidence</span>
+            <span><b>{coach.coverage.challengeHitCount}</b>challenge hits</span>
+            <span><b>{coach.coverage.submitReady ? "ready" : "not ready"}</b>submit</span>
+          </div>
+          {!!coach.blockers.length && (
+            <div className="caseIntakeGaps" data-testid="investigation-coach-blockers">
+              {coach.blockers.slice(0, 3).map((blocker, index) => <span key={`${blocker.kind}:${index}`}>{blocker.kind}: {blocker.label}</span>)}
+            </div>
+          )}
+        </article>
+      )}
       <article className="caseIntakeNext" data-testid="case-intake-next-action">
         <span>Next action</span>
         <strong>{nextAction.label}</strong>

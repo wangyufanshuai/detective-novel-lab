@@ -850,6 +850,8 @@ test("persistent agent town runs, scores agents and extracts a playable case", a
   await expect(page.getByTestId("case-intake")).toContainText("Case Intake", { timeout: 20_000 });
   await expect(page.getByTestId("case-intake")).toContainText("source events");
   await expect(page.getByTestId("case-intake")).not.toContainText("culpritId");
+  await expect(page.getByTestId("investigation-coach")).toContainText("Investigation Coach");
+  await expect(page.getByTestId("investigation-coach-coverage")).toContainText("join");
   await expect(page.getByTestId("case-route-integrity")).toContainText("Route complete");
   await expect(page.getByTestId("case-intake-route-certificate")).toContainText("certified");
   await expect(page.getByTestId("case-intake-progress")).toContainText("join");
@@ -857,6 +859,7 @@ test("persistent agent town runs, scores agents and extracts a playable case", a
   await page.getByTestId("case-intake-next").click();
   await expect(page.getByTestId("source-backed-case")).toContainText("source-backed");
   await expect(page.getByTestId("case-intake-progress")).toContainText("search", { timeout: 20_000 });
+  await expect(page.getByTestId("investigation-coach-coverage")).toContainText(/search|question/);
   await expect(page.getByTestId("case-intake-next-action")).toContainText(/Search|Question/);
   await page.getByTestId("case-intake-next").click();
 
@@ -896,6 +899,7 @@ test("persistent agent town runs, scores agents and extracts a playable case", a
   }
   await page.getByTestId("submit-theory").click();
   await expect(page.getByTestId("theory-gap-cards")).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId("investigation-coach-blockers")).toBeVisible({ timeout: 20_000 });
   await page.getByTestId("theory-culprit").selectOption(activeCase.deductionCase.truth.culpritId);
   await page.locator("textarea").nth(1).fill(activeCase.deductionCase.truth.motive);
   await page.locator("textarea").nth(2).fill(activeCase.deductionCase.truth.method);

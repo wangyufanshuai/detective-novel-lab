@@ -173,7 +173,11 @@ try {
   assert.ok(extracted.playableIntake.witnessPlan.length > 0, "playable intake exposes witness plan");
   assert.equal(extracted.playableIntake.routeIntegrity.playable, true, "playable intake exposes passing route integrity");
   assert.equal(extracted.playableIntake.progress.currentStage, "join", "playable intake exposes player progress");
+  assert.equal(extracted.playableIntake.progress.coachStage, "join", "playable intake exposes coach progress");
   assert.equal(extracted.playableIntake.nextAction.kind, "join", "playable intake exposes next action");
+  assert.equal(extracted.playableIntake.coach.stage, "join", "playable intake exposes investigation coach");
+  assert.equal(extracted.playableIntake.coach.coverage.routeCertified, true, "coach reports route certificate state");
+  assert.equal(extracted.playableIntake.coach.coverage.autoSolvePassed, true, "coach reports auto-solve state");
   assert.equal(JSON.stringify(extracted.playableIntake).includes(extracted.activeCase.deductionCase.truth.culpritId), false, "playable intake does not leak culprit id before solve");
   assert.equal(extracted.activeCase.triggeredEventId, candidate.triggeredEventId, "extracted case preserves the triggered event id");
   assert.equal(extracted.activeCase.sourceCandidateId, candidate.id, "extracted case preserves the source candidate id");
@@ -194,6 +198,9 @@ try {
   assert.equal(queriedCase.playableIntake.routeIntegrity.proofLedgerValid, true, "case query rebuilds truth-ledger route validity");
   assert.ok(queriedCase.playableIntake.proofCoverage.totalRequired >= 8, "case query returns proof coverage in intake");
   assert.ok(queriedCase.playableIntake.nextAction.buttonLabel, "case query rebuilds next action");
+  assert.equal(queriedCase.playableIntake.nextAction.coachStepId, queriedCase.playableIntake.coach.nextStep.id, "case query next action is backed by coach");
+  assert.equal(queriedCase.playableIntake.coach.stage, "join", "case query rebuilds coach state");
+  assert.equal(JSON.stringify(queriedCase.playableIntake.coach).includes(extracted.activeCase.deductionCase.truth.culpritId), false, "case query coach stays low-spoiler before solve");
 
   const proofLedger = await request(`/api/v1/query/case/proof-ledger?caseId=${encodeURIComponent(extracted.activeCase.id)}&includeCertificate=true`);
   assert.equal(proofLedger.ledger.caseId, extracted.activeCase.id, "proof ledger query returns the saved case ledger");
@@ -254,6 +261,10 @@ try {
     })
   });
   assert.equal(solved.judgement.accepted, true, "smoke session can solve extracted case");
+  const solvedCaseQuery = await request(`/api/v1/query/case?caseId=${encodeURIComponent(extracted.activeCase.id)}&includeIntake=true&sessionId=${encodeURIComponent(joined.session.id)}`);
+  assert.equal(solvedCaseQuery.playableIntake.coach.stage, "review-source", "solved case query coach unlocks source review");
+  assert.equal(solvedCaseQuery.playableIntake.nextAction.kind, "review-source", "solved case query next action reviews source trail");
+  assert.equal(solvedCaseQuery.playableIntake.sourceTrail.some((item) => item.hidden), false, "solved case query unlocks source trail");
   const solvedProofLedger = await request(`/api/v1/query/case/proof-ledger?caseId=${encodeURIComponent(extracted.activeCase.id)}&sessionId=${encodeURIComponent(joined.session.id)}&includeCertificate=true`);
   assert.equal(solvedProofLedger.certificate.steps.some((item) => item.evidenceIds.length > 0), true, "solved route certificate unlocks evidence ids");
 

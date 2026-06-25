@@ -9,6 +9,11 @@ import type {
   PlayableCaseRouteIntegrity,
   PlayableCaseSourceTrail,
   PlayableCaseTask,
+  PlayableInvestigationCoach,
+  PlayableInvestigationCoachBlocker,
+  PlayableInvestigationCoachCoverage,
+  PlayableInvestigationCoachStage,
+  PlayableInvestigationCoachStep,
   PlayerSession,
   ProofTourStep,
   WorldEvent,
@@ -18,6 +23,7 @@ import type { CaseProofCoverage } from "./types";
 import { buildDeductionGraph, deriveSuspectBoard } from "./deduction-graph";
 import { buildCaseTruthLedger, evaluateCaseProofCoverage } from "./proof-ledger";
 import { certifyPlayableCase, spoilerSafeCaseRouteCertificate } from "./route-certificate";
+import { autoSolvePlayableCase } from "./auto-solve";
 
 function characterName(caseFromLog: CaseFromLog, characterId: string) {
   return caseFromLog.deductionCase.characters.find((character) => character.id === characterId)?.name || characterId;
@@ -119,6 +125,251 @@ function spoilerSafeProofCoverage(coverage: CaseProofCoverage, solved: boolean):
       missingEventIds: [],
       missingMemoryIds: []
     }))
+  };
+}
+
+function coachTargetForBlocker(target: PlayableInvestigationCoachBlocker["target"]) {
+  return target;
+}
+
+function coachBlocker(input: PlayableInvestigationCoachBlocker): PlayableInvestigationCoachBlocker {
+  return input;
+}
+
+function coachStageFromBlocker(kind: PlayableInvestigationCoachBlocker["kind"]): PlayableInvestigationCoachStage {
+  if (kind === "search" || kind === "source") return "search";
+  if (kind === "witness") return "question";
+  if (kind === "challenge") return "challenge";
+  if (kind === "submit" || kind === "coverage" || kind === "exclusion") return "select-evidence";
+  return "submit";
+}
+
+function safeCoachCharacterId(caseFromLog: CaseFromLog, characterId: string | undefined, solved: boolean) {
+  if (!characterId) return undefined;
+  if (!solved && characterId === caseFromLog.deductionCase.truth.culpritId) return undefined;
+  return characterId;
+}
+
+function evidenceLocationId(caseFromLog: CaseFromLog, evidenceId: string | undefined) {
+  if (!evidenceId) return undefined;
+  const evidence = caseFromLog.deductionCase.evidence.find((item) => item.id === evidenceId);
+  if (!evidence) return undefined;
+  const scene = caseFromLog.deductionCase.scenes.find((item) => item.id === evidence.location || item.name === evidence.location);
+  return scene?.id || evidence.location;
+}
+
+function lowSpoilerObligationIds(stage: PlayableInvestigationCoachStage, ids: string[], solved: boolean) {
+  if (solved) return ids;
+  return ids.map((_, index) => `coach-obligation:${stage}:${index + 1}`);
+}
+
+function makeCoachStep(input: PlayableInvestigationCoachStep): PlayableInvestigationCoachStep {
+  return {
+    ...input,
+    relatedObligationIds: Array.from(new Set(input.relatedObligationIds.filter(Boolean)))
+  };
+}
+
+function nextActionFromCoachStep(step: PlayableInvestigationCoachStep): PlayableCaseNextAction {
+  return {
+    kind: step.stage === "review-source" ? "review-source" : step.stage,
+    label: step.label,
+    detail: step.detail,
+    buttonLabel: step.buttonLabel,
+    coachStepId: step.id,
+    targetLocationId: step.targetLocationId,
+    targetCharacterId: step.targetCharacterId,
+    targetEvidenceId: step.targetEvidenceId
+  };
+}
+
+export function buildInvestigationCoach(caseFromLog: CaseFromLog, events: WorldEvent[] = [], session?: PlayerSession | null): PlayableInvestigationCoach {
+  const solved = Boolean(session?.judgement?.accepted);
+  const discovered = new Set(session?.discoveredEvidenceIds || []);
+  const submitted = new Set(session?.submittedTheory?.evidenceIds || []);
+  const interrogationLog = session?.interrogationLog || [];
+  const questioned = new Set(interrogationLog.map((entry) => entry.characterId));
+  const challengeHits = new Set(interrogationLog.filter((entry) => entry.challenge?.hit).map((entry) => entry.characterId));
+  const truthLedger = buildCaseTruthLedger(caseFromLog, events);
+  const routeCertificate = certifyPlayableCase(caseFromLog, events, session);
+  const autoSolve = autoSolvePlayableCase(caseFromLog, events);
+  const proofCoverage = evaluateCaseProofCoverage(truthLedger, {
+    discoveredEvidenceIds: session?.discoveredEvidenceIds || [],
+    selectedEvidenceIds: session?.submittedTheory?.evidenceIds,
+    challengedCharacterIds: Array.from(challengeHits),
+    solved
+  });
+  const requiredEvidenceIds = routeCertificate.theoryEvidenceIds.length ? routeCertificate.theoryEvidenceIds : truthLedger.requiredEvidenceIds;
+  const discoveredRequiredIds = requiredEvidenceIds.filter((id) => discovered.has(id));
+  const undiscoveredRequiredIds = requiredEvidenceIds.filter((id) => !discovered.has(id));
+  const requiredWitnessIds = routeCertificate.requiredWitnessIds.length
+    ? routeCertificate.requiredWitnessIds
+    : Array.from(new Set(caseFromLog.testimonies.map((item) => item.characterId)));
+  const unaskedWitnessIds = requiredWitnessIds.filter((id) => !questioned.has(id));
+  const unhitChallengeSteps = routeCertificate.steps.filter((step) => step.kind === "challenge" && !step.characterIds.some((id) => challengeHits.has(id)));
+  const readyChallengeStep = unhitChallengeSteps.find((step) => step.evidenceIds.some((id) => discovered.has(id))) || unhitChallengeSteps[0];
+  const missingSelectedIds = requiredEvidenceIds.filter((id) => !submitted.has(id));
+  const routeReadyForSubmit = routeCertificate.routeCertified
+    && undiscoveredRequiredIds.length === 0
+    && unhitChallengeSteps.filter((step) => step.evidenceIds.some((id) => discovered.has(id))).length === 0;
+  const selectedReady = missingSelectedIds.length === 0 && requiredEvidenceIds.length > 0;
+  const coverage: PlayableInvestigationCoachCoverage = {
+    coveredRequired: proofCoverage.coveredRequired,
+    totalRequired: proofCoverage.totalRequired,
+    proofCoverageRatio: proofCoverage.coverageRatio,
+    discoveredEvidence: caseFromLog.deductionCase.evidence.filter((item) => discovered.has(item.id)).length,
+    totalEvidence: caseFromLog.deductionCase.evidence.length,
+    questionedWitnesses: questioned.size,
+    totalWitnesses: requiredWitnessIds.length,
+    challengeHitCount: challengeHits.size,
+    challengeReadyCount: unhitChallengeSteps.filter((step) => step.evidenceIds.some((id) => discovered.has(id))).length,
+    selectedTheoryEvidence: submitted.size,
+    submitReady: routeReadyForSubmit && selectedReady,
+    autoSolvePassed: autoSolve.passed,
+    routeCertified: routeCertificate.routeCertified
+  };
+  const blockers: PlayableInvestigationCoachBlocker[] = [
+    ...routeCertificate.blockers.map((item) => coachBlocker({
+      kind: item.kind === "witness" ? "witness" : item.kind,
+      label: item.label,
+      detail: item.detail,
+      target: coachTargetForBlocker(item.target)
+    })),
+    ...autoSolve.summary.failures.map((item) => coachBlocker({
+      kind: item.kind === "certificate" ? "route" : item.kind,
+      label: item.label,
+      detail: item.detail,
+      target: coachTargetForBlocker(item.target)
+    })),
+    ...proofCoverage.gaps.map((gap) => coachBlocker({
+      kind: gap.kind === "source" ? "source" : gap.kind === "contradiction" ? "challenge" : gap.kind === "exclusion" ? "exclusion" : "coverage",
+      label: solved ? gap.label : `${gap.kind} proof gap`,
+      detail: solved ? gap.detail : `This ${gap.kind} obligation needs more discovered or selected proof before completion.`,
+      target: coachTargetForBlocker(gap.target)
+    })),
+    ...(session?.judgement && !session.judgement.accepted ? session.judgement.missing.slice(0, 4).map((detail) => coachBlocker({
+      kind: "submit" as const,
+      label: "Theory repair needed",
+      detail,
+      target: "logic" as const
+    })) : [])
+  ];
+  const firstSearchStep = routeCertificate.steps.find((step) => step.kind === "search" && step.evidenceIds.some((id) => !discovered.has(id)))
+    || routeCertificate.steps.find((step) => step.kind === "search");
+  const firstQuestionStep = routeCertificate.steps.find((step) => step.kind === "question" && step.characterIds.some((id) => !questioned.has(id)))
+    || routeCertificate.steps.find((step) => step.kind === "question");
+  const firstSelectEvidenceId = missingSelectedIds.find((id) => discovered.has(id)) || discoveredRequiredIds[0] || requiredEvidenceIds[0];
+  let stage: PlayableInvestigationCoachStage;
+  if (!session) stage = "join";
+  else if (solved) stage = "review-source";
+  else if (!routeCertificate.routeCertified || !autoSolve.passed) stage = coachStageFromBlocker(blockers[0]?.kind || "route");
+  else if (undiscoveredRequiredIds.length > 0) stage = "search";
+  else if (unaskedWitnessIds.length > 0) stage = "question";
+  else if (readyChallengeStep && !readyChallengeStep.characterIds.some((id) => challengeHits.has(id))) stage = "challenge";
+  else if (!selectedReady) stage = "select-evidence";
+  else stage = "submit";
+
+  const steps: PlayableInvestigationCoachStep[] = [
+    makeCoachStep({
+      id: `coach:${caseFromLog.id}:join`,
+      stage: "join",
+      label: "Join the investigation",
+      detail: "Create a player session before searching source-backed clues.",
+      buttonLabel: "Join investigation",
+      completion: "A player session exists for this case.",
+      targetKind: "session",
+      relatedObligationIds: [],
+      complete: Boolean(session)
+    }),
+    makeCoachStep({
+      id: `coach:${caseFromLog.id}:search`,
+      stage: "search",
+      label: "Search the next linked scene",
+      detail: firstSearchStep?.lowSpoilerDetail || "Search the linked scene for the next required clue.",
+      buttonLabel: "Focus search location",
+      completion: "All required route evidence has been discovered.",
+      targetKind: "location",
+      targetLocationId: evidenceLocationId(caseFromLog, undiscoveredRequiredIds[0] || firstSearchStep?.evidenceIds[0]) || firstSearchStep?.locationId,
+      targetEvidenceId: undiscoveredRequiredIds[0] || firstSearchStep?.evidenceIds[0],
+      relatedObligationIds: lowSpoilerObligationIds("search", firstSearchStep?.obligationIds || [], solved),
+      complete: undiscoveredRequiredIds.length === 0 && requiredEvidenceIds.length > 0
+    }),
+    makeCoachStep({
+      id: `coach:${caseFromLog.id}:question`,
+      stage: "question",
+      label: "Question a memory source",
+      detail: firstQuestionStep?.lowSpoilerDetail || "Question a witness connected to the memory chain.",
+      buttonLabel: "Focus witness",
+      completion: "Required route witnesses have been questioned.",
+      targetKind: "character",
+      targetCharacterId: safeCoachCharacterId(caseFromLog, unaskedWitnessIds[0] || firstQuestionStep?.characterIds[0], solved),
+      relatedObligationIds: lowSpoilerObligationIds("question", firstQuestionStep?.obligationIds || [], solved),
+      complete: requiredWitnessIds.length > 0 && unaskedWitnessIds.length === 0
+    }),
+    makeCoachStep({
+      id: `coach:${caseFromLog.id}:challenge`,
+      stage: "challenge",
+      label: "Challenge testimony",
+      detail: readyChallengeStep?.lowSpoilerDetail || "Present a discovered clue to test a witness statement.",
+      buttonLabel: "Prepare challenge",
+      completion: "At least one required testimony contradiction has been hit.",
+      targetKind: "character",
+      targetCharacterId: safeCoachCharacterId(caseFromLog, readyChallengeStep?.characterIds[0], solved),
+      targetEvidenceId: readyChallengeStep?.evidenceIds.find((id) => discovered.has(id)) || readyChallengeStep?.evidenceIds[0],
+      relatedObligationIds: lowSpoilerObligationIds("challenge", readyChallengeStep?.obligationIds || [], solved),
+      complete: routeCertificate.steps.filter((step) => step.kind === "challenge").every((step) => step.characterIds.some((id) => challengeHits.has(id)))
+    }),
+    makeCoachStep({
+      id: `coach:${caseFromLog.id}:select-evidence`,
+      stage: "select-evidence",
+      label: "Select proof evidence",
+      detail: "Add discovered proof clues to the theory so motive, method, opportunity, contradiction, and exclusions are covered.",
+      buttonLabel: "Add proof clue",
+      completion: "All required discovered clues are selected in the theory form.",
+      targetKind: "evidence",
+      targetEvidenceId: firstSelectEvidenceId,
+      targetLocationId: evidenceLocationId(caseFromLog, firstSelectEvidenceId),
+      relatedObligationIds: lowSpoilerObligationIds("select-evidence", truthLedger.obligations.filter((item) => item.evidenceIds.some((id) => id === firstSelectEvidenceId)).map((item) => item.id), solved),
+      complete: selectedReady
+    }),
+    makeCoachStep({
+      id: `coach:${caseFromLog.id}:submit`,
+      stage: "submit",
+      label: session?.judgement && !session.judgement.accepted ? "Repair and submit again" : "Submit a complete theory",
+      detail: session?.judgement && !session.judgement.accepted
+        ? "Use the proof gaps to repair the theory before resubmitting."
+        : "Submit culprit, motive, method, and selected evidence once the proof route is covered.",
+      buttonLabel: "Review theory form",
+      completion: "Local judgement accepts the theory.",
+      targetKind: "theory",
+      relatedObligationIds: lowSpoilerObligationIds("submit", truthLedger.obligations.map((item) => item.id), solved),
+      complete: solved
+    }),
+    makeCoachStep({
+      id: `coach:${caseFromLog.id}:review-source`,
+      stage: "review-source",
+      label: "Review unlocked source trail",
+      detail: "The case is solved; inspect the full source chain, route certificate, and proof tour.",
+      buttonLabel: "Review source trail",
+      completion: "Full source trail is unlocked after a correct theory.",
+      targetKind: "source",
+      relatedObligationIds: lowSpoilerObligationIds("review-source", truthLedger.obligations.map((item) => item.id), solved),
+      complete: solved
+    })
+  ];
+  const nextStep = steps.find((step) => step.stage === stage) || steps[0];
+  const summary = solved
+    ? "Coach complete: the source-backed route is unlocked for review."
+    : routeCertificate.routeCertified && autoSolve.passed
+      ? "Coach route is certified and auto-solvable; follow the current step without revealing the culprit."
+      : "Coach found route blockers; repair the lowest spoiler blocker before extracting or continuing the case.";
+  return {
+    stage,
+    summary,
+    nextStep,
+    coverage,
+    blockers: blockers.slice(0, 8),
+    steps
   };
 }
 
@@ -339,8 +590,10 @@ export function buildPlayableCaseIntake(
     wrongTheorySubmitted: Boolean(session?.judgement && !session.judgement.accepted),
     solved
   };
+  const coach = buildInvestigationCoach(caseFromLog, events, session);
+  progress.coachStage = coach.stage;
   const progressStages = buildProgressStages(starterTasks, progress);
-  const nextAction = buildNextAction({ session, evidenceRoute, witnessPlan, progress, routeIntegrity });
+  const nextAction = nextActionFromCoachStep(coach.nextStep) || buildNextAction({ session, evidenceRoute, witnessPlan, progress, routeIntegrity });
   const sourceTrail: PlayableCaseSourceTrail[] = [
     {
       id: `candidate:${caseFromLog.sourceCandidateId || caseFromLog.id}`,
@@ -395,15 +648,15 @@ export function buildPlayableCaseIntake(
       discoveredEvidence: discoveredEvidence.length,
       totalEvidence
     },
-    sourceTrail
-    ,
+    sourceTrail,
     nextAction,
     routeIntegrity,
     proofCoverage: spoilerSafeProofCoverage(proofCoverage, solved),
     routeCertificate: spoilerSafeCaseRouteCertificate(routeCertificate, solved),
     progress,
     progressStages,
-    blockedReasons: spoilerSafeGaps
+    blockedReasons: spoilerSafeGaps,
+    coach
   };
 }
 
