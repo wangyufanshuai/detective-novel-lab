@@ -35,6 +35,7 @@ import type {
   AgentDecisionTrace,
   DeductionCase,
   DeductionGraphNode,
+  EmergenceBenchmarkReport,
   EmergenceProofTrace,
   EvidenceNotebookItem,
   Evidence,
@@ -74,6 +75,18 @@ export type InspectorTabId = "events" | "investigation" | "logic" | "agent" | "p
 
 type CaseTemplateOption = { id: CaseTemplateId; title: string; description?: string; archetype: MurderArchetype };
 type CaseMode = "premium" | "generated";
+type BenchmarkSummary = Pick<
+  EmergenceBenchmarkReport,
+  | "seedCount"
+  | "passed"
+  | "failed"
+  | "passRate"
+  | "averageQualityScore"
+  | "averageEmergenceScore"
+  | "routeCertifiedRate"
+  | "autoSolvePassRate"
+  | "averageAutoSolveSteps"
+>;
 type AiSafetyView = {
   promptAudit?: { safe?: boolean };
   memoryCount?: number;
@@ -1056,7 +1069,7 @@ export function AgentControlPanel({
   setSelectedSnapshotFromId: (value: string) => void;
   setSelectedSnapshotToId: (value: string) => void;
   snapshotDiff?: TownStateDiff | null;
-  benchmarkSummary?: { seedCount: number; passed: number; failed: number; passRate: number; averageQualityScore: number; averageEmergenceScore: number } | null;
+  benchmarkSummary?: BenchmarkSummary | null;
 }) {
   const [copyStatus, setCopyStatus] = useState("");
   const candidates = queue?.candidates || [];
@@ -1310,6 +1323,9 @@ export function AgentControlPanel({
             <span><b>{benchmarkSummary.seedCount}</b>种子数</span>
             <span><b>{benchmarkSummary.averageQualityScore}</b>质量分</span>
             <span><b>{benchmarkSummary.averageEmergenceScore}</b>涌现分</span>
+            <span><b>{benchmarkSummary.routeCertifiedRate ?? 0}%</b>Route cert</span>
+            <span><b>{benchmarkSummary.autoSolvePassRate ?? 0}%</b>Auto-solve</span>
+            <span><b>{benchmarkSummary.averageAutoSolveSteps ?? 0}</b>Auto steps</span>
             <span className={benchmarkSummary.failed === 0 ? "pass" : "fail"}><b>{benchmarkSummary.failed}</b>失败种子</span>
             <span><b>{benchmarkSummary.passed}</b>通过种子</span>
           </div>
@@ -1468,7 +1484,7 @@ export function PersistentTownCommandCenter({
   setSelectedSnapshotFromId: (value: string) => void;
   setSelectedSnapshotToId: (value: string) => void;
   snapshotDiff?: TownStateDiff | null;
-  benchmarkSummary?: { seedCount: number; passed: number; failed: number; passRate: number; averageQualityScore: number; averageEmergenceScore: number } | null;
+  benchmarkSummary?: BenchmarkSummary | null;
 }) {
   const candidates = queue?.candidates || runtime?.candidates || [];
   const actionLabels: Record<string, string> = {
@@ -1955,6 +1971,9 @@ export function PersistentTownCommandCenter({
         <span>Seeds {benchmarkSummary?.seedCount ?? 0}</span>
         <span>Quality {benchmarkSummary?.averageQualityScore ?? 0}</span>
         <span>Emergence {benchmarkSummary?.averageEmergenceScore ?? 0}</span>
+        <span>Route {benchmarkSummary?.routeCertifiedRate ?? 0}%</span>
+        <span>AutoSolve {benchmarkSummary?.autoSolvePassRate ?? 0}%</span>
+        <span>Steps {benchmarkSummary?.averageAutoSolveSteps ?? 0}</span>
       </section>
     </main>
   );

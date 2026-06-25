@@ -113,6 +113,14 @@ const engine = await loadEngine();
     assert.equal(certificate.sourceMode, "static", `${templateId} is marked as static certificate source`);
     assert.equal(certificate.steps.some((step) => step.kind === "search"), true, `${templateId} certificate includes search`);
     assert.equal(certificate.steps.some((step) => step.kind === "challenge"), true, `${templateId} certificate includes challenge`);
+    const autoSolve = engine.autoSolvePlayableCase(activeCase, events);
+    assert.equal(autoSolve.passed, true, `${templateId} auto-solve passes`);
+    assert.equal(autoSolve.summary.routeCertified, true, `${templateId} auto-solve summary keeps route certificate state`);
+    assert.equal(autoSolve.summary.autoTheoryAccepted, true, `${templateId} auto-solve accepted theory`);
+    assert.equal(autoSolve.summary.proofCoverageComplete, true, `${templateId} auto-solve completes proof coverage`);
+    assert.equal(autoSolve.steps.some((step) => step.kind === "search" && step.complete), true, `${templateId} auto-solve searches evidence`);
+    assert.equal(autoSolve.steps.some((step) => step.kind === "challenge" && step.challengeHit), true, `${templateId} auto-solve hits a challenge`);
+    assert.equal(autoSolve.dryRun, true, `${templateId} auto-solve defaults to dry-run`);
     const wrongCulprit = activeCase.deductionCase.characters.find((item) => item.id !== activeCase.deductionCase.truth.culpritId && item.role !== "死者")?.id;
     const wrong = engine.judgeTheory(
       activeCase.deductionCase,
@@ -364,10 +372,16 @@ const engine = await loadEngine();
   assert.equal(report.results.length, 20, "emergence benchmark reports every seed");
   assert.equal(report.results.every((result) => typeof result.seed === "string" && result.errors), true, "every seed has structured status fields");
   assert.equal(report.results.every((result) => result.generatedCase), true, "default benchmark seeds should generate cases");
+  assert.equal(report.results.every((result) => result.routeCertified), true, "default benchmark seeds should route-certify");
+  assert.equal(report.results.every((result) => result.autoSolvePassed), true, "default benchmark seeds should auto-solve");
+  assert.equal(report.autoSolvePassRate, 100, "benchmark exposes auto-solve pass rate");
+  assert.equal(report.routeCertifiedRate, 100, "benchmark exposes route certificate rate");
+  assert.equal(report.averageAutoSolveSteps > 0, true, "benchmark exposes average auto-solve steps");
   assert.equal(report.passed + report.failed, 20, "benchmark summary accounts for every seed");
   const markdown = engine.renderEmergenceBenchmarkMarkdown(report);
   assert.equal(markdown.includes("Emergence Benchmark Report"), true, "benchmark markdown has a title");
   assert.equal(markdown.includes("| Seed | Case |"), true, "benchmark markdown has a result table");
+  assert.equal(markdown.includes("Auto-solve pass rate"), true, "benchmark markdown includes auto-solve metrics");
 }
 
 console.log("World simulation tests passed.");

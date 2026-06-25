@@ -34,6 +34,7 @@ The SDK is the executable reference for the stable external-agent subset. It is 
 - `GET /api/v1/query/world/memories?worldId=...&npcId=...`
 - `GET /api/v1/query/case?caseId=...`
 - `GET /api/v1/query/case?caseId=...&includeIntake=true&sessionId=...`
+- `GET /api/v1/query/case/proof-ledger?caseId=...&sessionId=...&includeCertificate=true`
 - `GET /api/v1/query/town/runtime?worldId=...`
 - `GET /api/v1/query/town/agents?worldId=...`
 - `GET /api/v1/query/town/agent?worldId=...&npcId=...`
@@ -62,6 +63,7 @@ The SDK is the executable reference for the stable external-agent subset. It is 
 - `POST /api/v1/command/investigation/discover`
 - `POST /api/v1/command/investigation/interrogate`
 - `POST /api/v1/command/investigation/submit-theory`
+- `POST /api/v1/command/investigation/autosolve`
 - `POST /api/v1/command/town/runtime/start`
 - `POST /api/v1/command/town/runtime/pause`
 - `POST /api/v1/command/town/runtime/step`
@@ -117,8 +119,11 @@ Emerged Persistent Agent Town candidates can be bridged into the player investig
 Truth Ledger is the local proof source for emerged cases. It creates motive, means, opportunity, timeline, contradiction, exclusion, source, and conclusion obligations from the extracted case, source map, world events, testimonies, and suspect matrix. Route Certificate then proves the player can complete the route through search, witness questioning, challenge, evidence selection, and accepted local judgement. The same coverage drives route integrity, wrong-theory gaps, Case Intake next action, and judgement feedback.
 
 - `GET /api/v1/query/case/proof-ledger?caseId=...&sessionId=...&includeCertificate=true`
+- `POST /api/v1/command/investigation/autosolve`
 
-The endpoint is read-only and returns `{ ledger, coverage }`, plus `certificate` when requested, inside the standard `{ ok: true, data }` envelope. Passing `sessionId` marks obligations covered by discovered evidence, selected theory evidence, challenge hits, and solved status. Without a solved session, certificate ids and route details stay low-spoiler.
+The proof-ledger endpoint is read-only and returns `{ ledger, coverage }`, plus `certificate` when requested, inside the standard `{ ok: true, data }` envelope. Passing `sessionId` marks obligations covered by discovered evidence, selected theory evidence, challenge hits, and solved status. Without a solved session, certificate ids and route details stay low-spoiler.
+
+The auto-solve command is a deterministic local regression path for development, QA, and benchmarks. Its body is `{ "caseId": "...", "persist": false, "includeDetails": false }`. By default it is a dry-run and returns only a spoiler-safe summary. With `persist=true`, a passing report saves a dedicated `auto-player` session in the existing sessions table; it does not overwrite real player sessions or change the active case. Failed reports stay read-only and return structured blockers. `includeDetails=true` returns the full route, synthetic session, judgement, and proof coverage for debugging.
 
 ## Scenario Runner And Time Machine
 

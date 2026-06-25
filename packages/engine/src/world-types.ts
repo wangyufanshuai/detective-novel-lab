@@ -1,4 +1,4 @@
-import type { CaseProofCoverage, CaseRouteCertificate, DeductionCase, EvidenceChallenge, Judgement, PlayerTheory, RuleReport } from "./types";
+import type { CaseProofCoverage, CaseRouteCertificate, CaseRouteCertificateStepKind, DeductionCase, EvidenceChallenge, Judgement, PlayerTheory, RuleReport } from "./types";
 
 export type WorldLocation = {
   id: string;
@@ -599,6 +599,10 @@ export type EmergenceSeedResult = {
   sixStageComplete?: boolean;
   realCaseTriggered?: boolean;
   matureTick?: number;
+  routeCertified?: boolean;
+  autoSolvePassed?: boolean;
+  autoSolveStepCount?: number;
+  autoSolveFailureKinds?: CaseAutoSolveFailureKind[];
   proofNodeCount: number;
   errors: string[];
   warnings: string[];
@@ -614,6 +618,9 @@ export type EmergenceBenchmarkReport = {
   sixStageCompleteRate?: number;
   realCaseTriggerRate?: number;
   averageMatureTick?: number;
+  routeCertifiedRate?: number;
+  autoSolvePassRate?: number;
+  averageAutoSolveSteps?: number;
   passRate: number;
   results: EmergenceSeedResult[];
 };
@@ -797,6 +804,68 @@ export type PlayerSession = {
   judgement?: Judgement;
   createdAt: string;
   updatedAt: string;
+};
+
+export type CaseAutoSolveFailureKind =
+  | "certificate"
+  | "search"
+  | "witness"
+  | "challenge"
+  | "exclusion"
+  | "source"
+  | "submit"
+  | "coverage";
+
+export type CaseAutoSolveFailure = {
+  kind: CaseAutoSolveFailureKind;
+  label: string;
+  detail: string;
+  missingEvidenceIds: string[];
+  missingObligationIds: string[];
+  target: "evidence" | "suspects" | "motive" | "method" | "logic" | "exclusion";
+};
+
+export type CaseAutoSolveStep = {
+  id: string;
+  kind: CaseRouteCertificateStepKind;
+  label: string;
+  detail: string;
+  complete: boolean;
+  evidenceIds: string[];
+  characterIds: string[];
+  obligationIds: string[];
+  challengeHit?: boolean;
+};
+
+export type CaseAutoSolveSummary = {
+  caseId: string;
+  passed: boolean;
+  routeCertified: boolean;
+  autoTheoryAccepted: boolean;
+  stepCount: number;
+  discoveredEvidenceCount: number;
+  questionedWitnessCount: number;
+  challengeHitCount: number;
+  selectedEvidenceCount: number;
+  coveredRequiredObligations: number;
+  totalRequiredObligations: number;
+  proofCoverageComplete: boolean;
+  failureKinds: CaseAutoSolveFailureKind[];
+  failures: Array<Pick<CaseAutoSolveFailure, "kind" | "label" | "detail" | "target">>;
+};
+
+export type CaseAutoSolveReport = {
+  caseId: string;
+  passed: boolean;
+  dryRun: boolean;
+  certificate: CaseRouteCertificate;
+  summary: CaseAutoSolveSummary;
+  steps: CaseAutoSolveStep[];
+  failures: CaseAutoSolveFailure[];
+  session: PlayerSession;
+  theory?: PlayerTheory;
+  judgement?: Judgement;
+  proofCoverage?: CaseProofCoverage;
 };
 
 export type InterrogationLogEntry = {

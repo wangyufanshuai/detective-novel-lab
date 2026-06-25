@@ -39,6 +39,9 @@ console.log(JSON.stringify({
   passRate: report.passRate,
   averageQualityScore: report.averageQualityScore,
   averageEmergenceScore: report.averageEmergenceScore,
+  routeCertifiedRate: report.routeCertifiedRate,
+  autoSolvePassRate: report.autoSolvePassRate,
+  averageAutoSolveSteps: report.averageAutoSolveSteps,
   sixStageCompleteRate: report.sixStageCompleteRate,
   realCaseTriggerRate: report.realCaseTriggerRate,
   averageMatureTick: report.averageMatureTick

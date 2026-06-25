@@ -1,6 +1,7 @@
 import { validateHardCaseLogic } from "./deduction-graph";
 import { extractCaseFromWorld } from "./world-case";
-import { advancePersistentTownTick, buildTownEmergenceQueue } from "./persistent-town";
+import { autoSolvePlayableCase } from "./auto-solve";
+import { advancePersistentTownTick, buildTownEmergenceQueue, extractPlayableCaseFromCandidate } from "./persistent-town";
 import { createInitialWorld, simulateDailyLife, simulateWorldTick } from "./world-simulator";
 import type {
   CaseFromLog,
@@ -245,6 +246,10 @@ function defaultSeeds(count: number) {
   return Array.from({ length: count }, (_, index) => `emergence-benchmark-${String(index + 1).padStart(2, "0")}`);
 }
 
+function unique<T>(items: T[]): T[] {
+  return Array.from(new Set(items.filter(Boolean)));
+}
+
 function runSeed(seed: string): EmergenceSeedResult {
   try {
     const initial = createInitialWorld(seed, { mode: "showcase", npcCount: 8, timelineHours: 24 });
@@ -254,18 +259,36 @@ function runSeed(seed: string): EmergenceSeedResult {
     const caseFromLog = extractCaseFromWorld(tick.world, events);
     const evaluation = evaluateWorldEmergence(tick.world, events, caseFromLog);
     const proof = buildEmergenceProofTrace(tick.world, events, caseFromLog, { solved: true, discoveredEvidenceIds: caseFromLog.deductionCase.evidence.map((item) => item.id) });
+    const staticAutoSolve = autoSolvePlayableCase(caseFromLog, events);
     const persistentWorld = createInitialWorld(`${seed}-persistent`, { mode: "advanced", npcCount: 20, timelineHours: 72 });
     const persistentDaily = simulateDailyLife(persistentWorld, 3, []);
     const persistentRun = advancePersistentTownTick(persistentDaily.world, persistentDaily.events, { steps: 45, status: "running" });
-    const persistentQueue = buildTownEmergenceQueue(persistentRun.world, [...persistentDaily.events, ...persistentRun.events], persistentRun.runtime);
+    const persistentEvents = [...persistentDaily.events, ...persistentRun.events];
+    const persistentQueue = buildTownEmergenceQueue(persistentRun.world, persistentEvents, persistentRun.runtime);
     const sixStageComplete = persistentQueue.candidates.some((candidate) => Object.values(candidate.chainCompleteness || candidate.validation.chainCompleteness || {}).every(Boolean));
+    const persistentCandidate = persistentQueue.candidates.find((candidate) => candidate.validation.valid);
+    const persistentExtracted = persistentCandidate ? extractPlayableCaseFromCandidate(persistentRun.world, persistentEvents, persistentCandidate) : null;
+    const persistentAutoSolve = persistentExtracted ? autoSolvePlayableCase(persistentExtracted.activeCase, persistentExtracted.events) : null;
     const matureTick = persistentRun.runtime.triggeredCases?.[0]?.tick;
+    const routeCertified = staticAutoSolve.summary.routeCertified && Boolean(persistentAutoSolve?.summary.routeCertified);
+    const autoSolvePassed = staticAutoSolve.passed && Boolean(persistentAutoSolve?.passed);
+    const autoSolveStepCount = staticAutoSolve.summary.stepCount + (persistentAutoSolve?.summary.stepCount || 0);
+    const autoSolveFailureKinds = unique([
+      ...staticAutoSolve.summary.failureKinds,
+      ...(persistentAutoSolve?.summary.failureKinds || []),
+      ...(!persistentCandidate ? (["certificate"] as const) : [])
+    ]);
+    const autoSolveErrors = [
+      ...staticAutoSolve.summary.failures.map((item) => `Static auto-solve ${item.kind}: ${item.label}`),
+      ...(persistentAutoSolve?.summary.failures.map((item) => `Persistent auto-solve ${item.kind}: ${item.label}`) || []),
+      ...(!persistentCandidate ? ["Persistent auto-solve certificate: no valid emerged candidate"] : [])
+    ];
     return {
       seed,
       worldId: tick.world.id,
       caseId: caseFromLog.id,
       generatedCase: true,
-      passed: evaluation.proofComplete,
+      passed: evaluation.proofComplete && autoSolvePassed,
       uniqueCulprit: evaluation.uniqueCulprit,
       worldBackedEvidence: evaluation.worldBackedEvidence,
       memoryScopedTestimony: evaluation.memoryScopedTestimony,
@@ -277,8 +300,12 @@ function runSeed(seed: string): EmergenceSeedResult {
       sixStageComplete,
       realCaseTriggered: Boolean(persistentRun.runtime.triggeredCases?.length),
       matureTick,
+      routeCertified,
+      autoSolvePassed,
+      autoSolveStepCount,
+      autoSolveFailureKinds,
       proofNodeCount: proof.nodes.length,
-      errors: evaluation.errors,
+      errors: [...evaluation.errors, ...autoSolveErrors],
       warnings: evaluation.warnings
     };
   } catch (error) {
@@ -296,6 +323,10 @@ function runSeed(seed: string): EmergenceSeedResult {
       emergenceScore: 0,
       sixStageComplete: false,
       realCaseTriggered: false,
+      routeCertified: false,
+      autoSolvePassed: false,
+      autoSolveStepCount: 0,
+      autoSolveFailureKinds: ["certificate"],
       proofNodeCount: 0,
       errors: [error instanceof Error ? error.message : "Unknown benchmark failure"],
       warnings: []
@@ -309,6 +340,7 @@ export function runEmergenceBenchmark(seeds: string[] = defaultSeeds(20)): Emerg
   const averageQualityScore = Math.round(results.reduce((sum, result) => sum + result.qualityScore, 0) / Math.max(results.length, 1));
   const averageEmergenceScore = Math.round(results.reduce((sum, result) => sum + result.emergenceScore, 0) / Math.max(results.length, 1));
   const matureTicks = results.map((result) => result.matureTick).filter((tick): tick is number => Number.isFinite(tick));
+  const autoSolveSteps = results.map((result) => result.autoSolveStepCount || 0).filter((count) => count > 0);
   return {
     generatedAt: new Date().toISOString(),
     seedCount: results.length,
@@ -319,6 +351,9 @@ export function runEmergenceBenchmark(seeds: string[] = defaultSeeds(20)): Emerg
     sixStageCompleteRate: Math.round((results.filter((result) => result.sixStageComplete).length / Math.max(results.length, 1)) * 100),
     realCaseTriggerRate: Math.round((results.filter((result) => result.realCaseTriggered).length / Math.max(results.length, 1)) * 100),
     averageMatureTick: matureTicks.length ? Math.round(matureTicks.reduce((sum, tick) => sum + tick, 0) / matureTicks.length) : undefined,
+    routeCertifiedRate: Math.round((results.filter((result) => result.routeCertified).length / Math.max(results.length, 1)) * 100),
+    autoSolvePassRate: Math.round((results.filter((result) => result.autoSolvePassed).length / Math.max(results.length, 1)) * 100),
+    averageAutoSolveSteps: autoSolveSteps.length ? Math.round(autoSolveSteps.reduce((sum, count) => sum + count, 0) / autoSolveSteps.length) : 0,
     passRate: Math.round((passed / Math.max(results.length, 1)) * 100),
     results
   };
@@ -337,13 +372,16 @@ export function renderEmergenceBenchmarkMarkdown(report: EmergenceBenchmarkRepor
     `Six-stage complete rate: ${report.sixStageCompleteRate ?? 0}%`,
     `Real case trigger rate: ${report.realCaseTriggerRate ?? 0}%`,
     `Average mature tick: ${report.averageMatureTick ?? "-"}`,
+    `Route certified rate: ${report.routeCertifiedRate ?? 0}%`,
+    `Auto-solve pass rate: ${report.autoSolvePassRate ?? 0}%`,
+    `Average auto-solve steps: ${report.averageAutoSolveSteps ?? 0}`,
     "",
-    "| Seed | Case | Generated | Unique | Event-backed | Memory-scoped | Exclusions | Timeline | Hard logic | Six-stage | Triggered | Mature tick | Quality | Emergence | Result |",
-    "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | --- |"
+    "| Seed | Case | Generated | Unique | Event-backed | Memory-scoped | Exclusions | Timeline | Hard logic | Six-stage | Triggered | Route cert | Auto-solve | Mature tick | Auto steps | Quality | Emergence | Result |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | --- |"
   ];
   for (const result of report.results) {
     lines.push(
-      `| ${result.seed} | ${result.caseId || "-"} | ${result.generatedCase ? "yes" : "no"} | ${result.uniqueCulprit ? "yes" : "no"} | ${result.worldBackedEvidence ? "yes" : "no"} | ${result.memoryScopedTestimony ? "yes" : "no"} | ${result.nonCulpritExcluded ? "yes" : "no"} | ${result.timelineConsistent ? "yes" : "no"} | ${result.hardLogicValid ? "yes" : "no"} | ${result.sixStageComplete ? "yes" : "no"} | ${result.realCaseTriggered ? "yes" : "no"} | ${result.matureTick ?? "-"} | ${result.qualityScore} | ${result.emergenceScore} | ${result.passed ? "pass" : "fail"} |`
+      `| ${result.seed} | ${result.caseId || "-"} | ${result.generatedCase ? "yes" : "no"} | ${result.uniqueCulprit ? "yes" : "no"} | ${result.worldBackedEvidence ? "yes" : "no"} | ${result.memoryScopedTestimony ? "yes" : "no"} | ${result.nonCulpritExcluded ? "yes" : "no"} | ${result.timelineConsistent ? "yes" : "no"} | ${result.hardLogicValid ? "yes" : "no"} | ${result.sixStageComplete ? "yes" : "no"} | ${result.realCaseTriggered ? "yes" : "no"} | ${result.routeCertified ? "yes" : "no"} | ${result.autoSolvePassed ? "yes" : "no"} | ${result.matureTick ?? "-"} | ${result.autoSolveStepCount ?? 0} | ${result.qualityScore} | ${result.emergenceScore} | ${result.passed ? "pass" : "fail"} |`
     );
   }
   const failures = report.results.filter((result) => !result.passed);

@@ -169,6 +169,7 @@ import type {
   DeductionGraph,
   DemoRuntimeState,
   DeepSeekLiveEvalReport,
+  EmergenceBenchmarkReport,
   EmergenceProofTrace,
   EvidenceNotebookItem,
   InvestigationProgress,
@@ -255,6 +256,18 @@ import type {
 
 type ApiResult<T> = T & { ok: boolean; error?: string };
 type V1Result<T> = { ok: boolean; data?: T; error?: { code: string; message: string } };
+type BenchmarkSummary = Pick<
+  EmergenceBenchmarkReport,
+  | "seedCount"
+  | "passed"
+  | "failed"
+  | "passRate"
+  | "averageQualityScore"
+  | "averageEmergenceScore"
+  | "routeCertifiedRate"
+  | "autoSolvePassRate"
+  | "averageAutoSolveSteps"
+>;
 class V1RequestError extends Error {
   constructor(public readonly code: string, public readonly status: number, message: string) {
     super(message);
@@ -3481,7 +3494,7 @@ export default function Home() {
   const [selectedSnapshotFromId, setSelectedSnapshotFromId] = useState("");
   const [selectedSnapshotToId, setSelectedSnapshotToId] = useState("");
   const [snapshotDiff, setSnapshotDiff] = useState<TownStateDiff | null>(null);
-  const [benchmarkSummary, setBenchmarkSummary] = useState<{ seedCount: number; passed: number; failed: number; passRate: number; averageQualityScore: number; averageEmergenceScore: number } | null>(null);
+  const [benchmarkSummary, setBenchmarkSummary] = useState<BenchmarkSummary | null>(null);
 
   function pushToast(toast: Omit<InvestigationToast, "id">) {
     const id = `toast:${Date.now()}:${Math.random().toString(16).slice(2)}`;
@@ -4173,7 +4186,7 @@ export default function Home() {
       setBenchmarkSummary(null);
       return;
     }
-    getV1<{ available: boolean; report: { seedCount: number; passed: number; failed: number; passRate: number; averageQualityScore: number; averageEmergenceScore: number } | null }>("/api/v1/query/benchmark/emergence")
+    getV1<{ available: boolean; report: BenchmarkSummary | null }>("/api/v1/query/benchmark/emergence")
       .then((data) => {
         if (!data.available || !data.report) return;
         setBenchmarkSummary({
@@ -4182,7 +4195,10 @@ export default function Home() {
           failed: data.report.failed || 0,
           passRate: data.report.passRate || 0,
           averageQualityScore: data.report.averageQualityScore || 0,
-          averageEmergenceScore: data.report.averageEmergenceScore || 0
+          averageEmergenceScore: data.report.averageEmergenceScore || 0,
+          routeCertifiedRate: data.report.routeCertifiedRate || 0,
+          autoSolvePassRate: data.report.autoSolvePassRate || 0,
+          averageAutoSolveSteps: data.report.averageAutoSolveSteps || 0
         });
       })
       .catch(() => setBenchmarkSummary(null));

@@ -134,6 +134,8 @@ The intake is now backed by a deterministic Truth Ledger. The ledger rebuilds pr
 
 Route Certificate is the next gate on top of Truth Ledger. It proves that a candidate can be completed through search, witness questioning, testimony challenge, evidence selection, and an accepted local `judgeTheory` submission. Emerged case extraction requires this certificate before persistence.
 
+Auto-solve is the regression layer on top of Route Certificate. It builds a synthetic local player session, executes the certified search, witness, challenge, evidence-selection, and theory-submission steps, and requires the resulting `judgeTheory` plus proof coverage to pass. The default API path is dry-run; `persist=true` saves an isolated `auto-player` session only when the report passes, without touching real player progress.
+
 `GET /api/v1/query/case/proof-ledger?caseId=...&sessionId=...&includeCertificate=true` rebuilds the ledger, optional player coverage, and optional route certificate without mutating the case. Before the player solves the case, UI surfaces only low-spoiler obligation labels, certificate counts, and gap targets. After a correct theory, the Proof Ledger unlocks evidence ids, source events, memory ids, conclusion links, and the full certified route alongside Proof Tour.
 
 The UI shows the intake before the player enters the investigation. It contains readiness score, route integrity, Route Certificate status, current progress, next action, six-stage chain status, source event and memory counts, evidence route hints, witness challenge planning, and spoiler-safe gaps.

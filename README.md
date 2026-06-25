@@ -63,7 +63,7 @@ Current design focus: **Evidence Notebook + Playable Proof Tour**. The UI should
 
 Current Agent workbench focus: **Review Mode**. The Persistent Agent Town `Agent` panel should let a technical evaluator quickly scan runtime health, scenario checks, counterfactual branch comparison, Time Machine diffs, and benchmark status without leaving the existing investigative UI.
 
-Current emergence focus: **Truth Ledger-backed Case Intake**. Valid Persistent Agent Town candidates now get a low-spoiler intake before the player joins the investigation: playability score, Truth Ledger coverage, Route Certificate status, current progress, next action, six-stage chain readiness, source event and memory counts, evidence route, witness challenge plan, and spoiler-safe proof gaps. The culprit id, hidden event titles, and decisive evidence conclusions remain locked until the player solves the case.
+Current emergence focus: **Truth Ledger-backed Case Intake + auto-solve regression**. Valid Persistent Agent Town candidates now get a low-spoiler intake before the player joins the investigation: playability score, Truth Ledger coverage, Route Certificate status, current progress, next action, six-stage chain readiness, source event and memory counts, evidence route, witness challenge plan, and spoiler-safe proof gaps. A deterministic local auto-player also dry-runs the certified route through search, witness questioning, challenge, evidence selection, and accepted theory submission. The culprit id, hidden event titles, and decisive evidence conclusions remain locked until the player solves the case.
 
 ## Why Not Just Ask An LLM?
 
@@ -84,7 +84,7 @@ Detective Town uses the LLM only as a surface language layer. The durable case l
 - **Memory-scoped testimony**: NPCs can only answer from visible memories and discovered evidence.
 - **Explainable emergence**: goals, intents, and causal links show how the case came out of simulated life events.
 - **Persistent agent runtime**: NPCs observe, update memory, score actions locally, write new events, and surface case candidates with validation failures or playable extraction.
-- **Emerged case intake**: valid candidates become player-readable investigation entries with source-backed route hints, Truth Ledger blockers, a Route Certificate, and a next-action navigator before entering the existing Evidence Notebook, Suspect Board, wrong-theory gap, Proof Ledger, and Proof Tour loop.
+- **Emerged case intake**: valid candidates become player-readable investigation entries with source-backed route hints, Truth Ledger blockers, a Route Certificate, deterministic auto-solve regression, and a next-action navigator before entering the existing Evidence Notebook, Suspect Board, wrong-theory gap, Proof Ledger, and Proof Tour loop.
 - **Living World Lab**: imported chapters become observable entities, relationships, events, evidence spans, causal chains, and replayable simulations.
 - **Audit Studio**: extracted novel worlds get a trust score, issue queue, suggested fixes, applied correction patches, and a corrected view without mutating the original source graph.
 - **Agent intervention loop**: scripts can query the world, start a replay, intervene in actor state, then query the changed branch.
@@ -152,7 +152,7 @@ The latest build adds an explicit proof layer for the core claim: the mystery is
 
 The player-facing proof layer is **Proof Tour**. It converts the same source chain into playable steps: event, memory, evidence, contradiction, elimination, conclusion, and validation. Before the player solves the case, locked steps hide evidence titles and culprit-specific conclusions.
 
-The benchmark runner tests 20 deterministic seeds without calling DeepSeek:
+The benchmark runner tests 20 deterministic seeds without calling DeepSeek. Each seed must prove source-backed emergence, pass Route Certificate, and pass deterministic auto-solve:
 
 ```powershell
 npm run benchmark:emergence
@@ -160,9 +160,9 @@ npm run benchmark:emergence
 
 Example summary:
 
-| Seeds | Passed | Pass rate | Avg quality | Avg emergence |
-| ---: | ---: | ---: | ---: | ---: |
-| 20 | 20 | 100% | 100 | 100 |
+| Seeds | Passed | Pass rate | Route certified | Auto-solve | Avg steps |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 20 | 20 | 100% | 100% | 100% | 4 |
 
 The full report is written to `outputs/emergence-benchmark.json` and `outputs/emergence-benchmark.md`, which are ignored by Git.
 
@@ -303,6 +303,7 @@ OpenAPI contract: [`public/openapi.v1.json`](public/openapi.v1.json), served as 
 - `POST /api/v1/command/investigation/discover`
 - `POST /api/v1/command/investigation/interrogate`
 - `POST /api/v1/command/investigation/submit-theory`
+- `POST /api/v1/command/investigation/autosolve`
 - `POST /api/v1/command/town/runtime/start`
 - `POST /api/v1/command/town/runtime/pause`
 - `POST /api/v1/command/town/runtime/step`
@@ -422,7 +423,7 @@ node scripts/run-scenario-runner-api-smoke.mjs
 node scripts/run-sdk-client-smoke.mjs
 ```
 
-`npm run test:world` checks deterministic Showcase generation, all four premium templates, 8 NPC default mode, 24h timeline, event-backed evidence, memory-scoped testimony, unique culprit validation, non-culprit exclusions, causal traces, emergence proof traces, reasoning traces, authoring regression, and advanced 30 NPC regression. `npm run test:persistent-town` checks deterministic ticks, complete decision traces, action scoring fields, candidate validation, playable extraction, counterfactual interventions, scenarios, snapshots, diffs, and rollback. `npm run test:novel-world` checks chapter import, evidence indexing, world graph validation, causal chains, theme/character arcs, grounded replay, intervention branches, and Phaser scene state. `npm run test:e2e` covers the Living World sample, queue summaries, audit flow, replay provenance, Phaser canvas visibility, and mobile overflow. `npm run benchmark:emergence` writes a 20-seed proof-of-emergence report under `outputs/`. `npm run test:encoding` fails on known mojibake markers in app, engine, and E2E source files.
+`npm run test:world` checks deterministic Showcase generation, all four premium templates, 8 NPC default mode, 24h timeline, event-backed evidence, memory-scoped testimony, unique culprit validation, non-culprit exclusions, causal traces, emergence proof traces, Route Certificate, deterministic auto-solve, reasoning traces, authoring regression, and advanced 30 NPC regression. `npm run test:persistent-town` checks deterministic ticks, complete decision traces, action scoring fields, candidate validation, playable extraction, auto-solve, counterfactual interventions, scenarios, snapshots, diffs, and rollback. `npm run test:novel-world` checks chapter import, evidence indexing, world graph validation, causal chains, theme/character arcs, grounded replay, intervention branches, and Phaser scene state. `npm run test:e2e` covers the Living World sample, queue summaries, audit flow, replay provenance, Phaser canvas visibility, and mobile overflow. `npm run benchmark:emergence` writes a 20-seed proof-of-emergence and auto-solve completion report under `outputs/`. `npm run test:encoding` fails on known mojibake markers in app, engine, and E2E source files.
 
 ## Agent API Examples
 

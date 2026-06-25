@@ -827,6 +827,7 @@ test("persistent agent town runs, scores agents and extracts a playable case", a
   await expect(page.getByTestId("command-time-machine")).toContainText("观察 +", { timeout: 20_000 });
   await expect(page.getByTestId("command-benchmark")).toBeVisible();
   await expect(page.getByTestId("command-benchmark")).toContainText(/Seeds|未生成/);
+  await expect(page.getByTestId("command-benchmark")).toContainText("AutoSolve");
 
   let rollbackDialogMessage = "";
   page.once("dialog", async (dialog) => {

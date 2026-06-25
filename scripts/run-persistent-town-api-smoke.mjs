@@ -204,6 +204,32 @@ try {
   assert.equal(proofLedger.certificate.steps.some((item) => item.evidenceIds.length > 0), false, "sessionless route certificate hides evidence ids");
   assert.equal(JSON.stringify(proofLedger).includes(extracted.activeCase.deductionCase.truth.culpritId), false, "sessionless proof ledger query stays low-spoiler");
 
+  const stateBeforeAutoSolve = await request(`/api/v1/query/world/state?worldId=${encodeURIComponent(worldId)}`);
+  const sessionCountBeforeAutoSolve = stateBeforeAutoSolve.sessions.length;
+  const autoSolveDryRun = await request("/api/v1/command/investigation/autosolve", {
+    method: "POST",
+    body: JSON.stringify({ caseId: extracted.activeCase.id })
+  });
+  assert.equal(autoSolveDryRun.summary.passed, true, "auto-solve dry-run passes extracted case");
+  assert.equal(autoSolveDryRun.summary.routeCertified, true, "auto-solve dry-run reports route certificate");
+  assert.equal(autoSolveDryRun.summary.autoTheoryAccepted, true, "auto-solve dry-run reports accepted theory");
+  assert.equal(autoSolveDryRun.summary.proofCoverageComplete, true, "auto-solve dry-run closes proof coverage");
+  assert.equal(JSON.stringify(autoSolveDryRun).includes(extracted.activeCase.deductionCase.truth.culpritId), false, "default auto-solve response stays low-spoiler");
+  const stateAfterDryRun = await request(`/api/v1/query/world/state?worldId=${encodeURIComponent(worldId)}`);
+  assert.equal(stateAfterDryRun.sessions.length, sessionCountBeforeAutoSolve, "auto-solve dry-run does not persist a session");
+
+  const autoSolvePersisted = await request("/api/v1/command/investigation/autosolve", {
+    method: "POST",
+    body: JSON.stringify({ caseId: extracted.activeCase.id, persist: true, includeDetails: true })
+  });
+  assert.equal(autoSolvePersisted.report.passed, true, "persisted auto-solve returns a passing detailed report");
+  assert.equal(autoSolvePersisted.report.session.playerId, "auto-player", "persisted auto-solve uses dedicated auto-player");
+  assert.equal(autoSolvePersisted.report.session.judgement.accepted, true, "persisted auto-solve session is solved");
+  assert.ok(autoSolvePersisted.sessionId, "persisted auto-solve returns session id");
+  assert.equal(autoSolvePersisted.report.steps.some((step) => step.kind === "challenge" && step.challengeHit), true, "detailed auto-solve includes challenge hit steps");
+  const stateAfterPersist = await request(`/api/v1/query/world/state?worldId=${encodeURIComponent(worldId)}`);
+  assert.equal(stateAfterPersist.sessions.some((session) => session.id === autoSolvePersisted.sessionId && session.playerId === "auto-player"), true, "persisted auto-solve creates a dedicated session");
+
   const joined = await request("/api/v1/command/player/join", {
     method: "POST",
     body: JSON.stringify({ worldId, caseId: extracted.activeCase.id, displayName: "Persistent Smoke" })

@@ -101,6 +101,13 @@
         "responses": { "200": { "$ref": "#/components/responses/Ok" } }
       }
     },
+    "/api/v1/command/investigation/autosolve": {
+      "post": {
+        "summary": "Run deterministic auto-solve for a case; dry-run by default and optionally persists a passing auto-player session",
+        "requestBody": { "$ref": "#/components/requestBodies/JsonObject" },
+        "responses": { "200": { "$ref": "#/components/responses/Ok" } }
+      }
+    },
     "/api/v1/query/town/brief": {
       "get": {
         "summary": "Read a compact persistent town situation brief",
