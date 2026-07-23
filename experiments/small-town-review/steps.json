@@ -1,0 +1,12 @@
+{
+  "seed": "small-town-review",
+  "tickCount": 100,
+  "minimumCaseCount": 3,
+  "checkpointEveryTicks": 5,
+  "qualityGate": {
+    "minCandidateDiversityScore": 25,
+    "maxCandidateRepeatRate": 70,
+    "minCausalLinkCount": 12,
+    "minCrossCaseInfluenceCount": 2
+  }
+}

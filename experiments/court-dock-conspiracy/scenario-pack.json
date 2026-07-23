@@ -1,0 +1,58 @@
+{
+  "manifest": {
+    "id": "court-dock-conspiracy",
+    "name": "Court Dock Conspiracy",
+    "version": "1.0.0",
+    "schemaVersion": "scenario-pack.v1",
+    "description": "Scenario pack for court docket and dock cargo pressure.",
+    "createdAt": "2026-07-02T00:00:00.000Z",
+    "entrypoint": "scenario.json"
+  },
+  "world": {
+    "seed": "court-dock-conspiracy",
+    "mode": "advanced",
+    "timelineHours": 96,
+    "locations": [
+      { "id": "town-square", "name": "Town Square", "kind": "public", "description": "Public notices and witness traffic between court and docks.", "connectedLocationIds": ["court-house", "dock-gate", "market"], "x": 0, "y": 0 },
+      { "id": "court-house", "name": "Magistrate Court", "kind": "work", "description": "Dockets, wills, warrants and sworn testimony records.", "connectedLocationIds": ["town-square", "archive"], "x": -1, "y": 1 },
+      { "id": "archive", "name": "Court Archive", "kind": "restricted", "description": "Older probate files and sealed witness transcripts.", "connectedLocationIds": ["court-house", "market"], "x": -2, "y": 2 },
+      { "id": "dock-gate", "name": "Dock Gate", "kind": "work", "description": "Cargo crews, shipping tallies and union access favors.", "connectedLocationIds": ["town-square", "warehouse"], "x": 1, "y": 1 },
+      { "id": "warehouse", "name": "Bonded Warehouse", "kind": "restricted", "description": "Crates, receipts, cargo logs and hidden transfer routes.", "connectedLocationIds": ["dock-gate", "market"], "x": 2, "y": 2 },
+      { "id": "market", "name": "Market Arcade", "kind": "public", "description": "Merchants exchange receipts and gossip from the dock road.", "connectedLocationIds": ["town-square", "archive", "warehouse"], "x": 0, "y": -1 }
+    ],
+    "npcs": [
+      { "id": "npc-00", "name": "Ada Vale", "role": "detective", "homeLocationId": "town-square", "schedule": { "08:00": "town-square", "12:00": "court-house", "18:00": "dock-gate" }, "relationships": { "npc-01": "friend", "npc-02": "rival" }, "secret": "Knows a missing warrant number.", "motiveSeed": "protect procedure", "skills": ["detective", "interview"], "memoryEventIds": [], "liePolicy": "omits sources", "alive": true },
+      { "id": "npc-01", "name": "Silas Wren", "role": "lawyer", "homeLocationId": "court-house", "schedule": { "08:00": "court-house", "12:00": "archive", "18:00": "market" }, "relationships": { "npc-03": "debt", "npc-04": "secret" }, "secret": "Altered a probate filing.", "motiveSeed": "hide forged will", "skills": ["law", "records"], "memoryEventIds": [], "liePolicy": "answers narrowly", "alive": true },
+      { "id": "npc-02", "name": "Mara Keel", "role": "dockworker", "homeLocationId": "dock-gate", "schedule": { "08:00": "dock-gate", "12:00": "warehouse", "18:00": "market" }, "relationships": { "npc-03": "debt", "npc-05": "friend" }, "secret": "Moved cargo before the ledger closed.", "motiveSeed": "avoid union discipline", "skills": ["dock", "cargo"], "memoryEventIds": [], "liePolicy": "protects crew", "alive": true },
+      { "id": "npc-03", "name": "Bram Lyle", "role": "merchant", "homeLocationId": "market", "schedule": { "08:00": "market", "12:00": "warehouse", "18:00": "court-house" }, "relationships": { "npc-01": "debt", "npc-02": "debt" }, "secret": "Paid for a false cargo receipt.", "motiveSeed": "hide smuggling", "skills": ["merchant", "ledger"], "memoryEventIds": [], "liePolicy": "minimizes money trail", "alive": true },
+      { "id": "npc-04", "name": "Iris Quill", "role": "reporter", "homeLocationId": "town-square", "schedule": { "08:00": "town-square", "12:00": "court-house", "18:00": "market" }, "relationships": { "npc-01": "secret", "npc-05": "friend" }, "secret": "Has a court clerk source.", "motiveSeed": "break a headline", "skills": ["reporter", "rumor"], "memoryEventIds": [], "liePolicy": "protects source", "alive": true },
+      { "id": "npc-05", "name": "Nell Tallow", "role": "informant", "homeLocationId": "market", "schedule": { "08:00": "market", "12:00": "dock-gate", "18:00": "town-square" }, "relationships": { "npc-02": "friend", "npc-04": "friend" }, "secret": "Saw a sealed crate moved at dusk.", "motiveSeed": "trade a tip for safety", "skills": ["informant", "tip"], "memoryEventIds": [], "liePolicy": "speaks indirectly", "alive": true }
+    ],
+    "institutions": [],
+    "professions": []
+  },
+  "rules": {
+    "enabledModules": ["institutions", "professions", "long-actions", "public-opinion", "evidence-contamination", "case-aftermath"],
+    "phaseConfig": { "snapshotEveryTicks": 1, "maxRunningLongActions": 8 },
+    "thresholds": { "maxEvidenceContamination": 75, "maxPublicOpinionHeat": 85, "minInstitutionTrust": 35 },
+    "longActionKinds": ["review-court-record", "cross-examine-witness", "trace-cargo", "inspect-warehouse", "cultivate-informant", "verify-anonymous-tip"]
+  },
+  "scenario": {
+    "id": "court-dock-conspiracy",
+    "name": "Court Dock Conspiracy",
+    "seed": "court-dock-conspiracy",
+    "worldOptions": { "mode": "advanced", "npcCount": 6, "timelineHours": 96 },
+    "baselineSteps": 8,
+    "branches": [],
+    "passCriteria": { "minValidCandidates": 0, "minEventGrowth": 1, "minMemoryGrowth": 1, "maxBlockedCandidates": 8 }
+  },
+  "expectations": {
+    "minValidCandidates": 1,
+    "minEvidenceCoverage": 80,
+    "maxEvidenceContamination": 75,
+    "maxPublicOpinionHeat": 85,
+    "benchmarkPreset": "quick-10"
+  },
+  "assets": {},
+  "docs": {}
+}

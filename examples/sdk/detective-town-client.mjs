@@ -86,6 +86,58 @@ export class DetectiveTownClient {
     return this.request("/api/v1/command/town/scenario/run", { method: "POST", body: { worldId, config } });
   }
 
+  listScenarios(worldId) {
+    return this.request(this.query("/api/v1/query/town/scenarios", { worldId }));
+  }
+
+  listScenarioPacks(worldId) {
+    return this.request(this.query("/api/v1/query/town/scenario-packs", { worldId }));
+  }
+
+  exportScenarioPack(worldId, { packId, scenarioId } = {}) {
+    return this.request("/api/v1/command/town/scenario-pack/export", { method: "POST", body: { worldId, packId, scenarioId } });
+  }
+
+  listMapPacks(worldId) {
+    return this.request(this.query("/api/v1/query/town/map-packs", { worldId }));
+  }
+
+  exportMapPack(worldId, { packId } = {}) {
+    return this.request("/api/v1/command/town/map-pack/export", { method: "POST", body: { worldId, packId } });
+  }
+
+  validateMapPack(pack) {
+    return this.request("/api/v1/command/town/map-pack/validate", { method: "POST", body: { pack } });
+  }
+
+  importMapPack(worldId, pack, { previewOnly = true, overwrite = false } = {}) {
+    return this.request("/api/v1/command/town/map-pack/import", { method: "POST", body: { worldId, pack, previewOnly, overwrite } });
+  }
+
+  listRuleCatalogs(worldId) {
+    return this.request(this.query("/api/v1/query/town/rule-catalogs", { worldId }));
+  }
+
+  selectExperiment(worldId, { scenarioPackId, mapPackId, ruleCatalogId } = {}) {
+    return this.request("/api/v1/command/town/experiment/select", { method: "POST", body: { worldId, scenarioPackId, mapPackId, ruleCatalogId } });
+  }
+
+  startExperimentRun(worldId, { scenarioPackId, mapPackId, ruleCatalogId } = {}) {
+    return this.request("/api/v1/command/town/experiment/new-run", { method: "POST", body: { worldId, scenarioPackId, mapPackId, ruleCatalogId } });
+  }
+
+  listRunArtifacts({ limit } = {}) {
+    return this.request(this.query("/api/v1/query/town/run-artifacts", { limit }));
+  }
+
+  getRunArtifact(runId) {
+    return this.request(`/api/v1/query/town/run-artifacts/${encodeURIComponent(runId)}`);
+  }
+
+  listRunArtifactFiles(runId) {
+    return this.request(`/api/v1/query/town/run-artifacts/${encodeURIComponent(runId)}/files`);
+  }
+
   getScenario(worldId, scenarioId) {
     return this.request(this.query("/api/v1/query/town/scenario", { worldId, scenarioId }));
   }
@@ -106,8 +158,52 @@ export class DetectiveTownClient {
     return this.request("/api/v1/command/town/snapshot/rollback", { method: "POST", body: { worldId, snapshotId } });
   }
 
+  saveScenarioPreset(worldId, preset, { overwrite = false } = {}) {
+    return this.request("/api/v1/command/town/scenario/preset/save", { method: "POST", body: { worldId, preset, overwrite } });
+  }
+
+  deleteScenarioPreset(worldId, presetId) {
+    return this.request("/api/v1/command/town/scenario/preset/delete", { method: "POST", body: { worldId, presetId } });
+  }
+
+  exportReviewBundle(worldId, { runId, scenarioId, from, to, format = "json", includeBenchmark = true } = {}) {
+    return this.request(this.query("/api/v1/query/town/review/export", { worldId, runId, scenarioId, from, to, format, includeBenchmark }));
+  }
+
+  exportReplayBundle(worldId, runId) {
+    return this.request(this.query(`/api/v1/query/town/runs/${encodeURIComponent(runId)}/replay-bundle`, { worldId }));
+  }
+
   benchmarkEmergence() {
     return this.request("/api/v1/query/benchmark/emergence");
+  }
+
+  runEmergenceBenchmark(seedCount = 20) {
+    return this.request("/api/v1/command/benchmark/emergence/run", { method: "POST", body: { seedCount } });
+  }
+
+  startRunJob(worldId, { kind = "scenario", scenarioId, seedCount } = {}) {
+    return this.request("/api/v1/command/town/run-job/start", { method: "POST", body: { worldId, kind, scenarioId, seedCount } });
+  }
+
+  tickRunJob(worldId, jobId) {
+    return this.request("/api/v1/command/town/run-job/tick", { method: "POST", body: { worldId, jobId } });
+  }
+
+  cancelRunJob(worldId, jobId) {
+    return this.request("/api/v1/command/town/run-job/cancel", { method: "POST", body: { worldId, jobId } });
+  }
+
+  resumeRunJob(worldId, jobId) {
+    return this.request("/api/v1/command/town/run-job/resume", { method: "POST", body: { worldId, jobId } });
+  }
+
+  listRunJobs(worldId) {
+    return this.request(this.query("/api/v1/query/town/run-jobs", { worldId }));
+  }
+
+  getRunJob(worldId, jobId) {
+    return this.request(this.query(`/api/v1/query/town/run-jobs/${encodeURIComponent(jobId)}`, { worldId }));
   }
 
   importNovel(payload = {}) {

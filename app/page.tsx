@@ -29,11 +29,30 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import DeductionGraphView from "@/app/components/DeductionGraphView";
+import { CampaignStudyRecorder } from "@/app/components/CampaignStudyRecorder";
 import NovelGameCanvas from "@/app/components/NovelGameCanvas";
+import detectiveCaseTypes from "@/content/detective-v1/case-types.json";
+import detectiveEscalationRules from "@/content/detective-v1/escalation-rules.json";
+import detectiveEventArchetypes from "@/content/detective-v1/event-archetypes.json";
+import detectiveEvidenceTypes from "@/content/detective-v1/evidence-types.json";
+import detectiveFactions from "@/content/detective-v1/factions.json";
+import detectiveLocations from "@/content/detective-v1/locations.json";
+import detectiveManifest from "@/content/detective-v1/manifest.json";
+import detectiveMotives from "@/content/detective-v1/motives.json";
+import detectiveProgressionLines from "@/content/detective-v1/progression-lines.json";
+import detectiveRedHerringPatterns from "@/content/detective-v1/red-herring-patterns.json";
+import detectiveResources from "@/content/detective-v1/resources.json";
+import detectiveRoles from "@/content/detective-v1/roles.json";
 import { useDetectiveTownRuntimeView } from "@/app/hooks/useDetectiveTownRuntime";
 import { hasContradictionHit, useInvestigationView } from "@/app/hooks/useInvestigationActions";
 import { useInspectorSelection } from "@/app/hooks/useInspectorSelection";
 import { useGuidedOnboarding, type GuidedTask, type SelectionHighlight } from "@/app/hooks/useGuidedOnboarding";
+import { useCampaignComprehensionStudy } from "@/app/hooks/useCampaignComprehensionStudy";
+import {
+  CAMPAIGN_STUDY_EXPORT_FILE,
+  type CampaignStudyStage,
+  type CampaignStudyWorldChoice
+} from "@/lib/campaign-comprehension-study";
 import {
   CaseLogicPanel,
   CausalTracePanel,
@@ -62,6 +81,9 @@ import {
 import {
   applyAuthoringPatch,
   advanceNovelSimulation,
+  autoSolvePlayableCase,
+  buildDetectiveContentAuthoringGuide,
+  buildDetectiveContentSummary,
   buildNovelAskQueryPlan,
   buildCaseLogicReport,
   buildNovelCausalityReport,
@@ -74,6 +96,7 @@ import {
   buildWorldMapSnapshot,
   certifyPlayableCase,
   createCaseGalleryEntry,
+  createContentSeedBackupEntry,
   createPremiumAuthoringDraft,
   createStaticDemoRuntime,
   deriveMapInteractiveTargets,
@@ -155,6 +178,7 @@ import {
   validateNovelImportDraft,
   validateNovelChapterBlueprint,
   validateAuthoringDraft,
+  selectDefaultDetectiveContentAuthoringSelection,
   validateNovelWorldProject,
   validateNovelWorldGraph
 } from "@/lib/engine";
@@ -163,11 +187,14 @@ import type {
   AuthoringValidationReport,
   CaseGalleryEntry,
   CaseFromLog,
+  CaseAutoSolveSummary,
   CaseLogicReport,
   CaseTemplateId,
   DeductionGraphNode,
   DeductionGraph,
   DemoRuntimeState,
+  DetectiveContentAuthoringSelection,
+  DetectiveContentPack,
   DeepSeekLiveEvalReport,
   EmergenceBenchmarkReport,
   EmergenceProofTrace,
@@ -231,6 +258,15 @@ import type {
   PlayableCaseIntake,
   PlayableCaseNextAction,
   PlayerSession,
+  PlayerResourceCommitmentPublicSummary,
+  FactionRelationshipPublicSummary,
+  WorldEventOfferPublicSummary,
+  InvestigatorProgressionPublicSummary,
+  CampaignRecoveryPublicSummary,
+  ArcConvergencePublicSummary,
+  CampaignSessionPublicSummary,
+  CampaignFinaleDebriefPublicSummary,
+  TownSocialResponsePublicSummary,
   PlayerTheory,
   ProofTourStep,
   ProofViewMode,
@@ -238,13 +274,29 @@ import type {
   RevealEvalReport,
   RevealFactContract,
   RuntimeMode,
+  RunCatalogEntry,
+  RunJob,
+  ReviewExportBundle,
+  ScenarioConfig,
+  ScenarioPack,
+  ScenarioPreset,
   ScenarioReport,
   ScenarioRun,
+  ScenarioRunSummary,
   SuspectBoardRow,
   TownStateDiff,
   TownStateSnapshot,
   TownRuntimeIntervention,
+  WorldLeadPublicSummary,
+  WorldLeadOutcomePublicSummary,
+  WorldLeadCaseHandoffPublicSummary,
+  WorldArcPublicSummary,
+  WorldArcDirectivePublicSummary,
+  WorldPressureCascadePublicSummary,
+  WorldInfluenceBudgetPublicSummary,
   TownEmergenceQueue,
+  TownCaseLifecycleState,
+  TownRuleSnapshotSummary,
   TownSituationBrief,
   WorldEvent,
   WorldMapActor,
@@ -256,18 +308,7 @@ import type {
 
 type ApiResult<T> = T & { ok: boolean; error?: string };
 type V1Result<T> = { ok: boolean; data?: T; error?: { code: string; message: string } };
-type BenchmarkSummary = Pick<
-  EmergenceBenchmarkReport,
-  | "seedCount"
-  | "passed"
-  | "failed"
-  | "passRate"
-  | "averageQualityScore"
-  | "averageEmergenceScore"
-  | "routeCertifiedRate"
-  | "autoSolvePassRate"
-  | "averageAutoSolveSteps"
->;
+type BenchmarkSummary = EmergenceBenchmarkReport;
 class V1RequestError extends Error {
   constructor(public readonly code: string, public readonly status: number, message: string) {
     super(message);
@@ -286,7 +327,108 @@ type AiSafetyState = {
 };
 type CaseMode = "premium" | "generated";
 type AppMode = "play" | "authoring" | "world-graph" | "persistent-town";
-type AuthoringTab = "case" | "characters" | "evidence" | "scenes" | "timeline" | "logic" | "gallery";
+type GuidedManualStepKind = "join" | "search" | "question" | "challenge" | "select-evidence" | "submit" | "review-source";
+type GuidedManualStepTarget = {
+  kind: GuidedManualStepKind;
+  label: string;
+  evidenceId?: string;
+  characterId?: string;
+  locationId?: string;
+};
+type GuidedStepJournalEntry = {
+  id: string;
+  journalKey?: string;
+  step: GuidedManualStepKind;
+  label: string;
+  status: "done" | "blocked" | "info";
+  result: string;
+  progressDelta: string;
+  nextAction: string;
+  fallbackUsed?: boolean;
+  reviewUnlocked?: boolean;
+};
+type ReplayGoalAttemptState = {
+  active: boolean;
+  previousGuidedSteps: number;
+  previousFallbackUsed: boolean;
+  previousFallbackTheoryFieldCount: number;
+  previousSelectedEvidenceCount: number;
+  previousProofGapCount: number;
+  previousSourceReviewUnlocked: boolean;
+  manualEvidencePickCount: number;
+  fallbackEvidencePickCount: number;
+  manualTheoryFieldCount: number;
+  fallbackTheoryFieldCount: number;
+  blockedTheoryGapCount: number;
+  theoryFallbackApproved: boolean;
+  startedAt: string;
+  lastResult: string;
+};
+type ManualTheoryFieldKind = "culpritId" | "motive" | "method";
+
+function countManualTheoryFields(theory: PlayerTheory) {
+  return [theory.culpritId, theory.motive.trim(), theory.method.trim()].filter(Boolean).length;
+}
+
+function unresolvedManualTheoryFields(judgement?: PlayerSession["judgement"]): Set<ManualTheoryFieldKind> {
+  const unresolved = new Set<ManualTheoryFieldKind>();
+  if (!judgement || judgement.accepted) return unresolved;
+  if (judgement.contradictions.some((item) => /culprit/i.test(item))) unresolved.add("culpritId");
+  if (judgement.missing.some((item) => /motive/i.test(item))) unresolved.add("motive");
+  if (judgement.missing.some((item) => /method/i.test(item))) unresolved.add("method");
+  return unresolved;
+}
+type AuthoringTab = "case" | "content" | "characters" | "evidence" | "scenes" | "timeline" | "logic" | "gallery";
+type ContentSeedHistoryEntry = {
+  id: string;
+  createdAt: string;
+  beforeTitle: string;
+  afterTitle: string;
+  caseTypeLabel: string;
+  patchCount: number;
+  backupTitle: string;
+  draft: AuthoringDraft;
+  validation: {
+    valid: boolean;
+    errorCount: number;
+  };
+};
+type SafeDiffGroup = "case" | "characters" | "evidence" | "logic";
+type SafeDiffItem = {
+  group: SafeDiffGroup;
+  label: string;
+  field: string;
+  before: string;
+  after: string;
+};
+type WorkflowCoachStageId = "draft" | "content-seed" | "safe-diff" | "validation" | "run-draft" | "gallery-backup";
+type WorkflowCoachStatus = "ready" | "active" | "blocked" | "done";
+type WorkflowCoachStage = {
+  id: WorkflowCoachStageId;
+  label: string;
+  status: WorkflowCoachStatus;
+  detail: string;
+};
+type WorkflowCoachNextAction = {
+  label: string;
+  detail: string;
+  tone: WorkflowCoachStatus;
+};
+
+const safeDiffGroups: Array<{ id: SafeDiffGroup; label: string }> = [
+  { id: "case", label: "Case" },
+  { id: "characters", label: "Characters" },
+  { id: "evidence", label: "Evidence" },
+  { id: "logic", label: "Logic" }
+];
+const workflowCoachStages: Array<{ id: WorkflowCoachStageId; label: string }> = [
+  { id: "draft", label: "Draft" },
+  { id: "content-seed", label: "Content Seed" },
+  { id: "safe-diff", label: "Safe Diff" },
+  { id: "validation", label: "Validation" },
+  { id: "run-draft", label: "Run Draft" },
+  { id: "gallery-backup", label: "Gallery Backup" }
+];
 
 const storageKey = "detective-town-launch-v1";
 const authoringStorageKey = "detective-town-authoring-v1";
@@ -315,6 +457,21 @@ const archetypeLabels: Record<string, string> = {
   fall: "Fall mechanism"
 };
 const caseTemplates = listCaseTemplates();
+const detectiveContentPack: DetectiveContentPack = {
+  manifest: detectiveManifest as DetectiveContentPack["manifest"],
+  caseTypes: detectiveCaseTypes,
+  locations: detectiveLocations,
+  roles: detectiveRoles,
+  motives: detectiveMotives,
+  evidenceTypes: detectiveEvidenceTypes,
+  redHerringPatterns: detectiveRedHerringPatterns,
+  escalationRules: detectiveEscalationRules,
+  resources: detectiveResources,
+  factions: detectiveFactions,
+  eventArchetypes: detectiveEventArchetypes as DetectiveContentPack["eventArchetypes"],
+  progressionLines: detectiveProgressionLines
+};
+const detectiveContentSummary = buildDetectiveContentSummary(detectiveContentPack);
 
 function apiUrl(path: string) {
   if (typeof window === "undefined") return path;
@@ -333,6 +490,99 @@ function loadLocal<T>(key: string, fallback: T): T {
 
 function cloneLocal<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function safeDiffText(value: unknown): string {
+  if (Array.isArray(value)) return value.map((item) => String(item)).join(", ");
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (value == null) return "";
+  return "";
+}
+
+function safeDiffGroupForPath(path: string): SafeDiffGroup | null {
+  if (/^caseFromLog\.deductionCase\.(title|theme|premise|publicCaseFile)$/.test(path)) return "case";
+  if (/^caseFromLog\.deductionCase\.characters\.\d+\.(role|publicBio|motive)$/.test(path)) return "characters";
+  if (/^caseFromLog\.deductionCase\.evidence\.\d+\.(title|visibleDescription)$/.test(path)) return "evidence";
+  if (path === "caseFromLog.deductionCase.logicPuzzle.redHerrings") return "logic";
+  return null;
+}
+
+function safeDiffFieldLabel(path: string): string {
+  const character = path.match(/^caseFromLog\.deductionCase\.characters\.(\d+)\.(role|publicBio|motive)$/);
+  if (character) {
+    const field = character[2] === "publicBio" ? "public bio" : character[2] === "motive" ? "motive surface" : "role";
+    return `Character ${Number(character[1]) + 1} ${field}`;
+  }
+  const evidence = path.match(/^caseFromLog\.deductionCase\.evidence\.(\d+)\.(title|visibleDescription)$/);
+  if (evidence) {
+    const field = evidence[2] === "visibleDescription" ? "visible description" : "title";
+    return `Evidence ${Number(evidence[1]) + 1} ${field}`;
+  }
+  const labels: Record<string, string> = {
+    "caseFromLog.deductionCase.title": "Case title",
+    "caseFromLog.deductionCase.theme": "Theme",
+    "caseFromLog.deductionCase.premise": "Premise",
+    "caseFromLog.deductionCase.publicCaseFile": "Public case file",
+    "caseFromLog.deductionCase.logicPuzzle.redHerrings": "Red herring labels"
+  };
+  return labels[path] || "Safe field";
+}
+
+function safeDiffFieldName(path: string): string {
+  const parts = path.split(".");
+  return parts.slice(-2).join(".");
+}
+
+function safeDiffItem(path: string, before: unknown, after: unknown, label = safeDiffFieldLabel(path)): SafeDiffItem | null {
+  const group = safeDiffGroupForPath(path);
+  if (!group) return null;
+  const beforeText = safeDiffText(before);
+  const afterText = safeDiffText(after);
+  if (beforeText === afterText) return null;
+  return { group, label, field: safeDiffFieldName(path), before: beforeText, after: afterText };
+}
+
+function safeCoachMessage(value: string) {
+  return value
+    .replace(/\b(case|npc|agent|event|evidence|character|scene|timeline|world|session)-[A-Za-z0-9_-]+\b/g, "[private id]")
+    .replace(/\b(culprit|truth|trueMeaning|checkpoint|sourceEventIds?|replay|package body)\b/gi, "[private field]")
+    .slice(0, 160);
+}
+
+function buildAppliedSafeDiff(before: AuthoringDraft, after: AuthoringDraft): SafeDiffItem[] {
+  const beforeCase = before.caseFromLog.deductionCase;
+  const afterCase = after.caseFromLog.deductionCase;
+  const items: SafeDiffItem[] = [];
+  const push = (path: string, beforeValue: unknown, afterValue: unknown, label?: string) => {
+    const item = safeDiffItem(path, beforeValue, afterValue, label);
+    if (item) items.push(item);
+  };
+
+  push("caseFromLog.deductionCase.title", beforeCase.title, afterCase.title);
+  push("caseFromLog.deductionCase.theme", beforeCase.theme, afterCase.theme);
+  push("caseFromLog.deductionCase.premise", beforeCase.premise, afterCase.premise);
+  push("caseFromLog.deductionCase.publicCaseFile", beforeCase.publicCaseFile, afterCase.publicCaseFile);
+
+  const characterCount = Math.max(beforeCase.characters.length, afterCase.characters.length);
+  for (let index = 0; index < characterCount; index += 1) {
+    const beforeCharacter = beforeCase.characters[index];
+    const afterCharacter = afterCase.characters[index];
+    push(`caseFromLog.deductionCase.characters.${index}.role`, beforeCharacter?.role, afterCharacter?.role);
+    push(`caseFromLog.deductionCase.characters.${index}.publicBio`, beforeCharacter?.publicBio, afterCharacter?.publicBio);
+    push(`caseFromLog.deductionCase.characters.${index}.motive`, beforeCharacter?.motive, afterCharacter?.motive);
+  }
+
+  const evidenceCount = Math.max(beforeCase.evidence.length, afterCase.evidence.length);
+  for (let index = 0; index < evidenceCount; index += 1) {
+    const beforeEvidence = beforeCase.evidence[index];
+    const afterEvidence = afterCase.evidence[index];
+    push(`caseFromLog.deductionCase.evidence.${index}.title`, beforeEvidence?.title, afterEvidence?.title);
+    push(`caseFromLog.deductionCase.evidence.${index}.visibleDescription`, beforeEvidence?.visibleDescription, afterEvidence?.visibleDescription);
+  }
+
+  push("caseFromLog.deductionCase.logicPuzzle.redHerrings", beforeCase.logicPuzzle.redHerrings, afterCase.logicPuzzle.redHerrings);
+  return items;
 }
 
 function minutesToTime(minutes: number) {
@@ -356,8 +606,14 @@ async function postJson<T>(url: string, body: unknown) {
 }
 
 async function getV1<T>(url: string) {
-  const response = await fetch(apiUrl(url));
-  const data = (await response.json()) as V1Result<T>;
+  let response = await fetch(apiUrl(url));
+  let text = await response.text();
+  if (text.trimStart().startsWith("<!DOCTYPE") || text.trimStart().startsWith("<html")) {
+    await new Promise((resolve) => window.setTimeout(resolve, 250));
+    response = await fetch(apiUrl(url));
+    text = await response.text();
+  }
+  const data = JSON.parse(text) as V1Result<T>;
   if (!data.ok || !data.data) throw new V1RequestError(data.error?.code || "INTERNAL_ERROR", response.status, data.error?.message || "Request failed");
   return data.data;
 }
@@ -375,6 +631,22 @@ async function postV1<T>(url: string, body: unknown) {
 
 function actorInitial(name: string) {
   return Array.from(name)[0] || "?";
+}
+
+function slugifyLabel(value: string) {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "scenario";
+}
+
+function downloadTextFile(fileName: string, content: string, mime = "text/plain;charset=utf-8") {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 function resolveRuntimeMode(): RuntimeMode {
@@ -2131,6 +2403,9 @@ function WorldGraphWorkbench({ onBack, runtimeMode }: { onBack: () => void; runt
                 )}
               </div>
               <div className="serverProjectList" data-testid="server-project-list">
+                {serverProjects.length === 0 && (
+                  <p className="serverProjectEmpty">No SQLite projects yet. Save this sample to create the first server copy.</p>
+                )}
                 {serverProjects.map((item) => (
                   <button
                     key={item.id}
@@ -3463,6 +3738,28 @@ export default function Home() {
   const [developerOpen, setDeveloperOpen] = useState(false);
   const [runtimeMode, setRuntimeMode] = useState<RuntimeMode>("server");
   const [progress, setProgress] = useState<InvestigationProgress>(initialProgress);
+  const [serverPlaythroughSummary, setServerPlaythroughSummary] = useState<CaseAutoSolveSummary | null>(null);
+  const [guidedManualLastResult, setGuidedManualLastResult] = useState("ready");
+  const [guidedManualRunning, setGuidedManualRunning] = useState(false);
+  const [guidedStepJournal, setGuidedStepJournal] = useState<GuidedStepJournalEntry[]>([]);
+  const [worldLead, setWorldLead] = useState<WorldLeadPublicSummary | null>(null);
+  const [worldLeadOutcome, setWorldLeadOutcome] = useState<WorldLeadOutcomePublicSummary | null>(null);
+  const [worldLeadCaseHandoff, setWorldLeadCaseHandoff] = useState<WorldLeadCaseHandoffPublicSummary | null>(null);
+  const [worldArc, setWorldArc] = useState<WorldArcPublicSummary | null>(null);
+  const [worldArcDirective, setWorldArcDirective] = useState<WorldArcDirectivePublicSummary | null>(null);
+  const [worldPressureCascade, setWorldPressureCascade] = useState<WorldPressureCascadePublicSummary | null>(null);
+  const [worldInfluenceBudget, setWorldInfluenceBudget] = useState<WorldInfluenceBudgetPublicSummary | null>(null);
+  const [playerResourceCommitment, setPlayerResourceCommitment] = useState<PlayerResourceCommitmentPublicSummary | null>(null);
+  const [factionRelationship, setFactionRelationship] = useState<FactionRelationshipPublicSummary | null>(null);
+  const [worldEventOffer, setWorldEventOffer] = useState<WorldEventOfferPublicSummary | null>(null);
+  const [investigatorProgression, setInvestigatorProgression] = useState<InvestigatorProgressionPublicSummary | null>(null);
+  const [campaignRecovery, setCampaignRecovery] = useState<CampaignRecoveryPublicSummary | null>(null);
+  const [arcConvergence, setArcConvergence] = useState<ArcConvergencePublicSummary | null>(null);
+  const [campaignSession, setCampaignSession] = useState<CampaignSessionPublicSummary | null>(null);
+  const [campaignFinaleDebrief, setCampaignFinaleDebrief] = useState<CampaignFinaleDebriefPublicSummary | null>(null);
+  const [townSocialResponse, setTownSocialResponse] = useState<TownSocialResponsePublicSummary | null>(null);
+  const [replayGoalAttempt, setReplayGoalAttempt] = useState<ReplayGoalAttemptState | null>(null);
+  const guidedStepJournalSeq = useRef(0);
   const { inspectorTab, setInspectorTab, showEvents, showInvestigation, showLogic, showPeople } = useInspectorSelection("investigation");
   const [selectionHighlight, setSelectionHighlight] = useState<SelectionHighlight>({});
   const [selectedGraphNode, setSelectedGraphNode] = useState<DeductionGraphNode | null>(null);
@@ -3474,6 +3771,7 @@ export default function Home() {
   const [appMode, setAppMode] = useState<AppMode>("play");
   const [authoringDraft, setAuthoringDraft] = useState<AuthoringDraft>(() => createPremiumAuthoringDraft());
   const [authoringTab, setAuthoringTab] = useState<AuthoringTab>("case");
+  const [contentSelection, setContentSelection] = useState<DetectiveContentAuthoringSelection>(() => selectDefaultDetectiveContentAuthoringSelection(detectiveContentPack));
   const [authoringCharacterId, setAuthoringCharacterId] = useState("");
   const [authoringEvidenceId, setAuthoringEvidenceId] = useState("");
   const [authoringSceneId, setAuthoringSceneId] = useState("");
@@ -3483,18 +3781,32 @@ export default function Home() {
   const [authoringStatus, setAuthoringStatus] = useState("Authoring \u4f7f\u7528\u6d4f\u89c8\u5668\u672c\u5730\u72b6\u6001\uff0c\u4e0d\u8bf7\u6c42 DeepSeek\uff0c\u4e0d\u5199\u5165 SQLite\u3002");
   const [caseGalleryEntries, setCaseGalleryEntries] = useState<CaseGalleryEntry[]>([]);
   const [caseGalleryLoaded, setCaseGalleryLoaded] = useState(false);
+  const [contentSeedHistory, setContentSeedHistory] = useState<ContentSeedHistoryEntry[]>([]);
+  const [contentSeedPreviewed, setContentSeedPreviewed] = useState(false);
   const [townRuntime, setTownRuntime] = useState<PersistentTownRuntime | null>(null);
   const [townQueue, setTownQueue] = useState<TownEmergenceQueue | null>(null);
   const [townBrief, setTownBrief] = useState<TownSituationBrief | null>(null);
   const [selectedAgentCandidates, setSelectedAgentCandidates] = useState<NpcActionCandidate[]>([]);
   const [townRuntimeBusy, setTownRuntimeBusy] = useState(false);
+  const [reviewBusy, setReviewBusy] = useState(false);
+  const [scenarioPresets, setScenarioPresets] = useState<ScenarioPreset[]>([]);
+  const [scenarioPacks, setScenarioPacks] = useState<Array<ScenarioPack & { builtIn?: boolean; source?: string; experimentId?: string; experimentHash?: string; experimentPathHash?: string; validation?: { ok: boolean } }>>([]);
+  const [scenarioRuns, setScenarioRuns] = useState<ScenarioRunSummary[]>([]);
+  const [runCatalog, setRunCatalog] = useState<RunCatalogEntry[]>([]);
+  const [runJobs, setRunJobs] = useState<RunJob[]>([]);
+  const [selectedScenarioPackId, setSelectedScenarioPackId] = useState("");
+  const [selectedRunCatalogId, setSelectedRunCatalogId] = useState("");
+  const [selectedScenarioPresetId, setSelectedScenarioPresetId] = useState("");
   const [scenarioRun, setScenarioRun] = useState<ScenarioRun | null>(null);
   const [scenarioReport, setScenarioReport] = useState<ScenarioReport | null>(null);
   const [townSnapshots, setTownSnapshots] = useState<TownStateSnapshot[]>([]);
   const [selectedSnapshotFromId, setSelectedSnapshotFromId] = useState("");
   const [selectedSnapshotToId, setSelectedSnapshotToId] = useState("");
+  const [reviewExportTarget, setReviewExportTarget] = useState<{ fromId: string; toId: string }>({ fromId: "", toId: "" });
   const [snapshotDiff, setSnapshotDiff] = useState<TownStateDiff | null>(null);
   const [benchmarkSummary, setBenchmarkSummary] = useState<BenchmarkSummary | null>(null);
+  const [townRuleState, setTownRuleState] = useState<TownRuleSnapshotSummary | null>(null);
+  const [townCaseLifecycle, setTownCaseLifecycle] = useState<TownCaseLifecycleState | null>(null);
 
   function pushToast(toast: Omit<InvestigationToast, "id">) {
     const id = `toast:${Date.now()}:${Math.random().toString(16).slice(2)}`;
@@ -3511,7 +3823,14 @@ export default function Home() {
   const discovered = new Set(session?.discoveredEvidenceIds || []);
   const selectedScene = scenes.find((scene) => scene.id === selectedSceneId) || scenes[0];
   const selectedCharacter = characters.find((character) => character.id === selectedCharacterId);
-  const sceneEvidence = selectedScene ? deductionCase?.evidence.filter((item) => selectedScene.evidenceIds.includes(item.id)) || [] : [];
+  const allCaseEvidence = deductionCase?.evidence || [];
+  const sceneEvidenceRaw = selectedScene ? allCaseEvidence.filter((item) => selectedScene.evidenceIds.includes(item.id)) : [];
+  const sceneEvidence = sceneEvidenceRaw.some((item) => item.discoverable && !discovered.has(item.id))
+    ? sceneEvidenceRaw
+    : [
+      ...sceneEvidenceRaw,
+      ...allCaseEvidence.filter((item) => item.discoverable && !discovered.has(item.id) && !sceneEvidenceRaw.some((sceneItem) => sceneItem.id === item.id)).slice(0, 1)
+    ];
   const discoveredEvidence = deductionCase?.evidence.filter((item) => discovered.has(item.id)) || [];
   const playerTheoryEvidence = useMemo(() => new Set(theory.evidenceIds), [theory.evidenceIds]);
   const selectedTestimony = activeCase?.testimonies?.find((item) => item.characterId === selectedCharacterId);
@@ -3766,7 +4085,9 @@ export default function Home() {
     [activeCase, emergenceProofTrace, events, session]
   );
   const playableIntake: PlayableCaseIntake | null = useMemo(
-    () => (activeCase?.sourceCandidateId ? buildPlayableCaseIntake(activeCase, events, world, session) : null),
+    () => (activeCase && ((activeCase.sourceEventIds || []).length > 0 || Boolean(activeCase.sourceCandidateId) || Boolean(activeCase.triggeredEventId))
+      ? buildPlayableCaseIntake(activeCase, events, world, session)
+      : null),
     [activeCase, events, session, world]
   );
   const caseTruthLedger = useMemo(
@@ -3786,6 +4107,1057 @@ export default function Home() {
     () => (activeCase ? certifyPlayableCase(activeCase, events, session) : null),
     [activeCase, events, session]
   );
+  const staticPlaythroughProof = useMemo(() => {
+    if (runtimeMode !== "static-demo" || !activeCase) return null;
+    const autoSolve = autoSolvePlayableCase(activeCase, events, { dryRun: true });
+    const acceptedTheory = Boolean(session?.judgement?.accepted);
+    const questionedWitnessCount = acceptedTheory
+      ? new Set((session?.interrogationLog || []).map((entry) => entry.characterId)).size
+      : autoSolve.summary.questionedWitnessCount;
+    const challengeHitCount = acceptedTheory
+      ? (session?.interrogationLog || []).filter((entry) => entry.challenge?.hit).length
+      : autoSolve.summary.challengeHitCount;
+    const selectedEvidenceCount = acceptedTheory
+      ? session?.submittedTheory?.evidenceIds.length || 0
+      : autoSolve.summary.selectedEvidenceCount;
+    return {
+      title: "Static Playthrough Proof",
+      actionLabel: "Run Certified Playthrough",
+      acceptedLabel: "completed / accepted theory",
+      readyLabel: "ready / certified route",
+      blockedLabel: "blocked / inspect route",
+      boundaryText: "Browser-local aggregate proof only: no hidden truth, raw bodies, internal ids, source ids, SQLite writes, or public artifact changes.",
+      testId: "static-playthrough-proof",
+      runTestId: "run-certified-playthrough",
+      status: acceptedTheory ? "accepted" as const : autoSolve.passed ? "ready" as const : "blocked" as const,
+      routeCertified: Boolean(caseRouteCertificate?.routeCertified || autoSolve.summary.routeCertified),
+      autoRoutePassed: autoSolve.passed,
+      acceptedTheory: Boolean(acceptedTheory || autoSolve.summary.autoTheoryAccepted),
+      searchStepCount: autoSolve.steps.filter((step) => step.kind === "search").length,
+      questionedWitnessCount,
+      challengeHitCount,
+      selectedEvidenceCount,
+      coveredRequiredObligations: acceptedTheory
+        ? caseProofCoverage?.coveredRequired || autoSolve.summary.coveredRequiredObligations
+        : autoSolve.summary.coveredRequiredObligations,
+      totalRequiredObligations: acceptedTheory
+        ? caseProofCoverage?.totalRequired || autoSolve.summary.totalRequiredObligations
+        : autoSolve.summary.totalRequiredObligations,
+      blockerCount: autoSolve.failures.length
+    };
+  }, [activeCase, caseProofCoverage, caseRouteCertificate, events, runtimeMode, session]);
+  const serverPlaythroughProof = useMemo(() => {
+    if (runtimeMode === "static-demo" || !activeCase || !playableIntake) return null;
+    const sourceBackedRoute = Boolean(
+      (activeCase.sourceEventIds || []).length > 0
+        || activeCase.sourceCandidateId
+        || activeCase.sourceMap?.sourceCandidateId
+        || activeCase.triggeredEventId
+    );
+    const acceptedTheory = Boolean(session?.judgement?.accepted);
+    const summary = serverPlaythroughSummary?.caseId === activeCase.id ? serverPlaythroughSummary : null;
+    const coverage = playableIntake.coach?.coverage;
+    const routeCertified = Boolean(caseRouteCertificate?.routeCertified || coverage?.routeCertified || summary?.routeCertified);
+    const autoRoutePassed = Boolean(summary?.passed || coverage?.autoSolvePassed);
+    const questionedWitnessCount = acceptedTheory
+      ? new Set((session?.interrogationLog || []).map((entry) => entry.characterId)).size
+      : summary?.questionedWitnessCount ?? coverage?.questionedWitnesses ?? 0;
+    const challengeHitCount = acceptedTheory
+      ? (session?.interrogationLog || []).filter((entry) => entry.challenge?.hit).length
+      : summary?.challengeHitCount ?? coverage?.challengeHitCount ?? 0;
+    const selectedEvidenceCount = acceptedTheory
+      ? session?.submittedTheory?.evidenceIds.length || 0
+      : summary?.selectedEvidenceCount ?? coverage?.selectedTheoryEvidence ?? 0;
+    return {
+      title: "Server Playthrough Proof",
+      actionLabel: "Run Server Certified Playthrough",
+      acceptedLabel: "completed / accepted theory",
+      readyLabel: "ready / source-backed route",
+      blockedLabel: "blocked / inspect emerged route",
+      boundaryText: "Server Runtime aggregate proof: persists only an explicit auto-player session; no public catalog, dataset reader, raw bodies, or SQLite schema changes.",
+      testId: "server-playthrough-proof",
+      runTestId: "run-server-certified-playthrough",
+      status: acceptedTheory ? "accepted" as const : autoRoutePassed && routeCertified ? "ready" as const : "blocked" as const,
+      routeCertified,
+      sourceBackedRoute,
+      autoRoutePassed,
+      acceptedTheory: Boolean(acceptedTheory || summary?.autoTheoryAccepted),
+      searchStepCount: (playableIntake.routeCertificate?.steps || caseRouteCertificate?.steps || []).filter((step) => step.kind === "search").length,
+      questionedWitnessCount,
+      challengeHitCount,
+      selectedEvidenceCount,
+      coveredRequiredObligations: acceptedTheory
+        ? caseProofCoverage?.coveredRequired || summary?.coveredRequiredObligations || coverage?.coveredRequired || 0
+        : summary?.coveredRequiredObligations ?? coverage?.coveredRequired ?? 0,
+      totalRequiredObligations: acceptedTheory
+        ? caseProofCoverage?.totalRequired || summary?.totalRequiredObligations || coverage?.totalRequired || 0
+        : summary?.totalRequiredObligations ?? coverage?.totalRequired ?? 0,
+      blockerCount: summary?.failureKinds.length || playableIntake.coach?.blockers.length || 0
+    };
+  }, [activeCase, caseProofCoverage, caseRouteCertificate, playableIntake, runtimeMode, serverPlaythroughSummary, session]);
+  const sourceReviewUnlock = useMemo(() => {
+    if (!activeCase) return null;
+    const unlocked = Boolean(session?.judgement?.accepted);
+    const memoryCount = playableIntake?.sourceCounts.memories
+      ?? activeCase.sourceMap?.memorySourceIds?.length
+      ?? activeCase.testimonies.reduce((sum, testimony) => sum + (testimony.memoryIds?.length || 0), 0)
+      ?? 0;
+    return {
+      unlocked,
+      statusLabel: unlocked ? "unlocked / source-backed audit ready" : "locked / accepted theory required",
+      sourceEventCount: playableIntake?.sourceCounts.events ?? activeCase.sourceEventIds.length,
+      memoryCount,
+      coveredObligations: caseProofCoverage?.coveredRequired || 0,
+      totalObligations: caseProofCoverage?.totalRequired || caseRouteCertificate?.totalRequiredObligations || 0,
+      routeStepCount: caseRouteCertificate?.routeStepCount || caseRouteCertificate?.steps.length || 0,
+      challengeHitCount: (session?.interrogationLog || []).filter((entry) => entry.challenge?.hit).length,
+      selectedEvidenceCount: session?.submittedTheory?.evidenceIds.length || 0,
+      proofGapCount: caseProofCoverage?.gaps.length || 0
+    };
+  }, [activeCase, caseProofCoverage, caseRouteCertificate, playableIntake, session]);
+  function getGuidedManualTarget(): GuidedManualStepTarget {
+    const routeSteps = caseRouteCertificate?.steps || playableIntake?.routeCertificate?.steps || [];
+    if (!session) return { kind: "join", label: "Join investigation" };
+    const discoveredSet = new Set(session.discoveredEvidenceIds);
+    const questionedSet = new Set(session.interrogationLog.map((entry) => entry.characterId));
+    const challengedSet = new Set(session.interrogationLog.filter((entry) => entry.challenge?.hit).map((entry) => entry.characterId));
+    const selectedSet = new Set(theory.evidenceIds);
+    const searchStep = routeSteps.find((step) => step.kind === "search" && step.evidenceIds.some((id) => !discoveredSet.has(id)));
+    const searchTarget = searchStep ? (() => {
+      const evidenceId = searchStep.evidenceIds.find((id) => !discoveredSet.has(id)) || searchStep.evidenceIds[0];
+      const scene = scenes.find((item) => item.evidenceIds.includes(evidenceId));
+      return { kind: "search" as const, label: "Search certified clue", evidenceId, locationId: scene?.id || searchStep.locationId };
+    })() : undefined;
+    const questionStep = routeSteps.find((step) => step.kind === "question" && step.characterIds.some((id) => !questionedSet.has(id)));
+    const questionTarget = questionStep
+      ? { kind: "question" as const, label: "Question certified witness", characterId: questionStep.characterIds.find((id) => !questionedSet.has(id)) || questionStep.characterIds[0] }
+      : undefined;
+    const challengeStep = routeSteps.find((step) => step.kind === "challenge" && step.characterIds.some((id) => !challengedSet.has(id)));
+    const challengeTarget = challengeStep ? (() => {
+      const missingEvidenceId = challengeStep.evidenceIds.find((id) => !discoveredSet.has(id));
+      if (missingEvidenceId) {
+        return undefined;
+      }
+      return {
+        kind: "challenge" as const,
+        label: "Challenge certified testimony",
+        characterId: challengeStep.characterIds.find((id) => !challengedSet.has(id)) || challengeStep.characterIds[0],
+        evidenceId: challengeStep.evidenceIds.find((id) => discoveredSet.has(id)) || challengeStep.evidenceIds[0]
+      };
+    })() : undefined;
+    const defaultTarget = searchTarget || questionTarget || challengeTarget;
+    if (worldLead?.status === "followed") {
+      const prioritizedTarget = worldLead.focus === "search"
+        ? searchTarget
+        : worldLead.focus === "question"
+          ? questionTarget
+          : challengeTarget;
+      if (prioritizedTarget) return { ...prioritizedTarget, label: `${prioritizedTarget.label} / world lead` };
+    }
+    if (defaultTarget) return defaultTarget;
+    if (challengeStep) {
+      const missingEvidenceId = challengeStep.evidenceIds.find((id) => !discoveredSet.has(id));
+      if (missingEvidenceId) {
+        const scene = scenes.find((item) => item.evidenceIds.includes(missingEvidenceId));
+        return { kind: "search", label: "Search challenge clue", evidenceId: missingEvidenceId, locationId: scene?.id || challengeStep.locationId };
+      }
+    }
+    const certifiedEvidenceIds = caseRouteCertificate?.theoryEvidenceIds?.length
+      ? caseRouteCertificate.theoryEvidenceIds
+      : routeSteps.find((step) => step.kind === "select-evidence")?.evidenceIds || [];
+    const missingTheoryEvidence = certifiedEvidenceIds.find((id) => discoveredSet.has(id) && !selectedSet.has(id));
+    if (missingTheoryEvidence || (certifiedEvidenceIds.length > 0 && certifiedEvidenceIds.some((id) => !selectedSet.has(id)))) {
+      return { kind: "select-evidence", label: "Select certified evidence", evidenceId: missingTheoryEvidence || certifiedEvidenceIds[0] };
+    }
+    if (!session.judgement?.accepted) return { kind: "submit", label: "Submit certified theory" };
+    return { kind: "review-source", label: "Review source audit" };
+  }
+  const guidedManualRun = useMemo(() => {
+    const target = getGuidedManualTarget();
+    const questioned = Boolean(session?.interrogationLog.length);
+    const challengeHit = Boolean(session?.interrogationLog.some((entry) => entry.challenge?.hit));
+    const certifiedEvidenceIds = caseRouteCertificate?.theoryEvidenceIds || playableIntake?.routeCertificate?.theoryEvidenceIds || [];
+    const selectedSet = new Set(theory.evidenceIds);
+    const selectedCertified = certifiedEvidenceIds.length > 0 && certifiedEvidenceIds.every((id) => selectedSet.has(id));
+    const completed = [
+      Boolean(session),
+      Boolean(session?.discoveredEvidenceIds.length),
+      questioned,
+      challengeHit,
+      selectedCertified || Boolean(session?.submittedTheory?.evidenceIds.length),
+      Boolean(session?.judgement?.accepted),
+      Boolean(session?.judgement?.accepted)
+    ].filter(Boolean).length;
+    const blockerSummary = caseRouteCertificate?.blockers.length
+      ? `${caseRouteCertificate.blockers.length} route blocker(s) need authoring review before manual completion.`
+      : target.kind === "review-source"
+        ? "Accepted theory is complete; review the source-backed audit workbench."
+        : "Runs one low-spoiler player step using the current certified route.";
+    return {
+      currentStep: target.kind,
+      currentLabel: target.label,
+      completedSteps: completed,
+      totalSteps: 7,
+      lastResult: guidedManualLastResult,
+      blockerSummary,
+      readyToReview: Boolean(session?.judgement?.accepted),
+      running: guidedManualRunning || busy
+    };
+  }, [busy, caseRouteCertificate, guidedManualLastResult, guidedManualRunning, playableIntake, session, theory.evidenceIds, worldLead]);
+  const campaignStudyWorldChoices = useMemo<Partial<Record<CampaignStudyWorldChoice, boolean>>>(() => ({
+    "world-lead": worldLead?.status === "pending",
+    "resource-commitment": playerResourceCommitment?.status === "ready" || playerResourceCommitment?.status === "blocked",
+    "faction-directive": worldArcDirective?.status === "ready" || worldArcDirective?.status === "blocked",
+    "world-event-offer": worldEventOffer?.status === "offered",
+    "campaign-recovery": campaignRecovery?.status === "ready",
+    "finale-case": arcConvergence?.status === "ready"
+  }), [arcConvergence?.status, campaignRecovery?.status, playerResourceCommitment?.status, worldArcDirective?.status, worldEventOffer?.status, worldLead?.status]);
+  const campaignStudyStage = useMemo<CampaignStudyStage>(() => {
+    const campaignStatus = campaignSession?.status || townRuntime?.campaignSessionSummary?.status;
+    if (campaignStatus === "completed") return "debrief";
+    if (campaignRecovery?.status === "ready" || campaignRecovery?.status === "scheduled") return "recovery";
+    if (arcConvergence?.status === "ready" || arcConvergence?.status === "active" || campaignStatus === "finale-ready" || campaignStatus === "finale-active") return "finale";
+    if (Object.values(campaignStudyWorldChoices).some(Boolean)) return "world-choice";
+    if (!session) return activeCase ? "join" : campaignStatus === "opening" ? "opening" : "case-extraction";
+    if (session.judgement?.accepted) return "review-source";
+    if (guidedManualRun.currentStep === "join") return "join";
+    if (guidedManualRun.currentStep === "search") return "search";
+    if (guidedManualRun.currentStep === "question") return "question";
+    if (guidedManualRun.currentStep === "challenge") return "challenge";
+    if (guidedManualRun.currentStep === "select-evidence") return "pick-evidence";
+    if (guidedManualRun.currentStep === "review-source") return "review-source";
+    return countManualTheoryFields(theory) < 3 ? "fill-theory" : "submit";
+  }, [activeCase, arcConvergence?.status, campaignRecovery?.status, campaignSession?.status, campaignStudyWorldChoices, guidedManualRun.currentStep, session, theory, townRuntime?.campaignSessionSummary?.status]);
+  const campaignStudyCampaignStatus = campaignSession?.status || townRuntime?.campaignSessionSummary?.status;
+  const campaignStudy = useCampaignComprehensionStudy({
+    runtimeMode,
+    canStart: campaignStudyCampaignStatus === "opening" && !session,
+    startBlockedReason: campaignStudyCampaignStatus !== "opening"
+      ? "Use the existing Reset/Create Town flow to return to Campaign opening. The recorder will not reset the world."
+      : session
+        ? "Finish or reset the active investigation session before starting a study run."
+        : undefined,
+    currentStage: campaignStudyStage,
+    campaignCompleted: campaignStudyCampaignStatus === "completed",
+    recoveryReady: campaignRecovery?.status === "ready",
+    readyWorldChoices: campaignStudyWorldChoices
+  });
+  const solvedCaseDebrief = useMemo(() => {
+    if (!session?.judgement?.accepted || !sourceReviewUnlock) return null;
+    const lastDoneEntry = [...guidedStepJournal].reverse().find((entry) => entry.status === "done");
+    const manualStepCount = new Set(guidedStepJournal.filter((entry) => entry.status === "done").map((entry) => entry.step)).size;
+    return {
+      accepted: true,
+      manualStepsCompleted: Math.max(guidedManualRun.completedSteps, manualStepCount),
+      totalManualSteps: guidedManualRun.totalSteps,
+      lastStepResult: lastDoneEntry?.result || guidedManualRun.lastResult,
+      fallbackUsed: guidedStepJournal.some((entry) => entry.fallbackUsed),
+      selectedEvidenceCount: sourceReviewUnlock.selectedEvidenceCount,
+      challengeHitCount: sourceReviewUnlock.challengeHitCount,
+      coveredObligations: sourceReviewUnlock.coveredObligations,
+      totalObligations: sourceReviewUnlock.totalObligations,
+      proofGapCount: sourceReviewUnlock.proofGapCount,
+      sourceEventCount: sourceReviewUnlock.sourceEventCount,
+      memoryCount: sourceReviewUnlock.memoryCount,
+      routeStepCount: sourceReviewUnlock.routeStepCount,
+      sourceReviewUnlocked: sourceReviewUnlock.unlocked,
+      worldLeadOutcomeStatus: worldLeadOutcome?.status || "not-used" as const,
+      worldLeadHandoffStatus: worldLeadCaseHandoff?.status || "not-used" as const,
+      worldArcStatus: worldArc?.status || "not-used" as const,
+      worldArcProgress: worldArc?.progressLabel || "not-used",
+      worldArcDirectiveStatus: worldArcDirective?.status || "not-used" as const,
+      worldPressureCascadeStatus: worldPressureCascade?.status || "empty" as const,
+      townSocialResponseStatus: townSocialResponse?.status || "empty" as const
+    };
+  }, [guidedManualRun, guidedStepJournal, session, sourceReviewUnlock, townSocialResponse, worldArc, worldArcDirective, worldLeadCaseHandoff, worldLeadOutcome, worldPressureCascade]);
+  const replayGoalCoach = useMemo(() => {
+    const visible = Boolean(solvedCaseDebrief || replayGoalAttempt?.active);
+    if (!visible) return null;
+    const activeAttempt = Boolean(replayGoalAttempt?.active);
+    const previousGuidedSteps = replayGoalAttempt?.previousGuidedSteps ?? solvedCaseDebrief?.manualStepsCompleted ?? 0;
+    const previousFallbackUsed = replayGoalAttempt?.previousFallbackUsed ?? Boolean(solvedCaseDebrief?.fallbackUsed);
+    const previousFallbackTheoryFieldCount = replayGoalAttempt?.previousFallbackTheoryFieldCount ?? (previousFallbackUsed ? 3 : 0);
+    const previousSelectedEvidenceCount = replayGoalAttempt?.previousSelectedEvidenceCount ?? solvedCaseDebrief?.selectedEvidenceCount ?? 0;
+    const previousProofGapCount = replayGoalAttempt?.previousProofGapCount ?? solvedCaseDebrief?.proofGapCount ?? 0;
+    const previousSourceReviewUnlocked = replayGoalAttempt?.previousSourceReviewUnlocked ?? Boolean(solvedCaseDebrief?.sourceReviewUnlocked);
+    const currentDoneSteps = new Set(guidedStepJournal.filter((entry) => entry.status === "done").map((entry) => entry.step)).size;
+    const currentFallbackUsed = guidedStepJournal.some((entry) => entry.fallbackUsed);
+    const currentFallbackTheoryFieldCount = replayGoalAttempt?.fallbackTheoryFieldCount ?? 0;
+    const currentReviewUnlocked = Boolean(session?.judgement?.accepted && (sourceReviewUnlock?.unlocked || guidedStepJournal.some((entry) => entry.reviewUnlocked)));
+    const currentEvidenceSelected = theory.evidenceIds.length || session?.submittedTheory?.evidenceIds.length || 0;
+    const accepted = Boolean(session?.judgement?.accepted);
+    const goals = [
+      {
+        id: "reduce-fallback",
+        label: "Reduce fallback",
+        status: accepted && currentFallbackTheoryFieldCount < previousFallbackTheoryFieldCount ? "done" as const : activeAttempt ? "active" as const : "ready" as const,
+        detail: previousFallbackUsed ? `Previous run used ${previousFallbackTheoryFieldCount} explicit fallback theory field(s); fill more fields manually before submit.` : "Keep the replay clean by avoiding explicit fallback."
+      },
+      {
+        id: "manual-evidence-selection",
+        label: "Manual evidence selection",
+        status: currentEvidenceSelected > 0 ? "done" as const : activeAttempt ? "active" as const : "ready" as const,
+        detail: "Select proof clues yourself before submit instead of relying only on the certified route."
+      },
+      {
+        id: "fewer-guided-clicks",
+        label: "Fewer guided clicks",
+        status: accepted && currentDoneSteps > 0 && currentDoneSteps < previousGuidedSteps ? "done" as const : activeAttempt ? "active" as const : "ready" as const,
+        detail: `Previous run used ${previousGuidedSteps} guided step(s); replay with fewer guided actions.`
+      },
+      {
+        id: "review-source-after-submit",
+        label: "Review source after submit",
+        status: currentReviewUnlocked ? "done" as const : activeAttempt ? "active" as const : "ready" as const,
+        detail: "After submit, open the source-backed workbench and compare the route confidence."
+      }
+    ];
+    return {
+      visible,
+      activeAttempt,
+      previousGuidedSteps,
+      previousFallbackUsed,
+      previousFallbackTheoryFieldCount,
+      previousSelectedEvidenceCount,
+      previousProofGapCount,
+      previousSourceReviewUnlocked,
+      currentStep: guidedManualRun.currentStep,
+      lastResult: accepted ? guidedManualRun.lastResult : replayGoalAttempt?.lastResult || guidedManualRun.lastResult,
+      completedGoalCount: goals.filter((goal) => goal.status === "done").length,
+      totalGoalCount: goals.length,
+      goals
+    };
+  }, [guidedManualRun, guidedStepJournal, replayGoalAttempt, session, solvedCaseDebrief, sourceReviewUnlock, theory.evidenceIds]);
+  const manualEvidenceDrill = useMemo(() => {
+    if (!replayGoalAttempt?.active || !session || session.judgement?.accepted) return null;
+    const routeEvidenceIds = caseRouteCertificate?.theoryEvidenceIds?.length
+      ? caseRouteCertificate.theoryEvidenceIds
+      : playableIntake?.routeCertificate?.theoryEvidenceIds || [];
+    const discoveredSet = new Set(session.discoveredEvidenceIds);
+    const selectedSet = new Set(theory.evidenceIds);
+    const routeDiscoveredIds = routeEvidenceIds.filter((id) => discoveredSet.has(id));
+    const candidateItems = evidenceNotebook
+      .filter((item) => !item.locked && discoveredSet.has(item.evidenceId))
+      .filter((item) => !routeEvidenceIds.length || routeEvidenceIds.includes(item.evidenceId));
+    if (!candidateItems.length) return null;
+    const targetCount = Math.max(1, routeEvidenceIds.length || routeDiscoveredIds.length || candidateItems.length);
+    const manualPickCount = candidateItems.filter((item) => selectedSet.has(item.evidenceId)).length;
+    const remainingProofSlots = Math.max(0, targetCount - manualPickCount);
+    return {
+      visible: true,
+      selectedEvidenceCount: theory.evidenceIds.length,
+      routeEvidenceTargetCount: targetCount,
+      manualPickCount: replayGoalAttempt.manualEvidencePickCount || manualPickCount,
+      remainingProofSlots,
+      readyForSubmit: routeDiscoveredIds.length > 0 && routeDiscoveredIds.every((id) => selectedSet.has(id)),
+      candidates: candidateItems.map((item) => ({
+        evidenceId: item.evidenceId,
+        title: item.title,
+        locationLabel: item.locationName || "Known location",
+        sourceLabel: item.sourceEventLabel || "source-facing clue",
+        supports: item.supports,
+        contradicts: item.contradicts,
+        selected: selectedSet.has(item.evidenceId)
+      }))
+    };
+  }, [caseRouteCertificate, evidenceNotebook, playableIntake, replayGoalAttempt, session, theory.evidenceIds]);
+  const manualTheoryDrill = useMemo(() => {
+    if (!replayGoalAttempt?.active || !session || session.judgement?.accepted) return null;
+    const routeEvidenceIds = caseRouteCertificate?.theoryEvidenceIds?.length
+      ? caseRouteCertificate.theoryEvidenceIds
+      : playableIntake?.routeCertificate?.theoryEvidenceIds || [];
+    const selectedSet = new Set(theory.evidenceIds);
+    const evidenceReady = routeEvidenceIds.length > 0 && routeEvidenceIds.every((id) => selectedSet.has(id));
+    if (!evidenceReady) return null;
+    const manualFieldCount = countManualTheoryFields(theory);
+    const unresolvedFields = unresolvedManualTheoryFields(session.judgement);
+    const evidencePrompts = discoveredEvidence
+      .filter((item) => selectedSet.has(item.id))
+      .slice(0, 4)
+      .map((item, index) => {
+        const notebookItem = evidenceNotebook.find((candidate) => candidate.evidenceId === item.id);
+        const supportLabels = (notebookItem?.supports || [])
+          .slice(0, 2)
+          .map((label, labelIndex) => (
+            /\b(?:npc|evidence|event|source|ev)-[a-z0-9-]*\d[a-z0-9-]*\b/i.test(label)
+              ? `proof lane ${labelIndex + 1}`
+              : label
+          ));
+        return {
+          title: item.title,
+          detail: item.visibleDescription,
+          supportLabels: supportLabels.length ? supportLabels : [`discovered proof clue ${index + 1}`]
+        };
+      });
+    return {
+      visible: true,
+      manualFieldCount,
+      remainingFieldCount: Math.max(0, 3 - manualFieldCount),
+      fallbackFieldCount: replayGoalAttempt.fallbackTheoryFieldCount,
+      blockedGapCount: unresolvedFields.size,
+      evidenceReady,
+      readyForSubmit: evidenceReady && manualFieldCount === 3 && unresolvedFields.size === 0,
+      fallbackApproved: replayGoalAttempt.theoryFallbackApproved,
+      suspectOptions: characters.map((character) => ({
+        id: character.id,
+        label: `${character.name} / ${character.role}`
+      })),
+      selectedCulpritId: theory.culpritId,
+      motiveText: theory.motive,
+      methodText: theory.method,
+      evidencePrompts
+    };
+  }, [caseRouteCertificate, characters, discoveredEvidence, evidenceNotebook, playableIntake, replayGoalAttempt, session, theory]);
+  const replayAttemptScorecard = useMemo(() => {
+    if (!replayGoalCoach) return null;
+    const activeAttempt = Boolean(replayGoalAttempt?.active);
+    const accepted = Boolean(session?.judgement?.accepted);
+    const completed = activeAttempt && accepted;
+    const currentDoneSteps = activeAttempt
+      ? new Set(guidedStepJournal.filter((entry) => entry.status === "done").map((entry) => entry.step)).size
+      : solvedCaseDebrief?.manualStepsCompleted ?? guidedManualRun.completedSteps;
+    const currentFallbackUsed = activeAttempt
+      ? guidedStepJournal.some((entry) => entry.fallbackUsed)
+      : Boolean(solvedCaseDebrief?.fallbackUsed);
+    const currentSelectedEvidenceCount = activeAttempt
+      ? theory.evidenceIds.length || session?.submittedTheory?.evidenceIds.length || 0
+      : (solvedCaseDebrief?.selectedEvidenceCount ?? theory.evidenceIds.length) || 0;
+    const currentProofGapCount = sourceReviewUnlock?.proofGapCount ?? solvedCaseDebrief?.proofGapCount ?? replayGoalCoach.previousProofGapCount;
+    const currentSourceReviewUnlocked = Boolean(session?.judgement?.accepted && (sourceReviewUnlock?.unlocked || guidedStepJournal.some((entry) => entry.reviewUnlocked)));
+    const manualEvidencePickCount = replayGoalAttempt?.manualEvidencePickCount ?? 0;
+    const fallbackEvidencePickCount = replayGoalAttempt?.fallbackEvidencePickCount ?? 0;
+    const manualTheoryFieldCount = replayGoalAttempt?.manualTheoryFieldCount ?? countManualTheoryFields(theory);
+    const fallbackTheoryFieldCount = replayGoalAttempt?.fallbackTheoryFieldCount ?? 0;
+    const blockedTheoryGapCount = replayGoalAttempt?.blockedTheoryGapCount ?? 0;
+    const pendingStatus = "pending" as const;
+    const deltaNumber = (current: number, previous: number, lowerIsBetter = false) => {
+      if (!completed) return pendingStatus;
+      if (current === previous) return "unchanged" as const;
+      return lowerIsBetter
+        ? current < previous ? "improved" as const : "regressed" as const
+        : current > previous ? "improved" as const : "regressed" as const;
+    };
+    const deltaFallback = () => {
+      if (!completed) return pendingStatus;
+      if (currentFallbackUsed === replayGoalCoach.previousFallbackUsed) return "unchanged" as const;
+      return !currentFallbackUsed && replayGoalCoach.previousFallbackUsed ? "improved" as const : "regressed" as const;
+    };
+    return {
+      visible: true,
+      status: completed ? "completed" as const : "pending" as const,
+      activeAttempt,
+      currentStep: guidedManualRun.currentStep,
+      lastResult: replayGoalCoach.lastResult,
+      completedGuidedSteps: currentDoneSteps,
+      fallbackUsed: currentFallbackUsed,
+      selectedEvidenceCount: currentSelectedEvidenceCount,
+      manualEvidencePickCount,
+      fallbackEvidencePickCount,
+      manualTheoryFieldCount,
+      fallbackTheoryFieldCount,
+      blockedTheoryGapCount,
+      proofGapCount: currentProofGapCount,
+      sourceReviewUnlocked: currentSourceReviewUnlocked,
+      worldLeadOutcomeStatus: worldLeadOutcome?.status || "not-used" as const,
+      worldLeadHandoffStatus: worldLeadCaseHandoff?.status || "not-used" as const,
+      worldArcStatus: worldArc?.status || "not-used" as const,
+      worldArcProgress: worldArc?.progressLabel || "not-used",
+      worldArcDirectiveStatus: worldArcDirective?.status || "not-used" as const,
+      worldPressureCascadeStatus: worldPressureCascade?.status || "empty" as const,
+      townSocialResponseStatus: townSocialResponse?.status || "empty" as const,
+      completedReplayGoals: replayGoalCoach.completedGoalCount,
+      totalReplayGoals: replayGoalCoach.totalGoalCount,
+      rows: [
+        {
+          id: "guided-clicks",
+          label: "Guided clicks",
+          previous: `${replayGoalCoach.previousGuidedSteps}`,
+          current: `${currentDoneSteps}`,
+          status: deltaNumber(currentDoneSteps, replayGoalCoach.previousGuidedSteps, true),
+          detail: completed ? "Lower guided-step count means the replay was more manual." : "Complete the replay attempt to compare guided-step count."
+        },
+        {
+          id: "certified-fallback",
+          label: "Explicit fallback",
+          previous: replayGoalCoach.previousFallbackUsed ? "used" : "not used",
+          current: `${currentFallbackUsed ? "used" : "not used"} / ${fallbackTheoryFieldCount} theory field(s) / ${fallbackEvidencePickCount} evidence pick(s)`,
+          status: deltaFallback(),
+          detail: completed ? "Field-level attribution separates manual theory work from explicit certified completion." : "Fallback remains pending until the player explicitly approves it and submits."
+        },
+        {
+          id: "manual-evidence-selection",
+          label: "Manual evidence selection",
+          previous: `${replayGoalCoach.previousSelectedEvidenceCount}`,
+          current: `${currentSelectedEvidenceCount} selected / ${manualEvidencePickCount} manual picks / ${fallbackEvidencePickCount} fallback picks`,
+          status: deltaNumber(manualEvidencePickCount || currentSelectedEvidenceCount, replayGoalCoach.previousSelectedEvidenceCount),
+          detail: completed ? "Manual picks are counted separately from any certified fallback evidence added at submit." : "Use Manual Evidence Drill before submit to improve this delta."
+        },
+        {
+          id: "manual-theory-fields",
+          label: "Manual theory fields",
+          previous: `${Math.max(0, 3 - replayGoalCoach.previousFallbackTheoryFieldCount)} manual / ${replayGoalCoach.previousFallbackTheoryFieldCount} fallback`,
+          current: `${manualTheoryFieldCount} manual / ${fallbackTheoryFieldCount} fallback / ${blockedTheoryGapCount} blocked gaps`,
+          status: deltaNumber(manualTheoryFieldCount, Math.max(0, 3 - replayGoalCoach.previousFallbackTheoryFieldCount)),
+          detail: completed ? "Suspect, motive, and method are attributed without displaying submitted text or certified values." : "Complete Manual Theory Drill or explicitly approve fallback for unresolved fields."
+        },
+        {
+          id: "proof-gaps",
+          label: "Proof gaps",
+          previous: `${replayGoalCoach.previousProofGapCount}`,
+          current: `${currentProofGapCount}`,
+          status: deltaNumber(currentProofGapCount, replayGoalCoach.previousProofGapCount, true),
+          detail: completed ? "Fewer proof gaps means the replay ended with a cleaner closure." : "Proof gaps are compared after judgement."
+        },
+        {
+          id: "source-review",
+          label: "Source review unlocked",
+          previous: replayGoalCoach.previousSourceReviewUnlocked ? "unlocked" : "locked",
+          current: currentSourceReviewUnlocked ? "unlocked" : "locked",
+          status: currentSourceReviewUnlocked ? "completed" as const : pendingStatus,
+          detail: currentSourceReviewUnlocked ? "Review Source is available for the replay attempt." : "Submit an accepted theory to unlock source review."
+        },
+        {
+          id: "replay-goals",
+          label: "Completed replay goals",
+          previous: "baseline",
+          current: `${replayGoalCoach.completedGoalCount}/${replayGoalCoach.totalGoalCount}`,
+          status: completed ? "completed" as const : pendingStatus,
+          detail: completed ? "Replay goals are summarized descriptively; no gate or score is enforced." : "Goals update as the replay attempt progresses."
+        },
+        {
+          id: "world-lead-outcome",
+          label: "World lead outcome",
+          previous: "not used",
+          current: worldLeadOutcome?.status || "not used",
+          status: worldLeadOutcome?.status === "settled" ? "completed" as const : pendingStatus,
+          detail: worldLeadOutcome?.status === "settled"
+            ? "The bounded world effect settled with the accepted case without changing route coverage."
+            : worldLeadOutcome?.status === "active"
+              ? "The bounded world effect remains active until the current case closes."
+              : "Following a world lead is optional and never changes the certified route."
+        },
+        {
+          id: "world-lead-handoff",
+          label: "Next-case handoff",
+          previous: "not used",
+          current: worldLeadCaseHandoff?.status || "not used",
+          status: worldLeadCaseHandoff?.status === "consumed" ? "completed" as const : pendingStatus,
+          detail: worldLeadCaseHandoff?.status === "ready"
+            ? "One bounded queue preference is ready for the next extracted case."
+            : worldLeadCaseHandoff?.status === "consumed"
+              ? "The follow-up was carried into the next case without changing its certified route."
+              : "No next-case handoff was prepared for this replay."
+        },
+        {
+          id: "world-arc-directive",
+          label: "Faction directive",
+          previous: "not used",
+          current: worldArcDirective?.status || "not used",
+          status: worldArcDirective?.status === "completed" ? "completed" as const : pendingStatus,
+          detail: worldArcDirective?.status === "completed"
+            ? "The selected response completed through the existing multi-tick town simulation."
+            : worldArcDirective?.status === "blocked"
+              ? "The operation is safely blocked and can use its alternate response."
+              : "The directive remains a low-spoiler strategy layer outside certified case proof."
+        },
+        {
+          id: "world-pressure-cascade",
+          label: "World pressure",
+          previous: "empty",
+          current: worldPressureCascade?.status || "empty",
+          status: worldPressureCascade?.status === "active" || worldPressureCascade?.status === "consumed" ? "completed" as const : pendingStatus,
+          detail: worldPressureCascade?.status === "active"
+            ? `${worldPressureCascade.remainingLayers} bounded layer(s) may reorder future, unextracted cases.`
+            : worldPressureCascade?.status === "consumed"
+              ? "A successful extraction consumed one bounded pressure layer."
+              : "No cross-case pressure layer is active."
+        },
+        {
+          id: "town-social-response",
+          label: "Town reactions",
+          previous: "empty",
+          current: townSocialResponse?.status || "empty",
+          status: townSocialResponse?.status === "settled" ? "completed" as const : pendingStatus,
+          detail: townSocialResponse?.status === "ready"
+            ? "A bounded public response is ready for the next normal town advance."
+            : townSocialResponse?.status === "active"
+              ? `${townSocialResponse.progressLabel} public reactions have surfaced without entering case authority.`
+              : townSocialResponse?.status === "settled"
+                ? "The latest ambient response settled outside evidence, memory testimony, and legal actions."
+                : "No player-driven town response is currently recorded."
+        }
+      ]
+    };
+  }, [guidedManualRun, guidedStepJournal, replayGoalAttempt, replayGoalCoach, session, solvedCaseDebrief, sourceReviewUnlock, theory, townSocialResponse, worldArcDirective, worldLeadCaseHandoff, worldLeadOutcome, worldPressureCascade]);
+  const replayPracticeLoop = useMemo(() => {
+    if (!replayGoalCoach) return null;
+    const labels = {
+      start: "Start",
+      discover: "Discover",
+      "pick-evidence": "Pick Evidence",
+      "fill-theory": "Fill Theory",
+      submit: "Submit",
+      "review-source": "Review Source",
+      scorecard: "Scorecard"
+    } as const;
+    const orderedStages = Object.keys(labels) as Array<keyof typeof labels>;
+    const activeAttempt = replayGoalCoach.activeAttempt;
+    const sourceReviewUnlocked = Boolean(session?.judgement?.accepted && (sourceReviewUnlock?.unlocked || guidedStepJournal.some((entry) => entry.reviewUnlocked)));
+    const scorecardStatus = replayAttemptScorecard?.status || (replayGoalCoach ? "pending" : "waiting");
+    let currentPhase: keyof typeof labels = "start";
+    if (!activeAttempt) currentPhase = "start";
+    else if (scorecardStatus === "completed") currentPhase = "scorecard";
+    else if (sourceReviewUnlocked) currentPhase = "review-source";
+    else if (manualTheoryDrill) currentPhase = manualTheoryDrill.readyForSubmit || manualTheoryDrill.fallbackApproved ? "submit" : "fill-theory";
+    else if (manualEvidenceDrill) currentPhase = "pick-evidence";
+    else if (["search", "question", "challenge", "select-evidence"].includes(guidedManualRun.currentStep)) currentPhase = "discover";
+    else currentPhase = "start";
+
+    const manualEvidencePickCount = replayAttemptScorecard?.manualEvidencePickCount ?? replayGoalAttempt?.manualEvidencePickCount ?? manualEvidenceDrill?.manualPickCount ?? 0;
+    const manualTheoryFieldCount = replayAttemptScorecard?.manualTheoryFieldCount ?? replayGoalAttempt?.manualTheoryFieldCount ?? manualTheoryDrill?.manualFieldCount ?? 0;
+    const fallbackEvidencePickCount = replayAttemptScorecard?.fallbackEvidencePickCount ?? replayGoalAttempt?.fallbackEvidencePickCount ?? 0;
+    const fallbackTheoryFieldCount = replayAttemptScorecard?.fallbackTheoryFieldCount ?? replayGoalAttempt?.fallbackTheoryFieldCount ?? manualTheoryDrill?.fallbackFieldCount ?? 0;
+    const blockedGapCount = replayAttemptScorecard?.blockedTheoryGapCount ?? replayGoalAttempt?.blockedTheoryGapCount ?? manualTheoryDrill?.blockedGapCount ?? 0;
+
+    const nextAction = !activeAttempt
+      ? "Start replay attempt"
+      : manualEvidenceDrill && !manualEvidenceDrill.readyForSubmit
+        ? "Use Manual Evidence Drill"
+        : manualTheoryDrill && !manualTheoryDrill.readyForSubmit && !manualTheoryDrill.fallbackApproved && manualTheoryDrill.blockedGapCount > 0
+          ? "Revise fields or approve explicit fallback"
+          : manualTheoryDrill && !manualTheoryDrill.readyForSubmit && !manualTheoryDrill.fallbackApproved
+            ? "Use Manual Theory Drill"
+            : manualTheoryDrill?.fallbackApproved
+              ? "Run guided submit with explicit fallback"
+              : sourceReviewUnlocked && scorecardStatus === "completed"
+                ? "Read completed scorecard"
+                : sourceReviewUnlocked
+                  ? "Review source and read scorecard"
+                  : "Run Next Guided Step";
+
+    const currentIndex = orderedStages.indexOf(currentPhase);
+    const stages = orderedStages.map((id, index) => ({
+      id,
+      label: labels[id],
+      status: index < currentIndex
+        ? "done" as const
+        : index === currentIndex
+          ? "current" as const
+          : activeAttempt || id === "start"
+            ? "ready" as const
+            : "locked" as const
+    }));
+
+    return {
+      visible: true,
+      activeAttempt,
+      currentPhase,
+      currentPhaseLabel: labels[currentPhase],
+      nextAction,
+      manualEvidencePickCount,
+      manualTheoryFieldCount,
+      fallbackEvidencePickCount,
+      fallbackTheoryFieldCount,
+      blockedGapCount,
+      sourceReviewUnlocked,
+      scorecardStatus: scorecardStatus === "completed" ? "completed" as const : replayAttemptScorecard ? "pending" as const : "waiting" as const,
+      worldLeadOutcomeStatus: worldLeadOutcome?.status || "not-used" as const,
+      worldLeadHandoffStatus: worldLeadCaseHandoff?.status || "not-used" as const,
+      worldArcStatus: worldArc?.status || "not-used" as const,
+      worldArcProgress: worldArc?.progressLabel || "not-used",
+      worldArcDirectiveStatus: worldArcDirective?.status || "not-used" as const,
+      worldPressureCascadeStatus: worldPressureCascade?.status || "empty" as const,
+      townSocialResponseStatus: townSocialResponse?.status || "empty" as const,
+      stages
+    };
+  }, [guidedManualRun.currentStep, guidedStepJournal, manualEvidenceDrill, manualTheoryDrill, replayAttemptScorecard, replayGoalAttempt, replayGoalCoach, session, sourceReviewUnlock, townSocialResponse, worldArc, worldArcDirective, worldLeadCaseHandoff, worldLeadOutcome, worldPressureCascade]);
+  function appendGuidedStepJournal(entry: Omit<GuidedStepJournalEntry, "id">) {
+    guidedStepJournalSeq.current += 1;
+    const id = `guided-step-${guidedStepJournalSeq.current}`;
+    setGuidedStepJournal((current) => {
+      const withImplicitJoin = entry.step !== "join" && !current.some((item) => item.step === "join")
+        ? [
+            {
+              id: `${id}-join`,
+              step: "join" as const,
+              label: "Join investigation",
+              status: "done" as const,
+              result: "Investigation session opened.",
+              progressDelta: "Player can now search scenes and question witnesses.",
+              nextAction: "Search the first certified route clue."
+            },
+            ...current
+          ]
+        : current;
+      const entryKey = entry.journalKey || entry.step;
+      const existingIndex = withImplicitJoin.findIndex((item) => (item.journalKey || item.step) === entryKey);
+      if (existingIndex >= 0) {
+        const next = [...withImplicitJoin];
+        next[existingIndex] = { ...entry, id: withImplicitJoin[existingIndex].id };
+        return next;
+      }
+      return [
+        ...withImplicitJoin,
+        {
+          ...entry,
+          id
+        }
+      ];
+    });
+  }
+  async function updateWorldLeadDecision(action: "follow" | "skip" | "resolve", journal = true) {
+    if (runtimeMode === "static-demo" || !world || !session) return;
+    setBusy(true);
+    try {
+      const data = await postV1<{
+        runtime: PersistentTownRuntime;
+        queue: TownEmergenceQueue;
+        world: WorldState;
+        worldLead: WorldLeadPublicSummary;
+        worldLeadOutcome?: WorldLeadOutcomePublicSummary;
+        worldArc?: WorldArcPublicSummary;
+        worldInfluenceBudget?: WorldInfluenceBudgetPublicSummary;
+        arcConvergence?: ArcConvergencePublicSummary;
+      }>("/api/v1/command/town/runtime/step", {
+        worldId: world.id,
+        steps: 0,
+        worldLeadDecision: { sessionId: session.id, action }
+      });
+      setTownRuntime(data.runtime);
+      setTownQueue(data.queue);
+      setWorld(data.world);
+      setWorldLead(data.worldLead);
+      if (data.worldLeadOutcome) setWorldLeadOutcome(data.worldLeadOutcome);
+      if (data.worldArc) setWorldArc(data.worldArc);
+      if (data.worldInfluenceBudget) setWorldInfluenceBudget(data.worldInfluenceBudget);
+      if (data.arcConvergence) {
+        setArcConvergence(data.arcConvergence);
+        if (data.arcConvergence.status === "active") {
+          appendGuidedStepJournal({
+            journalKey: "arc-convergence-active",
+            step: "join",
+            label: "Campaign finale activated",
+            status: "done",
+            result: `${data.arcConvergence.finaleLabel} entered the normal certified case path.`,
+            progressDelta: data.arcConvergence.approachLabel,
+            nextAction: data.arcConvergence.nextAction
+          });
+        }
+      }
+      if (journal) {
+        const label = action === "follow"
+          ? "World lead followed"
+          : action === "skip"
+            ? "World lead skipped"
+            : data.worldLeadOutcome
+              ? "World lead outcome active"
+              : "World lead resolved";
+        appendGuidedStepJournal({
+          journalKey: "world-lead",
+          step: "join",
+          label,
+          status: action === "resolve" ? "done" : "info",
+          result: action === "follow"
+            ? "A server-backed world lead now prioritizes an eligible certified investigation step."
+            : action === "skip"
+              ? "The certified investigation route remains unchanged."
+              : data.worldLeadOutcome
+                ? `${data.worldLeadOutcome.benefitLabel} ${data.worldLeadOutcome.costLabel}`
+                : "The selected world lead reached its eligible certified investigation step.",
+          progressDelta: action === "follow"
+            ? `Priority set to ${data.worldLead.focus}.`
+            : action === "skip"
+              ? "No route priority was changed."
+              : data.worldLeadOutcome
+                ? "One bounded world effect is active for this case."
+                : "World lead marked complete without changing route coverage.",
+          nextAction: data.worldLeadOutcome?.nextAction || data.worldLead.nextAction
+        });
+      }
+      setStatus(action === "follow"
+        ? "World lead followed. The next eligible certified step is prioritized."
+        : action === "skip"
+          ? "World lead skipped. The certified route remains the next action."
+          : data.worldLeadOutcome
+            ? "World lead resolved. A bounded world effect is active for this case."
+            : "World lead resolved after its eligible certified step.");
+      if (action !== "resolve") campaignStudy.recordWorldChoice("world-lead");
+      return data.worldLead;
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to update world lead.");
+      return undefined;
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function updateWorldArcDirectiveDecision(choice: "support" | "contain" | "defer") {
+    if (runtimeMode === "static-demo" || !world) return;
+    setBusy(true);
+    try {
+      const data = await postV1<{
+        runtime: PersistentTownRuntime;
+        queue: TownEmergenceQueue;
+        world: WorldState;
+        worldArcDirective: WorldArcDirectivePublicSummary;
+        worldPressureCascade?: WorldPressureCascadePublicSummary;
+        factionRelationship?: FactionRelationshipPublicSummary;
+        worldInfluenceBudget?: WorldInfluenceBudgetPublicSummary;
+        investigatorProgression?: InvestigatorProgressionPublicSummary;
+      }>("/api/v1/command/town/runtime/step", {
+        worldId: world.id,
+        steps: 0,
+        worldArcDirectiveDecision: { choice }
+      });
+      setTownRuntime(data.runtime);
+      setTownQueue(data.queue);
+      setWorld(data.world);
+      setWorldArcDirective(data.worldArcDirective);
+      if (data.worldPressureCascade) setWorldPressureCascade(data.worldPressureCascade);
+      if (data.factionRelationship) setFactionRelationship(data.factionRelationship);
+      if (data.worldInfluenceBudget) setWorldInfluenceBudget(data.worldInfluenceBudget);
+      appendGuidedStepJournal({
+        journalKey: choice === "defer" ? "world-arc-directive-deferred" : `world-arc-directive-chosen-${choice}`,
+        step: "submit",
+        label: choice === "defer" ? "Faction directive deferred" : `Faction directive ${choice} selected`,
+        status: "info",
+        result: choice === "defer"
+          ? "The response remains open without advancing the town clock."
+          : `${data.worldArcDirective.operationLabel} is scheduled through the existing town simulation.`,
+        progressDelta: data.worldArcDirective.progressLabel,
+        nextAction: data.worldArcDirective.nextAction
+      });
+      setStatus(choice === "defer"
+        ? "Faction directive deferred. The response remains open."
+        : `Faction directive ${choice} scheduled for the next legal institution cycle.`);
+      campaignStudy.recordWorldChoice("faction-directive");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to update faction directive.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function updatePlayerResourceCommitmentDecision(choice: "police-time" | "informant-trust" | "evidence-integrity" | "none") {
+    if (runtimeMode === "static-demo" || !world || !session) return;
+    setBusy(true);
+    try {
+      const data = await postV1<{
+        runtime: PersistentTownRuntime;
+        queue: TownEmergenceQueue;
+        world: WorldState;
+        playerResourceCommitment: PlayerResourceCommitmentPublicSummary;
+        factionRelationship?: FactionRelationshipPublicSummary;
+        worldInfluenceBudget?: WorldInfluenceBudgetPublicSummary;
+      }>("/api/v1/command/town/runtime/step", {
+        worldId: world.id,
+        steps: 0,
+        playerResourceCommitmentDecision: { sessionId: session.id, choice }
+      });
+      setTownRuntime(data.runtime);
+      setTownQueue(data.queue);
+      setWorld(data.world);
+      setPlayerResourceCommitment(data.playerResourceCommitment);
+      if (data.factionRelationship) setFactionRelationship(data.factionRelationship);
+      if (data.worldInfluenceBudget) setWorldInfluenceBudget(data.worldInfluenceBudget);
+      appendGuidedStepJournal({
+        journalKey: "player-resource-commitment",
+        step: "join",
+        label: choice === "none" ? "Case resource declined" : "Case resource reserved",
+        status: "info",
+        result: data.playerResourceCommitment.progressLabel,
+        progressDelta: choice === "none" ? "No world resource changed." : `${data.playerResourceCommitment.reserveCost || 2} unit(s) moved from available to reserved without advancing the town clock.`,
+        nextAction: data.playerResourceCommitment.nextAction
+      });
+      setStatus(choice === "none"
+        ? "Continuing without a case resource reserve. The certified route is unchanged."
+        : `${data.playerResourceCommitment.label} reserved for the matching certified step.`);
+      campaignStudy.recordWorldChoice("resource-commitment");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to update case resource commitment.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function updateWorldEventOfferDecision(choice: "accept" | "decline") {
+    if (runtimeMode === "static-demo" || !world) return;
+    setBusy(true);
+    try {
+      const data = await postV1<{
+        runtime: PersistentTownRuntime;
+        queue: TownEmergenceQueue;
+        world: WorldState;
+        worldEventOffer: WorldEventOfferPublicSummary;
+        factionRelationship?: FactionRelationshipPublicSummary;
+      }>("/api/v1/command/town/runtime/step", {
+        worldId: world.id,
+        steps: 0,
+        worldEventOfferDecision: { choice }
+      });
+      setTownRuntime(data.runtime);
+      setTownQueue(data.queue);
+      setWorld(data.world);
+      setWorldEventOffer(data.worldEventOffer);
+      if (data.factionRelationship) setFactionRelationship(data.factionRelationship);
+      appendGuidedStepJournal({
+        journalKey: `world-event-offer-${choice}`,
+        step: "submit",
+        label: choice === "accept" ? "World opportunity accepted" : "World opportunity declined",
+        status: choice === "accept" ? "info" : "done",
+        result: data.worldEventOffer.progressLabel,
+        progressDelta: choice === "accept" ? data.worldEventOffer.benefitLabel : "No resource, relationship, event, or tick changed.",
+        nextAction: data.worldEventOffer.nextAction
+      });
+      setStatus(choice === "accept" ? "World opportunity accepted for the next legal institution cycle." : "World opportunity declined without a hidden penalty.");
+      campaignStudy.recordWorldChoice("world-event-offer");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to update world opportunity.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function updateCampaignRecoveryDecision(choice: "start" | "defer") {
+    if (runtimeMode === "static-demo" || !world) return;
+    setBusy(true);
+    try {
+      const data = await postV1<{
+        runtime: PersistentTownRuntime;
+        queue: TownEmergenceQueue;
+        world: WorldState;
+        campaignRecovery: CampaignRecoveryPublicSummary;
+        factionRelationship?: FactionRelationshipPublicSummary;
+        worldEventOffer?: WorldEventOfferPublicSummary;
+      }>("/api/v1/command/town/runtime/step", {
+        worldId: world.id,
+        steps: 0,
+        campaignRecoveryDecision: { choice }
+      });
+      setTownRuntime(data.runtime);
+      setTownQueue(data.queue);
+      setWorld(data.world);
+      setCampaignRecovery(data.campaignRecovery);
+      if (data.factionRelationship) setFactionRelationship(data.factionRelationship);
+      if (data.worldEventOffer) setWorldEventOffer(data.worldEventOffer);
+      appendGuidedStepJournal({
+        journalKey: `campaign-recovery-${choice}`,
+        step: "submit",
+        label: choice === "start" ? "Campaign recovery started" : "Campaign recovery deferred",
+        status: choice === "start" && data.campaignRecovery.status === "completed" ? "done" : "info",
+        result: data.campaignRecovery.progressLabel,
+        progressDelta: data.campaignRecovery.costLabel,
+        nextAction: data.campaignRecovery.nextAction
+      });
+      setStatus(choice === "start" ? data.campaignRecovery.progressLabel : "Recovery deferred; the certified case path remains available.");
+      if (choice === "start") campaignStudy.recordRecoveryStarted();
+      else campaignStudy.recordWorldChoice("campaign-recovery");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to update campaign recovery.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function resolveWorldLeadAfterStep(kind: GuidedManualStepKind) {
+    if (worldLead?.status !== "followed" || worldLead.focus !== kind) return;
+    await updateWorldLeadDecision("resolve");
+  }
+  async function startReplayGoalAttempt() {
+    if (!world || !activeCase) return;
+    const stamp = new Date().toISOString();
+    const previousJournalStepCount = new Set(guidedStepJournal.filter((entry) => entry.status === "done").map((entry) => entry.step)).size;
+    const previousFallbackUsed = replayGoalCoach?.previousFallbackUsed
+      ?? Boolean(solvedCaseDebrief?.fallbackUsed || guidedStepJournal.some((entry) => entry.fallbackUsed));
+    setReplayGoalAttempt({
+      active: true,
+      previousGuidedSteps: replayGoalCoach?.previousGuidedSteps ?? solvedCaseDebrief?.manualStepsCompleted ?? previousJournalStepCount,
+      previousFallbackUsed,
+      previousFallbackTheoryFieldCount: replayGoalCoach?.previousFallbackTheoryFieldCount ?? (previousFallbackUsed ? 3 : 0),
+      previousSelectedEvidenceCount: replayGoalCoach?.previousSelectedEvidenceCount ?? solvedCaseDebrief?.selectedEvidenceCount ?? session?.submittedTheory?.evidenceIds.length ?? 0,
+      previousProofGapCount: replayGoalCoach?.previousProofGapCount ?? solvedCaseDebrief?.proofGapCount ?? sourceReviewUnlock?.proofGapCount ?? 0,
+      previousSourceReviewUnlocked: replayGoalCoach?.previousSourceReviewUnlocked ?? Boolean(solvedCaseDebrief?.sourceReviewUnlocked || sourceReviewUnlock?.unlocked),
+      manualEvidencePickCount: 0,
+      fallbackEvidencePickCount: 0,
+      manualTheoryFieldCount: 0,
+      fallbackTheoryFieldCount: 0,
+      blockedTheoryGapCount: 0,
+      theoryFallbackApproved: false,
+      startedAt: stamp,
+      lastResult: "replay attempt started"
+    });
+    setGuidedStepJournal([]);
+    setWorldLead(null);
+    setGuidedManualLastResult("replay attempt started");
+    setTheory({ culpritId: "", motive: "", method: "", evidenceIds: [] });
+    setRevealText("");
+    setSelectedEvidenceId("");
+    setServerPlaythroughSummary(null);
+    setInspectorTab("investigation");
+    if (runtimeMode === "static-demo") {
+      const replaySession: PlayerSession = {
+        id: `static-replay-session-${Date.now()}`,
+        worldId: world.id,
+        caseId: activeCase.id,
+        playerId: "static-player",
+        displayName: playerName.trim() || "Investigator",
+        discoveredEvidenceIds: [],
+        interrogationLog: [],
+        createdAt: stamp,
+        updatedAt: stamp
+      };
+      setSession(replaySession);
+      setSessions([replaySession]);
+      setProgress({
+        observedCrimeWindow: true,
+        joinedInvestigation: true,
+        discoveredEvidence: false,
+        challengedTestimony: false,
+        submittedTheory: false,
+        solvedCase: false
+      });
+      persist(world.id, replaySession.id);
+      setSelectedSceneId(activeCase.generationProfile.sceneLocationId);
+      pushToast({ tone: "info", title: "Replay attempt started", detail: "Try fewer guided clicks and choose evidence manually before submit." });
+      setStatus("Replay attempt started in Static Runtime. No /api/* calls were made.");
+      return;
+    }
+    const optimisticSession: PlayerSession = {
+      id: `session-replay-pending-${Date.now()}`,
+      worldId: world.id,
+      caseId: activeCase.id,
+      playerId: "player-replay-pending",
+      displayName: playerName.trim() || "Investigator",
+      discoveredEvidenceIds: [],
+      interrogationLog: [],
+      createdAt: stamp,
+      updatedAt: stamp
+    };
+    setSession(optimisticSession);
+    setProgress({
+      observedCrimeWindow: true,
+      joinedInvestigation: true,
+      discoveredEvidence: false,
+      challengedTestimony: false,
+      submittedTheory: false,
+      solvedCase: false
+    });
+    persist(world.id, optimisticSession.id);
+    setBusy(true);
+    try {
+      const data = await postJson<{ session: PlayerSession }>("/api/players/join", {
+        worldId: world.id,
+        caseId: activeCase.id,
+        displayName: playerName.trim() || "Investigator"
+      });
+      setSession(data.session);
+      setSessions((items) => [data.session, ...items.filter((item) => item.id !== data.session.id)]);
+      persist(world.id, data.session.id);
+      setReplayGoalAttempt((current) => current ? { ...current, lastResult: "server replay session joined" } : current);
+      pushToast({ tone: "info", title: "Server replay attempt started", detail: "A fresh local investigation session is ready." });
+      setStatus("Server replay attempt started using the existing local join flow.");
+    } catch (error) {
+      setReplayGoalAttempt((current) => current ? { ...current, lastResult: "replay attempt blocked" } : current);
+      setStatus(error instanceof Error ? error.message : "Failed to start replay attempt");
+    } finally {
+      setBusy(false);
+    }
+  }
   const mapInteractiveTargets: MapInteractiveTarget[] = useMemo(
     () => (world ? deriveMapInteractiveTargets(world, activeCase || undefined, events, session) : []),
     [activeCase, events, session, world]
@@ -3801,15 +5173,30 @@ export default function Home() {
   const authoringEvidence = authoringCase.evidence.find((item) => item.id === authoringEvidenceId) || authoringCase.evidence[0];
   const authoringScene = authoringCase.scenes.find((item) => item.id === authoringSceneId) || authoringCase.scenes[0];
   const authoringTimelineEvent = authoringCase.truth.trueTimeline.find((item) => item.id === authoringTimelineId) || authoringCase.truth.trueTimeline[0];
+  const contentAuthoringGuide = useMemo(
+    () => buildDetectiveContentAuthoringGuide(detectiveContentPack, authoringDraft, contentSelection),
+    [authoringDraft, contentSelection]
+  );
+  const pendingSafeDiff = useMemo(
+    () => contentAuthoringGuide.patches
+      .map((patch) => safeDiffItem(patch.path, patch.before, patch.after, patch.label))
+      .filter((item): item is SafeDiffItem => Boolean(item)),
+    [contentAuthoringGuide.patches]
+  );
+  const appliedSafeDiff = useMemo(
+    () => contentSeedHistory[0] ? buildAppliedSafeDiff(contentSeedHistory[0].draft, authoringDraft) : [],
+    [authoringDraft, contentSeedHistory]
+  );
   const authoringChecklist = useMemo(
     () => [
       { label: "Schema", ok: authoringReport.schema.valid, tab: "case" as AuthoringTab },
+      { label: "Content Guide", ok: contentAuthoringGuide.coverage.compatibleEvidenceTypeCount > 0 && contentAuthoringGuide.coverage.compatibleRoleCount > 0, tab: "content" as AuthoringTab },
       { label: "World-backed Evidence", ok: Boolean(authoringDraft.caseFromLog.qualityReport.worldBackedEvidence), tab: "evidence" as AuthoringTab },
       { label: "Memory-scoped Testimony", ok: Boolean(authoringDraft.caseFromLog.qualityReport.memoryScopedTestimony), tab: "characters" as AuthoringTab },
       { label: "Hard Logic", ok: authoringReport.hardLogicValid, tab: "logic" as AuthoringTab },
       { label: "Playable Runtime", ok: authoringReport.valid, tab: "logic" as AuthoringTab }
     ],
-    [authoringDraft.caseFromLog.qualityReport.memoryScopedTestimony, authoringDraft.caseFromLog.qualityReport.worldBackedEvidence, authoringReport.hardLogicValid, authoringReport.schema.valid, authoringReport.valid]
+    [authoringDraft.caseFromLog.qualityReport.memoryScopedTestimony, authoringDraft.caseFromLog.qualityReport.worldBackedEvidence, authoringReport.hardLogicValid, authoringReport.schema.valid, authoringReport.valid, contentAuthoringGuide.coverage.compatibleEvidenceTypeCount, contentAuthoringGuide.coverage.compatibleRoleCount]
   );
   const authoringProofAudit = useMemo(() => {
     const trace = buildEmergenceProofTrace(authoringDraft.world, authoringDraft.events, authoringDraft.caseFromLog, {
@@ -3835,6 +5222,97 @@ export default function Home() {
     };
   }, [authoringDraft]);
   const authoringBlocker = authoringReport.issues.find((item) => item.severity === "error");
+  const authoringWorkflowCoach = useMemo(() => {
+    const latestSeed = contentSeedHistory[0];
+    const pendingPatchCount = contentAuthoringGuide.patches.length;
+    const backupAvailable = Boolean(latestSeed && caseGalleryEntries.some((entry) => entry.title === latestSeed.backupTitle));
+    const safeDiffActive = Boolean(latestSeed) || (contentSeedPreviewed && pendingSafeDiff.length > 0);
+    const stages: WorkflowCoachStage[] = workflowCoachStages.map((stage) => {
+      if (stage.id === "draft") {
+        return { ...stage, status: "done", detail: `${authoringCase.title || "Untitled draft"} is loaded in browser state.` };
+      }
+      if (stage.id === "content-seed") {
+        if (latestSeed) return { ...stage, status: "done", detail: `${latestSeed.patchCount} safe text patches applied from ${latestSeed.caseTypeLabel}.` };
+        if (pendingPatchCount > 0) return { ...stage, status: contentSeedPreviewed ? "active" : "ready", detail: `${pendingPatchCount} safe text patches are available for preview.` };
+        return { ...stage, status: "ready", detail: "No content seed changes are pending for this selection." };
+      }
+      if (stage.id === "safe-diff") {
+        if (latestSeed) return { ...stage, status: "done", detail: `${appliedSafeDiff.length} applied public-text fields are visible for review.` };
+        if (contentSeedPreviewed && pendingSafeDiff.length > 0) return { ...stage, status: "active", detail: `${pendingSafeDiff.length} pending public-text fields are visible before apply.` };
+        if (pendingSafeDiff.length > 0) return { ...stage, status: "ready", detail: "Preview the content seed to inspect the safe diff before applying." };
+        return { ...stage, status: "ready", detail: "No safe diff is currently active." };
+      }
+      if (stage.id === "validation") {
+        if (authoringReport.errors.length > 0) return { ...stage, status: "blocked", detail: `${authoringReport.errors.length} blocker(s), ${authoringReport.warnings.length} warning(s).` };
+        return { ...stage, status: "done", detail: `Validation pass with ${authoringReport.warnings.length} warning(s).` };
+      }
+      if (stage.id === "run-draft") {
+        if (authoringReport.valid) return { ...stage, status: "ready", detail: "Run Draft is available for the current browser-local case." };
+        return { ...stage, status: "blocked", detail: "Run Draft is disabled until validation blockers are fixed." };
+      }
+      if (stage.id === "gallery-backup") {
+        if (backupAvailable && latestSeed) return { ...stage, status: "done", detail: `Backup available: ${latestSeed.backupTitle}.` };
+        if (latestSeed) return { ...stage, status: "active", detail: "Seed history is active; Gallery backup is expected in local browser storage." };
+        return { ...stage, status: "ready", detail: "A Gallery backup will be created before any non-empty seed apply." };
+      }
+      return { ...stage, status: "ready", detail: "" };
+    });
+
+    let nextAction: WorkflowCoachNextAction;
+    if (authoringBlocker) {
+      nextAction = {
+        label: "Fix validation blocker",
+        detail: safeCoachMessage(authoringBlocker.message),
+        tone: "blocked"
+      };
+    } else if (latestSeed) {
+      nextAction = {
+        label: "Review applied safe diff",
+        detail: latestSeed.validation.valid
+          ? "Applied diff is clean. You can Undo Content Seed, load the Gallery backup, Run Draft, or save the current draft."
+          : `${latestSeed.validation.errorCount} blocker(s) remain after apply.`,
+        tone: latestSeed.validation.valid ? "done" : "blocked"
+      };
+    } else if (pendingPatchCount > 0 && !contentSeedPreviewed) {
+      nextAction = {
+        label: "Preview Content Seed",
+        detail: `${pendingPatchCount} browser-local safe text patches can be reviewed before apply.`,
+        tone: "active"
+      };
+    } else if (pendingPatchCount > 0) {
+      nextAction = {
+        label: "Review pending safe diff",
+        detail: `${pendingSafeDiff.length} public-text fields are ready for apply or selection changes.`,
+        tone: "active"
+      };
+    } else if (authoringReport.valid) {
+      nextAction = {
+        label: "Run Draft or Save to Gallery",
+        detail: "The current draft passes validation and can move to runtime or browser-local reuse.",
+        tone: "ready"
+      };
+    } else {
+      nextAction = {
+        label: "Review Rule Report",
+        detail: "Check validation issues before running the draft.",
+        tone: "blocked"
+      };
+    }
+
+    return { stages, nextAction, backupAvailable, safeDiffActive };
+  }, [
+    appliedSafeDiff.length,
+    authoringBlocker,
+    authoringCase.title,
+    authoringReport.errors.length,
+    authoringReport.valid,
+    authoringReport.warnings.length,
+    caseGalleryEntries,
+    contentAuthoringGuide.patches.length,
+    contentSeedHistory,
+    contentSeedPreviewed,
+    pendingSafeDiff.length
+  ]);
   const authoringMapSnapshot = useMemo(
     () => buildWorldMapSnapshot(authoringDraft.world, authoringDraft.events, authoringDraft.caseFromLog, undefined, { day: 1, time: minutesToTime(timeValue) }),
     [authoringDraft, timeValue]
@@ -3902,6 +5380,14 @@ export default function Home() {
   }, [authoringCase, authoringCharacterId, authoringCharacters, authoringEvidenceId, authoringSceneId, authoringTimelineId]);
 
   useEffect(() => {
+    setGuidedStepJournal([]);
+    setGuidedManualLastResult("ready");
+    setWorldLead(null);
+    setWorldLeadOutcome(null);
+    setReplayGoalAttempt(null);
+  }, [activeCase?.id, runtimeMode]);
+
+  useEffect(() => {
     localStorage.setItem(authoringStorageKey, JSON.stringify(authoringDraft));
   }, [authoringDraft]);
 
@@ -3928,7 +5414,9 @@ export default function Home() {
     if (session?.id) query.set("sessionId", session.id);
     getV1<{ snapshot: WorldMapSnapshot }>(`/api/v1/query/world/map?${query.toString()}`)
       .then((data) => setSnapshot(data.snapshot))
-      .catch(() => undefined);
+      .catch(() => {
+        setSnapshot(buildWorldMapSnapshot(world, events, activeCase || undefined, session || undefined, { day: 1, time: minutesToTime(timeValue) }));
+      });
   }, [activeCase, events, runtimeMode, session, timeValue, world]);
 
   useEffect(() => {
@@ -4038,6 +5526,7 @@ export default function Home() {
       const firstCharacter = data.activeCase.deductionCase.characters.find((item) => item.role !== "\u6b7b\u8005");
       setSelectedCharacterId(firstCharacter?.id || data.activeCase.generationProfile.culpritId);
       setTheory({ culpritId: "", motive: "", method: "", evidenceIds: [] });
+      setServerPlaythroughSummary(null);
       setTimeValue(timeToMinutes("08:00"));
     }
     if (data.sessions) setSessions(data.sessions);
@@ -4107,19 +5596,55 @@ export default function Home() {
 
   async function joinCase() {
     if (!world || !activeCase) return;
-    if (runtimeMode === "static-demo" && session) {
+    if (runtimeMode === "static-demo") {
+      if (!session) {
+        const stamp = new Date().toISOString();
+        const staticSession: PlayerSession = {
+          id: `static-session-${Date.now()}`,
+          worldId: world.id,
+          caseId: activeCase.id,
+          playerId: "static-player",
+          displayName: playerName.trim() || "Investigator",
+          discoveredEvidenceIds: [],
+          interrogationLog: [],
+          createdAt: stamp,
+          updatedAt: stamp
+        };
+        setSession(staticSession);
+        persist(world.id, staticSession.id);
+      }
       setProgress((current) => ({ ...current, joinedInvestigation: true }));
       setStatus("Joined investigation. Click map locations for evidence and select NPCs to question.");
       return;
     }
+    const stamp = new Date().toISOString();
+    const optimisticSession: PlayerSession = {
+      id: `session-pending-${Date.now()}`,
+      worldId: world.id,
+      caseId: activeCase.id,
+      playerId: "player-pending",
+      displayName: playerName.trim() || "Investigator",
+      discoveredEvidenceIds: [],
+      interrogationLog: [],
+      createdAt: stamp,
+      updatedAt: stamp
+    };
+    setSession(optimisticSession);
+    setProgress((current) => ({ ...current, joinedInvestigation: true }));
+    persist(world.id, optimisticSession.id);
+    setStatus("Joined investigation. Click map locations for evidence and NPCs for questioning.");
     setBusy(true);
     try {
-      const data = await postJson<{ session: PlayerSession }>("/api/players/join", { worldId: world.id, caseId: activeCase.id, displayName: playerName.trim() || "Investigator" });
+      const data = await postJson<{ session: PlayerSession; playerResourceCommitment?: PlayerResourceCommitmentPublicSummary; factionRelationship?: FactionRelationshipPublicSummary; investigatorProgression?: InvestigatorProgressionPublicSummary }>("/api/players/join", { worldId: world.id, caseId: activeCase.id, displayName: playerName.trim() || "Investigator" });
       setSession(data.session);
+      if (data.playerResourceCommitment) setPlayerResourceCommitment(data.playerResourceCommitment);
+      if (data.factionRelationship) setFactionRelationship(data.factionRelationship);
+      if (data.investigatorProgression) setInvestigatorProgression(data.investigatorProgression);
       setProgress((current) => ({ ...current, joinedInvestigation: true }));
       setSessions((items) => [data.session, ...items.filter((item) => item.id !== data.session.id)]);
       persist(world.id, data.session.id);
       setStatus("Joined investigation. Click map locations for evidence and NPCs for questioning.");
+      campaignStudy.recordMeaningfulAction();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to join investigation");
     } finally {
@@ -4141,6 +5666,7 @@ export default function Home() {
       setActiveCase(data.activeCase);
       setRevealText("");
       setStatus(`Town advanced to day ${data.world.day}; new events were written to the log.`);
+      campaignStudy.recordMeaningfulAction();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to advance town");
     } finally {
@@ -4148,14 +5674,96 @@ export default function Home() {
     }
   }
 
-  async function refreshTownRuntime(targetWorldId = world?.id, targetNpcId = selectedCharacterId) {
+  function selectScenarioRunFromRuntime(runtime: PersistentTownRuntime | null | undefined, scenarioId?: string | null, forceSnapshots = false) {
+    const runs = runtime?.scenarioRuns || [];
+    const nextRun = (scenarioId ? runs.find((item) => item.id === scenarioId) : null) || runs[0] || null;
+    setScenarioRun(nextRun);
+    setScenarioReport(nextRun?.report || null);
+    if (!nextRun) return;
+    const availableSnapshotIds = new Set((runtime?.snapshots || []).map((snapshot) => snapshot.id));
+    const nextFromId = nextRun.report.baseline.startSnapshotId;
+    const nextToId = nextRun.report.baseline.endSnapshotId;
+    if (forceSnapshots || !availableSnapshotIds.has(selectedSnapshotFromId) || !availableSnapshotIds.has(selectedSnapshotToId)) {
+      setSelectedSnapshotFromId(nextFromId);
+      setSelectedSnapshotToId(nextToId);
+      setReviewExportTarget({ fromId: nextFromId, toId: nextToId });
+    }
+  }
+
+  async function loadScenarioArtifacts(targetWorldId: string) {
+    const data = await getV1<{ presets: ScenarioPreset[]; runs: ScenarioRunSummary[] }>(`/api/v1/query/town/scenarios?worldId=${encodeURIComponent(targetWorldId)}`);
+    setScenarioPresets(data.presets);
+    setScenarioRuns(data.runs);
+    setSelectedScenarioPresetId((current) => {
+      if (current && data.presets.some((preset) => preset.id === current)) return current;
+      return data.presets[0]?.id || "";
+    });
+    return data;
+  }
+
+  async function loadScenarioPacks(targetWorldId: string) {
+    const data = await getV1<{ packs: Array<ScenarioPack & { builtIn?: boolean; source?: string; experimentId?: string; experimentHash?: string; experimentPathHash?: string; validation?: { ok: boolean } }> }>(`/api/v1/query/town/scenario-packs?worldId=${encodeURIComponent(targetWorldId)}`);
+    setScenarioPacks(data.packs);
+    setSelectedScenarioPackId((current) => {
+      if (current && data.packs.some((pack) => pack.manifest.id === current)) return current;
+      return data.packs[0]?.manifest.id || "";
+    });
+    return data;
+  }
+
+  async function loadRunCatalog(targetWorldId: string, runtime?: PersistentTownRuntime | null) {
+    const data = await getV1<{ runs: RunCatalogEntry[] }>(`/api/v1/query/town/runs?worldId=${encodeURIComponent(targetWorldId)}`);
+    setRunCatalog(data.runs);
+    setRunJobs(runtime?.runJobs || []);
+    setSelectedRunCatalogId((current) => {
+      if (current && data.runs.some((run) => run.runId === current)) return current;
+      return data.runs[0]?.runId || "";
+    });
+    return data;
+  }
+
+  async function loadRuleState(targetWorldId: string) {
+    const [ruleData, lifecycleData] = await Promise.all([
+      getV1<{ ruleState: TownRuleSnapshotSummary }>(`/api/v1/query/town/rule-state?worldId=${encodeURIComponent(targetWorldId)}`),
+      getV1<{ lifecycle: TownCaseLifecycleState }>(`/api/v1/query/town/case-lifecycle?worldId=${encodeURIComponent(targetWorldId)}`)
+    ]);
+    setTownRuleState(ruleData.ruleState);
+    setTownCaseLifecycle(lifecycleData.lifecycle);
+  }
+
+  async function refreshTownRuntime(targetWorldId = world?.id, targetNpcId = selectedCharacterId, preferredScenarioId?: string | null, forceScenarioSnapshots = false) {
     if (!targetWorldId || runtimeMode === "static-demo") return;
     const runtimeData = await getV1<{ runtime: PersistentTownRuntime; queue: TownEmergenceQueue }>(`/api/v1/query/town/runtime?worldId=${encodeURIComponent(targetWorldId)}`);
     setTownRuntime(runtimeData.runtime);
     setTownQueue(runtimeData.queue);
-    setScenarioRun(runtimeData.runtime.scenarioRuns?.[0] || null);
-    setScenarioReport(runtimeData.runtime.scenarioRuns?.[0]?.report || null);
+    setWorldArc(runtimeData.runtime.worldArcSummary || null);
+    setWorldArcDirective(runtimeData.runtime.worldArcDirectiveSummary || null);
+    setWorldPressureCascade(runtimeData.runtime.worldPressureCascadeSummary || null);
+    setWorldInfluenceBudget(runtimeData.runtime.worldInfluenceBudgetSummary || null);
+    setPlayerResourceCommitment(runtimeData.runtime.playerResourceCommitmentSummary || null);
+    setFactionRelationship(runtimeData.runtime.factionRelationshipSummary || null);
+    setWorldEventOffer(runtimeData.runtime.worldEventOfferSummary || null);
+    setInvestigatorProgression(runtimeData.runtime.investigatorProgressionSummary || null);
+    setCampaignRecovery(runtimeData.runtime.campaignRecoverySummary || null);
+    setArcConvergence(runtimeData.runtime.arcConvergenceSummary || null);
+    setCampaignSession(runtimeData.runtime.campaignSessionSummary || null);
+    setCampaignFinaleDebrief(runtimeData.runtime.campaignFinaleDebrief || null);
+    setTownSocialResponse(runtimeData.runtime.townSocialResponseSummary || null);
     setTownSnapshots(runtimeData.runtime.snapshots || []);
+    selectScenarioRunFromRuntime(runtimeData.runtime, preferredScenarioId || scenarioRun?.id, forceScenarioSnapshots);
+    await loadScenarioArtifacts(targetWorldId).catch(() => {
+      setScenarioPresets([]);
+      setScenarioRuns([]);
+    });
+    await loadScenarioPacks(targetWorldId).catch(() => setScenarioPacks([]));
+    await loadRunCatalog(targetWorldId, runtimeData.runtime).catch(() => {
+      setRunCatalog([]);
+      setRunJobs(runtimeData.runtime.runJobs || []);
+    });
+    await loadRuleState(targetWorldId).catch(() => {
+      setTownRuleState(null);
+      setTownCaseLifecycle(null);
+    });
     try {
       const briefData = await getV1<{ brief: TownSituationBrief }>(`/api/v1/query/town/brief?worldId=${encodeURIComponent(targetWorldId)}`);
       setTownBrief(briefData.brief);
@@ -4163,8 +5771,10 @@ export default function Home() {
       setTownBrief(null);
     }
     const latestSnapshots = runtimeData.runtime.snapshots || [];
-    if (!selectedSnapshotFromId && latestSnapshots.length >= 2) setSelectedSnapshotFromId(latestSnapshots[1].id);
-    if (!selectedSnapshotToId && latestSnapshots.length >= 1) setSelectedSnapshotToId(latestSnapshots[0].id);
+    if (!runtimeData.runtime.scenarioRuns?.length) {
+      if (!selectedSnapshotFromId && latestSnapshots.length >= 2) setSelectedSnapshotFromId(latestSnapshots[1].id);
+      if (!selectedSnapshotToId && latestSnapshots.length >= 1) setSelectedSnapshotToId(latestSnapshots[0].id);
+    }
     if (targetNpcId) {
       const agentData = await getV1<{ agent?: NpcAgentState; candidates: NpcActionCandidate[]; trace?: unknown }>(`/api/v1/query/town/agent?worldId=${encodeURIComponent(targetWorldId)}&npcId=${encodeURIComponent(targetNpcId)}`);
       setSelectedAgentCandidates(agentData.candidates || []);
@@ -4182,27 +5792,20 @@ export default function Home() {
   }, [runtimeMode, selectedSnapshotFromId, selectedSnapshotToId, world?.id]);
 
   useEffect(() => {
-    if (runtimeMode === "static-demo" || appMode !== "persistent-town") {
+    if (runtimeMode === "static-demo" || appMode !== "persistent-town" || !world?.id) {
       setBenchmarkSummary(null);
       return;
     }
     getV1<{ available: boolean; report: BenchmarkSummary | null }>("/api/v1/query/benchmark/emergence")
       .then((data) => {
-        if (!data.available || !data.report) return;
-        setBenchmarkSummary({
-          seedCount: data.report.seedCount || 0,
-          passed: data.report.passed || 0,
-          failed: data.report.failed || 0,
-          passRate: data.report.passRate || 0,
-          averageQualityScore: data.report.averageQualityScore || 0,
-          averageEmergenceScore: data.report.averageEmergenceScore || 0,
-          routeCertifiedRate: data.report.routeCertifiedRate || 0,
-          autoSolvePassRate: data.report.autoSolvePassRate || 0,
-          averageAutoSolveSteps: data.report.averageAutoSolveSteps || 0
-        });
+        if (!data.available || !data.report) {
+          setBenchmarkSummary(null);
+          return;
+        }
+        setBenchmarkSummary(data.report);
       })
       .catch(() => setBenchmarkSummary(null));
-  }, [appMode, runtimeMode]);
+  }, [appMode, runtimeMode, townRuntime?.id, world?.id]);
 
   async function startPersistentTown() {
     if (!world) return;
@@ -4220,6 +5823,7 @@ export default function Home() {
       setInspectorTab("agent");
       setAppMode("persistent-town");
       setStatus("Persistent Agent Town started. NPC decisions are now writing WorldEvents.");
+      campaignStudy.recordMeaningfulAction();
       await refreshTownRuntime(data.world.id);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to start Persistent Agent Town");
@@ -4250,15 +5854,137 @@ export default function Home() {
     }
     setTownRuntimeBusy(true);
     try {
-      const data = await postV1<{ runtime: PersistentTownRuntime; events: WorldEvent[]; queue: TownEmergenceQueue; world: WorldState }>("/api/v1/command/town/runtime/step", { worldId: world.id, steps });
+      const data = await postV1<{ runtime: PersistentTownRuntime; events: WorldEvent[]; queue: TownEmergenceQueue; world: WorldState; worldArcDirective?: WorldArcDirectivePublicSummary; worldPressureCascade?: WorldPressureCascadePublicSummary; playerResourceCommitment?: PlayerResourceCommitmentPublicSummary; factionRelationship?: FactionRelationshipPublicSummary; worldEventOffer?: WorldEventOfferPublicSummary; worldInfluenceBudget?: WorldInfluenceBudgetPublicSummary; investigatorProgression?: InvestigatorProgressionPublicSummary; campaignRecovery?: CampaignRecoveryPublicSummary; arcConvergence?: ArcConvergencePublicSummary; campaignSession?: CampaignSessionPublicSummary; campaignFinaleDebrief?: CampaignFinaleDebriefPublicSummary; townSocialResponse?: TownSocialResponsePublicSummary }>("/api/v1/command/town/runtime/step", { worldId: world.id, steps });
       setTownRuntime(data.runtime);
       setTownQueue(data.queue);
       setWorld(data.world);
+      if (data.worldArcDirective) {
+        const previousDirectiveStatus = worldArcDirective?.status;
+        setWorldArcDirective(data.worldArcDirective);
+        if (previousDirectiveStatus !== data.worldArcDirective.status && ["running", "blocked", "completed"].includes(data.worldArcDirective.status)) {
+          appendGuidedStepJournal({
+            journalKey: `world-arc-directive-${data.worldArcDirective.status}`,
+            step: "submit",
+            label: data.worldArcDirective.status === "running"
+              ? "Faction directive started"
+              : data.worldArcDirective.status === "completed"
+                ? "Faction directive completed"
+                : "Faction directive blocked",
+            status: data.worldArcDirective.status === "blocked" ? "blocked" : "done",
+            result: data.worldArcDirective.status === "completed"
+              ? "The selected response is now durable town history."
+              : data.worldArcDirective.progressLabel,
+            progressDelta: data.worldArcDirective.operationLabel,
+            nextAction: data.worldArcDirective.nextAction
+          });
+        }
+      }
+      if (data.worldPressureCascade) {
+        const previousPressureStatus = worldPressureCascade?.status;
+        setWorldPressureCascade(data.worldPressureCascade);
+        if (data.worldPressureCascade.status === "active" && previousPressureStatus !== "active") {
+          appendGuidedStepJournal({
+            journalKey: "world-pressure-active",
+            step: "submit",
+            label: "World pressure activated",
+            status: "done",
+            result: `${data.worldPressureCascade.directionLabel} now carries into future, unextracted cases.`,
+            progressDelta: `${data.worldPressureCascade.remainingLayers} bounded layer(s) remain.`,
+            nextAction: data.worldPressureCascade.nextAction
+          });
+        }
+      }
+      if (data.worldInfluenceBudget) setWorldInfluenceBudget(data.worldInfluenceBudget);
+      if (data.playerResourceCommitment) setPlayerResourceCommitment(data.playerResourceCommitment);
+      if (data.factionRelationship) {
+        const previousChange = factionRelationship?.lastChangeLabel;
+        setFactionRelationship(data.factionRelationship);
+        if (previousChange !== data.factionRelationship.lastChangeLabel && data.factionRelationship.status === "changed") {
+          appendGuidedStepJournal({
+            journalKey: `faction-standing-${data.factionRelationship.lastChangeLabel}`,
+            step: "submit",
+            label: "Faction standing changed",
+            status: "done",
+            result: data.factionRelationship.lastChangeLabel,
+            progressDelta: data.factionRelationship.resourceEffectLabel,
+            nextAction: data.factionRelationship.nextAction
+          });
+        }
+      }
+      if (data.worldEventOffer) {
+        const previousOfferStatus = worldEventOffer?.status;
+        setWorldEventOffer(data.worldEventOffer);
+        if (previousOfferStatus !== data.worldEventOffer.status && ["offered", "running", "completed", "failed", "expired"].includes(data.worldEventOffer.status)) {
+          appendGuidedStepJournal({
+            journalKey: `world-event-offer-${data.worldEventOffer.status}`,
+            step: "submit",
+            label: data.worldEventOffer.status === "offered" ? "World opportunity offered" : `World opportunity ${data.worldEventOffer.status}`,
+            status: data.worldEventOffer.status === "failed" || data.worldEventOffer.status === "expired" ? "blocked" : "done",
+            result: data.worldEventOffer.progressLabel,
+            progressDelta: data.worldEventOffer.status === "completed" ? data.worldEventOffer.recoveryLabel : data.worldEventOffer.benefitLabel,
+            nextAction: data.worldEventOffer.nextAction
+          });
+        }
+      }
+      if (data.investigatorProgression) setInvestigatorProgression(data.investigatorProgression);
+      if (data.campaignRecovery) {
+        const previousRecoveryStatus = campaignRecovery?.status;
+        setCampaignRecovery(data.campaignRecovery);
+        if (previousRecoveryStatus !== data.campaignRecovery.status && ["ready", "completed"].includes(data.campaignRecovery.status)) {
+          appendGuidedStepJournal({
+            journalKey: `campaign-recovery-${data.campaignRecovery.status}-${data.campaignRecovery.completedCount}`,
+            step: "submit",
+            label: data.campaignRecovery.status === "ready" ? "Recovery path prepared" : "Campaign recovery completed",
+            status: data.campaignRecovery.status === "ready" ? "blocked" : "done",
+            result: data.campaignRecovery.failureLabel,
+            progressDelta: data.campaignRecovery.progressLabel,
+            nextAction: data.campaignRecovery.nextAction
+          });
+        }
+      }
+      if (data.arcConvergence) {
+        const previousConvergenceStatus = arcConvergence?.status;
+        setArcConvergence(data.arcConvergence);
+        if (previousConvergenceStatus !== data.arcConvergence.status && ["ready", "active", "completed"].includes(data.arcConvergence.status)) {
+          appendGuidedStepJournal({
+            journalKey: `arc-convergence-${data.arcConvergence.status}`,
+            step: data.arcConvergence.status === "completed" ? "submit" : "search",
+            label: data.arcConvergence.status === "ready" ? "Campaign finale formed" : data.arcConvergence.status === "active" ? "Campaign finale activated" : "Campaign convergence completed",
+            status: "done",
+            result: `${data.arcConvergence.finaleLabel} / ${data.arcConvergence.approachLabel}`,
+            progressDelta: `${data.arcConvergence.caseProgressLabel} / ${data.arcConvergence.worldProgressLabel}`,
+            nextAction: data.arcConvergence.nextAction
+          });
+        }
+      }
+      if (data.campaignSession) setCampaignSession(data.campaignSession);
+      if (data.campaignFinaleDebrief) setCampaignFinaleDebrief(data.campaignFinaleDebrief);
+      if (data.townSocialResponse) {
+        const previousSocialStatus = townSocialResponse?.status;
+        const previousProgress = townSocialResponse?.progressLabel;
+        setTownSocialResponse(data.townSocialResponse);
+        if (data.townSocialResponse.status !== "empty" && (previousSocialStatus !== data.townSocialResponse.status || previousProgress !== data.townSocialResponse.progressLabel)) {
+          appendGuidedStepJournal({
+            journalKey: `town-social-response-${data.townSocialResponse.status}-${data.townSocialResponse.progressLabel}`,
+            step: "submit",
+            label: data.townSocialResponse.status === "ready"
+              ? "Town response prepared"
+              : data.townSocialResponse.status === "settled"
+                ? "Town response settled"
+                : "Town response surfaced",
+            status: "done",
+            result: data.townSocialResponse.headline,
+            progressDelta: `${data.townSocialResponse.progressLabel} public reactions`,
+            nextAction: data.townSocialResponse.nextAction
+          });
+        }
+      }
       setEvents((items) => [...items, ...data.events]);
       setTimeValue(timeToMinutes(data.runtime.currentTime));
       setInspectorTab("agent");
       setAppMode("persistent-town");
       setStatus(`Persistent tick ${data.runtime.tick}: ${data.events.length} WorldEvents added, ${data.queue.candidates.length} candidates in queue.`);
+      campaignStudy.recordMeaningfulAction();
       await refreshTownRuntime(data.world.id);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to step runtime");
@@ -4275,6 +6001,10 @@ export default function Home() {
       setTownRuntime(data.runtime);
       setTownQueue(null);
       setTownBrief(null);
+      setWorldArcDirective(null);
+      setWorldPressureCascade(null);
+      setTownSocialResponse(data.runtime.townSocialResponseSummary || null);
+      setPlayerResourceCommitment(null);
       setSelectedAgentCandidates([]);
       setStatus("Persistent Agent Town runtime reset.");
     } catch (error) {
@@ -4307,19 +6037,108 @@ export default function Home() {
 
   async function extractPersistentCandidate(candidate: CaseCandidate) {
     if (!world) return;
+    const finaleStudyChoiceReady = arcConvergence?.status === "ready";
     setTownRuntimeBusy(true);
+    setInspectorTab("investigation");
+    setAppMode("play");
+    setStatus(`Playable case extracted from candidate ${candidate.id}. Review the Case Intake, then join the investigation.`);
     try {
-      const data = await postV1<{ world: WorldState; events: WorldEvent[]; activeCase: CaseFromLog; candidate: CaseCandidate; queue: TownEmergenceQueue; playableIntake?: PlayableCaseIntake }>("/api/v1/command/town/case/extract", {
+      const data = await postV1<{
+        world: WorldState;
+        events: WorldEvent[];
+        activeCase: CaseFromLog;
+        candidate: CaseCandidate;
+        queue: TownEmergenceQueue;
+        playableIntake?: PlayableCaseIntake;
+        worldLeadCaseHandoff?: WorldLeadCaseHandoffPublicSummary;
+        worldArc?: WorldArcPublicSummary;
+        worldPressureCascade?: WorldPressureCascadePublicSummary;
+        playerResourceCommitment?: PlayerResourceCommitmentPublicSummary;
+        worldInfluenceBudget?: WorldInfluenceBudgetPublicSummary;
+        arcConvergence?: ArcConvergencePublicSummary;
+        campaignSession?: CampaignSessionPublicSummary;
+        campaignFinaleDebrief?: CampaignFinaleDebriefPublicSummary;
+        townSocialResponse?: TownSocialResponsePublicSummary;
+      }>("/api/v1/command/town/case/extract", {
         worldId: world.id,
         candidateId: candidate.id
       });
       hydrateCase({ world: data.world, activeCase: data.activeCase, events: data.events });
       setTownQueue(data.queue);
+      if (data.playerResourceCommitment) setPlayerResourceCommitment(data.playerResourceCommitment);
+      if (data.worldArc) {
+        setWorldArc(data.worldArc);
+        appendGuidedStepJournal({
+          journalKey: "world-arc",
+          step: "join",
+          label: data.worldArc.completedStages > 0 ? "World arc resumed" : "World arc activated",
+          status: "info",
+          result: `${data.worldArc.label} is aligned to the extracted case context.`,
+          progressDelta: data.worldArc.progressLabel,
+          nextAction: data.worldArc.nextAction
+        });
+      }
+      if (data.worldLeadCaseHandoff) {
+        setWorldLeadCaseHandoff(data.worldLeadCaseHandoff);
+        appendGuidedStepJournal({
+          journalKey: "world-lead-handoff",
+          step: "join",
+          label: "World lead handoff carried",
+          status: "done",
+          result: "The settled world lead follow-up was carried into this extracted case without changing its certified route.",
+          progressDelta: "The next-case queue preference was consumed after the successful extraction.",
+          nextAction: data.worldLeadCaseHandoff.nextAction
+        });
+      }
+      if (data.worldPressureCascade) {
+        setWorldPressureCascade(data.worldPressureCascade);
+        appendGuidedStepJournal({
+          journalKey: "world-pressure-consumed",
+          step: "join",
+          label: "World pressure carried into next case",
+          status: "done",
+          result: data.worldPressureCascade.status === "consumed"
+            ? "The successful extraction consumed the final bounded pressure layer."
+            : "The successful extraction consumed one bounded pressure layer; the current case remains frozen.",
+          progressDelta: `${data.worldPressureCascade.remainingLayers} bounded layer(s) remain.`,
+          nextAction: data.worldPressureCascade.nextAction
+        });
+      }
+      if (data.worldInfluenceBudget) setWorldInfluenceBudget(data.worldInfluenceBudget);
+      if (data.arcConvergence) {
+        setArcConvergence(data.arcConvergence);
+        if (data.arcConvergence.status === "active") {
+          appendGuidedStepJournal({
+            journalKey: "arc-convergence-active",
+            step: "join",
+            label: "Campaign finale activated",
+            status: "done",
+            result: `${data.arcConvergence.finaleLabel} entered the normal certified case path.`,
+            progressDelta: data.arcConvergence.approachLabel,
+            nextAction: data.arcConvergence.nextAction
+          });
+        }
+      }
+      if (data.campaignSession) {
+        setCampaignSession(data.campaignSession);
+        appendGuidedStepJournal({
+          journalKey: `campaign-session-${data.campaignSession.status}-${data.campaignSession.progressLabel}`,
+          step: "submit",
+          label: data.campaignSession.status === "completed" ? "Campaign completed" : data.campaignSession.status === "finale-ready" ? "Campaign finale ready" : "Campaign chapter closed",
+          status: "done",
+          result: data.campaignSession.progressLabel,
+          progressDelta: data.campaignSession.primaryActionLabel,
+          nextAction: data.campaignSession.nextAction
+        });
+      }
+      if (data.campaignFinaleDebrief) setCampaignFinaleDebrief(data.campaignFinaleDebrief);
       setSession(null);
       setRevealText("");
       setInspectorTab("investigation");
       setAppMode("play");
       setStatus(`Playable case extracted from candidate ${data.candidate.id}. Review the Case Intake, then join the investigation.`);
+      campaignStudy.recordMeaningfulAction();
+      if (finaleStudyChoiceReady) campaignStudy.recordWorldChoice("finale-case");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to extract playable case");
     } finally {
@@ -4327,29 +6146,272 @@ export default function Home() {
     }
   }
 
-  async function runDefaultTownScenario() {
+  function defaultTownScenarioConfig() {
+    const actorId = selectedCharacterId || townRuntime?.agentStates[0]?.npcId || world?.npcs[0]?.id;
+    return {
+      name: "Default counterfactual scenario",
+      seed: `${world?.seed || "town"}-scenario`,
+      baselineSteps: 45,
+      branches: actorId ? [{
+        id: "selected-agent-resource",
+        name: "Selected agent resource branch",
+        steps: 12,
+        interventions: [{ atTickOffset: 1, intervention: { actorId, kind: "resource" as const, value: "resource:scenario-ui" } }]
+      }] : [],
+      passCriteria: { minValidCandidates: 1, requireHardLogic: true, minEventGrowth: 1, minMemoryGrowth: 1, maxBlockedCandidates: 8 }
+    } satisfies ScenarioConfig;
+  }
+
+  async function selectScenarioHistoryRun(runId: string) {
+    if (!townRuntime) return;
+    selectScenarioRunFromRuntime(townRuntime, runId, true);
+    const run = townRuntime.scenarioRuns?.find((item) => item.id === runId);
+    if (run) {
+      setStatus(`Loaded review run ${run.name}. Snapshot diff is now aligned to that run baseline.`);
+    }
+  }
+
+  async function saveScenarioPresetFromUi(preset: ScenarioPreset, overwrite: boolean) {
+    if (!world) return;
+    setReviewBusy(true);
+    try {
+      const data = await postV1<{ preset: ScenarioPreset; presets: ScenarioPreset[]; runs: ScenarioRunSummary[] }>("/api/v1/command/town/scenario/preset/save", {
+        worldId: world.id,
+        preset,
+        overwrite
+      });
+      setScenarioPresets(data.presets);
+      setScenarioRuns(data.runs);
+      setSelectedScenarioPresetId(data.preset.id);
+      setStatus(`Scenario preset ${data.preset.name} saved.`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to save scenario preset");
+    } finally {
+      setReviewBusy(false);
+    }
+  }
+
+  async function deleteScenarioPresetFromUi(presetId: string) {
+    if (!world) return;
+    setReviewBusy(true);
+    try {
+      const data = await postV1<{ presets: ScenarioPreset[]; runs: ScenarioRunSummary[] }>("/api/v1/command/town/scenario/preset/delete", {
+        worldId: world.id,
+        presetId
+      });
+      setScenarioPresets(data.presets);
+      setScenarioRuns(data.runs);
+      setSelectedScenarioPresetId(data.presets[0]?.id || "");
+      setStatus(`Scenario preset ${presetId} deleted.`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to delete scenario preset");
+    } finally {
+      setReviewBusy(false);
+    }
+  }
+
+  async function exportScenarioPackFromUi() {
+    if (!world) return;
+    setReviewBusy(true);
+    try {
+      const data = await postV1<{ pack: ScenarioPack; fileName: string }>("/api/v1/command/town/scenario-pack/export", {
+        worldId: world.id,
+        packId: selectedScenarioPackId || undefined,
+        scenarioId: scenarioRun?.id
+      });
+      downloadTextFile(data.fileName, JSON.stringify(data.pack, null, 2), "application/json;charset=utf-8");
+      setStatus(`ScenarioPack exported: ${data.pack.manifest.name}.`);
+      await loadScenarioPacks(world.id).catch(() => undefined);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to export ScenarioPack");
+    } finally {
+      setReviewBusy(false);
+    }
+  }
+
+  async function validateScenarioPackFromUi() {
+    const pack = scenarioPacks.find((item) => item.manifest.id === selectedScenarioPackId) || scenarioPacks[0];
+    if (!pack) return;
+    setReviewBusy(true);
+    try {
+      const data = await postV1<{ validation: { ok: boolean; errors: string[]; warnings: string[] } }>("/api/v1/command/town/scenario-pack/validate", { pack });
+      setStatus(data.validation.ok
+        ? `ScenarioPack ${pack.manifest.id} is valid.`
+        : `ScenarioPack ${pack.manifest.id} failed validation: ${data.validation.errors.join("; ")}`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to validate ScenarioPack");
+    } finally {
+      setReviewBusy(false);
+    }
+  }
+
+  async function exportReplayBundleFromUi() {
+    if (!world) return;
+    const runId = selectedRunCatalogId || runCatalog[0]?.runId;
+    if (!runId) return;
+    setReviewBusy(true);
+    try {
+      const data = await getV1<{ bundle: unknown; fileName: string }>(`/api/v1/query/town/runs/${encodeURIComponent(runId)}/replay-bundle?worldId=${encodeURIComponent(world.id)}`);
+      downloadTextFile(data.fileName, JSON.stringify(data.bundle, null, 2), "application/json;charset=utf-8");
+      setStatus(`Replay bundle exported for ${runId}.`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to export replay bundle");
+    } finally {
+      setReviewBusy(false);
+    }
+  }
+
+  async function startRunJobFromUi(kind: "scenario" | "benchmark", seedCount?: 10 | 20) {
+    if (!world) return;
+    setReviewBusy(true);
+    try {
+      const data = kind === "scenario"
+        ? await postV1<{ sourceWorldId: string; worldId: string; currentExperiment: unknown; job: RunJob }>("/api/v1/command/town/experiment/new-run", {
+            worldId: world.id,
+            scenarioPackId: selectedScenarioPackId || undefined,
+            mapPackId: townRuntime?.currentMapPackId || undefined,
+            ruleCatalogId: townRuntime?.currentRuleCatalogId || undefined
+          })
+        : await postV1<{ job: RunJob }>("/api/v1/command/town/run-job/start", {
+            worldId: world.id,
+            kind,
+            scenarioId: scenarioRun?.id,
+            seedCount
+          });
+      setRunJobs((current) => [data.job, ...current.filter((job) => job.id !== data.job.id)].slice(0, 20));
+      setStatus(`${kind === "scenario" ? "experiment" : kind} job started: ${data.job.id}.`);
+      const branchWorldId = kind === "scenario" ? (data as { worldId?: string }).worldId : undefined;
+      if (branchWorldId && branchWorldId !== world.id) {
+        const branchState = await getV1<{ world: WorldState; activeCase?: CaseFromLog | null; sessions?: PlayerSession[] }>(`/api/v1/query/world/state?worldId=${encodeURIComponent(branchWorldId)}`);
+        setWorld(branchState.world);
+        setWorldIdInput(branchState.world.id);
+        setEvents([]);
+        await refreshTownRuntime(branchState.world.id).catch(() => undefined);
+      } else {
+        await refreshTownRuntime(world.id).catch(() => undefined);
+      }
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : `Failed to start ${kind} job`);
+    } finally {
+      setReviewBusy(false);
+    }
+  }
+
+  async function cancelRunJobFromUi(jobId: string) {
+    if (!world) return;
+    setReviewBusy(true);
+    try {
+      const targetJob = runJobs.find((job) => job.id === jobId);
+      const data = await postV1<{ job: RunJob }>("/api/v1/command/town/run-job/cancel", { worldId: targetJob?.worldId || world.id, jobId });
+      setRunJobs((current) => current.map((job) => job.id === data.job.id ? data.job : job));
+      setStatus(`Run job cancelled: ${jobId}.`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to cancel run job");
+    } finally {
+      setReviewBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!world || runtimeMode === "static-demo") return;
+    const activeJob = runJobs.find((job) => job.status === "queued" || job.status === "running");
+    if (!activeJob) return;
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const jobWorldId = activeJob.worldId || world.id;
+          const data = await postV1<{ job: RunJob }>("/api/v1/command/town/run-job/tick", { worldId: jobWorldId, jobId: activeJob.id });
+          if (cancelled) return;
+          setRunJobs((current) => [data.job, ...current.filter((job) => job.id !== data.job.id)].slice(0, 20));
+          const result = data.job.result as { report?: BenchmarkSummary } | undefined;
+          if (data.job.kind === "benchmark" && result?.report) {
+            setBenchmarkSummary(result.report);
+          }
+          if (data.job.status === "completed") {
+            setStatus(`${data.job.kind} job completed: ${data.job.runId || data.job.id}.`);
+            await refreshTownRuntime(jobWorldId, selectedCharacterId, data.job.runId || data.job.resultRunId || scenarioRun?.id, true).catch(() => undefined);
+          }
+        } catch (error) {
+          if (!cancelled) setStatus(error instanceof Error ? error.message : "Failed to advance run job");
+        }
+      })();
+    }, 900);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [world, runtimeMode, runJobs, selectedCharacterId, scenarioRun?.id]);
+
+  async function runEmergenceBenchmarkFromUi(seedCount: 10 | 20) {
+    await startRunJobFromUi("benchmark", seedCount);
+  }
+
+  async function fetchReviewExport(format: "json" | "markdown") {
+    if (!world || !scenarioRun) return null;
+    const fromId = reviewExportTarget.fromId || selectedSnapshotFromId;
+    const toId = reviewExportTarget.toId || selectedSnapshotToId;
+    return getV1<{ format: "json" | "markdown"; fileName: string; content: string; bundle: ReviewExportBundle }>(
+      `/api/v1/query/town/review/export?worldId=${encodeURIComponent(world.id)}&scenarioId=${encodeURIComponent(scenarioRun.id)}&from=${encodeURIComponent(fromId)}&to=${encodeURIComponent(toId)}&format=${format}&includeBenchmark=true`
+    );
+  }
+
+  async function copyReviewBundleJson() {
+    setReviewBusy(true);
+    try {
+      const data = await fetchReviewExport("json");
+      if (!data) return;
+      if (!navigator.clipboard?.writeText) throw new Error("Clipboard is not available in this browser.");
+      await navigator.clipboard.writeText(data.content);
+      setStatus(`Review bundle JSON copied for ${scenarioRun?.name || "scenario"}.`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to copy review JSON");
+    } finally {
+      setReviewBusy(false);
+    }
+  }
+
+  async function exportReviewBundleFile(format: "json" | "markdown") {
+    setReviewBusy(true);
+    try {
+      const data = await fetchReviewExport(format);
+      if (!data) return;
+      downloadTextFile(data.fileName, data.content, format === "markdown" ? "text/markdown;charset=utf-8" : "application/json;charset=utf-8");
+      setStatus(`${format === "markdown" ? "Markdown" : "Review bundle"} exported for ${scenarioRun?.name || "scenario"}.`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : `Failed to export ${format}`);
+    } finally {
+      setReviewBusy(false);
+    }
+  }
+
+  function markCurrentDiffAsReviewExportTarget() {
+    if (!selectedSnapshotFromId || !selectedSnapshotToId) return;
+    setReviewExportTarget({ fromId: selectedSnapshotFromId, toId: selectedSnapshotToId });
+    setStatus(`Review export target set to ${selectedSnapshotFromId} -> ${selectedSnapshotToId}.`);
+  }
+
+  async function runDefaultTownScenario(config?: ScenarioConfig) {
     if (!world) return;
     if (runtimeMode === "static-demo") {
       setStatus("Scenario Runner uses SQLite server runtime. Switch to Server Runtime first.");
       return;
     }
+    const normalizedConfig = config && typeof config === "object" && "nativeEvent" in config ? undefined : config;
     setTownRuntimeBusy(true);
     try {
-      const actorId = selectedCharacterId || townRuntime?.agentStates[0]?.npcId || world.npcs[0]?.id;
+      const presetConfig = normalizedConfig
+        || scenarioPresets.find((preset) => preset.id === selectedScenarioPresetId)?.config
+        || defaultTownScenarioConfig();
+      const scenarioName = presetConfig.name || "Town counterfactual scenario";
+      const scenarioId = `scenario-${slugifyLabel(scenarioName)}-${Date.now()}`;
       const data = await postV1<{ world: WorldState; runtime: PersistentTownRuntime; events: WorldEvent[]; run: ScenarioRun; report: ScenarioReport; snapshots: TownStateSnapshot[] }>("/api/v1/command/town/scenario/run", {
         worldId: world.id,
         config: {
-          id: `scenario-${world.seed}`,
-          name: "Default counterfactual scenario",
-          seed: `${world.seed}-scenario`,
-          baselineSteps: 45,
-          branches: actorId ? [{
-            id: "selected-agent-resource",
-            name: "Selected agent resource branch",
-            steps: 12,
-            interventions: [{ atTickOffset: 1, intervention: { actorId, kind: "resource", value: "resource:scenario-ui" } }]
-          }] : [],
-          passCriteria: { minEventGrowth: 3, minMemoryGrowth: 3, maxBlockedCandidates: 8 }
+          ...presetConfig,
+          id: scenarioId,
+          seed: presetConfig.seed || `${world.seed}-${slugifyLabel(scenarioName)}`,
+          name: scenarioName
         }
       });
       setWorld(data.world);
@@ -4360,9 +6422,10 @@ export default function Home() {
       setTownSnapshots(data.snapshots);
       setSelectedSnapshotFromId(data.report.baseline.startSnapshotId);
       setSelectedSnapshotToId(data.report.baseline.endSnapshotId);
+      setReviewExportTarget({ fromId: data.report.baseline.startSnapshotId, toId: data.report.baseline.endSnapshotId });
       setEvents((items) => [...items, ...data.events.filter((event) => !items.some((existing) => existing.id === event.id))]);
       setStatus(`Scenario ${data.run.status}: ${data.report.summary}`);
-      await refreshTownRuntime(data.world.id);
+      await refreshTownRuntime(data.world.id, selectedCharacterId, data.run.id, true);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to run scenario");
     } finally {
@@ -4407,12 +6470,27 @@ export default function Home() {
       setInspectorTab("investigation");
       pushToast({ tone: "success", title: "Evidence found", detail: evidenceTitle });
       setStatus(`Evidence found: ${deductionCase?.evidence.find((item) => item.id === evidenceId)?.title || evidenceId}`);
+      campaignStudy.recordMeaningfulAction();
       return;
     }
     setBusy(true);
     try {
-      const data = await postJson<{ session: PlayerSession }>("/api/investigation/discover", { sessionId: session.id, evidenceId });
+      const data = await postJson<{ session: PlayerSession; playerResourceCommitment?: PlayerResourceCommitmentPublicSummary; factionRelationship?: FactionRelationshipPublicSummary; investigatorProgression?: InvestigatorProgressionPublicSummary }>("/api/investigation/discover", { sessionId: session.id, evidenceId });
       setSession(data.session);
+      if (data.playerResourceCommitment) {
+        setPlayerResourceCommitment(data.playerResourceCommitment);
+        appendGuidedStepJournal({
+          journalKey: "player-resource-commitment-used",
+          step: "search",
+          label: "Case resource used",
+          status: "done",
+          result: data.playerResourceCommitment.progressLabel,
+          progressDelta: data.playerResourceCommitment.benefitLabel,
+          nextAction: data.playerResourceCommitment.nextAction
+        });
+      }
+      if (data.factionRelationship) setFactionRelationship(data.factionRelationship);
+      if (data.investigatorProgression) setInvestigatorProgression(data.investigatorProgression);
       setProgress((current) => ({ ...current, discoveredEvidence: true }));
       setSelectedEvidenceId(evidenceId);
       const scene = scenes.find((item) => item.evidenceIds.includes(evidenceId));
@@ -4420,6 +6498,7 @@ export default function Home() {
       setInspectorTab("investigation");
       pushToast({ tone: "success", title: "Evidence found", detail: evidenceTitle });
       setStatus(`Evidence found: ${deductionCase?.evidence.find((item) => item.id === evidenceId)?.title || evidenceId}`);
+      campaignStudy.recordMeaningfulAction();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to search evidence");
     } finally {
@@ -4437,15 +6516,15 @@ export default function Home() {
     if (target) await discoverEvidence(target);
   }
 
-  async function interrogate() {
-    if (!session || !selectedCharacterId || !question.trim()) return;
+  async function runInterrogationTarget(characterId: string, evidenceId: string | undefined, questionText: string) {
+    if (!session || !characterId || !questionText.trim()) return;
     if (runtimeMode === "static-demo") {
       const state = currentStaticState();
       if (!state) return;
       const next = interrogateDemoNpc(state, {
-        characterId: selectedCharacterId,
-        question,
-        evidenceId: selectedEvidenceId || undefined
+        characterId,
+        question: questionText,
+        evidenceId
       });
       hydrateStatic(next, false);
       setLastAiSafety({
@@ -4483,13 +6562,30 @@ export default function Home() {
         memoryCount: number;
         evidenceCount: number;
         testimonyUpdated: boolean;
+        playerResourceCommitment?: PlayerResourceCommitmentPublicSummary;
+        factionRelationship?: FactionRelationshipPublicSummary;
+        investigatorProgression?: InvestigatorProgressionPublicSummary;
       }>("/api/investigation/interrogate", {
         sessionId: session.id,
-        characterId: selectedCharacterId,
-        question,
-        evidenceId: selectedEvidenceId || undefined
+        characterId,
+        question: questionText,
+        evidenceId
       });
       setSession(data.session);
+      if (data.playerResourceCommitment) {
+        setPlayerResourceCommitment(data.playerResourceCommitment);
+        appendGuidedStepJournal({
+          journalKey: "player-resource-commitment-used",
+          step: data.playerResourceCommitment.lane === "challenge" ? "challenge" : "question",
+          label: "Case resource used",
+          status: "done",
+          result: data.playerResourceCommitment.progressLabel,
+          progressDelta: data.playerResourceCommitment.benefitLabel,
+          nextAction: data.playerResourceCommitment.nextAction
+        });
+      }
+      if (data.factionRelationship) setFactionRelationship(data.factionRelationship);
+      if (data.investigatorProgression) setInvestigatorProgression(data.investigatorProgression);
       setProgress((current) => ({ ...current, challengedTestimony: current.challengedTestimony || data.testimonyUpdated }));
       setLastAiSafety({ mock: data.mock, promptAudit: data.promptAudit, dialogueEval: data.dialogueEval, safetyFlags: data.safetyFlags, memoryCount: data.memoryCount, evidenceCount: data.evidenceCount });
       setInspectorTab("investigation");
@@ -4503,6 +6599,7 @@ export default function Home() {
         const latestCase = await fetch(apiUrl(`/api/cases/${activeCase.id}`)).then((response) => response.json());
         if (latestCase.ok) setActiveCase(latestCase.caseFromLog || latestCase.activeCase || latestCase.case);
       }
+      campaignStudy.recordMeaningfulAction();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Questioning failed");
     } finally {
@@ -4519,12 +6616,114 @@ export default function Home() {
     });
   }
 
-  async function submitTheory() {
-    if (!session) return;
+  function toggleManualEvidenceDrillEvidence(evidenceId: string) {
+    const currentIds = theory.evidenceIds;
+    const nextIds = currentIds.includes(evidenceId)
+      ? currentIds.filter((id) => id !== evidenceId)
+      : Array.from(new Set([...currentIds, evidenceId]));
+    const drillCandidates = manualEvidenceDrill?.candidates || [];
+    const candidateIds = drillCandidates.map((item) => item.evidenceId);
+    const manualPickCount = nextIds.filter((id) => candidateIds.includes(id)).length;
+    const targetCount = manualEvidenceDrill?.routeEvidenceTargetCount || Math.max(1, candidateIds.length);
+    const remainingProofSlots = Math.max(0, targetCount - manualPickCount);
+    const readyForSubmit = remainingProofSlots === 0;
+    setTheory((current) => ({ ...current, evidenceIds: nextIds }));
+    setReplayGoalAttempt((current) => current
+      ? {
+          ...current,
+          manualEvidencePickCount: manualPickCount,
+          lastResult: readyForSubmit ? "manual evidence ready" : "manual evidence selected"
+        }
+      : current);
+    setSelectedEvidenceId(evidenceId);
+    const scene = scenes.find((item) => item.evidenceIds.includes(evidenceId));
+    if (scene) setSelectedSceneId(scene.id);
+    highlightSelection({ evidenceId, locationId: scene?.id });
+    setInspectorTab("investigation");
+    appendGuidedStepJournal({
+      journalKey: "manual-evidence-drill",
+      step: "select-evidence",
+      label: "Manual evidence drill",
+      status: readyForSubmit ? "done" : "info",
+      result: `${manualPickCount}/${targetCount} manually selected.`,
+      progressDelta: `${remainingProofSlots} proof slot(s) remain before submit.`,
+      nextAction: readyForSubmit ? "Run Next Guided Step to submit the replay attempt." : "Use Add to Theory on discovered proof clues before submit."
+    });
+    pushToast({
+      tone: readyForSubmit ? "success" : "info",
+      title: readyForSubmit ? "Manual evidence ready" : "Manual evidence updated",
+      detail: `${manualPickCount}/${targetCount} route proof clue(s) selected without certified fallback.`
+    });
+    setStatus(readyForSubmit
+      ? "Manual Evidence Drill has enough selected proof clues for replay submit."
+      : "Manual Evidence Drill updated the session-local theory evidence chain.");
+  }
+
+  function updateManualTheoryDrillField(field: ManualTheoryFieldKind, value: string) {
+    const nextTheory = { ...theory, [field]: value };
+    const manualFieldCount = countManualTheoryFields(nextTheory);
+    const remainingFieldCount = Math.max(0, 3 - manualFieldCount);
+    setTheory(nextTheory);
+    setReplayGoalAttempt((current) => current
+      ? {
+          ...current,
+          manualTheoryFieldCount: manualFieldCount,
+          blockedTheoryGapCount: 0,
+          theoryFallbackApproved: false,
+          lastResult: remainingFieldCount ? "manual theory updated" : "manual theory ready"
+        }
+      : current);
+    appendGuidedStepJournal({
+      journalKey: "manual-theory-drill",
+      step: "submit",
+      label: "Manual theory drill",
+      status: manualFieldCount === 3 ? "done" : "info",
+      result: `${manualFieldCount}/3 theory field(s) completed manually.`,
+      progressDelta: `${remainingFieldCount} theory field(s) remain before manual submit.`,
+      nextAction: remainingFieldCount
+        ? "Complete the remaining theory fields or explicitly approve certified fallback."
+        : "Run Next Guided Step to submit the manual theory."
+    });
+    setGuidedManualLastResult(remainingFieldCount ? "manual theory updated" : "manual theory ready");
+    setStatus(remainingFieldCount
+      ? "Manual Theory Drill updated without exposing the entered text."
+      : "Manual Theory Drill is ready for player-authored submit.");
+  }
+
+  function approveManualTheoryFallback() {
+    const unresolvedFields = unresolvedManualTheoryFields(session?.judgement);
+    const remainingFieldCount = Math.max(0, 3 - countManualTheoryFields(theory));
+    const approvedFieldCount = unresolvedFields.size || remainingFieldCount;
+    if (!replayGoalAttempt?.active || approvedFieldCount === 0) return;
+    setReplayGoalAttempt((current) => current
+      ? {
+          ...current,
+          theoryFallbackApproved: true,
+          lastResult: "certified theory fallback approved"
+        }
+      : current);
+    appendGuidedStepJournal({
+      journalKey: "manual-theory-drill",
+      step: "submit",
+      label: "Manual theory drill",
+      status: "info",
+      result: `Explicit fallback approved for ${approvedFieldCount} unresolved theory field(s).`,
+      progressDelta: "No certified value was copied into a visible input.",
+      nextAction: "Run Next Guided Step to submit with explicit field-level fallback."
+    });
+    setGuidedManualLastResult("explicit theory fallback approved");
+    setStatus("Explicit fallback is armed for unresolved theory fields only.");
+    campaignStudy.recordExplicitFallback();
+  }
+
+  async function submitCurrentTheory(theoryOverride?: PlayerTheory, options?: { syncVisibleTheory?: boolean }) {
+    if (!session) return null;
+    const nextTheory = theoryOverride || theory;
+    if (theoryOverride && options?.syncVisibleTheory !== false) setTheory(theoryOverride);
     if (runtimeMode === "static-demo") {
       const state = currentStaticState();
-      if (!state) return;
-      const next = submitDemoTheory(state, theory);
+      if (!state) return null;
+      const next = submitDemoTheory(state, nextTheory);
       hydrateStatic(next, false);
       onboarding.recordTheoryResult(Boolean(next.session.judgement?.accepted));
       setInspectorTab("investigation");
@@ -4534,12 +6733,154 @@ export default function Home() {
         detail: next.session.judgement?.accepted ? "Answer review and final graph nodes are unlocked." : `Missing: ${next.session.judgement?.missing?.join(", ") || "key evidence chain"}`
       });
       setStatus(next.session.judgement?.accepted ? "Theory accepted. Final conclusion and answer review unlocked." : `Theory rejected: ${next.session.judgement?.missing?.join(", ") || "evidence chain incomplete"}`);
-      return;
+      return next.session.judgement || null;
     }
     setBusy(true);
     try {
-      const data = await postJson<{ judgement: PlayerSession["judgement"]; session: PlayerSession }>("/api/investigation/submit-theory", { sessionId: session.id, theory });
+      const data = await postJson<{
+        judgement: PlayerSession["judgement"];
+        session: PlayerSession;
+        worldLeadOutcome?: WorldLeadOutcomePublicSummary;
+        worldLeadCaseHandoff?: WorldLeadCaseHandoffPublicSummary;
+        worldArc?: WorldArcPublicSummary;
+        worldArcDirective?: WorldArcDirectivePublicSummary;
+        playerResourceCommitment?: PlayerResourceCommitmentPublicSummary;
+        factionRelationship?: FactionRelationshipPublicSummary;
+        worldInfluenceBudget?: WorldInfluenceBudgetPublicSummary;
+        investigatorProgression?: InvestigatorProgressionPublicSummary;
+        campaignRecovery?: CampaignRecoveryPublicSummary;
+        arcConvergence?: ArcConvergencePublicSummary;
+        campaignSession?: CampaignSessionPublicSummary;
+        campaignFinaleDebrief?: CampaignFinaleDebriefPublicSummary;
+        townSocialResponse?: TownSocialResponsePublicSummary;
+      }>("/api/investigation/submit-theory", { sessionId: session.id, theory: nextTheory });
       setSession(data.session);
+      if (data.playerResourceCommitment) {
+        setPlayerResourceCommitment(data.playerResourceCommitment);
+        appendGuidedStepJournal({
+          journalKey: "player-resource-commitment-settled",
+          step: "submit",
+          label: data.playerResourceCommitment.status === "released" ? "Unused case resource returned" : "Case resource cycle complete",
+          status: "done",
+          result: data.playerResourceCommitment.progressLabel,
+          progressDelta: data.playerResourceCommitment.status === "released" ? "Reserved capacity returned exactly once." : "The spent resource and bounded world benefit remain recorded.",
+          nextAction: data.playerResourceCommitment.nextAction
+        });
+      }
+      if (data.factionRelationship) {
+        setFactionRelationship(data.factionRelationship);
+        appendGuidedStepJournal({
+          journalKey: `faction-standing-case-${data.factionRelationship.lastChangeLabel}`,
+          step: "submit",
+          label: "Case standing recorded",
+          status: "done",
+          result: data.factionRelationship.lastChangeLabel,
+          progressDelta: data.factionRelationship.resourceEffectLabel,
+          nextAction: data.factionRelationship.nextAction
+        });
+      }
+      if (data.worldLeadOutcome) {
+        setWorldLeadOutcome(data.worldLeadOutcome);
+        appendGuidedStepJournal({
+          journalKey: "world-lead-outcome",
+          step: "submit",
+          label: "World lead outcome settled",
+          status: "done",
+          result: "The bounded world effect settled after the accepted theory without changing the certified route.",
+          progressDelta: "World state balance returned to the normal case flow.",
+          nextAction: data.worldLeadOutcome.nextAction
+        });
+      }
+      if (data.townSocialResponse) {
+        setTownSocialResponse(data.townSocialResponse);
+        if (data.townSocialResponse.status === "ready") {
+          appendGuidedStepJournal({
+            journalKey: "town-social-response-prepared",
+            step: "submit",
+            label: "Town response prepared",
+            status: "info",
+            result: data.townSocialResponse.headline,
+            progressDelta: "A public reaction cycle is ready without changing case authority.",
+            nextAction: data.townSocialResponse.nextAction
+          });
+        }
+      }
+      if (data.worldLeadCaseHandoff) {
+        setWorldLeadCaseHandoff(data.worldLeadCaseHandoff);
+        appendGuidedStepJournal({
+          journalKey: "world-lead-handoff",
+          step: "submit",
+          label: "World lead handoff prepared",
+          status: "done",
+          result: "A bounded next-case follow-up is ready after the accepted theory.",
+          progressDelta: "The next case queue will carry one safe preference without changing route coverage.",
+          nextAction: data.worldLeadCaseHandoff.nextAction
+        });
+        await refreshTownRuntime(world?.id).catch(() => undefined);
+      }
+      if (data.worldArc) {
+        setWorldArc(data.worldArc);
+        appendGuidedStepJournal({
+          journalKey: "world-arc",
+          step: "submit",
+          label: data.worldArc.status === "completed" ? "World arc completed" : "World arc advanced",
+          status: "done",
+          result: `${data.worldArc.label} advanced after the followed lead and accepted theory.`,
+          progressDelta: data.worldArc.progressLabel,
+          nextAction: data.worldArc.nextAction
+        });
+      }
+      if (data.worldArcDirective) {
+        setWorldArcDirective(data.worldArcDirective);
+        appendGuidedStepJournal({
+          journalKey: "world-arc-directive-prepared",
+          step: "submit",
+          label: "Faction directive prepared",
+          status: "info",
+          result: "A low-spoiler Support or Contain response is ready after the accepted theory.",
+          progressDelta: data.worldArcDirective.progressLabel,
+          nextAction: data.worldArcDirective.nextAction
+        });
+      }
+      if (data.worldInfluenceBudget) setWorldInfluenceBudget(data.worldInfluenceBudget);
+      if (data.investigatorProgression) {
+        setInvestigatorProgression(data.investigatorProgression);
+        appendGuidedStepJournal({
+          journalKey: "investigator-progression",
+          step: data.judgement?.accepted ? "submit" : "select-evidence",
+          label: data.judgement?.accepted ? "Investigator practice recorded" : "Evidence practice recorded",
+          status: "done",
+          result: `${data.investigatorProgression.points} practice mark(s) · ${data.investigatorProgression.status}`,
+          progressDelta: data.investigatorProgression.unlockedLabels.join(" / ") || "No bounded unlock yet.",
+          nextAction: data.investigatorProgression.nextAction
+        });
+      }
+      if (data.campaignRecovery) {
+        setCampaignRecovery(data.campaignRecovery);
+        appendGuidedStepJournal({
+          journalKey: "campaign-recovery-theory",
+          step: "submit",
+          label: "Theory recovery path prepared",
+          status: "blocked",
+          result: data.campaignRecovery.failureLabel,
+          progressDelta: data.campaignRecovery.recoveryActionLabel,
+          nextAction: data.campaignRecovery.nextAction
+        });
+      }
+      if (data.arcConvergence) {
+        setArcConvergence(data.arcConvergence);
+        appendGuidedStepJournal({
+          journalKey: `arc-convergence-theory-${data.arcConvergence.status}`,
+          step: "submit",
+          label: data.arcConvergence.status === "completed" ? "Campaign convergence completed" : data.arcConvergence.status === "ready" ? "Campaign finale formed" : "Campaign convergence updated",
+          status: "done",
+          result: `${data.arcConvergence.finaleLabel} / ${data.arcConvergence.approachLabel}`,
+          progressDelta: `${data.arcConvergence.caseProgressLabel} / ${data.arcConvergence.worldProgressLabel}`,
+          nextAction: data.arcConvergence.nextAction
+        });
+      }
+      if (data.campaignSession) setCampaignSession(data.campaignSession);
+      if (data.campaignFinaleDebrief) setCampaignFinaleDebrief(data.campaignFinaleDebrief);
       onboarding.recordTheoryResult(Boolean(data.judgement?.accepted));
       setProgress((current) => ({ ...current, submittedTheory: true, solvedCase: Boolean(data.judgement?.accepted) }));
       setInspectorTab("investigation");
@@ -4549,10 +6890,488 @@ export default function Home() {
         detail: data.judgement?.accepted ? "Answer review can be generated." : `Missing: ${data.judgement?.missing?.join(", ") || "key evidence chain"}`
       });
       setStatus(data.judgement?.accepted ? "Theory accepted. Answer review can be generated." : `Theory rejected: ${data.judgement?.missing?.join(", ") || "evidence chain incomplete"}`);
+      campaignStudy.recordMeaningfulAction();
+      return data.judgement || null;
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to submit theory");
+      return null;
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function submitTheory() {
+    await submitCurrentTheory();
+  }
+
+  function runStaticCertifiedPlaythrough() {
+    if (runtimeMode !== "static-demo" || !world || !activeCase) return;
+    const report = autoSolvePlayableCase(activeCase, events, {
+      sessionId: `static-certified-${Date.now()}`,
+      playerId: "static-player",
+      displayName: playerName.trim() || "Investigator",
+      dryRun: true
+    });
+    if (!report.passed || !report.session.judgement?.accepted) {
+      pushToast({
+        tone: "warning",
+        title: "Certified playthrough blocked",
+        detail: report.summary.failureKinds.join(", ") || "Route proof did not pass."
+      });
+      setStatus(`Static playthrough blocked: ${report.summary.failureKinds.join(", ") || "route proof did not pass"}`);
+      return;
+    }
+    const nextState: DemoRuntimeState = {
+      mode: "static-demo",
+      world,
+      events,
+      activeCase,
+      session: report.session,
+      progress: {
+        observedCrimeWindow: true,
+        joinedInvestigation: true,
+        discoveredEvidence: report.session.discoveredEvidenceIds.length > 0,
+        challengedTestimony: report.session.interrogationLog.some((entry) => entry.challenge?.hit),
+        submittedTheory: Boolean(report.session.submittedTheory),
+        solvedCase: Boolean(report.session.judgement?.accepted)
+      },
+      revealText
+    };
+    hydrateStatic(nextState, false);
+    if (report.theory) setTheory(report.theory);
+    const firstEvidenceId = report.theory?.evidenceIds[0] || report.session.discoveredEvidenceIds[0] || "";
+    if (firstEvidenceId) {
+      setSelectedEvidenceId(firstEvidenceId);
+      const scene = scenes.find((item) => item.evidenceIds.includes(firstEvidenceId));
+      if (scene) setSelectedSceneId(scene.id);
+      highlightSelection({ evidenceId: firstEvidenceId, locationId: scene?.id });
+    }
+    const firstWitnessId = report.session.interrogationLog.find((entry) => entry.challenge?.hit)?.characterId || report.session.interrogationLog[0]?.characterId;
+    if (firstWitnessId) {
+      setSelectedCharacterId(firstWitnessId);
+      setSelectedSuspectId(firstWitnessId);
+    }
+    onboarding.recordTheoryResult(true);
+    setInspectorTab("investigation");
+    pushToast({
+      tone: "success",
+      title: "Certified playthrough completed",
+      detail: `${report.summary.stepCount} steps / ${report.summary.challengeHitCount} challenge hit(s) / ${report.summary.selectedEvidenceCount} selected evidence.`
+    });
+    setStatus("Static certified playthrough completed. Theory accepted and Review Source is unlocked.");
+  }
+
+  async function runServerCertifiedPlaythrough() {
+    if (runtimeMode === "static-demo" || !world || !activeCase) return;
+    setBusy(true);
+    try {
+      const data = await postV1<{ summary: CaseAutoSolveSummary; session?: PlayerSession; sessionId?: string }>("/api/v1/command/investigation/autosolve", {
+        caseId: activeCase.id,
+        persist: true,
+        includeSession: true
+      });
+      setServerPlaythroughSummary(data.summary);
+      if (!data.summary.passed || !data.session?.judgement?.accepted) {
+        pushToast({
+          tone: "warning",
+          title: "Server playthrough blocked",
+          detail: data.summary.failureKinds.join(", ") || "Route proof did not pass."
+        });
+        setStatus(`Server playthrough blocked: ${data.summary.failureKinds.join(", ") || "route proof did not pass"}`);
+        return;
+      }
+      setSession(data.session);
+      setSessions((items) => [data.session as PlayerSession, ...items.filter((item) => item.id !== data.session?.id)]);
+      setProgress({
+        observedCrimeWindow: true,
+        joinedInvestigation: true,
+        discoveredEvidence: data.summary.discoveredEvidenceCount > 0,
+        challengedTestimony: data.summary.challengeHitCount > 0,
+        submittedTheory: Boolean(data.session.submittedTheory),
+        solvedCase: Boolean(data.session.judgement?.accepted)
+      });
+      persist(world.id, data.session.id);
+      if (data.session.submittedTheory) setTheory(data.session.submittedTheory);
+      const firstEvidenceId = data.session.submittedTheory?.evidenceIds[0] || data.session.discoveredEvidenceIds[0] || "";
+      if (firstEvidenceId) {
+        setSelectedEvidenceId(firstEvidenceId);
+        const scene = scenes.find((item) => item.evidenceIds.includes(firstEvidenceId));
+        if (scene) setSelectedSceneId(scene.id);
+        highlightSelection({ evidenceId: firstEvidenceId, locationId: scene?.id });
+      }
+      const firstWitnessId = data.session.interrogationLog.find((entry) => entry.challenge?.hit)?.characterId || data.session.interrogationLog[0]?.characterId;
+      if (firstWitnessId) {
+        setSelectedCharacterId(firstWitnessId);
+        setSelectedSuspectId(firstWitnessId);
+      }
+      onboarding.recordTheoryResult(true);
+      setInspectorTab("investigation");
+      pushToast({
+        tone: "success",
+        title: "Server certified playthrough completed",
+        detail: `${data.summary.stepCount} steps / ${data.summary.challengeHitCount} challenge hit(s) / ${data.summary.selectedEvidenceCount} selected evidence.`
+      });
+      setStatus("Server certified playthrough completed. Auto-player session was persisted and Review Source is unlocked.");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to run server certified playthrough");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function interrogate() {
+    await runInterrogationTarget(selectedCharacterId, selectedEvidenceId || undefined, question);
+  }
+
+  async function runGuidedManualStep() {
+    if (guidedManualRunning) return;
+    const target = getGuidedManualTarget();
+    setGuidedManualRunning(true);
+    campaignStudy.recordGuidedStep();
+    try {
+      if (target.kind === "join") {
+        await joinCase();
+        setGuidedManualLastResult("joined");
+        appendGuidedStepJournal({
+          step: "join",
+          label: "Join investigation",
+          status: "done",
+          result: "Investigation session opened.",
+          progressDelta: "Player can now search scenes and question witnesses.",
+          nextAction: "Search the first certified route clue."
+        });
+        return;
+      }
+      if (!session) {
+        setGuidedManualLastResult("join required");
+        setStatus("Join the investigation before running guided steps.");
+        appendGuidedStepJournal({
+          step: target.kind,
+          label: target.label,
+          status: "blocked",
+          result: "No active investigation session.",
+          progressDelta: "0 steps advanced.",
+          nextAction: "Join the investigation first."
+        });
+        return;
+      }
+      if (target.kind === "search") {
+        if (!target.evidenceId) {
+          setGuidedManualLastResult("search blocked");
+          setStatus("Guided search is blocked because the route has no discoverable clue.");
+          appendGuidedStepJournal({
+            step: "search",
+            label: "Search certified clue",
+            status: "blocked",
+            result: "No discoverable route clue is available.",
+            progressDelta: "Clue discovered count unchanged.",
+            nextAction: "Review the Route Certificate blockers."
+          });
+          return;
+        }
+        if (target.locationId) setSelectedSceneId(target.locationId);
+        await discoverEvidence(target.evidenceId);
+        setGuidedManualLastResult("search complete");
+        appendGuidedStepJournal({
+          step: "search",
+          label: "Search certified clue",
+          status: "done",
+          result: "One route clue was discovered.",
+          progressDelta: `${Math.min((session.discoveredEvidenceIds.length || 0) + 1, caseRouteCertificate?.theoryEvidenceIds.length || playableIntake?.routeCertificate?.theoryEvidenceIds.length || (session.discoveredEvidenceIds.length || 0) + 1)} clue(s) now count toward the certified route.`,
+          nextAction: "Continue search until the route asks for witness questioning."
+        });
+        await resolveWorldLeadAfterStep("search");
+        return;
+      }
+      if (target.kind === "question") {
+        if (!target.characterId) {
+          setGuidedManualLastResult("question blocked");
+          setStatus("Guided question is blocked because the route has no witness.");
+          appendGuidedStepJournal({
+            step: "question",
+            label: "Question certified witness",
+            status: "blocked",
+            result: "No certified witness is available.",
+            progressDelta: "Witness question count unchanged.",
+            nextAction: "Review route witness blockers."
+          });
+          return;
+        }
+        const questionText = "Where were you during the incident window, and what did you observe?";
+        setSelectedCharacterId(target.characterId);
+        setSelectedSuspectId(target.characterId);
+        setQuestion(questionText);
+        highlightSelection({ characterId: target.characterId });
+        await runInterrogationTarget(target.characterId, undefined, questionText);
+        setGuidedManualLastResult("question complete");
+        appendGuidedStepJournal({
+          step: "question",
+          label: "Question certified witness",
+          status: "done",
+          result: "A route witness was questioned.",
+          progressDelta: `${new Set([...session.interrogationLog.map((entry) => entry.characterId), target.characterId]).size} witness question(s) now support the route.`,
+          nextAction: "Present a discovered clue for a testimony challenge."
+        });
+        await resolveWorldLeadAfterStep("question");
+        return;
+      }
+      if (target.kind === "challenge") {
+        if (!target.characterId || !target.evidenceId) {
+          setGuidedManualLastResult("challenge blocked");
+          setStatus("Guided challenge is blocked because the certified route is missing a witness or clue.");
+          appendGuidedStepJournal({
+            step: "challenge",
+            label: "Challenge certified testimony",
+            status: "blocked",
+            result: "Challenge needs both a witness and a discovered route clue.",
+            progressDelta: "Contradiction hit count unchanged.",
+            nextAction: "Search the missing route clue or review witness blockers."
+          });
+          return;
+        }
+        const questionText = "Please explain this evidence and whether it changes your earlier statement.";
+        setSelectedCharacterId(target.characterId);
+        setSelectedSuspectId(target.characterId);
+        setSelectedEvidenceId(target.evidenceId);
+        setQuestion(questionText);
+        const scene = scenes.find((item) => item.evidenceIds.includes(target.evidenceId as string));
+        if (scene) setSelectedSceneId(scene.id);
+        highlightSelection({ characterId: target.characterId, evidenceId: target.evidenceId, locationId: scene?.id });
+        await runInterrogationTarget(target.characterId, target.evidenceId, questionText);
+        setGuidedManualLastResult("challenge complete");
+        appendGuidedStepJournal({
+          step: "challenge",
+          label: "Challenge certified testimony",
+          status: "done",
+          result: "A testimony contradiction was tested with a discovered clue.",
+          progressDelta: `${(session.interrogationLog || []).filter((entry) => entry.challenge?.hit).length + 1} challenge hit(s) now support the route.`,
+          nextAction: "Select the discovered proof clues for the theory chain."
+        });
+        await resolveWorldLeadAfterStep("challenge");
+        return;
+      }
+      if (target.kind === "select-evidence") {
+        const certifiedEvidenceIds = caseRouteCertificate?.theoryEvidenceIds || playableIntake?.routeCertificate?.theoryEvidenceIds || [];
+        const discoveredSet = new Set(session.discoveredEvidenceIds);
+        const selectableIds = certifiedEvidenceIds.filter((id) => discoveredSet.has(id));
+        if (!selectableIds.length && target.evidenceId) selectableIds.push(target.evidenceId);
+        const selectedSet = new Set(theory.evidenceIds);
+        const manualSelectedCount = selectableIds.filter((id) => selectedSet.has(id)).length;
+        if (replayGoalAttempt?.active && selectableIds.length && manualSelectedCount < selectableIds.length) {
+          const firstMissingId = selectableIds.find((id) => !selectedSet.has(id)) || selectableIds[0];
+          if (firstMissingId) {
+            setSelectedEvidenceId(firstMissingId);
+            const scene = scenes.find((item) => item.evidenceIds.includes(firstMissingId));
+            if (scene) setSelectedSceneId(scene.id);
+            highlightSelection({ evidenceId: firstMissingId, locationId: scene?.id });
+          }
+          const remainingProofSlots = Math.max(0, selectableIds.length - manualSelectedCount);
+          setReplayGoalAttempt((current) => current
+            ? { ...current, manualEvidencePickCount: manualSelectedCount, lastResult: "manual evidence drill ready" }
+            : current);
+          setInspectorTab("investigation");
+          pushToast({ tone: "info", title: "Manual Evidence Drill ready", detail: "Pick discovered proof clues manually before replay submit." });
+          setStatus("Guided select-evidence is waiting on Manual Evidence Drill instead of auto-selecting certified evidence.");
+          setGuidedManualLastResult("manual evidence drill ready");
+          appendGuidedStepJournal({
+            journalKey: "manual-evidence-drill",
+            step: "select-evidence",
+            label: "Manual evidence drill",
+            status: "info",
+            result: `${manualSelectedCount}/${selectableIds.length} manually selected.`,
+            progressDelta: `${remainingProofSlots} proof slot(s) remain before submit.`,
+            nextAction: "Use Add to Theory in Manual Evidence Drill, then run the next guided step."
+          });
+          return;
+        }
+        if (replayGoalAttempt?.active && selectableIds.length) {
+          setReplayGoalAttempt((current) => current
+            ? { ...current, manualEvidencePickCount: manualSelectedCount, lastResult: "manual evidence selected" }
+            : current);
+          setGuidedManualLastResult("manual evidence selected");
+          appendGuidedStepJournal({
+            step: "select-evidence",
+            label: "Select manual evidence",
+            status: "done",
+            result: `${manualSelectedCount} manually selected proof clue(s) are ready.`,
+            progressDelta: "Replay attempt will submit without adding certified evidence at this step.",
+            nextAction: "Submit the replay theory for local judgement."
+          });
+          return;
+        }
+        setTheory((current) => ({
+          ...current,
+          evidenceIds: Array.from(new Set([...current.evidenceIds, ...selectableIds]))
+        }));
+        const firstEvidenceId = selectableIds[0];
+        if (firstEvidenceId) {
+          setSelectedEvidenceId(firstEvidenceId);
+          const scene = scenes.find((item) => item.evidenceIds.includes(firstEvidenceId));
+          if (scene) setSelectedSceneId(scene.id);
+          highlightSelection({ evidenceId: firstEvidenceId, locationId: scene?.id });
+        }
+        setInspectorTab("investigation");
+        pushToast({ tone: "success", title: "Certified evidence selected", detail: `${selectableIds.length} discovered proof clue(s) added to the theory chain.` });
+        setStatus("Guided manual run selected the certified proof clues.");
+        setGuidedManualLastResult("evidence selected");
+        appendGuidedStepJournal({
+          step: "select-evidence",
+          label: "Select certified evidence",
+          status: "done",
+          result: `${selectableIds.length} discovered proof clue(s) were added to the theory chain.`,
+          progressDelta: `${new Set([...theory.evidenceIds, ...selectableIds]).size} selected proof clue(s) are ready for submit.`,
+          nextAction: "Submit the certified theory for local judgement."
+        });
+        return;
+      }
+      if (target.kind === "submit") {
+        if (!activeCase) {
+          setGuidedManualLastResult("submit blocked");
+          setStatus("Guided submit is blocked because no case is active.");
+          appendGuidedStepJournal({
+            step: "submit",
+            label: "Submit certified theory",
+            status: "blocked",
+            result: "No active case is available for judgement.",
+            progressDelta: "Theory judgement not run.",
+            nextAction: "Load or extract a playable case."
+          });
+          return;
+        }
+        const manualTheoryFieldCount = countManualTheoryFields(theory);
+        const previouslyUnresolvedFields = unresolvedManualTheoryFields(session.judgement);
+        const remainingTheoryFieldCount = Math.max(0, 3 - manualTheoryFieldCount);
+        if (
+          replayGoalAttempt?.active
+          && (remainingTheoryFieldCount > 0 || previouslyUnresolvedFields.size > 0)
+          && !replayGoalAttempt.theoryFallbackApproved
+        ) {
+          const blockedGapCount = previouslyUnresolvedFields.size;
+          setReplayGoalAttempt((current) => current
+            ? {
+                ...current,
+                manualTheoryFieldCount,
+                blockedTheoryGapCount: blockedGapCount,
+                lastResult: blockedGapCount ? "manual theory has unresolved gaps" : "manual theory drill ready"
+              }
+            : current);
+          appendGuidedStepJournal({
+            journalKey: "manual-theory-drill",
+            step: "submit",
+            label: "Manual theory drill",
+            status: blockedGapCount ? "blocked" : "info",
+            result: `${manualTheoryFieldCount}/3 theory field(s) completed manually.`,
+            progressDelta: blockedGapCount
+              ? `${blockedGapCount} theory field gap(s) need revision or explicit fallback.`
+              : `${remainingTheoryFieldCount} theory field(s) remain before submit.`,
+            nextAction: blockedGapCount
+              ? "Revise the theory fields or explicitly approve certified fallback for unresolved fields."
+              : "Complete Manual Theory Drill or explicitly approve fallback for remaining fields."
+          });
+          setInspectorTab("investigation");
+          setGuidedManualLastResult(blockedGapCount ? "manual theory blocked" : "manual theory drill ready");
+          pushToast({
+            tone: blockedGapCount ? "warning" : "info",
+            title: blockedGapCount ? "Manual theory has gaps" : "Manual Theory Drill ready",
+            detail: blockedGapCount
+              ? `${blockedGapCount} field-level gap(s) remain; no hidden answer was revealed.`
+              : "Fill suspect, motive, and method before replay submit."
+          });
+          setStatus("Guided submit is waiting on Manual Theory Drill instead of automatic certified fallback.");
+          return;
+        }
+        const certifiedEvidenceIds = caseRouteCertificate?.theoryEvidenceIds || playableIntake?.routeCertificate?.theoryEvidenceIds || theory.evidenceIds;
+        const discoveredSet = new Set(session.discoveredEvidenceIds);
+        const discoveredCertifiedEvidenceIds = certifiedEvidenceIds.filter((id) => discoveredSet.has(id));
+        const fallbackEvidenceIds = discoveredCertifiedEvidenceIds.filter((id) => !theory.evidenceIds.includes(id));
+        const selectedEvidenceIds = Array.from(new Set([...theory.evidenceIds, ...discoveredCertifiedEvidenceIds]));
+        const fallbackTheoryFields = new Set<ManualTheoryFieldKind>();
+        if (!replayGoalAttempt?.active) {
+          if (!theory.culpritId) fallbackTheoryFields.add("culpritId");
+          if (!theory.motive.trim()) fallbackTheoryFields.add("motive");
+          if (!theory.method.trim()) fallbackTheoryFields.add("method");
+        } else if (replayGoalAttempt.theoryFallbackApproved) {
+          if (!theory.culpritId || previouslyUnresolvedFields.has("culpritId")) fallbackTheoryFields.add("culpritId");
+          if (!theory.motive.trim() || previouslyUnresolvedFields.has("motive")) fallbackTheoryFields.add("motive");
+          if (!theory.method.trim() || previouslyUnresolvedFields.has("method")) fallbackTheoryFields.add("method");
+        }
+        const fallbackUsed = fallbackTheoryFields.size > 0 || fallbackEvidenceIds.length > 0;
+        setReplayGoalAttempt((current) => current
+          ? {
+              ...current,
+              manualTheoryFieldCount,
+              fallbackTheoryFieldCount: fallbackTheoryFields.size,
+              fallbackEvidencePickCount: fallbackEvidenceIds.length,
+              theoryFallbackApproved: false,
+              lastResult: fallbackUsed ? "submitting with explicit certified fallback" : "submitting manual theory"
+            }
+          : current);
+        const certifiedTheory: PlayerTheory = {
+          culpritId: fallbackTheoryFields.has("culpritId") ? activeCase.deductionCase.truth.culpritId : theory.culpritId,
+          motive: fallbackTheoryFields.has("motive") ? activeCase.deductionCase.truth.motive : theory.motive,
+          method: fallbackTheoryFields.has("method") ? activeCase.deductionCase.truth.method : theory.method,
+          evidenceIds: selectedEvidenceIds
+        };
+        const judgement = await submitCurrentTheory(certifiedTheory, { syncVisibleTheory: false });
+        const accepted = Boolean(judgement?.accepted);
+        const blockedTheoryGapCount = unresolvedManualTheoryFields(judgement || undefined).size;
+        const submitJournalLabel = accepted
+          ? replayGoalAttempt?.active ? "Submit replay theory" : "Submit certified theory"
+          : "Review theory gaps";
+        setReplayGoalAttempt((current) => current
+          ? {
+              ...current,
+              manualTheoryFieldCount,
+              fallbackTheoryFieldCount: fallbackTheoryFields.size,
+              fallbackEvidencePickCount: fallbackEvidenceIds.length,
+              blockedTheoryGapCount,
+              theoryFallbackApproved: false,
+              lastResult: accepted
+                ? fallbackUsed ? "accepted with explicit certified fallback" : "accepted manual theory"
+                : "manual theory judgement blocked"
+            }
+          : current);
+        setGuidedManualLastResult(accepted ? "accepted" : "manual theory blocked");
+        appendGuidedStepJournal({
+          step: "submit",
+          label: submitJournalLabel,
+          status: accepted ? "done" : "blocked",
+          result: accepted ? "Theory accepted by local judgement." : `Theory judgement returned ${blockedTheoryGapCount} field-level gap(s).`,
+          progressDelta: accepted
+            ? `${manualTheoryFieldCount} manual theory field(s), ${fallbackTheoryFields.size} fallback theory field(s), and ${fallbackEvidenceIds.length} fallback evidence pick(s) closed the route.`
+            : "Entered text remains private; only aggregate gap counts are recorded.",
+          nextAction: accepted
+            ? "Review the source-backed audit workbench."
+            : "Revise the theory or explicitly approve fallback for unresolved fields.",
+          fallbackUsed
+        });
+        if (accepted) {
+          appendGuidedStepJournal({
+            step: "review-source",
+            label: "Review source audit",
+            status: "done",
+            result: "Source Review Workbench unlocked.",
+            progressDelta: "Source Trail, Proof Obligations, Certified Route, and Conclusion Review are available.",
+            nextAction: "Inspect the solved-case audit without raw replay or hidden ids.",
+            reviewUnlocked: true
+          });
+        }
+        return;
+      }
+      setInspectorTab("investigation");
+      setGuidedManualLastResult("source review ready");
+      setStatus("Source Review Workbench is ready.");
+      appendGuidedStepJournal({
+        step: "review-source",
+        label: "Review source audit",
+        status: session.judgement?.accepted ? "done" : "blocked",
+        result: session.judgement?.accepted ? "Source Review Workbench is ready." : "Accepted theory is required before source review unlocks.",
+        progressDelta: session.judgement?.accepted ? "Review source is unlocked." : "Review source remains locked.",
+        nextAction: session.judgement?.accepted ? "Inspect the source-backed audit." : "Complete the certified route and submit theory.",
+        reviewUnlocked: Boolean(session.judgement?.accepted)
+      });
+    } finally {
+      setGuidedManualRunning(false);
     }
   }
 
@@ -4660,7 +7479,7 @@ export default function Home() {
       highlightSelection({ locationId: action.targetLocationId, evidenceId: action.targetEvidenceId, characterId: action.targetCharacterId });
     }
     if (action.kind === "review" || action.kind === "review-source") {
-      setInspectorTab(session?.judgement?.accepted ? "logic" : "investigation");
+      setInspectorTab("investigation");
     } else {
       setInspectorTab("investigation");
     }
@@ -4801,7 +7620,82 @@ export default function Home() {
   }
 
   function patchAuthoring(path: string, value: unknown) {
+    setContentSeedPreviewed(false);
     setAuthoringDraft((current) => applyAuthoringPatch(current, { op: "set", path, value }));
+  }
+
+  function updateContentSelection(next: Partial<DetectiveContentAuthoringSelection>) {
+    setContentSeedPreviewed(false);
+    setContentSelection((current) => selectDefaultDetectiveContentAuthoringSelection(detectiveContentPack, { ...current, ...next }));
+  }
+
+  function toggleContentRole(roleId: string) {
+    const current = new Set(contentAuthoringGuide.selection.roleIds);
+    if (current.has(roleId)) current.delete(roleId);
+    else current.add(roleId);
+    updateContentSelection({ roleIds: Array.from(current) });
+  }
+
+  function toggleContentEvidenceType(evidenceTypeId: string) {
+    const current = new Set(contentAuthoringGuide.selection.evidenceTypeIds);
+    if (current.has(evidenceTypeId)) current.delete(evidenceTypeId);
+    else current.add(evidenceTypeId);
+    updateContentSelection({ evidenceTypeIds: Array.from(current) });
+  }
+
+  function previewContentSeed() {
+    setContentSeedPreviewed(true);
+    setAuthoringTab("content");
+    setAuthoringStatus(`Preview Content Seed: ${contentAuthoringGuide.patches.length} safe text fields would change for ${contentAuthoringGuide.caseType?.label || "selected case type"}. No ids, clue order, suspect matrix, or proof structure will be changed.`);
+  }
+
+  function applyContentSeed() {
+    if (!contentAuthoringGuide.patches.length) {
+      setAuthoringStatus("No changes pending. The current draft already matches this content seed, so no Gallery backup was created.");
+      return;
+    }
+    const backup = createContentSeedBackupEntry(authoringDraft);
+    mergeGalleryEntries([backup]);
+    let next = authoringDraft;
+    for (const patch of contentAuthoringGuide.patches) {
+      next = applyAuthoringPatch(next, { op: "set", path: patch.path, value: patch.after });
+    }
+    const report = validateAuthoringDraft(next);
+    const createdAt = new Date().toISOString();
+    const historyEntry: ContentSeedHistoryEntry = {
+      id: `content-seed:${createdAt}`,
+      createdAt,
+      beforeTitle: authoringDraft.caseFromLog.deductionCase.title,
+      afterTitle: next.caseFromLog.deductionCase.title,
+      caseTypeLabel: contentAuthoringGuide.caseType?.label || contentAuthoringGuide.selection.caseTypeId,
+      patchCount: contentAuthoringGuide.patches.length,
+      backupTitle: backup.title,
+      draft: cloneLocal(authoringDraft),
+      validation: {
+        valid: report.valid,
+        errorCount: report.errors.length
+      }
+    };
+    setContentSeedHistory((current) => [historyEntry, ...current].slice(0, 5));
+    setAuthoringDraft(next);
+    setContentSeedPreviewed(true);
+    setAuthoringStatus(report.valid
+      ? `Apply Content Seed complete: ${contentAuthoringGuide.patches.length} browser-local text fields updated. Undo Content Seed or Gallery backup "${backup.title}" can restore the prior draft.`
+      : `Apply Content Seed complete, but validation now has ${report.errors.length} blockers. The draft is kept; use Undo Content Seed or load Gallery backup "${backup.title}" to revert.`);
+  }
+
+  function undoLatestContentSeed() {
+    const latest = contentSeedHistory[0];
+    if (!latest) {
+      setAuthoringStatus("No Content Seed undo entry is available in this browser session.");
+      return;
+    }
+    setAuthoringDraft({ ...cloneLocal(latest.draft), updatedAt: new Date().toISOString() });
+    resetAuthoringSelection();
+    setContentSeedHistory((current) => current.slice(1));
+    setContentSeedPreviewed(false);
+    setAuthoringTab("content");
+    setAuthoringStatus(`Undo Content Seed restored "${latest.beforeTitle}" from the session audit trail. Gallery backup "${latest.backupTitle}" remains available.`);
   }
 
   function focusAuthoringIssue(issue: AuthoringValidationReport["issues"][number]) {
@@ -4833,6 +7727,35 @@ export default function Home() {
     setAuthoringTab("logic");
   }
 
+  function runAuthoringCoachNextAction() {
+    if (authoringBlocker) {
+      focusAuthoringIssue(authoringBlocker);
+      setAuthoringStatus(`Authoring Workflow Coach: fix validation blocker - ${safeCoachMessage(authoringBlocker.message)}`);
+      return;
+    }
+    if (contentSeedHistory[0]) {
+      setAuthoringTab("content");
+      setAuthoringStatus("Authoring Workflow Coach: review Applied safe diff, then use Undo Content Seed, Gallery backup, Run Draft, or Save to Gallery.");
+      return;
+    }
+    if (contentAuthoringGuide.patches.length > 0 && !contentSeedPreviewed) {
+      previewContentSeed();
+      setAuthoringStatus(`Authoring Workflow Coach: Preview Content Seed opened ${contentAuthoringGuide.patches.length} safe text patches for Safe Diff Review.`);
+      return;
+    }
+    if (contentAuthoringGuide.patches.length > 0) {
+      setAuthoringTab("content");
+      setAuthoringStatus("Authoring Workflow Coach: review Pending safe diff, then apply the content seed or adjust the selection.");
+      return;
+    }
+    if (authoringReport.valid) {
+      setAuthoringStatus("Authoring Workflow Coach: draft is runnable. Use Run Draft for playtest or Save to Gallery for browser-local reuse.");
+      return;
+    }
+    setAuthoringTab("logic");
+    setAuthoringStatus("Authoring Workflow Coach: review Rule Report before running this draft.");
+  }
+
   function authoringEvidenceReferences(evidenceId: string) {
     const refs: string[] = [];
     for (const scene of authoringCase.scenes) {
@@ -4861,6 +7784,8 @@ export default function Home() {
     setAuthoringExportText("");
     setAuthoringImportText("");
     setCaseTemplateId(templateId);
+    setContentSeedHistory([]);
+    setContentSeedPreviewed(false);
     setAuthoringStatus("\u5df2\u6062\u590d\u6848\u4f8b\u6a21\u677f\uff0c\u53ef\u7ee7\u7eed\u7f16\u8f91\u6216\u76f4\u63a5 Run Draft\u3002");
   }
 
@@ -4891,6 +7816,9 @@ export default function Home() {
     resetAuthoringSelection();
     if (entry.templateId) setCaseTemplateId(entry.templateId);
     setAuthoringExportText("");
+    setContentSeedHistory([]);
+    setContentSeedPreviewed(false);
+    setAuthoringTab("case");
     setAuthoringStatus(`Loaded "${entry.title}" from Case Gallery.`);
   }
 
@@ -4901,6 +7829,8 @@ export default function Home() {
     }
     setAuthoringDraft(cloneLocal(entry.draft));
     resetAuthoringSelection();
+    setContentSeedHistory([]);
+    setContentSeedPreviewed(false);
     runDraftFrom(entry.draft, `Created a temporary Static Demo Runtime from gallery case "${entry.title}".`);
   }
 
@@ -4917,6 +7847,7 @@ export default function Home() {
   function deleteAuthoringEvidence() {
     if (!authoringEvidence) return;
     const refs = authoringEvidenceReferences(authoringEvidence.id);
+    setContentSeedPreviewed(false);
     setAuthoringDraft((current) => applyAuthoringPatch(current, { op: "delete-array-item", path: "caseFromLog.deductionCase.evidence", id: authoringEvidence.id }));
     setAuthoringEvidenceId("");
     setAuthoringStatus(refs.length ? `\u8bc1\u636e\u5df2\u5220\u9664\uff0c\u4f46\u4ecd\u88ab\u5f15\u7528\uff1a${refs.join("\uff1b")}\u3002Rule Report \u4f1a\u963b\u65ad Run Draft\u3002` : "\u8bc1\u636e\u5df2\u5220\u9664\uff0c\u672a\u53d1\u73b0\u6b8b\u7559\u5f15\u7528\u3002");
@@ -4938,12 +7869,16 @@ export default function Home() {
         setAuthoringDraft(entry.draft);
         mergeGalleryEntries([entry]);
         resetAuthoringSelection();
+        setContentSeedHistory([]);
+        setContentSeedPreviewed(false);
       } else if (parsed?.id && parsed?.truth && parsed?.logicPuzzle) {
         const next = cloneLocal(authoringDraft);
         next.caseFromLog.deductionCase = parsed;
         next.source = "imported";
         next.updatedAt = new Date().toISOString();
         setAuthoringDraft(next);
+        setContentSeedHistory([]);
+        setContentSeedPreviewed(false);
       } else {
         throw new Error("JSON must be an AuthoringDraft or a standalone DeductionCase.");
       }
@@ -5000,8 +7935,27 @@ export default function Home() {
     runDraftFrom(authoringDraft, "Created a temporary Static Demo Runtime from the current Authoring Draft.");
   }
 
+  const campaignStudyRecorder = campaignStudy.visible ? (
+    <CampaignStudyRecorder
+      runs={campaignStudy.collection.runs}
+      currentRun={campaignStudy.currentRun}
+      operations={campaignStudy.operations}
+      elapsedSeconds={campaignStudy.elapsedSeconds}
+      canStart={campaignStudy.canStart}
+      startBlockedReason={campaignStudy.startBlockedReason}
+      start={campaignStudy.start}
+      abandon={campaignStudy.abandon}
+      finalize={campaignStudy.finalize}
+      exportStudy={() => downloadTextFile(CAMPAIGN_STUDY_EXPORT_FILE, JSON.stringify(campaignStudy.exportData(), null, 2), "application/json;charset=utf-8")}
+      reset={campaignStudy.reset}
+      incrementMisunderstanding={campaignStudy.incrementMisunderstanding}
+      toggleConfusion={campaignStudy.toggleConfusion}
+      updateAssessment={campaignStudy.updateAssessment}
+    />
+  ) : null;
+
   if (appMode === "world-graph") {
-    return <WorldGraphWorkbench runtimeMode={runtimeMode} onBack={() => setAppMode("play")} />;
+    return <>{campaignStudyRecorder}<WorldGraphWorkbench runtimeMode={runtimeMode} onBack={() => setAppMode("play")} /></>;
   }
 
   if (appMode === "authoring") {
@@ -5065,6 +8019,7 @@ export default function Home() {
           <div className="authoringTabs">
             {[
               ["case", "Case"],
+              ["content", "Content"],
               ["characters", "Characters"],
               ["evidence", "Evidence"],
               ["scenes", "Scenes"],
@@ -5091,6 +8046,256 @@ export default function Home() {
               <label>Premise
                 <textarea value={authoringCase.premise} onChange={(event) => patchAuthoring("caseFromLog.deductionCase.premise", event.target.value)} />
               </label>
+            </section>
+          )}
+
+          {authoringTab === "content" && (
+            <section className="authoringPanel contentGuidePanel" data-testid="content-authoring-guide">
+              <div className="contentGuideHeader">
+                <div>
+                  <p>Browser-local template guide</p>
+                  <h2>Content-Guided Case Authoring</h2>
+                </div>
+                <span className="runtimePill">localStorage only</span>
+              </div>
+              <p className="caseGalleryNote">Uses read-only <code>content/detective-v1</code> tables to seed safe public-facing draft text. It does not write repo JSON, call `/api/*`, change ids, or edit playable proof structure.</p>
+              <div className="contentGuideMetricGrid" data-testid="authored-content-expansion">
+                <span><strong>{detectiveContentSummary.caseTypeCount}</strong><small>Case types</small></span>
+                <span><strong>{detectiveContentSummary.eventArchetypeCount}</strong><small>Events</small></span>
+                <span><strong>{detectiveContentSummary.progressionLineCount}</strong><small>Growth lines</small></span>
+                <span><strong>{detectiveContentSummary.authored.clusterCount}</strong><small>Authored clusters</small></span>
+              </div>
+              <label>Case type
+                <select aria-label="Content case type" value={contentAuthoringGuide.selection.caseTypeId} onChange={(event) => updateContentSelection({ caseTypeId: event.target.value })}>
+                  {[...detectiveContentPack.caseTypes].sort((left, right) => (right.weight - left.weight) || left.id.localeCompare(right.id)).map((row) => (
+                    <option key={row.id} value={row.id}>{row.label} / weight {row.weight}</option>
+                  ))}
+                </select>
+              </label>
+              <label>Location
+                <select aria-label="Content location" value={contentAuthoringGuide.selection.locationId} onChange={(event) => updateContentSelection({ locationId: event.target.value })}>
+                  {contentAuthoringGuide.compatible.locations.map((row) => (
+                    <option key={row.id} value={row.id}>{row.label} / {row.kind}</option>
+                  ))}
+                </select>
+              </label>
+              <label>Motive
+                <select aria-label="Content motive" value={contentAuthoringGuide.selection.motiveId} onChange={(event) => updateContentSelection({ motiveId: event.target.value })}>
+                  {contentAuthoringGuide.compatible.motives.map((row) => (
+                    <option key={row.id} value={row.id}>{row.label} / {row.category}</option>
+                  ))}
+                </select>
+              </label>
+              <label>Red herring pattern
+                <select aria-label="Content red herring pattern" value={contentAuthoringGuide.selection.redHerringPatternId} onChange={(event) => updateContentSelection({ redHerringPatternId: event.target.value })}>
+                  {contentAuthoringGuide.compatible.redHerringPatterns.map((row) => (
+                    <option key={row.id} value={row.id}>{row.label} / risk {row.risk}</option>
+                  ))}
+                </select>
+              </label>
+              <label>Resource
+                <select aria-label="Content resource" value={contentAuthoringGuide.selection.resourceId} onChange={(event) => updateContentSelection({ resourceId: event.target.value })}>
+                  {contentAuthoringGuide.compatible.resources.map((row) => (
+                    <option key={row.id} value={row.id}>{row.label} / pressure {row.pressure}</option>
+                  ))}
+                </select>
+              </label>
+              <label>Faction
+                <select aria-label="Content faction" value={contentAuthoringGuide.selection.factionId} onChange={(event) => updateContentSelection({ factionId: event.target.value })}>
+                  {contentAuthoringGuide.compatible.factions.map((row) => (
+                    <option key={row.id} value={row.id}>{row.label} / {row.kind}</option>
+                  ))}
+                </select>
+              </label>
+              <label>Event archetype
+                <select aria-label="Content event archetype" value={contentAuthoringGuide.selection.eventArchetypeId} onChange={(event) => updateContentSelection({ eventArchetypeId: event.target.value })}>
+                  {contentAuthoringGuide.compatible.eventArchetypes.map((row) => (
+                    <option key={row.id} value={row.id}>{row.label} / risk {row.risk}</option>
+                  ))}
+                </select>
+              </label>
+              <label>Growth line
+                <select aria-label="Content growth line" value={contentAuthoringGuide.selection.progressionLineId} onChange={(event) => updateContentSelection({ progressionLineId: event.target.value })}>
+                  {contentAuthoringGuide.compatible.progressionLines.map((row) => (
+                    <option key={row.id} value={row.id}>{row.label} / {row.stageCount} stages</option>
+                  ))}
+                </select>
+              </label>
+              <div className="contentGuideMetricGrid">
+                <span><strong>{contentAuthoringGuide.coverage.compatibleEvidenceTypeCount}</strong><small>Compatible evidence</small></span>
+                <span><strong>{contentAuthoringGuide.coverage.compatibleRoleCount}</strong><small>Compatible roles</small></span>
+                <span><strong>{contentAuthoringGuide.coverage.compatibleMotiveCount}</strong><small>Compatible motives</small></span>
+                <span><strong>{contentAuthoringGuide.coverage.compatibleLocationCount}</strong><small>Locations</small></span>
+                <span><strong>{contentAuthoringGuide.coverage.compatibleResourceCount}</strong><small>Resources</small></span>
+                <span><strong>{contentAuthoringGuide.coverage.compatibleFactionCount}</strong><small>Factions</small></span>
+                <span><strong>{contentAuthoringGuide.coverage.compatibleEventArchetypeCount}</strong><small>Events</small></span>
+                <span><strong>{contentAuthoringGuide.coverage.compatibleProgressionLineCount}</strong><small>Growth lines</small></span>
+                <span><strong>{contentAuthoringGuide.riskSummary.averageEvidenceContaminationRisk}</strong><small>Avg risk</small></span>
+                <span><strong>{contentAuthoringGuide.riskSummary.redHerringRisk}</strong><small>Red herring risk</small></span>
+                <span><strong>{contentAuthoringGuide.riskSummary.resourcePressure}</strong><small>Resource pressure</small></span>
+                <span><strong>{contentAuthoringGuide.riskSummary.eventRisk}</strong><small>Event risk</small></span>
+                <span><strong>{contentAuthoringGuide.riskSummary.progressionStageCount}</strong><small>Growth stages</small></span>
+              </div>
+              <div className="contentGuidePicker">
+                <h3>Roles</h3>
+                {contentAuthoringGuide.compatible.roles.map((row) => (
+                  <label key={row.id} className="checkRow">
+                    <input type="checkbox" checked={contentAuthoringGuide.selection.roleIds.includes(row.id)} onChange={() => toggleContentRole(row.id)} />
+                    <span>{row.label} - {row.publicDescription}</span>
+                  </label>
+                ))}
+              </div>
+              <div className="contentGuidePicker">
+                <h3>Evidence types</h3>
+                {contentAuthoringGuide.compatible.evidenceTypes.map((row) => (
+                  <label key={row.id} className="checkRow">
+                    <input type="checkbox" checked={contentAuthoringGuide.selection.evidenceTypeIds.includes(row.id)} onChange={() => toggleContentEvidenceType(row.id)} />
+                    <span>{row.label} - risk {row.contaminationRisk}: {row.publicDescription}</span>
+                  </label>
+                ))}
+              </div>
+              <div className="contentSeedPreview" data-testid="content-seed-preview">
+                <h3>Preview Content Seed</h3>
+                <div className="contentSeedSummary">
+                  <span><strong>{contentAuthoringGuide.preview.title}</strong><small>Case title</small></span>
+                  <span><strong>{contentAuthoringGuide.preview.theme}</strong><small>Theme</small></span>
+                  <span><strong>{contentAuthoringGuide.preview.evidenceLabels.join(", ") || "None"}</strong><small>Evidence labels</small></span>
+                  <span><strong>{contentAuthoringGuide.preview.roleLabels.join(", ") || "None"}</strong><small>Role labels</small></span>
+                  <span><strong>{contentAuthoringGuide.preview.worldSystemLabels.join(" / ") || "None"}</strong><small>World-system labels</small></span>
+                  <span><strong>{contentAuthoringGuide.preview.progressionLineLabel}</strong><small>Growth line</small></span>
+                </div>
+                <p>{contentAuthoringGuide.preview.publicCaseFile}</p>
+                <div className="contentPatchList">
+                  {(["case", "characters", "evidence", "logic"] as const).map((group) => {
+                    const patches = contentAuthoringGuide.patches.filter((patch) => patch.group === group);
+                    if (!patches.length) return null;
+                    return (
+                      <section key={group} className="contentPatchGroup" data-testid={`content-patch-group-${group}`}>
+                        <h4>{group === "case" ? "Case" : group === "characters" ? "Characters" : group === "evidence" ? "Evidence" : "Logic"}</h4>
+                        {patches.slice(0, 12).map((patch) => (
+                          <span key={patch.path}><strong>{patch.label}</strong><small>{patch.path}</small></span>
+                        ))}
+                      </section>
+                    );
+                  })}
+                  {!contentAuthoringGuide.patches.length && <span><strong>No changes pending</strong><small>The current draft already matches this content seed.</small></span>}
+                </div>
+                <p className="caseGalleryNote">Apply saves the current draft to Local Case Gallery first. IDs, suspect matrix, clue order, timeline, and proof structure remain unchanged.</p>
+              </div>
+              <div className="safeDiffPanel" data-testid="safe-diff-review">
+                <div className="contentSeedTrailHeader">
+                  <div>
+                    <p>Browser-local review</p>
+                    <h3>Safe Diff Review</h3>
+                  </div>
+                  <span className="runtimePill">{contentSeedHistory[0] ? "applied" : "pending"}</span>
+                </div>
+                <section className="safeDiffSection" data-testid="pending-safe-diff">
+                  <div className="safeDiffSectionHeader">
+                    <strong>Pending safe diff</strong>
+                    <span>{pendingSafeDiff.length} fields</span>
+                  </div>
+                  <p className="caseGalleryNote">Preview-only changes from the selected content seed. Only public-facing text fields are listed.</p>
+                  <div className="safeDiffGroups">
+                    {safeDiffGroups.map((group) => {
+                      const items = pendingSafeDiff.filter((item) => item.group === group.id);
+                      if (!items.length) return null;
+                      return (
+                        <section key={group.id} className="safeDiffGroup" data-testid={`pending-safe-diff-${group.id}`}>
+                          <h4>{group.label}</h4>
+                          {items.slice(0, 12).map((item) => (
+                            <article key={`${item.field}:${item.label}`} className="safeDiffCard">
+                              <div className="safeDiffCardTop">
+                                <strong>{item.label}</strong>
+                                <small>{item.field}</small>
+                              </div>
+                              <div className="safeDiffValues">
+                                <div>
+                                  <small>Before</small>
+                                  <span className="safeDiffValuePreview">{item.before || "(empty)"}</span>
+                                  <p>{item.before || "(empty)"}</p>
+                                </div>
+                                <div>
+                                  <small>After</small>
+                                  <span className="safeDiffValuePreview">{item.after || "(empty)"}</span>
+                                  <p>{item.after || "(empty)"}</p>
+                                </div>
+                              </div>
+                            </article>
+                          ))}
+                        </section>
+                      );
+                    })}
+                    {!pendingSafeDiff.length && <p className="caseGalleryNote">No pending safe diff. The current draft already matches this content seed.</p>}
+                  </div>
+                </section>
+                {contentSeedHistory[0] && (
+                  <section className="safeDiffSection" data-testid="applied-safe-diff">
+                    <div className="safeDiffSectionHeader">
+                      <strong>Applied safe diff</strong>
+                      <span>{appliedSafeDiff.length} fields / {contentSeedHistory[0].validation.valid ? "validation pass" : `${contentSeedHistory[0].validation.errorCount} blockers`}</span>
+                    </div>
+                    <p className="caseGalleryNote">Compared from the session before snapshot to the current draft. Gallery backup: <strong>{contentSeedHistory[0].backupTitle}</strong>.</p>
+                    <div className="safeDiffGroups">
+                      {safeDiffGroups.map((group) => {
+                        const items = appliedSafeDiff.filter((item) => item.group === group.id);
+                        if (!items.length) return null;
+                        return (
+                          <section key={group.id} className="safeDiffGroup" data-testid={`applied-safe-diff-${group.id}`}>
+                            <h4>{group.label}</h4>
+                            {items.slice(0, 12).map((item) => (
+                              <article key={`${item.field}:${item.label}`} className="safeDiffCard">
+                                <div className="safeDiffCardTop">
+                                  <strong>{item.label}</strong>
+                                  <small>{item.field}</small>
+                                </div>
+                                <div className="safeDiffValues">
+                                  <div>
+                                    <small>Before</small>
+                                    <span className="safeDiffValuePreview">{item.before || "(empty)"}</span>
+                                    <p>{item.before || "(empty)"}</p>
+                                  </div>
+                                  <div>
+                                    <small>After</small>
+                                    <span className="safeDiffValuePreview">{item.after || "(empty)"}</span>
+                                    <p>{item.after || "(empty)"}</p>
+                                  </div>
+                                </div>
+                              </article>
+                            ))}
+                          </section>
+                        );
+                      })}
+                      {!appliedSafeDiff.length && <p className="caseGalleryNote">No applied safe diff is active. Undo has restored the pre-apply draft or no seed has been applied.</p>}
+                    </div>
+                  </section>
+                )}
+              </div>
+              <div className="contentSeedTrail" data-testid="content-seed-trail">
+                <div className="contentSeedTrailHeader">
+                  <div>
+                    <p>Session-only audit trail</p>
+                    <h3>Content Seed Undo</h3>
+                  </div>
+                  <span className="runtimePill">{contentSeedHistory.length} recent</span>
+                </div>
+                {contentSeedHistory[0] ? (
+                  <div className="contentSeedUndoCard">
+                    <span><strong>{contentSeedHistory[0].beforeTitle}</strong><small>Before</small></span>
+                    <span><strong>{contentSeedHistory[0].afterTitle}</strong><small>After</small></span>
+                    <span><strong>{contentSeedHistory[0].patchCount}</strong><small>Safe text patches</small></span>
+                    <span><strong>{contentSeedHistory[0].validation.valid ? "Pass" : `${contentSeedHistory[0].validation.errorCount} blockers`}</strong><small>Post-apply validation</small></span>
+                    <p>Latest seed: {contentSeedHistory[0].caseTypeLabel}. The Gallery snapshot remains available as <strong>{contentSeedHistory[0].backupTitle}</strong>.</p>
+                    <button data-testid="undo-content-seed" type="button" onClick={undoLatestContentSeed}>Undo Content Seed</button>
+                  </div>
+                ) : (
+                  <p className="caseGalleryNote">No Content Seed changes in this browser session. Apply a non-empty seed to create one undo entry and a Gallery backup.</p>
+                )}
+              </div>
+              <div className="authoringActions">
+                <button data-testid="preview-content-seed" type="button" onClick={previewContentSeed}>Preview Content Seed</button>
+                <button data-testid="apply-content-seed" type="button" className="primaryButton" onClick={applyContentSeed} disabled={!contentAuthoringGuide.patches.length}>Apply Content Seed</button>
+              </div>
             </section>
           )}
 
@@ -5256,6 +8461,47 @@ export default function Home() {
         </section>
 
         <aside className="authoringInspector">
+          <section className={`authoringWorkflowCoach ${authoringWorkflowCoach.nextAction.tone}`} data-testid="authoring-workflow-coach">
+            <div className="workflowCoachHeader">
+              <div>
+                <p>Browser-local guidance</p>
+                <h2>Authoring Workflow Coach</h2>
+              </div>
+              <span className={`runtimePill ${authoringWorkflowCoach.nextAction.tone}`}>{authoringWorkflowCoach.nextAction.tone}</span>
+            </div>
+            <div className="workflowCoachStages" data-testid="authoring-workflow-stages">
+              {authoringWorkflowCoach.stages.map((stage) => (
+                <button
+                  key={stage.id}
+                  type="button"
+                  className={`workflowCoachStage ${stage.status}`}
+                  data-testid={`authoring-workflow-stage-${stage.id}`}
+                  onClick={() => {
+                    if (stage.id === "content-seed" || stage.id === "safe-diff") setAuthoringTab("content");
+                    else if (stage.id === "gallery-backup") setAuthoringTab("gallery");
+                    else if (stage.id === "run-draft" || stage.id === "validation") setAuthoringTab("logic");
+                    else setAuthoringTab("case");
+                  }}
+                >
+                  <span>{stage.status}</span>
+                  <strong>{stage.label}</strong>
+                  <small>{stage.detail}</small>
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              className={`workflowNextAction ${authoringWorkflowCoach.nextAction.tone}`}
+              data-testid="authoring-next-action"
+              onClick={runAuthoringCoachNextAction}
+            >
+              <span>Next Action</span>
+              <strong>{authoringWorkflowCoach.nextAction.label}</strong>
+              <small>{authoringWorkflowCoach.nextAction.detail}</small>
+            </button>
+            <p className="caseGalleryNote">Coach reads only current browser draft status, safe diff counts, validation result, and Gallery backup availability. It does not expose spoiler fields or call `/api/*`.</p>
+          </section>
+
           <section className={`authoringReport ${authoringReport.valid ? "pass" : "fail"}`} data-testid="authoring-rule-report">
             <h2>Rule Report</h2>
             <div className="validationChecklist" data-testid="authoring-validation-checklist">
@@ -5328,7 +8574,10 @@ export default function Home() {
 
   if (appMode === "persistent-town") {
     return (
+      <>
+      {campaignStudyRecorder}
       <PersistentTownCommandCenter
+        runtimeMode={runtimeMode}
         worldName={world?.name || "未创建小镇"}
         caseTitle={activeCase?.deductionCase.title || "Generated Agent Town"}
         runtime={townRuntime}
@@ -5348,8 +8597,34 @@ export default function Home() {
         resetRuntime={() => void resetPersistentTown()}
         interveneAgent={(kind, value) => void intervenePersistentAgent(kind, value)}
         extractCase={(candidate) => void extractPersistentCandidate(candidate)}
-        runScenario={() => void runDefaultTownScenario()}
+        scenarioPresets={scenarioPresets}
+        scenarioPacks={scenarioPacks}
+        scenarioRuns={scenarioRuns}
+        runCatalog={runCatalog}
+        runJobs={runJobs}
+        ruleState={townRuleState}
+        caseLifecycle={townCaseLifecycle}
+        selectedScenarioPackId={selectedScenarioPackId}
+        setSelectedScenarioPackId={setSelectedScenarioPackId}
+        selectedRunCatalogId={selectedRunCatalogId}
+        setSelectedRunCatalogId={setSelectedRunCatalogId}
+        selectedScenarioPresetId={selectedScenarioPresetId}
+        setSelectedScenarioPresetId={setSelectedScenarioPresetId}
+        selectScenarioRun={(runId) => void selectScenarioHistoryRun(runId)}
+        runScenario={(config) => void runDefaultTownScenario(config)}
+        saveScenarioPreset={(preset, overwrite) => void saveScenarioPresetFromUi(preset, overwrite)}
+        deleteScenarioPreset={(presetId) => void deleteScenarioPresetFromUi(presetId)}
+        exportScenarioPack={() => void exportScenarioPackFromUi()}
+        validateScenarioPack={() => void validateScenarioPackFromUi()}
+        exportReplayBundle={() => void exportReplayBundleFromUi()}
+        startScenarioJob={() => void startRunJobFromUi("scenario")}
+        startBenchmarkJob={() => void startRunJobFromUi("benchmark")}
+        cancelRunJob={(jobId) => void cancelRunJobFromUi(jobId)}
+        copyReviewJson={() => void copyReviewBundleJson()}
+        exportReviewMarkdown={() => void exportReviewBundleFile("markdown")}
+        exportReviewBundle={() => void exportReviewBundleFile("json")}
         rollbackSnapshot={(snapshotId) => void rollbackTownSnapshot(snapshotId)}
+        markReviewExportTarget={markCurrentDiffAsReviewExportTarget}
         backToPlay={() => {
           setAppMode("play");
           setInspectorTab("investigation");
@@ -5374,7 +8649,10 @@ export default function Home() {
         setSelectedSnapshotToId={setSelectedSnapshotToId}
         snapshotDiff={snapshotDiff}
         benchmarkSummary={benchmarkSummary}
+        runBenchmark={(seedCount) => void runEmergenceBenchmarkFromUi(seedCount)}
+        reviewBusy={reviewBusy}
       />
+      </>
     );
   }
 
@@ -5409,6 +8687,8 @@ export default function Home() {
   );
 
   return (
+    <>
+    {campaignStudyRecorder}
     <PlayShell
       control={(
         <ControlRail
@@ -5570,6 +8850,50 @@ export default function Home() {
                   onGapSelect={handleGapCard}
                   nextStepAdvice={nextStepAdvice}
                   joinCase={() => void joinCase()}
+                  staticPlaythroughProof={staticPlaythroughProof}
+                  runStaticPlaythroughProof={runStaticCertifiedPlaythrough}
+                  serverPlaythroughProof={serverPlaythroughProof}
+                  runServerPlaythroughProof={() => void runServerCertifiedPlaythrough()}
+                  runtimeMode={runtimeMode}
+                  worldLead={worldLead || townRuntime?.worldLeadPreview}
+                  worldLeadOutcome={worldLeadOutcome}
+                  worldLeadCaseHandoff={worldLeadCaseHandoff || townRuntime?.worldLeadCaseHandoffSummary}
+                  worldArc={runtimeMode === "static-demo" ? null : worldArc || townRuntime?.worldArcSummary}
+                  worldArcDirective={runtimeMode === "static-demo" ? null : worldArcDirective || townRuntime?.worldArcDirectiveSummary}
+                  worldPressureCascade={runtimeMode === "static-demo" ? null : worldPressureCascade || townRuntime?.worldPressureCascadeSummary}
+                  worldInfluenceBudget={runtimeMode === "static-demo" ? null : worldInfluenceBudget || townRuntime?.worldInfluenceBudgetSummary}
+                  playerResourceCommitment={runtimeMode === "static-demo" ? null : playerResourceCommitment || townRuntime?.playerResourceCommitmentSummary}
+                  factionRelationship={runtimeMode === "static-demo" ? null : factionRelationship || townRuntime?.factionRelationshipSummary}
+                  worldEventOffer={runtimeMode === "static-demo" ? null : worldEventOffer || townRuntime?.worldEventOfferSummary}
+                  investigatorProgression={runtimeMode === "static-demo" ? null : investigatorProgression || townRuntime?.investigatorProgressionSummary}
+                  campaignRecovery={runtimeMode === "static-demo" ? null : campaignRecovery || townRuntime?.campaignRecoverySummary}
+                  arcConvergence={runtimeMode === "static-demo" ? null : arcConvergence || townRuntime?.arcConvergenceSummary}
+                  campaignSession={runtimeMode === "static-demo" ? null : campaignSession || townRuntime?.campaignSessionSummary}
+                  campaignFinaleDebrief={runtimeMode === "static-demo" ? null : campaignFinaleDebrief || townRuntime?.campaignFinaleDebrief}
+                  townSocialResponse={runtimeMode === "static-demo" ? null : townSocialResponse || townRuntime?.townSocialResponseSummary}
+                  updateWorldLead={(action) => void updateWorldLeadDecision(action)}
+                  updateWorldArcDirective={(choice) => void updateWorldArcDirectiveDecision(choice)}
+                  updatePlayerResourceCommitment={(choice) => void updatePlayerResourceCommitmentDecision(choice)}
+                  updateWorldEventOffer={(choice) => void updateWorldEventOfferDecision(choice)}
+                  updateCampaignRecovery={(choice) => void updateCampaignRecoveryDecision(choice)}
+                  guidedManualRun={guidedManualRun}
+                  runGuidedManualStep={() => void runGuidedManualStep()}
+                  guidedStepJournal={guidedStepJournal}
+                  sourceReviewUnlock={sourceReviewUnlock}
+                  solvedCaseDebrief={solvedCaseDebrief}
+                  replayPracticeLoop={replayPracticeLoop}
+                  replayGoalCoach={replayGoalCoach}
+                  manualEvidenceDrill={manualEvidenceDrill}
+                  toggleManualEvidenceDrillEvidence={toggleManualEvidenceDrillEvidence}
+                  manualTheoryDrill={manualTheoryDrill}
+                  updateManualTheoryDrillField={updateManualTheoryDrillField}
+                  approveManualTheoryFallback={approveManualTheoryFallback}
+                  replayAttemptScorecard={replayAttemptScorecard}
+                  startReplayGoalAttempt={() => void startReplayGoalAttempt()}
+                  proofLedger={caseTruthLedger}
+                  proofCoverage={caseProofCoverage}
+                  routeCertificate={caseRouteCertificate}
+                  proofTourSteps={proofTourSteps}
                   busy={busy}
                 />
               )
@@ -5615,6 +8939,7 @@ export default function Home() {
               label: "Agent",
               content: (
                 <AgentControlPanel
+                  runtimeMode={runtimeMode}
                   runtime={townRuntime}
                   queue={townQueue}
                   selectedAgent={selectedAgent}
@@ -5627,8 +8952,34 @@ export default function Home() {
                   resetRuntime={() => void resetPersistentTown()}
                   interveneAgent={() => void intervenePersistentAgent()}
                   extractCase={(candidate) => void extractPersistentCandidate(candidate)}
-                  runScenario={() => void runDefaultTownScenario()}
+                  scenarioPresets={scenarioPresets}
+                  scenarioPacks={scenarioPacks}
+                  scenarioRuns={scenarioRuns}
+                  runCatalog={runCatalog}
+                  runJobs={runJobs}
+                  ruleState={townRuleState}
+                  caseLifecycle={townCaseLifecycle}
+                  selectedScenarioPackId={selectedScenarioPackId}
+                  setSelectedScenarioPackId={setSelectedScenarioPackId}
+                  selectedRunCatalogId={selectedRunCatalogId}
+                  setSelectedRunCatalogId={setSelectedRunCatalogId}
+                  selectedScenarioPresetId={selectedScenarioPresetId}
+                  setSelectedScenarioPresetId={setSelectedScenarioPresetId}
+                  selectScenarioRun={(runId) => void selectScenarioHistoryRun(runId)}
+                  runScenario={(config) => void runDefaultTownScenario(config)}
+                  saveScenarioPreset={(preset, overwrite) => void saveScenarioPresetFromUi(preset, overwrite)}
+                  deleteScenarioPreset={(presetId) => void deleteScenarioPresetFromUi(presetId)}
+                  exportScenarioPack={() => void exportScenarioPackFromUi()}
+                  validateScenarioPack={() => void validateScenarioPackFromUi()}
+                  exportReplayBundle={() => void exportReplayBundleFromUi()}
+                  startScenarioJob={() => void startRunJobFromUi("scenario")}
+                  startBenchmarkJob={() => void startRunJobFromUi("benchmark")}
+                  cancelRunJob={(jobId) => void cancelRunJobFromUi(jobId)}
+                  copyReviewJson={() => void copyReviewBundleJson()}
+                  exportReviewMarkdown={() => void exportReviewBundleFile("markdown")}
+                  exportReviewBundle={() => void exportReviewBundleFile("json")}
                   rollbackSnapshot={(snapshotId) => void rollbackTownSnapshot(snapshotId)}
+                  markReviewExportTarget={markCurrentDiffAsReviewExportTarget}
                   selectedScenarioRun={scenarioRun}
                   scenarioReport={scenarioReport}
                   snapshots={townSnapshots}
@@ -5638,6 +8989,8 @@ export default function Home() {
                   setSelectedSnapshotToId={setSelectedSnapshotToId}
                   snapshotDiff={snapshotDiff}
                   benchmarkSummary={benchmarkSummary}
+                  runBenchmark={(seedCount) => void runEmergenceBenchmarkFromUi(seedCount)}
+                  reviewBusy={reviewBusy}
                 />
               )
             },
@@ -5686,5 +9039,6 @@ export default function Home() {
         />
       )}
     />
+    </>
   );
 }

@@ -1,0 +1,57 @@
+{
+  "id": "city-hall-merchant-debt-rules",
+  "name": "City Hall Merchant Debt Rules",
+  "version": "1.0.0",
+  "resources": [
+    { "kind": "police_time", "label": "Police Time", "value": 60, "capacity": 100, "pressure": 34 },
+    { "kind": "media_attention", "label": "Media Attention", "value": 44, "capacity": 100, "pressure": 58 },
+    { "kind": "family_influence", "label": "Family Influence", "value": 48, "capacity": 100, "pressure": 62 },
+    { "kind": "merchant_credit", "label": "Merchant Credit", "value": 42, "capacity": 100, "pressure": 68 },
+    { "kind": "medical_capacity", "label": "Medical Capacity", "value": 52, "capacity": 100, "pressure": 24 },
+    { "kind": "evidence_integrity", "label": "Evidence Integrity", "value": 84, "capacity": 100, "pressure": 20 },
+    { "kind": "court_docket", "label": "Court Docket", "value": 50, "capacity": 100, "pressure": 55 },
+    { "kind": "dock_credit", "label": "Dock Credit", "value": 50, "capacity": 100, "pressure": 32 },
+    { "kind": "informant_trust", "label": "Informant Trust", "value": 46, "capacity": 100, "pressure": 45 }
+  ],
+  "institutions": [
+    { "id": "inst-police", "name": "Town Police", "kind": "police", "resources": 60, "reputation": 58, "pressure": 34, "agenda": "Keep permit cases procedural and provable.", "influenceByLocation": { "city-hall": 50, "merchant-bank": 42, "market-lane": 40 }, "trustByNpcId": { "npc-chmd-1": 76 }, "activeCaseIds": [], "policyPressure": 34 },
+    { "id": "inst-media", "name": "Local Gazette", "kind": "media", "resources": 44, "reputation": 54, "pressure": 58, "agenda": "Publish permit-debt scandals before rivals do.", "influenceByLocation": { "gazette-office": 82, "city-hall": 58, "market-lane": 62 }, "trustByNpcId": { "npc-chmd-5": 78 }, "activeCaseIds": [], "policyPressure": 58 },
+    { "id": "inst-family", "name": "Hale Household", "kind": "family", "resources": 48, "reputation": 61, "pressure": 62, "agenda": "Shield family letters and inheritance obligations.", "influenceByLocation": { "family-parlor": 84, "city-hall": 48 }, "trustByNpcId": { "npc-chmd-4": 76 }, "activeCaseIds": [], "policyPressure": 62 },
+    { "id": "inst-commerce", "name": "Merchant Credit Board", "kind": "commerce", "resources": 42, "reputation": 50, "pressure": 68, "agenda": "Turn debt into leverage without exposing receipts.", "influenceByLocation": { "merchant-bank": 84, "market-lane": 64 }, "trustByNpcId": { "npc-chmd-3": 76 }, "activeCaseIds": [], "policyPressure": 68 },
+    { "id": "inst-civic", "name": "City Hall", "kind": "civic", "resources": 52, "reputation": 50, "pressure": 60, "agenda": "Preserve permit legitimacy and clerk discipline.", "influenceByLocation": { "city-hall": 86, "permit-archive": 86 }, "trustByNpcId": { "npc-chmd-2": 72 }, "activeCaseIds": [], "policyPressure": 60 },
+    { "id": "inst-medical", "name": "Clinic", "kind": "medical", "resources": 52, "reputation": 56, "pressure": 24, "agenda": "Document injuries without political pressure.", "influenceByLocation": { "market-lane": 24 }, "trustByNpcId": {}, "activeCaseIds": [], "policyPressure": 24 },
+    { "id": "inst-court", "name": "Magistrate Court", "kind": "court", "resources": 50, "reputation": 52, "pressure": 55, "agenda": "Convert permit disputes into sworn records.", "influenceByLocation": { "city-hall": 50, "permit-archive": 50 }, "trustByNpcId": {}, "activeCaseIds": [], "policyPressure": 55 },
+    { "id": "inst-dock-union", "name": "Dock Union", "kind": "dock_union", "resources": 50, "reputation": 48, "pressure": 32, "agenda": "Stay out of permit debt unless cargo credit is threatened.", "influenceByLocation": { "market-lane": 28 }, "trustByNpcId": {}, "activeCaseIds": [], "policyPressure": 32 }
+  ],
+  "professions": [
+    { "npcId": "npc-chmd-1", "kind": "detective", "institutionId": "inst-police", "rank": 3, "skills": ["detective", "records"], "income": 55, "workload": 44 },
+    { "npcId": "npc-chmd-2", "kind": "clerk", "institutionId": "inst-civic", "rank": 2, "skills": ["clerk", "filing"], "income": 42, "workload": 58 },
+    { "npcId": "npc-chmd-3", "kind": "merchant", "institutionId": "inst-commerce", "rank": 3, "skills": ["merchant", "ledger"], "income": 63, "workload": 62 },
+    { "npcId": "npc-chmd-4", "kind": "servant", "institutionId": "inst-family", "rank": 1, "skills": ["servant", "observation"], "income": 28, "workload": 54 },
+    { "npcId": "npc-chmd-5", "kind": "reporter", "institutionId": "inst-media", "rank": 2, "skills": ["reporter", "proof"], "income": 46, "workload": 60 }
+  ],
+  "longActionDefinitions": [
+    { "kind": "audit-ledger", "label": "Audit merchant ledger", "durationTicks": 4, "requiredInstitutionId": "inst-commerce", "resourceCosts": { "merchant_credit": 3, "police_time": 1 }, "institutionDeltas": { "inst-commerce": { "resources": -3, "reputation": -2, "pressure": 6 }, "inst-civic": { "reputation": 2, "pressure": 2 } }, "publicOpinionDelta": { "heat": 4, "mediaPressure": 3 }, "evidenceContaminationDelta": -6 },
+    { "kind": "pressure-editor", "label": "Pressure editor", "durationTicks": 2, "requiredInstitutionId": "inst-media", "resourceCosts": { "media_attention": 4 }, "institutionDeltas": { "inst-media": { "resources": -4, "reputation": -3, "pressure": 8 }, "inst-police": { "reputation": -2 } }, "publicOpinionDelta": { "mediaPressure": 9, "rumorVelocity": 7, "trustInPolice": -3 }, "evidenceContaminationDelta": 7 },
+    { "kind": "summon-family-council", "label": "Summon family council", "durationTicks": 3, "requiredInstitutionId": "inst-family", "resourceCosts": { "family_influence": 4 }, "institutionDeltas": { "inst-family": { "resources": -4, "reputation": 2, "pressure": -2 }, "inst-media": { "pressure": 3 } }, "publicOpinionDelta": { "witnessFear": 4, "heat": 3 }, "evidenceContaminationDelta": -3 },
+    { "kind": "secure-evidence-locker", "label": "Secure evidence locker", "durationTicks": 3, "requiredInstitutionId": "inst-police", "resourceCosts": { "police_time": 3, "evidence_integrity": 2 }, "institutionDeltas": { "inst-police": { "resources": -3, "reputation": 3, "pressure": -2 } }, "publicOpinionDelta": { "trustInPolice": 3 }, "evidenceContaminationDelta": -10 },
+    { "kind": "review-court-record", "label": "Review court record", "durationTicks": 3, "requiredInstitutionId": "inst-court", "resourceCosts": { "court_docket": 2 }, "institutionDeltas": { "inst-court": { "resources": -2, "reputation": 2, "pressure": -3 }, "inst-civic": { "reputation": 2 } }, "publicOpinionDelta": { "trustInPolice": 1 }, "evidenceContaminationDelta": -6 }
+  ],
+  "randomEvents": [
+    { "id": "permit-notice-gap", "label": "Permit notice gap", "weight": 24, "tags": ["civic", "permit", "record"] },
+    { "id": "merchant-debt-renewal", "label": "Merchant debt renewal", "weight": 28, "tags": ["commerce", "debt", "receipt"] },
+    { "id": "newspaper-proof-held", "label": "Newspaper proof held", "weight": 22, "tags": ["media", "proof"] },
+    { "id": "family-letter-leaks", "label": "Family letter leaks", "weight": 18, "tags": ["family", "letter"] }
+  ],
+  "casePressureRules": [
+    { "id": "low-merchant-credit-city", "resource": "merchant_credit", "threshold": 48, "effect": "ledger fraud, blackmail and merchant extortion become prominent" },
+    { "id": "high-family-pressure-city", "resource": "family_influence", "threshold": 55, "effect": "forged wills and family-letter evidence become prominent" },
+    { "id": "high-media-pressure-city", "resource": "media_attention", "threshold": 50, "effect": "newspaper proof and witness reversals become prominent" }
+  ],
+  "evidenceRules": [
+    { "id": "permit-record-chain", "kind": "court-record", "weakContaminationThreshold": 66, "strongProvenanceIntegrityFloor": 60, "relatedCaseTypes": ["court-intimidation", "forged-will"] },
+    { "id": "merchant-receipt-chain", "kind": "receipt", "weakContaminationThreshold": 70, "strongProvenanceIntegrityFloor": 58, "relatedCaseTypes": ["ledger-fraud", "blackmail"] },
+    { "id": "newspaper-proof-chain", "kind": "newspaper-proof", "weakContaminationThreshold": 64, "strongProvenanceIntegrityFloor": 56, "relatedCaseTypes": ["blackmail", "witness-disappearance"] },
+    { "id": "family-letter-chain", "kind": "family-letter", "weakContaminationThreshold": 68, "strongProvenanceIntegrityFloor": 54, "relatedCaseTypes": ["forged-will", "blackmail"] }
+  ]
+}

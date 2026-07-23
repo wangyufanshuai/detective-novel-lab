@@ -1,8 +1,501 @@
 import { extractCaseFromWorld, validateWorldCase } from "./world-case";
+import {
+  advanceTownInstitutionStrategies,
+  advanceTownLongActions,
+  applyCaseAftermath,
+  buildTownRuleSnapshotSummary,
+  diffTownRuleSnapshots,
+  ensureTownRuleRuntimeState,
+  maybeStartLongActionFromCandidate,
+  releaseTownLongActionReservation,
+  startTownLongAction,
+  updateTownRulePressureFromEvent,
+  type InstitutionDecision,
+  type InstitutionStrategy,
+  type LongActionKind,
+  type TownInstitutionKind,
+  type TownLongActionReservation,
+  type EvidenceChainItem,
+  type TownResourceKind,
+  type TownRuleRuntimeState,
+  type TownRuleSnapshotSummary
+} from "./town/rules";
+import { createTownActionDefinitions, strongestLegalAction } from "./town/actions";
+import { invalidateTownCandidateCache, reusableTownCandidates, storeTownCandidates } from "./town/cases";
+import { cacheNpcAgentState, eventsForNpc, memoriesForNpc } from "./town/memory";
+import { PERSISTENT_TOWN_TICK_PHASES, type TownTickPhaseName } from "./town/runtime";
+import { cloneTownSnapshotRuntime, cloneTownSnapshotWorld, cloneTownWorldForAdvance } from "./town/snapshots";
+import {
+  deriveCandidateInfluenceBudget,
+  deriveWorldArcCandidateInfluence,
+  deriveWorldLeadHandoffInfluence,
+  toWorldInfluenceBudgetPublicSummary,
+  type WorldInfluenceBudgetPublicSummary
+} from "./town/candidate-influence";
+import {
+  toPlayerResourceCommitmentPublicSummary,
+  type PlayerResourceCommitment,
+  type PlayerResourceCommitmentPublicSummary,
+  type PlayerResourceCommitmentRuntimeState
+} from "./town/player-resource-commitment";
+import {
+  ensureFactionRelationshipState,
+  recordCompletedDirectiveFactionRelationships,
+  toFactionRelationshipPublicSummary,
+  type FactionRelationshipPublicSummary,
+  type FactionRelationshipRuntimeState
+} from "./town/faction-relationship";
+export {
+  PLAYER_RESOURCE_COMMITMENT_COST,
+  applyPlayerResourceCommitmentDecision,
+  consumePlayerResourceCommitment,
+  preparePlayerResourceCommitment,
+  releaseUnusedPlayerResourceCommitments,
+  toPlayerResourceCommitmentPublicSummary
+} from "./town/player-resource-commitment";
+export type {
+  PlayerResourceCommitment,
+  PlayerResourceCommitmentChoice,
+  PlayerResourceCommitmentDecisionInput,
+  PlayerResourceCommitmentPublicOption,
+  PlayerResourceCommitmentPublicSummary,
+  PlayerResourceCommitmentRuntimeState,
+  PlayerResourceCommitmentStatus
+} from "./town/player-resource-commitment";
+export {
+  applyFactionRelationshipDelta,
+  ensureFactionRelationshipState,
+  factionRelationshipBand,
+  factionStandingForInstitution,
+  factionResourceCommitmentTerms,
+  mapContentFactionKindToInstitutionKind,
+  recordAcceptedCaseFactionRelationship,
+  recordCompletedDirectiveFactionRelationships,
+  recordResourceCommitmentFactionRelationship,
+  toFactionRelationshipPublicSummary
+} from "./town/faction-relationship";
+export type {
+  FactionRelationshipBand,
+  FactionRelationshipLedgerEntry,
+  FactionRelationshipPublicEntry,
+  FactionRelationshipPublicSummary,
+  FactionRelationshipReason,
+  FactionRelationshipRuntimeState,
+  FactionResourceCommitmentTerms,
+  InvestigatorFactionStanding
+} from "./town/faction-relationship";
+import {
+  enqueueWorldEventOfferFromCompletedDirective,
+  reconcileWorldEventOfferLongAction,
+  startAcceptedWorldEventOffer,
+  toWorldEventOfferPublicSummary,
+  type WorldEventOfferPublicSummary,
+  type WorldEventOfferRuntimeState
+} from "./town/world-event-offer";
+import {
+  ensureInvestigatorProgression,
+  recordInvestigatorProgression,
+  toInvestigatorProgressionPublicSummary,
+  type InvestigatorProgressionPublicSummary,
+  type InvestigatorProgressionRuntimeState
+} from "./town/investigator-progression";
+import {
+  reconcileCampaignRecovery,
+  syncCampaignRecoveryFromRuntime,
+  toCampaignRecoveryPublicSummary,
+  type CampaignRecoveryPublicSummary,
+  type CampaignRecoveryRuntimeState
+} from "./town/campaign-recovery";
+import {
+  deriveArcConvergenceCandidateBonus,
+  refreshArcConvergence,
+  selectArcConvergenceCaseType,
+  toArcConvergencePublicSummary,
+  type ArcConvergencePublicSummary,
+  type ArcConvergenceRuntimeState
+} from "./town/arc-convergence";
+import {
+  ensureCampaignSession,
+  refreshCampaignSession,
+  toCampaignFinaleDebriefPublicSummary,
+  toCampaignSessionPublicSummary,
+  type CampaignFinaleDebriefPublicSummary,
+  type CampaignSessionPublicSummary,
+  type CampaignSessionRuntimeState
+} from "./town/campaign-session";
+export {
+  ensureInvestigatorProgression,
+  investigatorProgressionCanRecoverOffer,
+  investigatorProgressionReserveDiscount,
+  recordInvestigatorProgression,
+  toInvestigatorProgressionPublicSummary
+} from "./town/investigator-progression";
+export type {
+  InvestigatorCompetency,
+  InvestigatorCompetencyPublicSummary,
+  InvestigatorProgressionEntry,
+  InvestigatorProgressionKind,
+  InvestigatorProgressionPublicSummary,
+  InvestigatorProgressionRuntimeState
+} from "./town/investigator-progression";
+export {
+  applyCampaignRecoveryDecision,
+  prepareCampaignRecovery,
+  reconcileCampaignRecovery,
+  syncCampaignRecoveryFromRuntime,
+  toCampaignRecoveryPublicSummary
+} from "./town/campaign-recovery";
+export {
+  activateArcConvergence,
+  completeArcConvergence,
+  deriveArcConvergenceCandidateBonus,
+  refreshArcConvergence,
+  selectArcConvergenceCaseType,
+  toArcConvergencePublicSummary
+} from "./town/arc-convergence";
+export {
+  activateCampaignCase,
+  completeCampaignCase,
+  ensureCampaignSession,
+  refreshCampaignSession,
+  toCampaignFinaleDebriefPublicSummary,
+  toCampaignSessionPublicSummary
+} from "./town/campaign-session";
+export type {
+  CampaignFinaleDebriefPublicSummary,
+  CampaignSessionHistoryEntry,
+  CampaignSessionPublicSummary,
+  CampaignSessionRuntimeState,
+  CampaignSessionStatus
+} from "./town/campaign-session";
+export type {
+  ArcConvergenceApproach,
+  ArcConvergencePublicSummary,
+  ArcConvergenceRuntimeState,
+  ArcConvergenceStatus
+} from "./town/arc-convergence";
+export type {
+  CampaignRecovery,
+  CampaignRecoveryActionKind,
+  CampaignRecoveryDecisionChoice,
+  CampaignRecoveryDecisionInput,
+  CampaignRecoveryFailureKind,
+  CampaignRecoveryPublicSummary,
+  CampaignRecoveryRuntimeState,
+  CampaignRecoveryStatus
+} from "./town/campaign-recovery";
+export {
+  applyWorldEventOfferDecision,
+  enqueueWorldEventOffer,
+  enqueueWorldEventOfferFromCompletedDirective,
+  reconcileWorldEventOfferLongAction,
+  reopenWorldEventOfferAfterCampaignRecovery,
+  startAcceptedWorldEventOffer,
+  toWorldEventOfferPublicSummary
+} from "./town/world-event-offer";
+export type {
+  WorldEventOffer,
+  WorldEventOfferDecisionChoice,
+  WorldEventOfferDecisionInput,
+  WorldEventOfferPublicSummary,
+  WorldEventOfferRuntimeState,
+  WorldEventOfferStatus
+} from "./town/world-event-offer";
+export {
+  MAX_CANDIDATE_INFLUENCE_BONUS,
+  deriveCandidateInfluenceBudget,
+  deriveCandidateInfluenceLedger,
+  deriveWorldArcCandidateInfluence,
+  deriveWorldLeadHandoffCandidateInfluence,
+  deriveWorldLeadHandoffInfluence,
+  deriveWorldPressureCandidateInfluence,
+  toWorldInfluenceBudgetPublicSummary
+} from "./town/candidate-influence";
+export type {
+  CandidateInfluenceEntry,
+  CandidateInfluenceLedger,
+  CandidateInfluenceSource,
+  WorldInfluenceBudgetPublicSummary
+} from "./town/candidate-influence";
+import {
+  deriveWorldPressurePulseFromCompletedAction,
+  mergeWorldPressurePulse,
+  toWorldPressureCascadePublicSummary
+} from "./town/world-pressure";
+export {
+  consumeWorldPressurePulseOnExtraction,
+  deriveCompletedActionWorldPressureDirection,
+  deriveWorldPressureDirectionFromActualDeltas,
+  deriveWorldPressureCasePriorityBonus,
+  deriveWorldPressurePulseFromCompletedAction,
+  mergeWorldPressurePulse,
+  toWorldPressureCascadePublicSummary
+} from "./town/world-pressure";
+import {
+  advanceTownSocialResponse,
+  deriveTownSocialResponseDirectionFromCompletedAction,
+  deriveTownSocialResponseDirectionFromDeltas,
+  enqueueTownSocialResponse,
+  refreshTownSocialResponseSummary,
+  toTownSocialResponsePublicSummary,
+  townSocialResponseActualDelta,
+  type TownSocialResponsePublicSummary,
+  type TownSocialResponseRuntimeState
+} from "./town/social-response";
+export {
+  advanceTownSocialResponse,
+  deriveTownSocialResponseDirectionFromCompletedAction,
+  deriveTownSocialResponseDirectionFromDeltas,
+  enqueueTownSocialResponse,
+  refreshTownSocialResponseSummary,
+  toTownSocialResponsePublicSummary,
+  townSocialResponseActualDelta
+} from "./town/social-response";
+export type {
+  EnqueueTownSocialResponseInput,
+  TownSocialResponseCycle,
+  TownSocialResponseDirection,
+  TownSocialResponsePublicReaction,
+  TownSocialResponsePublicSummary,
+  TownSocialResponseReaction,
+  TownSocialResponseReactionKind,
+  TownSocialResponseRuntimeState,
+  TownSocialResponseSourceKind,
+  TownSocialResponseStatus
+} from "./town/social-response";
+import {
+  addEventToTownTickIndex,
+  createTownPerformanceSummary,
+  createTownTickIndex,
+  normalizeTownExecutionPolicy,
+  recordTownPhaseTiming,
+  type TownExecutionPolicy,
+  type TownPerformanceSummary,
+  type TownSnapshotMode,
+  type TownTickIndex
+} from "./town/execution";
+export { PERSISTENT_TOWN_PHASE_BOUNDARIES, PERSISTENT_TOWN_TICK_PHASES } from "./town/runtime";
+export type { TownTickPhaseName } from "./town/runtime";
+export type { TownExecutionPolicy, TownPerformanceSummary, TownPhaseTiming, TownSnapshotMode, TownTickIndex } from "./town/execution";
+import type { CurrentExperimentRef, PackRegistryEntry, ScenarioPack } from "./scenario-pack";
+import type { BenchmarkRunSummary, RunJob } from "./run-catalog";
+import type { CampaignGraphSummary, EvidenceGraphSummary } from "./campaign-graphs";
+import type { TownMapPack } from "./town-map-pack";
+import type { DetectiveDirectiveResponseConfig, WorldSystemRuntimeActionKind, WorldSystemRuntimeHints, WorldSystemRuntimeHintSummary } from "./detective-content";
 import { computeSocialPressures, simulateDailyLife, simulateWorldTick } from "./world-simulator";
-import type { CaseFromLog, MemoryKind, MemoryRecord, MurderArchetype, NPCProfile, SocialPressure, WorldEvent, WorldMode, WorldState } from "./world-types";
+import type { CaseFromLog, EmergenceBenchmarkReport, MemoryKind, MemoryRecord, MurderArchetype, NPCProfile, SocialPressure, WorldEvent, WorldMode, WorldState } from "./world-types";
 
 export type PersistentTownRuntimeStatus = "paused" | "running" | "completed" | "blocked";
+
+export type WorldLeadFocus = "search" | "question" | "challenge";
+export type WorldLeadStatus = "pending" | "followed" | "skipped" | "resolved";
+
+export type WorldLeadPublicSummary = {
+  status: WorldLeadStatus;
+  focus: WorldLeadFocus;
+  label: string;
+  nextAction: string;
+};
+
+export type WorldLeadOutcomeStatus = "active" | "settled";
+export type WorldLeadCaseHandoffStatus = "ready" | "consumed";
+
+export type WorldLeadOutcomePublicSummary = {
+  status: WorldLeadOutcomeStatus;
+  focus: WorldLeadFocus;
+  benefitLabel: string;
+  costLabel: string;
+  nextAction: string;
+};
+
+export type WorldLeadCaseHandoffPublicSummary = {
+  status: WorldLeadCaseHandoffStatus;
+  focus: WorldLeadFocus;
+  label: string;
+  nextAction: string;
+};
+
+export type WorldArcStatus = "active" | "completed";
+
+export type WorldArcPublicSummary = {
+  status: WorldArcStatus;
+  label: string;
+  completedStages: number;
+  stageCount: number;
+  progressLabel: string;
+  pulseLabel: string;
+  nextAction: string;
+};
+
+export type WorldArcProgress = WorldArcPublicSummary & {
+  progressionLineId: string;
+  compatibleCaseTypeIds: string[];
+  activeCaseId: string;
+  startedAtTick: number;
+  updatedAtTick: number;
+  lastAdvancedCaseId?: string;
+  lastFocus?: WorldLeadFocus;
+  completedAtTick?: number;
+};
+
+export type WorldArcRuntimeState = {
+  currentLineId?: string;
+  lines: Record<string, WorldArcProgress>;
+};
+
+export type WorldArcDirectiveStatus = "ready" | "scheduled" | "running" | "completed" | "blocked";
+export type WorldArcDirectiveChoice = "support" | "contain" | "defer";
+
+export type WorldArcDirectivePublicOption = Pick<DetectiveDirectiveResponseConfig, "label" | "benefitLabel" | "costLabel">;
+
+export type WorldArcDirectivePublicSummary = {
+  status: WorldArcDirectiveStatus;
+  choice?: WorldArcDirectiveChoice;
+  lineLabel: string;
+  factionLabel: string;
+  operationLabel: string;
+  benefitLabel: string;
+  costLabel: string;
+  progressLabel: string;
+  queuedCount: number;
+  nextAction: string;
+  blockedCategory?: "institution unavailable" | "staff unavailable" | "resource unavailable" | "operation unavailable";
+  options: {
+    support: WorldArcDirectivePublicOption;
+    contain: WorldArcDirectivePublicOption;
+  };
+};
+
+export type WorldArcDirective = {
+  id: string;
+  status: WorldArcDirectiveStatus;
+  choice?: WorldArcDirectiveChoice;
+  progressionLineId: string;
+  completedStage: number;
+  sourceCaseId: string;
+  eventArchetypeId: string;
+  lineLabel: string;
+  factionLabel: string;
+  sourceFactionKind?: string;
+  focusCaseTypeIds?: string[];
+  focusCaseLabel?: string;
+  responses: {
+    support: DetectiveDirectiveResponseConfig;
+    contain: DetectiveDirectiveResponseConfig;
+  };
+  createdAtTick: number;
+  scheduledAtTick?: number;
+  startedAtTick?: number;
+  completedAtTick?: number;
+  blockedAtTick?: number;
+  institutionId?: string;
+  actorId?: string;
+  longActionId?: string;
+  startEventId?: string;
+  completionEventId?: string;
+  attemptCount: number;
+  reservedResources?: TownLongActionReservation;
+  reservationReleasedAtTick?: number;
+  blockedCategory?: WorldArcDirectivePublicSummary["blockedCategory"];
+};
+
+export type WorldArcDirectiveRuntimeState = {
+  activeId?: string;
+  items: WorldArcDirective[];
+};
+
+export type WorldArcDirectiveDecisionInput = {
+  choice: WorldArcDirectiveChoice;
+};
+
+export type WorldPressureDirection = "rising" | "relief";
+
+export type WorldPressurePulse = {
+  id: string;
+  focusKey: string;
+  focusLabel: string;
+  affectedCaseLabel: string;
+  caseTypeIds: string[];
+  direction: WorldPressureDirection;
+  sourceDirectiveId?: string;
+  sourceCaseId?: string;
+  eventArchetypeId?: string;
+  resourceKind?: TownResourceKind;
+  institutionId?: string;
+  longActionKind: LongActionKind;
+  createdAtTick: number;
+  updatedAtTick: number;
+  layers: number;
+  consumedLayers: number;
+};
+
+export type WorldPressurePulseRuntimeState = {
+  items: WorldPressurePulse[];
+  lastConsumedAtTick?: number;
+  lastConsumedCaseId?: string;
+  lastConsumedFocusLabel?: string;
+};
+
+export type WorldPressureCascadePublicSummary = {
+  status: "active" | "consumed" | "empty";
+  activePulseCount: number;
+  directionLabel: string;
+  focusLabel: string;
+  affectedCaseLabel: string;
+  remainingLayers: number;
+  nextAction: string;
+};
+
+export type WorldPressurePulseDerivationInput = {
+  runtime: TownRuleRuntimeState;
+  action: {
+    id: string;
+    kind: LongActionKind;
+    appliedResult?: {
+      institutionDeltas: Record<string, { resources: number; reputation: number; pressure: number }>;
+      publicOpinionDelta: Partial<Record<string, number>>;
+      evidenceContaminationDelta: number;
+    };
+  };
+  directive?: Pick<WorldArcDirective, "id" | "sourceCaseId" | "eventArchetypeId" | "focusCaseTypeIds" | "focusCaseLabel" | "institutionId" | "reservedResources">;
+  tick: number;
+};
+
+export type WorldLeadDecision = WorldLeadPublicSummary & {
+  sessionId: string;
+  caseId?: string;
+  selectedAtTick: number;
+  resolvedAtTick?: number;
+};
+
+export type WorldLeadOutcome = WorldLeadOutcomePublicSummary & {
+  caseId: string;
+  locationId: string;
+  institutionId: string;
+  resourceKind: TownResourceKind;
+  activatedAtTick: number;
+  applied: {
+    location: Pick<TownLocationProfile, "heat" | "security" | "footTraffic" | "resourcePressure">;
+    institution: { resources: number; reputation: number; pressure: number };
+    resource: { available: number; pressure: number };
+  };
+};
+
+export type WorldLeadCaseHandoff = WorldLeadCaseHandoffPublicSummary & {
+  settledCaseId: string;
+  preparedAtTick: number;
+  consumedByCaseId?: string;
+  consumedAtTick?: number;
+};
+
+export type WorldLeadDecisionAction = "follow" | "skip" | "resolve";
+
+export type WorldLeadDecisionInput = {
+  sessionId: string;
+  action: WorldLeadDecisionAction;
+  caseId?: string;
+  caseSceneLocationId?: string;
+};
 
 export type NpcActionKind =
   | "move"
@@ -18,18 +511,6 @@ export type NpcActionKind =
   | "cover-up";
 
 export type CaseChainStage = "motive" | "means" | "opportunity" | "cover-up" | "memory" | "exclusion";
-export type TownTickPhaseName =
-  | "observe"
-  | "update-goals"
-  | "score-actions"
-  | "execute-actions"
-  | "observe-events"
-  | "propagate-memory"
-  | "apply-consequences"
-  | "advance-case-chain"
-  | "trigger-case"
-  | "extract-candidates"
-  | "finalize";
 
 export type TownObservationKind = "direct" | "same-location" | "rumor" | "deduced" | "alibi" | "exclusion";
 
@@ -51,6 +532,7 @@ export type NpcActionScore = {
   institutionalPressure?: number;
   resourceFlow?: number;
   directorBias?: number;
+  worldSystemBias?: number;
   total: number;
   reasons: string[];
 };
@@ -145,9 +627,42 @@ export type CaseCandidateValidation = {
     supportScore: number;
     observationIds: string[];
   };
+  evidenceChain?: EvidenceChainValidationSummary;
   failureReasons?: string[];
   errors: string[];
   warnings: string[];
+};
+
+export type TownCaseType =
+  | "murder"
+  | "missing-person"
+  | "ledger-fraud"
+  | "false-testimony"
+  | "medical-coverup"
+  | "family-scandal"
+  | "merchant-extortion"
+  | "police-misjudgment"
+  | "media-rumor"
+  | "evidence-tampering"
+  | "dock-smuggling"
+  | "forged-will"
+  | "court-intimidation"
+  | "blackmail"
+  | "witness-disappearance"
+  | "archive-vanishing"
+  | "clinic-inventory-gap"
+  | "dock-witness-swap"
+  | "editorial-coercion"
+  | "household-escrow"
+  | "permit-forgery";
+
+export type EvidenceChainValidationSummary = {
+  relatedEvidenceIds: string[];
+  contaminatedEvidenceIds: string[];
+  strongProvenanceIds: string[];
+  weakProvenanceIds: string[];
+  warningReasons: string[];
+  minimumEvidenceCountMet: boolean;
 };
 
 export type CaseCandidate = {
@@ -164,6 +679,7 @@ export type CaseCandidate = {
   chainStageTags?: string[];
   maturityScore?: number;
   triggeredEventId?: string;
+  caseType?: TownCaseType;
   chainCompleteness?: Record<CaseChainStage, boolean>;
   motiveGap?: string;
   meansGap?: string;
@@ -171,6 +687,7 @@ export type CaseCandidate = {
   timelineGap?: string;
   validation: CaseCandidateValidation;
   caseId?: string;
+  influenceTrace?: CaseInfluenceTrace;
 };
 
 export type PersistentCaseExtractionView = {
@@ -280,6 +797,13 @@ type TownActionExecuteInput = {
   allEvents: WorldEvent[];
 };
 
+type TownTickActionPlan = {
+  npc: NPCProfile;
+  actorIndex: number;
+  candidates: NpcActionCandidate[];
+  selected: NpcActionCandidate;
+};
+
 type TownTickContext = {
   world: RuntimeWorld;
   baseEvents: WorldEvent[];
@@ -289,8 +813,11 @@ type TownTickContext = {
   createdMemories: MemoryRecord[];
   createdObservations: TownEventObservation[];
   createdConsequences: AgentConsequenceSummary[];
+  actionPlans: TownTickActionPlan[];
   decisionIds: string[];
   phases: TownTickPhaseName[];
+  index: TownTickIndex;
+  executionPolicy: TownExecutionPolicy;
 };
 
 export type TownRuntimeIntervention = {
@@ -378,6 +905,90 @@ export type TownTriggeredCaseRecord = {
   chainCompleteness: Record<CaseChainStage, boolean>;
 };
 
+export type TownCaseLifecycleState = {
+  activeCaseIds: string[];
+  solvedCaseIds: string[];
+  failedCaseIds: string[];
+  caseCooldownByNpcId: Record<string, number>;
+  casePairCooldown?: Record<string, number>;
+  caseTypeHistory?: TownCaseType[];
+  caseTypeCooldown?: Partial<Record<TownCaseType, number>>;
+  locationCooldown?: Record<string, number>;
+  casePressureByInstitutionId: Record<string, number>;
+  nextCaseWeights: Record<string, number>;
+  caseTimeline?: CampaignCaseTimelineEntry[];
+  caseAftermathLog: Array<{ id: string; caseId: string; outcome: "solved" | "failed" | "extracted" | "forming"; tick: number; influence: string[] }>;
+};
+
+export type CaseTypeWeightState = Partial<Record<TownCaseType, number>>;
+
+export type CampaignCaseTimelineEntry = {
+  caseId: string;
+  tick: number;
+  caseType: TownCaseType;
+  culpritId?: string;
+  victimId?: string;
+  locationId?: string;
+  outcome: "solved" | "failed" | "extracted" | "forming";
+  influence: string[];
+};
+
+export const TOWN_CASE_TYPES: TownCaseType[] = [
+  "murder",
+  "missing-person",
+  "ledger-fraud",
+  "false-testimony",
+  "medical-coverup",
+  "family-scandal",
+  "merchant-extortion",
+  "police-misjudgment",
+  "media-rumor",
+  "evidence-tampering",
+  "dock-smuggling",
+  "forged-will",
+  "court-intimidation",
+  "blackmail",
+  "witness-disappearance",
+  "archive-vanishing",
+  "clinic-inventory-gap",
+  "dock-witness-swap",
+  "editorial-coercion",
+  "household-escrow",
+  "permit-forgery"
+];
+
+export type CaseInfluenceTrace = {
+  institutionIds: string[];
+  professionIds: string[];
+  longActionIds: string[];
+  institutionDecisionIds: string[];
+  evidenceChainItemIds: string[];
+  relatedEvidenceIds?: string[];
+  contaminatedEvidenceIds?: string[];
+  provenanceSources?: string[];
+  evidenceWarnings?: string[];
+  resourceDeltas: Record<string, number>;
+  aftermathIds: string[];
+  publicOpinionDelta: Record<string, number>;
+  evidenceContaminationDelta: number;
+};
+
+export type CaseResolutionInput = {
+  caseId: string;
+  outcome: "solved" | "failed" | "extracted";
+  culpritId?: string;
+  victimId?: string;
+  caseType?: TownCaseType;
+  locationId?: string;
+  evidenceItemIds?: string[];
+  valid: boolean;
+};
+
+export type CaseResolutionResult = {
+  lifecycle: TownCaseLifecycleState;
+  influenceTrace: CaseInfluenceTrace;
+};
+
 export type PersistentTownRuntimeReport = {
   tick: number;
   status: PersistentTownRuntimeStatus;
@@ -410,10 +1021,58 @@ export type PersistentTownRuntime = {
   memoryPropagations?: TownMemoryPropagation[];
   consequences?: AgentConsequenceSummary[];
   longChainLedger?: TownLongChainLedgerEntry[];
+  longChainComputedAtTick?: number;
   triggeredCases?: TownTriggeredCaseRecord[];
+  campaignCaseTarget?: number;
+  caseLifecycle?: TownCaseLifecycleState;
   simulationPhases?: TownTickPhaseName[];
+  scenarioPresets?: ScenarioPreset[];
+  scenarioPacks?: ScenarioPack[];
+  mapPacks?: TownMapPack[];
+  packRegistry?: PackRegistryEntry[];
+  currentScenarioPackId?: string;
+  currentMapPackId?: string;
+  currentRuleCatalogId?: string;
+  currentExperiment?: CurrentExperimentRef;
   scenarioRuns?: ScenarioRun[];
+  runJobs?: RunJob[];
+  benchmarkRuns?: BenchmarkRunSummary[];
   snapshots?: TownStateSnapshot[];
+  ruleState?: TownRuleRuntimeState;
+  candidateComputedAtTick?: number;
+  performance?: TownPerformanceSummary;
+  worldSystemHints?: WorldSystemRuntimeHints;
+  worldSystemHintSummary?: WorldSystemRuntimeHintSummary;
+  worldLeadPreview?: WorldLeadPublicSummary;
+  worldLeadDecisions?: Record<string, WorldLeadDecision>;
+  worldLeadOutcome?: WorldLeadOutcome;
+  worldLeadOutcomeSummary?: WorldLeadOutcomePublicSummary;
+  worldLeadCaseHandoff?: WorldLeadCaseHandoff;
+  worldLeadCaseHandoffSummary?: WorldLeadCaseHandoffPublicSummary;
+  worldArcProgress?: WorldArcRuntimeState;
+  worldArcSummary?: WorldArcPublicSummary;
+  worldArcDirectives?: WorldArcDirectiveRuntimeState;
+  worldArcDirectiveSummary?: WorldArcDirectivePublicSummary;
+  worldPressurePulses?: WorldPressurePulseRuntimeState;
+  worldPressureCascadeSummary?: WorldPressureCascadePublicSummary;
+  worldInfluenceBudgetSummary?: WorldInfluenceBudgetPublicSummary;
+  playerResourceCommitments?: PlayerResourceCommitmentRuntimeState;
+  playerResourceCommitmentSummary?: PlayerResourceCommitmentPublicSummary;
+  factionRelationships?: FactionRelationshipRuntimeState;
+  factionRelationshipSummary?: FactionRelationshipPublicSummary;
+  worldEventOffers?: WorldEventOfferRuntimeState;
+  worldEventOfferSummary?: WorldEventOfferPublicSummary;
+  investigatorProgression?: InvestigatorProgressionRuntimeState;
+  investigatorProgressionSummary?: InvestigatorProgressionPublicSummary;
+  campaignRecoveries?: CampaignRecoveryRuntimeState;
+  campaignRecoverySummary?: CampaignRecoveryPublicSummary;
+  arcConvergence?: ArcConvergenceRuntimeState;
+  arcConvergenceSummary?: ArcConvergencePublicSummary;
+  campaignSession?: CampaignSessionRuntimeState;
+  campaignSessionSummary?: CampaignSessionPublicSummary;
+  campaignFinaleDebrief?: CampaignFinaleDebriefPublicSummary;
+  townSocialResponses?: TownSocialResponseRuntimeState;
+  townSocialResponseSummary?: TownSocialResponsePublicSummary;
   createdAt: string;
   updatedAt: string;
 };
@@ -437,6 +1096,18 @@ export type TownSituationBrief = {
   urgency: "stable" | "elevated" | "critical";
   headline: string;
   nextAction: string;
+  worldArcDirective?: WorldArcDirectivePublicSummary;
+  worldPressureCascade?: WorldPressureCascadePublicSummary;
+  worldInfluenceBudget?: WorldInfluenceBudgetPublicSummary;
+  playerResourceCommitment?: PlayerResourceCommitmentPublicSummary;
+  factionRelationship?: FactionRelationshipPublicSummary;
+  worldEventOffer?: WorldEventOfferPublicSummary;
+  investigatorProgression?: InvestigatorProgressionPublicSummary;
+  campaignRecovery?: CampaignRecoveryPublicSummary;
+  arcConvergence?: ArcConvergencePublicSummary;
+  campaignSession?: CampaignSessionPublicSummary;
+  campaignFinaleDebrief?: CampaignFinaleDebriefPublicSummary;
+  townSocialResponse?: TownSocialResponsePublicSummary;
   hotLocations: Array<{
     locationId: string;
     name: string;
@@ -511,6 +1182,15 @@ export type ScenarioConfig = {
   passCriteria?: ScenarioPassCriteria;
 };
 
+export type ScenarioPreset = {
+  id: string;
+  name: string;
+  description?: string;
+  builtIn?: boolean;
+  updatedAt?: string;
+  config: ScenarioConfig;
+};
+
 export type TownStateSnapshotAgent = Pick<NpcAgentState, "npcId" | "currentGoal" | "knownFactIds" | "resources" | "locationId" | "relationshipPressure" | "secretRisk" | "fatigue" | "alertness" | "socialProfile">;
 
 export type TownStateSnapshotCandidate = Pick<CaseCandidate, "id" | "status" | "culpritId" | "victimId" | "pressureScore"> & {
@@ -541,6 +1221,9 @@ export type TownStateSnapshot = {
   memoryIds: string[];
   observationIds: string[];
   interventionIds: string[];
+  ruleSummary?: TownRuleSnapshotSummary;
+  mode?: TownSnapshotMode;
+  rollbackEligible?: boolean;
   createdAt: string;
   checkpoint?: {
     world: WorldState;
@@ -584,6 +1267,7 @@ export type TownStateDiff = {
   changedLocations?: TownStateLocationDiff[];
   candidateStatusChanges: TownStateCandidateDiff[];
   branchOnlyInterventionIds: string[];
+  ruleChanges?: ReturnType<typeof diffTownRuleSnapshots>;
 };
 
 export type ScenarioBranchRun = {
@@ -640,6 +1324,35 @@ export type ScenarioRun = {
   completedAt: string;
 };
 
+export type ScenarioRunSummary = {
+  id: string;
+  name: string;
+  status: ScenarioRun["status"];
+  startedAt: string;
+  completedAt: string;
+  branchCount: number;
+  baselineEventGrowth: number;
+  baselineMemoryGrowth: number;
+  validCandidateCount: number;
+};
+
+export type ReviewExportBundle = {
+  exportedAt: string;
+  worldId: string;
+  runtimeId: string;
+  scenario: ScenarioRun;
+  report: ScenarioReport;
+  selectedSnapshots: {
+    from: TownStateSnapshot | null;
+    to: TownStateSnapshot | null;
+  };
+  selectedDiff: TownStateDiff | null;
+  selectedBranchComparison: ScenarioBranchRun | null;
+  benchmark?: EmergenceBenchmarkReport | null;
+  caseGraphSummary?: CampaignGraphSummary;
+  evidenceGraphSummary?: EvidenceGraphSummary;
+};
+
 type RuntimeWorld = WorldState & { persistentRuntime?: PersistentTownRuntime };
 
 function hashSeed(input: string) {
@@ -666,6 +1379,149 @@ function pad(value: number) {
 function timeToMinutes(time: string) {
   const [hours, minutes] = time.split(":").map(Number);
   return (hours || 0) * 60 + (minutes || 0);
+}
+
+const DEFAULT_SCENARIO_PASS_CRITERIA: Required<ScenarioPassCriteria> = {
+  minValidCandidates: 1,
+  requireHardLogic: true,
+  maxBlockedCandidates: 8,
+  minEventGrowth: 1,
+  minMemoryGrowth: 1
+};
+
+function scenarioDefaultActorId(world: WorldState, runtime?: PersistentTownRuntime | null) {
+  return runtime?.agentStates[0]?.npcId || world.npcs[0]?.id || "npc-1";
+}
+
+function scenarioDefaultConfig(actorId: string, intervention: ScenarioScheduledIntervention["intervention"], overrides: Partial<ScenarioConfig> = {}): ScenarioConfig {
+  const baseName = overrides.name || "Town Counterfactual Scenario";
+  const branchName = overrides.branches?.[0]?.name || `${baseName} branch`;
+  const branchId = overrides.branches?.[0]?.id || `${String(baseName).toLowerCase().replace(/[^a-z0-9]+/g, "-")}-branch`;
+  return {
+    name: baseName,
+    seed: overrides.seed || "persistent-town-scenario",
+    baselineSteps: overrides.baselineSteps ?? 45,
+    worldOptions: overrides.worldOptions,
+    branches: [{
+      id: branchId,
+      name: branchName,
+      steps: overrides.branches?.[0]?.steps ?? 12,
+      interventions: [{
+        atTickOffset: overrides.branches?.[0]?.interventions?.[0]?.atTickOffset ?? 1,
+        intervention: {
+          ...intervention,
+          ...(overrides.branches?.[0]?.interventions?.[0]?.intervention || {}),
+          actorId: overrides.branches?.[0]?.interventions?.[0]?.intervention.actorId || intervention.actorId || actorId
+        }
+      }]
+    }],
+    passCriteria: {
+      ...DEFAULT_SCENARIO_PASS_CRITERIA,
+      ...(overrides.passCriteria || {})
+    }
+  };
+}
+
+export function createBuiltInScenarioPresets(world: WorldState, runtime?: PersistentTownRuntime | null): ScenarioPreset[] {
+  const actorId = scenarioDefaultActorId(world, runtime);
+  return [
+    {
+      id: "resource-counterfactual",
+      name: "Resource counterfactual",
+      description: "Give one actor a bounded resource change and compare the downstream candidate chain.",
+      builtIn: true,
+      config: scenarioDefaultConfig(actorId, { actorId, kind: "resource", value: "resource:review-mode" }, {
+        name: "Resource counterfactual",
+        seed: `${world.seed}-resource-counterfactual`,
+        branches: [{ id: "resource-counterfactual-branch", name: "Resource branch", interventions: [] }]
+      })
+    },
+    {
+      id: "knowledge-counterfactual",
+      name: "Knowledge counterfactual",
+      description: "Inject one known fact and compare memory growth, candidate validity, and branch divergence.",
+      builtIn: true,
+      config: scenarioDefaultConfig(actorId, { actorId, kind: "knowledge", value: "fact:review-mode" }, {
+        name: "Knowledge counterfactual",
+        seed: `${world.seed}-knowledge-counterfactual`,
+        branches: [{ id: "knowledge-counterfactual-branch", name: "Knowledge branch", interventions: [] }]
+      })
+    },
+    {
+      id: "relationship-pressure-counterfactual",
+      name: "Relationship pressure counterfactual",
+      description: "Raise relationship pressure for one actor and compare conflict escalation against baseline.",
+      builtIn: true,
+      config: scenarioDefaultConfig(actorId, { actorId, kind: "relationship-pressure", value: 78 }, {
+        name: "Relationship pressure counterfactual",
+        seed: `${world.seed}-relationship-pressure-counterfactual`,
+        branches: [{ id: "relationship-pressure-counterfactual-branch", name: "Pressure branch", interventions: [] }]
+      })
+    }
+  ];
+}
+
+function normalizeScenarioPreset(world: WorldState, preset: ScenarioPreset): ScenarioPreset {
+  const builtIn = Boolean(preset.builtIn);
+  const fallback = createBuiltInScenarioPresets(world).find((item) => item.id === preset.id);
+  const config = normalizeScenarioConfig(world, {
+    ...(fallback?.config || {}),
+    ...(preset.config || {}),
+    id: preset.config?.id || preset.id,
+    name: preset.config?.name || preset.name
+  });
+  const firstBranch = config.branches?.[0];
+  return {
+    id: preset.id,
+    name: preset.name || config.name || preset.id,
+    description: preset.description || fallback?.description,
+    builtIn,
+    updatedAt: preset.updatedAt,
+    config: {
+      ...config,
+      id: config.id || preset.id,
+      branches: firstBranch ? [{
+        ...firstBranch,
+        interventions: firstBranch.interventions.slice(0, 1).map((scheduled) => ({
+          ...scheduled,
+          atTickOffset: Math.max(0, scheduled.atTickOffset),
+          intervention: {
+            ...scheduled.intervention,
+            actorId: scheduled.intervention.actorId || scenarioDefaultActorId(world)
+          }
+        }))
+      }] : []
+    }
+  };
+}
+
+export function listScenarioPresets(world: WorldState, runtime?: PersistentTownRuntime | null): ScenarioPreset[] {
+  const builtIns = createBuiltInScenarioPresets(world, runtime);
+  const builtInIds = new Set(builtIns.map((preset) => preset.id));
+  const custom = (runtime?.scenarioPresets || [])
+    .filter((preset) => !builtInIds.has(preset.id))
+    .map((preset) => normalizeScenarioPreset(world, { ...preset, builtIn: false }));
+  return [...builtIns, ...custom];
+}
+
+export function createScenarioRunSummary(run: ScenarioRun): ScenarioRunSummary {
+  return {
+    id: run.id,
+    name: run.name,
+    status: run.status,
+    startedAt: run.startedAt,
+    completedAt: run.completedAt,
+    branchCount: run.report.branches.length,
+    baselineEventGrowth: run.report.baseline.eventGrowth,
+    baselineMemoryGrowth: run.report.baseline.memoryGrowth,
+    validCandidateCount: run.report.baseline.validCandidateCount
+  };
+}
+
+export function listScenarioRunSummaries(runtime?: PersistentTownRuntime | null): ScenarioRunSummary[] {
+  return [...(runtime?.scenarioRuns || [])]
+    .sort((left, right) => right.completedAt.localeCompare(left.completedAt))
+    .map(createScenarioRunSummary);
 }
 
 function minutesToTime(minutes: number) {
@@ -930,19 +1786,7 @@ function updateLocationAfterAction(world: RuntimeWorld, runtime: PersistentTownR
   runtime.locationLedger = runtime.locationLedger.slice(-240);
 }
 
-const TOWN_TICK_PHASES: TownTickPhaseName[] = [
-  "observe",
-  "update-goals",
-  "score-actions",
-  "execute-actions",
-  "observe-events",
-  "propagate-memory",
-  "apply-consequences",
-  "advance-case-chain",
-  "trigger-case",
-  "extract-candidates",
-  "finalize"
-];
+const TOWN_TICK_PHASES: readonly TownTickPhaseName[] = PERSISTENT_TOWN_TICK_PHASES;
 
 function getRuntime(world: RuntimeWorld) {
   return world.persistentRuntime || null;
@@ -980,9 +1824,15 @@ function pressureForNpc(pressures: SocialPressure[], npcId: string) {
   return pressures.filter((pressure) => pressure.npcId === npcId).reduce((sum, pressure) => sum + pressure.score, 0);
 }
 
-export function deriveNpcAgentState(world: WorldState, npc: NPCProfile, events: WorldEvent[] = [], runtime?: PersistentTownRuntime | null): NpcAgentState {
-  const pressures = computeSocialPressures(world, events);
-  const remembered = (world.memories || []).filter((memory) => memory.npcId === npc.id);
+function deriveNpcAgentStateIndexed(
+  world: WorldState,
+  npc: NPCProfile,
+  events: WorldEvent[],
+  runtime: PersistentTownRuntime | null | undefined,
+  index?: TownTickIndex
+): NpcAgentState {
+  const pressures = index?.socialPressures || computeSocialPressures(world, events);
+  const remembered = memoriesForNpc(world.memories || [], npc.id, index);
   const currentTime = runtime?.currentTime || world.currentTime || "08:00";
   const existing = runtime?.agentStates.find((state) => state.npcId === npc.id);
   const pressure = pressureForNpc(pressures, npc.id) || relationshipRisk(npc);
@@ -1008,7 +1858,7 @@ export function deriveNpcAgentState(world: WorldState, npc: NPCProfile, events: 
     secretRisk,
     resources,
     locationId,
-    fatigue: Math.min(10, existing?.fatigue ?? Math.floor(events.filter((event) => event.actorIds.includes(npc.id)).length / 3)),
+    fatigue: Math.min(10, existing?.fatigue ?? Math.floor(eventsForNpc(events, npc.id, index).length / 3)),
     alertness: Math.max(1, Math.min(10, existing?.alertness ?? 5 + Math.ceil(secretRisk / 3))),
     lastDecisionId: existing?.lastDecisionId,
     nextActionPreview: existing?.nextActionPreview,
@@ -1022,6 +1872,10 @@ export function deriveNpcAgentState(world: WorldState, npc: NPCProfile, events: 
       trustedNpcIds: Object.entries(social.trust).filter(([, trust]) => trust >= 7).map(([npcId]) => npcId).slice(0, 4)
     } : existing?.socialProfile
   };
+}
+
+export function deriveNpcAgentState(world: WorldState, npc: NPCProfile, events: WorldEvent[] = [], runtime?: PersistentTownRuntime | null): NpcAgentState {
+  return deriveNpcAgentStateIndexed(world, npc, events, runtime);
 }
 
 function knownPublicEventCount(state: NpcAgentState, events: WorldEvent[]) {
@@ -1050,6 +1904,20 @@ function scoreCandidate(input: {
   const coverUpUrgency = candidate.kind === "cover-up" || candidate.kind === "hide-trace" ? Math.min(10, state.secretRisk + events.filter((event) => event.hidden && event.actorIds.includes(npc.id)).length) : 0;
   const socialAffinity = socialAffinityForAction(world, npc, candidate, runtime);
   const locationPressure = locationPressureForAction(world, candidate, runtime);
+  const ruleState = runtime ? ensureTownRuleRuntimeState(world, runtime) : undefined;
+  const profession = ruleState?.professions.find((item) => item.npcId === npc.id);
+  const institution = profession?.institutionId ? ruleState?.institutions.find((item) => item.id === profession.institutionId) : undefined;
+  const institutionActionPressure =
+    !ruleState || !institution ? 0 :
+    institution.kind === "police" && (candidate.kind === "investigate" || candidate.kind === "seek-alibi") ? Math.ceil(institution.pressure / 10) :
+    institution.kind === "media" && candidate.kind === "spread-rumor" ? Math.ceil((institution.pressure + ruleState.publicOpinion.mediaPressure) / 16) :
+    institution.kind === "family" && (candidate.kind === "pressure" || candidate.kind === "confront" || candidate.kind === "cover-up") ? Math.ceil(institution.pressure / 9) :
+    institution.kind === "commerce" && candidate.kind === "obtain-resource" ? Math.ceil(institution.resources / 14) :
+    institution.kind === "medical" && candidate.kind === "investigate" ? Math.ceil((institution.resources + institution.reputation) / 24) :
+    Math.ceil(institution.policyPressure / 18);
+  const publicOpinionPressure = ruleState ? Math.ceil((ruleState.publicOpinion.heat + ruleState.publicOpinion.witnessFear + ruleState.publicOpinion.rumorVelocity) / 36) : 0;
+  const evidencePressure = ruleState ? Math.ceil((ruleState.evidenceContamination.contamination + (ruleState.evidenceContamination.riskByLocation[candidate.targetLocationId] || 0)) / 28) : 0;
+  const ruleActionPressure = Math.min(10, institutionActionPressure + publicOpinionPressure + evidencePressure);
   const caseImpact =
     candidate.kind === "pressure" ? 10 :
     candidate.kind === "confront" ? 9 :
@@ -1072,7 +1940,7 @@ function scoreCandidate(input: {
     coverUpUrgency,
     socialAffinity,
     locationHeat: locationPressure.locationHeat,
-    institutionalPressure: locationPressure.institutionalPressure,
+    institutionalPressure: Math.min(10, locationPressure.institutionalPressure + ruleActionPressure),
     resourceFlow: locationPressure.resourceFlow,
     total: 0,
     reasons: []
@@ -1086,7 +1954,7 @@ function scoreCandidate(input: {
     score.evidenceConsistency +
     score.caseImpact +
     Math.ceil(socialAffinity / 2) +
-    Math.ceil((locationPressure.locationHeat + locationPressure.institutionalPressure + locationPressure.resourceFlow) / 4) +
+    Math.ceil((locationPressure.locationHeat + (score.institutionalPressure || 0) + locationPressure.resourceFlow) / 4) +
     Math.ceil((witnessExposure + rumorValue + alibiPressure + coverUpUrgency) / 3) -
     Math.floor(score.risk / 2);
   if (!resourceOk) score.reasons.push("required resource is not available");
@@ -1101,7 +1969,9 @@ function scoreCandidate(input: {
   if (candidate.kind === "pressure") score.reasons.push("pressure action can deepen motive and opportunity chain");
   if (socialAffinity >= 7) score.reasons.push(`social profile favors ${candidate.kind}`);
   if (locationPressure.locationHeat >= 7) score.reasons.push("location heat makes this action more visible");
-  if (locationPressure.institutionalPressure >= 7) score.reasons.push("institutional pressure is high at target location");
+  if ((score.institutionalPressure || 0) >= 7) score.reasons.push(`${institution?.kind || "institution"} pressure and public opinion affect this action`);
+  if (ruleState && candidate.kind === "investigate" && ruleState.evidenceContamination.contamination >= 40) score.reasons.push("evidence contamination makes investigation more urgent");
+  if (ruleState && candidate.kind === "spread-rumor" && ruleState.publicOpinion.mediaPressure >= 40) score.reasons.push("media pressure makes rumor spread more likely");
   return score;
 }
 
@@ -1132,7 +2002,13 @@ function createEventForAction(input: TownActionExecuteInput): WorldEvent {
   };
 }
 
-const townActionDefinitions: TownActionDefinition[] = [
+const activeTownActionDefinitions: TownActionDefinition[] = createTownActionDefinitions({
+  locationReachable,
+  scoreCandidate,
+  createEventForAction
+});
+
+const legacyTownActionDefinitions: TownActionDefinition[] = [
   {
     kind: "observe",
     chainStage: "memory",
@@ -1339,23 +2215,47 @@ const townActionDefinitions: TownActionDefinition[] = [
 ];
 
 export function getTownActionDefinitions() {
-  return [...townActionDefinitions];
+  return [...activeTownActionDefinitions];
 }
 
 function getTownActionDefinition(kind: NpcActionKind) {
-  return townActionDefinitions.find((definition) => definition.kind === kind) || townActionDefinitions[0];
+  return activeTownActionDefinitions.find((definition) => definition.kind === kind) || activeTownActionDefinitions[0];
 }
 
-export function scoreNpcActionCandidates(world: WorldState, npc: NPCProfile, events: WorldEvent[] = [], runtime?: PersistentTownRuntime | null): NpcActionCandidate[] {
-  const state = deriveNpcAgentState(world, npc, events, runtime);
+function worldSystemBiasForAction(runtime: PersistentTownRuntime | null | undefined, candidate: Omit<NpcActionCandidate, "score">) {
+  const hints = runtime?.worldSystemHints;
+  if (!hints?.summary.active) return 0;
+  const value = hints.actionBias[candidate.kind as keyof typeof hints.actionBias] || 0;
+  const arcBonus = deriveWorldArcActionPriorityBonus(runtime, candidate.kind);
+  return Math.max(0, Math.min(4, value + arcBonus));
+}
+
+function recordSelectedWorldSystemBias(runtime: PersistentTownRuntime, selected: NpcActionCandidate) {
+  const bias = selected.score.worldSystemBias || 0;
+  if (!bias || !runtime.worldSystemHintSummary) return;
+  runtime.worldSystemHintSummary = {
+    ...runtime.worldSystemHintSummary,
+    appliedBiasCount: runtime.worldSystemHintSummary.appliedBiasCount + 1,
+    maxActionBias: Math.max(runtime.worldSystemHintSummary.maxActionBias, bias)
+  };
+}
+
+function scoreNpcActionCandidatesIndexed(
+  world: WorldState,
+  npc: NPCProfile,
+  events: WorldEvent[],
+  runtime: PersistentTownRuntime | null | undefined,
+  index?: TownTickIndex
+): NpcActionCandidate[] {
+  const state = index?.agentStateByNpcId.get(npc.id) || deriveNpcAgentStateIndexed(world, npc, events, runtime, index);
   const random = makeRandom(`${world.seed}:agent:${npc.id}:${runtime?.tick || 0}`);
   const locations = world.locations.length ? world.locations : [{ id: state.locationId }] as { id: string }[];
-  const pressureTarget = computeSocialPressures(world, events).find((pressure) => pressure.npcId === npc.id)?.targetId;
+  const pressureTarget = (index?.pressureByNpcId.get(npc.id) || computeSocialPressures(world, events).filter((pressure) => pressure.npcId === npc.id))[0]?.targetId;
   const targetNpcId = pressureTarget || Object.keys(npc.relationships)[0];
   const targetNpc = world.npcs.find((item) => item.id === targetNpcId);
   const targetLocationId = targetNpc ? locationForNpc(targetNpc, runtime?.currentTime || world.currentTime || "08:00") : locations[Math.floor(random() * locations.length)]?.id || state.locationId;
   const buildInput: TownActionBuildInput = { world, npc, state, runtime, events, locations, targetNpcId, targetNpc, targetLocationId };
-  return townActionDefinitions.map((definition) => {
+  return activeTownActionDefinitions.map((definition) => {
     const candidate = definition.buildCandidate(buildInput);
     const legality = definition.canStart({ ...buildInput, candidate });
     const score = definition.score({ world, npc, state, candidate, events, runtime });
@@ -1370,9 +2270,18 @@ export function scoreNpcActionCandidates(world: WorldState, npc: NPCProfile, eve
       score.total += score.directorBias;
       score.reasons.push(`director action bias favors ${candidate.kind}`);
     }
+    const worldSystemBias = worldSystemBiasForAction(runtime, candidate);
+    if (worldSystemBias) {
+      score.worldSystemBias = worldSystemBias;
+      score.reasons.push(`world-system hint favors ${candidate.kind} +${worldSystemBias}`);
+    }
     const legal = candidate.legal && legality.legal && score.locationReachability > 0 && score.resourceAvailability > 0;
     return { ...candidate, legal, blockedReason: !legality.legal ? legality.reason : score.reasons.find((reason) => reason.includes("not")), score };
   });
+}
+
+export function scoreNpcActionCandidates(world: WorldState, npc: NPCProfile, events: WorldEvent[] = [], runtime?: PersistentTownRuntime | null): NpcActionCandidate[] {
+  return scoreNpcActionCandidatesIndexed(world, npc, events, runtime);
 }
 
 function memoryKindForObservation(kind: TownObservationKind, event: WorldEvent): MemoryKind {
@@ -1663,7 +2572,826 @@ function evolveRelationship(world: RuntimeWorld, actorId: string, candidate: Npc
   });
 }
 
-export function createPersistentTownRuntime(world: WorldState, events: WorldEvent[] = [], options: Partial<Pick<PersistentTownRuntime, "tickIntervalMinutes" | "maxTicks">> = {}): PersistentTownRuntime {
+const WORLD_LEAD_FOCUS_BY_ACTION: Record<WorldSystemRuntimeActionKind, WorldLeadFocus> = {
+  "obtain-resource": "search",
+  investigate: "search",
+  "seek-alibi": "question",
+  pressure: "question",
+  "spread-rumor": "question",
+  "cover-up": "challenge"
+};
+
+function worldLeadCopy(hints: WorldSystemRuntimeHints, focus: WorldLeadFocus) {
+  if (focus === "search") {
+    return {
+      label: `${hints.resource.label} lead`,
+      nextAction: "Prioritize the next legal certified search."
+    };
+  }
+  if (focus === "question") {
+    return {
+      label: `${hints.faction.label} lead`,
+      nextAction: "Prioritize the next legal certified witness question."
+    };
+  }
+  return {
+    label: `${hints.eventArchetype.label} lead`,
+    nextAction: "Prioritize the next legal certified testimony challenge."
+  };
+}
+
+export function deriveWorldLeadPreview(hints?: WorldSystemRuntimeHints | null): WorldLeadPublicSummary | undefined {
+  if (!hints?.summary.active) return undefined;
+  const ranked = (Object.entries(hints.actionBias) as Array<[WorldSystemRuntimeActionKind, number]>)
+    .filter(([, bias]) => typeof bias === "number" && bias > 0)
+    .sort(([leftKind, leftBias], [rightKind, rightBias]) => rightBias - leftBias || leftKind.localeCompare(rightKind));
+  const [actionKind] = ranked[0] || ["investigate" as const, 0];
+  const focus = WORLD_LEAD_FOCUS_BY_ACTION[actionKind] || "search";
+  return {
+    status: "pending",
+    focus,
+    ...worldLeadCopy(hints, focus)
+  };
+}
+
+export function applyWorldLeadDecision(runtime: PersistentTownRuntime, input: WorldLeadDecisionInput) {
+  const preview = deriveWorldLeadPreview(runtime.worldSystemHints);
+  if (!preview) throw new Error("WORLD_LEAD_UNAVAILABLE");
+  const existing = runtime.worldLeadDecisions?.[input.sessionId];
+  const status: WorldLeadStatus = input.action === "follow"
+    ? "followed"
+    : input.action === "skip"
+      ? "skipped"
+      : existing?.status === "followed"
+        ? "resolved"
+        : existing?.status || "pending";
+  const decision: WorldLeadDecision = {
+    ...preview,
+    status,
+    nextAction: status === "skipped" || status === "resolved"
+      ? "Continue the next eligible certified route step."
+      : preview.nextAction,
+    sessionId: input.sessionId,
+    caseId: input.caseId || existing?.caseId,
+    selectedAtTick: existing?.selectedAtTick ?? runtime.tick,
+    ...(status === "resolved" ? { resolvedAtTick: runtime.tick } : {})
+  };
+  runtime.worldLeadDecisions = { ...(runtime.worldLeadDecisions || {}), [input.sessionId]: decision };
+  runtime.worldLeadPreview = preview;
+  runtime.updatedAt = new Date().toISOString();
+  return toWorldLeadPublicSummary(decision);
+}
+
+export function toWorldLeadPublicSummary(decision?: WorldLeadDecision | WorldLeadPublicSummary | null): WorldLeadPublicSummary | undefined {
+  if (!decision) return undefined;
+  return {
+    status: decision.status,
+    focus: decision.focus,
+    label: decision.label,
+    nextAction: decision.nextAction
+  };
+}
+
+type WorldLeadOutcomePlan = {
+  resourceKind: TownResourceKind;
+  location: Pick<TownLocationProfile, "heat" | "security" | "footTraffic" | "resourcePressure">;
+  institution: { resources: number; reputation: number; pressure: number };
+  resource: { available: number; pressure: number };
+  benefitLabel: string;
+  costLabel: string;
+};
+
+const WORLD_LEAD_OUTCOME_PLAN: Record<WorldLeadFocus, WorldLeadOutcomePlan> = {
+  search: {
+    resourceKind: "police_time",
+    location: { heat: 2, security: 0, footTraffic: 0, resourcePressure: -3 },
+    institution: { resources: -2, reputation: 0, pressure: 2 },
+    resource: { available: 2, pressure: 2 },
+    benefitLabel: "Search support reduces pressure around the investigation.",
+    costLabel: "The support also draws limited capacity and added attention."
+  },
+  question: {
+    resourceKind: "informant_trust",
+    location: { heat: -3, security: 0, footTraffic: 2, resourcePressure: 0 },
+    institution: { resources: 0, reputation: 2, pressure: 2 },
+    resource: { available: 2, pressure: 2 },
+    benefitLabel: "Witness contact lowers local heat and strengthens safe outreach.",
+    costLabel: "The extra traffic and coordination create a bounded burden."
+  },
+  challenge: {
+    resourceKind: "evidence_integrity",
+    location: { heat: 0, security: 3, footTraffic: 0, resourcePressure: 2 },
+    institution: { resources: 0, reputation: 2, pressure: 3 },
+    resource: { available: 2, pressure: 2 },
+    benefitLabel: "A verified challenge improves local safeguards and evidence readiness.",
+    costLabel: "The review requires scarce support and raises short-term pressure."
+  }
+};
+
+const WORLD_LEAD_INSTITUTION_BY_FACTION: Record<TownLocationProfile["factionInfluence"], string> = {
+  civic: "inst-civic",
+  commerce: "inst-commerce",
+  medical: "inst-medical",
+  culture: "inst-media",
+  underground: "inst-dock-union",
+  neutral: "inst-police"
+};
+
+export function deriveWorldLeadOutcomePlan(focus: WorldLeadFocus, faction: TownLocationProfile["factionInfluence"]) {
+  const plan = WORLD_LEAD_OUTCOME_PLAN[focus];
+  return {
+    ...plan,
+    location: { ...plan.location },
+    institution: { ...plan.institution },
+    resource: { ...plan.resource },
+    institutionId: WORLD_LEAD_INSTITUTION_BY_FACTION[faction] || "inst-police"
+  };
+}
+
+function worldLeadOutcomeSummary(outcome: WorldLeadOutcome, status: WorldLeadOutcomeStatus): WorldLeadOutcomePublicSummary {
+  return {
+    status,
+    focus: outcome.focus,
+    benefitLabel: outcome.benefitLabel,
+    costLabel: outcome.costLabel,
+    nextAction: status === "active"
+      ? "Continue the certified route. This bounded world effect settles when the case closes."
+      : "This case's bounded world effect has settled; continue with the next eligible route."
+  };
+}
+
+function worldLeadOutcomeLocationId(world: WorldState, input: WorldLeadDecisionInput) {
+  const requested = input.caseSceneLocationId;
+  if (requested && world.locations.some((location) => location.id === requested)) return requested;
+  return world.locations[0]?.id;
+}
+
+export function applyWorldLeadOutcome(world: WorldState, runtime: PersistentTownRuntime, input: WorldLeadDecisionInput): WorldLeadOutcomePublicSummary | undefined {
+  if (!input.caseId) return undefined;
+  const existing = runtime.worldLeadOutcome;
+  if (existing?.caseId === input.caseId) return worldLeadOutcomeSummary(existing, "active");
+  if (existing) settleWorldLeadOutcome(world, runtime, existing.caseId);
+  const decision = runtime.worldLeadDecisions?.[input.sessionId];
+  if (!decision || decision.status !== "resolved") return undefined;
+  ensureLocationProfiles(world, runtime);
+  const locationId = worldLeadOutcomeLocationId(world, input);
+  const location = locationId ? locationProfileFor(world, locationId, runtime) : null;
+  if (!location || !locationId) return undefined;
+  const plan = deriveWorldLeadOutcomePlan(decision.focus, location.factionInfluence);
+  const ruleState = ensureTownRuleRuntimeState(world, runtime);
+  const institution = ruleState.institutions.find((item) => item.id === plan.institutionId);
+  const resource = ruleState.resourceLedger[plan.resourceKind];
+  if (!institution || !resource) return undefined;
+
+  const nextLocation: TownLocationProfile = {
+    ...location,
+    heat: clamp(location.heat + plan.location.heat),
+    security: clamp(location.security + plan.location.security),
+    footTraffic: clamp(location.footTraffic + plan.location.footTraffic),
+    resourcePressure: clamp(location.resourcePressure + plan.location.resourcePressure),
+    updatedAtTick: runtime.tick
+  };
+  runtime.locationProfiles = (runtime.locationProfiles || []).map((item) => item.locationId === locationId ? nextLocation : item);
+  const nextInstitution = {
+    ...institution,
+    resources: clamp(institution.resources + plan.institution.resources, 0, 100),
+    reputation: clamp(institution.reputation + plan.institution.reputation, 0, 100),
+    pressure: clamp(institution.pressure + plan.institution.pressure, 0, 100)
+  };
+  ruleState.institutions = ruleState.institutions.map((item) => item.id === institution.id ? nextInstitution : item);
+  const nextResource = {
+    ...resource,
+    available: clamp(resource.available + plan.resource.available, 0, 100),
+    pressure: clamp(resource.pressure + plan.resource.pressure, 0, 100)
+  };
+  ruleState.resourceLedger = { ...ruleState.resourceLedger, [plan.resourceKind]: nextResource };
+  const outcome: WorldLeadOutcome = {
+    status: "active",
+    focus: decision.focus,
+    benefitLabel: plan.benefitLabel,
+    costLabel: plan.costLabel,
+    nextAction: "Continue the certified route. This bounded world effect settles when the case closes.",
+    caseId: input.caseId,
+    locationId,
+    institutionId: institution.id,
+    resourceKind: plan.resourceKind,
+    activatedAtTick: runtime.tick,
+    applied: {
+      location: {
+        heat: nextLocation.heat - location.heat,
+        security: nextLocation.security - location.security,
+        footTraffic: nextLocation.footTraffic - location.footTraffic,
+        resourcePressure: nextLocation.resourcePressure - location.resourcePressure
+      },
+      institution: {
+        resources: nextInstitution.resources - institution.resources,
+        reputation: nextInstitution.reputation - institution.reputation,
+        pressure: nextInstitution.pressure - institution.pressure
+      },
+      resource: {
+        available: nextResource.available - resource.available,
+        pressure: nextResource.pressure - resource.pressure
+      }
+    }
+  };
+  const summary = worldLeadOutcomeSummary(outcome, "active");
+  runtime.worldLeadOutcome = outcome;
+  runtime.worldLeadOutcomeSummary = summary;
+  runtime.updatedAt = new Date().toISOString();
+  return summary;
+}
+
+export function settleWorldLeadOutcome(world: WorldState, runtime: PersistentTownRuntime, caseId?: string): WorldLeadOutcomePublicSummary | undefined {
+  const outcome = runtime.worldLeadOutcome;
+  if (!outcome || (caseId && outcome.caseId !== caseId)) return undefined;
+  ensureLocationProfiles(world, runtime);
+  const location = locationProfileFor(world, outcome.locationId, runtime);
+  if (location) {
+    const nextLocation: TownLocationProfile = {
+      ...location,
+      heat: clamp(location.heat - outcome.applied.location.heat),
+      security: clamp(location.security - outcome.applied.location.security),
+      footTraffic: clamp(location.footTraffic - outcome.applied.location.footTraffic),
+      resourcePressure: clamp(location.resourcePressure - outcome.applied.location.resourcePressure),
+      updatedAtTick: runtime.tick
+    };
+    runtime.locationProfiles = (runtime.locationProfiles || []).map((item) => item.locationId === outcome.locationId ? nextLocation : item);
+  }
+  const ruleState = ensureTownRuleRuntimeState(world, runtime);
+  ruleState.institutions = ruleState.institutions.map((institution) => institution.id !== outcome.institutionId
+    ? institution
+    : {
+        ...institution,
+        resources: clamp(institution.resources - outcome.applied.institution.resources, 0, 100),
+        reputation: clamp(institution.reputation - outcome.applied.institution.reputation, 0, 100),
+        pressure: clamp(institution.pressure - outcome.applied.institution.pressure, 0, 100)
+      });
+  const resource = ruleState.resourceLedger[outcome.resourceKind];
+  if (resource) {
+    ruleState.resourceLedger = {
+      ...ruleState.resourceLedger,
+      [outcome.resourceKind]: {
+        ...resource,
+        available: clamp(resource.available - outcome.applied.resource.available, 0, 100),
+        pressure: clamp(resource.pressure - outcome.applied.resource.pressure, 0, 100)
+      }
+    };
+  }
+  const summary = worldLeadOutcomeSummary(outcome, "settled");
+  runtime.worldLeadOutcome = undefined;
+  runtime.worldLeadOutcomeSummary = summary;
+  runtime.updatedAt = new Date().toISOString();
+  return summary;
+}
+
+function worldLeadCaseHandoffCopy(focus: WorldLeadFocus, status: WorldLeadCaseHandoffStatus) {
+  const label = focus === "search"
+    ? "Evidence follow-up"
+    : focus === "question"
+      ? "Witness follow-up"
+      : "Review follow-up";
+  return {
+    status,
+    focus,
+    label,
+    nextAction: status === "ready"
+      ? "The next case queue carries a bounded follow-up preference; choose any legal candidate."
+      : "The follow-up was carried into the next extracted case; continue the normal investigation path."
+  } satisfies WorldLeadCaseHandoffPublicSummary;
+}
+
+export function prepareWorldLeadCaseHandoff(runtime: PersistentTownRuntime, input: { settledCaseId: string; focus: WorldLeadFocus }) {
+  const existing = runtime.worldLeadCaseHandoff;
+  if (existing?.status === "ready" && existing.settledCaseId === input.settledCaseId) {
+    return toWorldLeadCaseHandoffPublicSummary(existing);
+  }
+  const handoff: WorldLeadCaseHandoff = {
+    ...worldLeadCaseHandoffCopy(input.focus, "ready"),
+    settledCaseId: input.settledCaseId,
+    preparedAtTick: runtime.tick
+  };
+  const summary = toWorldLeadCaseHandoffPublicSummary(handoff)!;
+  runtime.worldLeadCaseHandoff = handoff;
+  runtime.worldLeadCaseHandoffSummary = summary;
+  invalidateTownCandidateCache(runtime);
+  runtime.updatedAt = new Date().toISOString();
+  return summary;
+}
+
+export function consumeWorldLeadCaseHandoff(runtime: PersistentTownRuntime, consumedByCaseId: string) {
+  const handoff = runtime.worldLeadCaseHandoff;
+  if (!handoff || handoff.status !== "ready") return undefined;
+  const consumed: WorldLeadCaseHandoff = {
+    ...handoff,
+    ...worldLeadCaseHandoffCopy(handoff.focus, "consumed"),
+    consumedByCaseId,
+    consumedAtTick: runtime.tick
+  };
+  const summary = toWorldLeadCaseHandoffPublicSummary(consumed)!;
+  runtime.worldLeadCaseHandoff = consumed;
+  runtime.worldLeadCaseHandoffSummary = summary;
+  invalidateTownCandidateCache(runtime);
+  runtime.updatedAt = new Date().toISOString();
+  return summary;
+}
+
+export function deriveWorldLeadCaseHandoffPriorityBonus(handoff: WorldLeadCaseHandoff | null | undefined, caseType: TownCaseType | undefined) {
+  return deriveWorldLeadHandoffInfluence(handoff, caseType)?.weight || 0;
+}
+
+export function toWorldLeadCaseHandoffPublicSummary(handoff?: WorldLeadCaseHandoff | WorldLeadCaseHandoffPublicSummary | null): WorldLeadCaseHandoffPublicSummary | undefined {
+  if (!handoff) return undefined;
+  return {
+    status: handoff.status,
+    focus: handoff.focus,
+    label: handoff.label,
+    nextAction: handoff.nextAction
+  };
+}
+
+function worldArcSummary(progress: WorldArcProgress): WorldArcPublicSummary {
+  const completedStages = Math.max(0, Math.min(progress.stageCount, progress.completedStages));
+  const status: WorldArcStatus = completedStages >= progress.stageCount ? "completed" : "active";
+  return {
+    status,
+    label: progress.label,
+    completedStages,
+    stageCount: progress.stageCount,
+    progressLabel: `${completedStages}/${progress.stageCount} stages`,
+    pulseLabel: progress.pulseLabel,
+    nextAction: status === "completed"
+      ? "This world line is complete. Choose any legal next case to continue the town story."
+      : completedStages > 0
+        ? "Follow the case-scoped lead and close the certified route to advance this world line."
+        : "Follow the case-scoped lead to begin this world line without changing the certified route."
+  };
+}
+
+export function toWorldArcPublicSummary(progress?: WorldArcProgress | WorldArcPublicSummary | null): WorldArcPublicSummary | undefined {
+  if (!progress) return undefined;
+  return {
+    status: progress.status,
+    label: progress.label,
+    completedStages: progress.completedStages,
+    stageCount: progress.stageCount,
+    progressLabel: progress.progressLabel,
+    pulseLabel: progress.pulseLabel,
+    nextAction: progress.nextAction
+  };
+}
+
+export function activateWorldArcForHints(runtime: PersistentTownRuntime, hints: WorldSystemRuntimeHints, caseId: string) {
+  const progressionLineId = hints.source?.progressionLineId;
+  if (!progressionLineId || !hints.progressionLine.stageCount) return undefined;
+  const state = runtime.worldArcProgress || { lines: {} };
+  const existing = state.lines[progressionLineId];
+  if (existing?.activeCaseId === caseId && state.currentLineId === progressionLineId) {
+    const summary = worldArcSummary(existing);
+    runtime.worldArcSummary = summary;
+    return summary;
+  }
+  const progress: WorldArcProgress = existing
+    ? {
+        ...existing,
+        activeCaseId: caseId,
+        updatedAtTick: runtime.tick
+      }
+    : {
+        status: "active",
+        label: hints.progressionLine.label,
+        completedStages: 0,
+        stageCount: hints.progressionLine.stageCount,
+        progressLabel: `0/${hints.progressionLine.stageCount} stages`,
+        pulseLabel: `${hints.resource.label} / ${hints.faction.label} / ${hints.eventArchetype.label}`,
+        nextAction: "Follow the case-scoped lead to begin this world line without changing the certified route.",
+        progressionLineId,
+        compatibleCaseTypeIds: [...(hints.source?.progressionCaseTypeIds || [])],
+        activeCaseId: caseId,
+        startedAtTick: runtime.tick,
+        updatedAtTick: runtime.tick
+      };
+  const summary = worldArcSummary(progress);
+  const nextProgress = { ...progress, ...summary };
+  runtime.worldArcProgress = {
+    currentLineId: progressionLineId,
+    lines: { ...state.lines, [progressionLineId]: nextProgress }
+  };
+  runtime.worldArcSummary = summary;
+  invalidateTownCandidateCache(runtime);
+  runtime.updatedAt = new Date().toISOString();
+  return summary;
+}
+
+export function advanceWorldArc(runtime: PersistentTownRuntime, input: { caseId: string; focus: WorldLeadFocus }) {
+  const state = runtime.worldArcProgress;
+  const progressionLineId = state?.currentLineId;
+  const current = progressionLineId ? state?.lines[progressionLineId] : undefined;
+  if (!state || !progressionLineId || !current || current.status === "completed") return undefined;
+  if (current.activeCaseId !== input.caseId || current.lastAdvancedCaseId === input.caseId) return undefined;
+  const completedStages = Math.min(current.stageCount, current.completedStages + 1);
+  const next: WorldArcProgress = {
+    ...current,
+    completedStages,
+    lastAdvancedCaseId: input.caseId,
+    lastFocus: input.focus,
+    updatedAtTick: runtime.tick,
+    ...(completedStages >= current.stageCount ? { completedAtTick: runtime.tick } : {})
+  };
+  const summary = worldArcSummary(next);
+  const nextProgress = { ...next, ...summary };
+  runtime.worldArcProgress = {
+    currentLineId: progressionLineId,
+    lines: { ...state.lines, [progressionLineId]: nextProgress }
+  };
+  runtime.worldArcSummary = summary;
+  invalidateTownCandidateCache(runtime);
+  runtime.updatedAt = new Date().toISOString();
+  return summary;
+}
+
+function currentWorldArcDirective(runtime: PersistentTownRuntime) {
+  const state = runtime.worldArcDirectives;
+  if (!state?.items.length) return undefined;
+  return state.items.find((item) => item.id === state.activeId)
+    || state.items.find((item) => item.status !== "completed")
+    || state.items[state.items.length - 1];
+}
+
+function directiveProgressLabel(runtime: PersistentTownRuntime, directive: WorldArcDirective) {
+  if (directive.status === "ready") return directive.choice === "defer" ? "Deferred / response still open" : "Awaiting player response";
+  if (directive.status === "scheduled") return "Scheduled for the next institution cycle";
+  if (directive.status === "blocked") return `Blocked / ${directive.blockedCategory || "operation unavailable"}`;
+  if (directive.status === "completed") return "World operation completed";
+  const action = runtime.ruleState?.longActions.find((item) => item.id === directive.longActionId);
+  return action ? `Operation ${Math.max(0, Math.min(100, action.progress))}% complete` : "World operation in progress";
+}
+
+function directiveNextAction(directive: WorldArcDirective) {
+  if (directive.status === "ready") return directive.choice === "defer"
+    ? "The response remains open. Support or contain it when you are ready."
+    : "Choose Support, Contain, or Defer without advancing the town clock.";
+  if (directive.status === "scheduled") return "Advance Persistent Town; the operation starts on the next legal institution cycle.";
+  if (directive.status === "running") return "Advance Persistent Town to let the existing multi-tick operation resolve.";
+  if (directive.status === "blocked") return "Choose the alternate response or retry after the world state changes.";
+  return "The result now persists as town history and may shape future, unextracted cases.";
+}
+
+export function toWorldArcDirectivePublicSummary(runtime: PersistentTownRuntime): WorldArcDirectivePublicSummary | undefined {
+  const directive = currentWorldArcDirective(runtime);
+  if (!directive) return undefined;
+  const selected = directive.choice === "support" || directive.choice === "contain" ? directive.responses[directive.choice] : undefined;
+  const queuedCount = (runtime.worldArcDirectives?.items || []).filter((item) => item.status !== "completed" && item.id !== directive.id).length;
+  return {
+    status: directive.status,
+    choice: directive.choice,
+    lineLabel: directive.lineLabel,
+    factionLabel: directive.factionLabel,
+    operationLabel: selected?.label || "Faction response pending",
+    benefitLabel: selected?.benefitLabel || "Support and Contain produce different bounded world results.",
+    costLabel: selected?.costLabel || "Each response commits existing institution resources for multiple ticks.",
+    progressLabel: directiveProgressLabel(runtime, directive),
+    queuedCount,
+    nextAction: directiveNextAction(directive),
+    blockedCategory: directive.blockedCategory,
+    options: {
+      support: {
+        label: directive.responses.support.label,
+        benefitLabel: directive.responses.support.benefitLabel,
+        costLabel: directive.responses.support.costLabel
+      },
+      contain: {
+        label: directive.responses.contain.label,
+        benefitLabel: directive.responses.contain.benefitLabel,
+        costLabel: directive.responses.contain.costLabel
+      }
+    }
+  };
+}
+
+function refreshWorldArcDirectiveSummary(runtime: PersistentTownRuntime) {
+  runtime.worldArcDirectiveSummary = toWorldArcDirectivePublicSummary(runtime);
+  runtime.updatedAt = new Date().toISOString();
+  return runtime.worldArcDirectiveSummary;
+}
+
+function retainWorldArcDirectives(items: WorldArcDirective[]) {
+  if (items.length <= 32) return items;
+  const unresolved = items.filter((item) => item.status !== "completed");
+  const completed = items.filter((item) => item.status === "completed");
+  return [...completed.slice(Math.max(0, completed.length - Math.max(0, 32 - unresolved.length))), ...unresolved].slice(-32);
+}
+
+export function enqueueWorldArcDirective(runtime: PersistentTownRuntime, input: {
+  sourceCaseId: string;
+  eventArchetypeId: string;
+  sourceFactionKind?: string;
+  focusCaseTypeIds?: string[];
+  focusCaseLabel?: string;
+  responses?: {
+    support: DetectiveDirectiveResponseConfig;
+    contain: DetectiveDirectiveResponseConfig;
+  };
+}) {
+  const arcState = runtime.worldArcProgress;
+  const progressionLineId = arcState?.currentLineId;
+  const arc = progressionLineId ? arcState?.lines[progressionLineId] : undefined;
+  if (!progressionLineId || !arc || !input.responses || arc.completedStages < 1) return undefined;
+  const id = `world-arc-directive-${progressionLineId}-${arc.completedStages}`;
+  const state = runtime.worldArcDirectives || { items: [] };
+  if (state.items.some((item) => item.id === id)) {
+    runtime.worldArcDirectives = state;
+    return refreshWorldArcDirectiveSummary(runtime);
+  }
+  if (state.items.length >= 32) {
+    runtime.worldArcDirectives = state;
+    return refreshWorldArcDirectiveSummary(runtime);
+  }
+  const directive: WorldArcDirective = {
+    id,
+    status: "ready",
+    progressionLineId,
+    completedStage: arc.completedStages,
+    sourceCaseId: input.sourceCaseId,
+    eventArchetypeId: input.eventArchetypeId,
+    lineLabel: arc.label,
+    factionLabel: runtime.worldSystemHints?.faction.label || "Town faction",
+    sourceFactionKind: input.sourceFactionKind,
+    focusCaseTypeIds: Array.from(new Set(input.focusCaseTypeIds || [])).slice(0, 8),
+    focusCaseLabel: input.focusCaseLabel,
+    responses: {
+      support: { ...input.responses.support },
+      contain: { ...input.responses.contain }
+    },
+    createdAtTick: runtime.tick,
+    attemptCount: 0
+  };
+  const active = state.items.find((item) => item.id === state.activeId);
+  runtime.worldArcDirectives = {
+    activeId: !active || active.status === "completed" ? directive.id : state.activeId,
+    items: retainWorldArcDirectives([...state.items, directive])
+  };
+  return refreshWorldArcDirectiveSummary(runtime);
+}
+
+export function applyWorldArcDirectiveDecision(runtime: PersistentTownRuntime, input: WorldArcDirectiveDecisionInput) {
+  const directive = currentWorldArcDirective(runtime);
+  if (!directive || (directive.status !== "ready" && directive.status !== "blocked")) return undefined;
+  const state = runtime.worldArcDirectives!;
+  const next: WorldArcDirective = input.choice === "defer"
+    ? {
+        ...directive,
+        status: "ready",
+        choice: "defer",
+        blockedCategory: undefined,
+        blockedAtTick: undefined
+      }
+    : {
+        ...directive,
+        status: "scheduled",
+        choice: input.choice,
+        scheduledAtTick: runtime.tick,
+        startedAtTick: undefined,
+        completedAtTick: undefined,
+        blockedAtTick: undefined,
+        institutionId: undefined,
+        actorId: undefined,
+        longActionId: undefined,
+        startEventId: undefined,
+        completionEventId: undefined,
+        reservedResources: undefined,
+        reservationReleasedAtTick: undefined,
+        blockedCategory: undefined
+      };
+  runtime.worldArcDirectives = {
+    activeId: next.id,
+    items: state.items.map((item) => item.id === next.id ? next : item)
+  };
+  if (input.choice !== "defer") {
+    runtime.maxTicks = Math.max(runtime.maxTicks, runtime.tick + 12);
+    if (runtime.status === "completed") runtime.status = "paused";
+  }
+  return refreshWorldArcDirectiveSummary(runtime);
+}
+
+function directiveBlockedCategory(reason: string | undefined): NonNullable<WorldArcDirectivePublicSummary["blockedCategory"]> {
+  if (/institution/i.test(reason || "")) return "institution unavailable";
+  if (/actor|staff|running/i.test(reason || "")) return "staff unavailable";
+  if (/insufficient|resource|capacity|credit|trust|docket|time/i.test(reason || "")) return "resource unavailable";
+  return "operation unavailable";
+}
+
+function updateDirective(runtime: PersistentTownRuntime, next: WorldArcDirective) {
+  const state = runtime.worldArcDirectives || { items: [] };
+  runtime.worldArcDirectives = {
+    activeId: next.id,
+    items: state.items.map((item) => item.id === next.id ? next : item)
+  };
+  refreshWorldArcDirectiveSummary(runtime);
+}
+
+function promoteNextWorldArcDirective(runtime: PersistentTownRuntime, completed: WorldArcDirective) {
+  const state = runtime.worldArcDirectives || { items: [] };
+  const items = state.items.map((item) => item.id === completed.id ? completed : item);
+  const next = items.find((item) => item.status !== "completed" && item.id !== completed.id);
+  runtime.worldArcDirectives = { activeId: next?.id || completed.id, items };
+  refreshWorldArcDirectiveSummary(runtime);
+}
+
+function reconcileWorldArcDirectiveLongAction(world: WorldState, runtime: PersistentTownRuntime): WorldEvent[] {
+  const directive = currentWorldArcDirective(runtime);
+  if (!directive || directive.status !== "running") return [];
+  const ruleState = ensureTownRuleRuntimeState(world, runtime);
+  const action = ruleState.longActions.find((item) => item.id === directive.longActionId);
+  if (action?.status === "completed") {
+    if (directive.completionEventId) return [];
+    const completionEventId = `world-arc-directive-complete-${directive.id}-${directive.attemptCount}`;
+    const event: WorldEvent = {
+      id: completionEventId,
+      worldId: world.id,
+      day: runtime.currentDay,
+      time: runtime.currentTime,
+      type: "forensic_clue",
+      actorIds: [],
+      locationId: action.targetLocationId || world.locations[0]?.id || "town-square",
+      summary: "A faction directive operation reaches its durable result.",
+      publicSummary: "A bounded faction operation becomes part of the town's ongoing history.",
+      hidden: false,
+      relatedCharacterIds: [],
+      tags: ["world_arc_directive", "directive_complete"],
+      causedByEventIds: directive.startEventId ? [directive.startEventId] : [],
+      explanation: "The existing long-action lifecycle completed the selected faction response."
+    };
+    mergeWorldPressurePulse(runtime, deriveWorldPressurePulseFromCompletedAction({
+      runtime: ruleState,
+      action,
+      directive,
+      tick: runtime.tick
+    }));
+    if (directive.choice === "support" || directive.choice === "contain") {
+      enqueueTownSocialResponse(world, runtime, {
+        sourceKey: directive.id,
+        sourceKind: "faction-directive",
+        direction: deriveTownSocialResponseDirectionFromCompletedAction(ruleState, action),
+        institutionId: directive.institutionId,
+        institutionKind: directive.responses[directive.choice].institutionKind,
+        anchorNpcId: directive.actorId,
+        locationId: action.targetLocationId
+      });
+    }
+    if (directive.choice === "support" || directive.choice === "contain") {
+      recordCompletedDirectiveFactionRelationships(runtime, {
+        directiveId: directive.id,
+        choice: directive.choice,
+        responseInstitutionKind: directive.responses[directive.choice].institutionKind,
+        sourceFactionKind: directive.sourceFactionKind
+      });
+    }
+    const completedDirective: WorldArcDirective = {
+      ...directive,
+      status: "completed",
+      completedAtTick: runtime.tick,
+      completionEventId,
+      blockedCategory: undefined
+    };
+    enqueueWorldEventOfferFromCompletedDirective(runtime, completedDirective);
+    promoteNextWorldArcDirective(runtime, completedDirective);
+    return [event];
+  }
+  if (!action || action.status === "blocked" || action.status === "cancelled") {
+    if (!directive.reservationReleasedAtTick && directive.reservedResources) {
+      releaseTownLongActionReservation(ruleState, directive.reservedResources);
+    }
+    updateDirective(runtime, {
+      ...directive,
+      status: "blocked",
+      blockedAtTick: runtime.tick,
+      reservationReleasedAtTick: directive.reservationReleasedAtTick || runtime.tick,
+      blockedCategory: directiveBlockedCategory(action?.blockedReason || "operation unavailable")
+    });
+  }
+  return [];
+}
+
+function startScheduledWorldArcDirective(world: WorldState, events: WorldEvent[], runtime: PersistentTownRuntime) {
+  const directive = currentWorldArcDirective(runtime);
+  if (!directive || directive.status !== "scheduled" || runtime.tick % 5 !== 0 || (directive.choice !== "support" && directive.choice !== "contain")) {
+    return { events: [] as WorldEvent[], excludedInstitutionIds: [] as string[] };
+  }
+  const response = directive.responses[directive.choice];
+  const ruleState = ensureTownRuleRuntimeState(world, runtime);
+  const institution = [...ruleState.institutions]
+    .filter((item) => item.kind === response.institutionKind)
+    .sort((left, right) => left.id.localeCompare(right.id))[0];
+  if (!institution) {
+    updateDirective(runtime, { ...directive, status: "blocked", blockedAtTick: runtime.tick, blockedCategory: "institution unavailable" });
+    return { events: [] as WorldEvent[], excludedInstitutionIds: [] as string[] };
+  }
+  const living = new Set(world.npcs.filter((npc) => npc.alive).map((npc) => npc.id));
+  const profession = [...ruleState.professions]
+    .filter((item) => item.institutionId === institution.id && living.has(item.npcId))
+    .sort((left, right) => right.rank - left.rank || left.workload - right.workload || left.npcId.localeCompare(right.npcId))[0];
+  const actor = profession ? world.npcs.find((npc) => npc.id === profession.npcId && npc.alive) : undefined;
+  if (!profession || !actor) {
+    updateDirective(runtime, { ...directive, status: "blocked", blockedAtTick: runtime.tick, institutionId: institution.id, blockedCategory: "staff unavailable" });
+    return { events: [] as WorldEvent[], excludedInstitutionIds: [] as string[] };
+  }
+  const targetLocationId = Object.entries(institution.influenceByLocation)
+    .sort(([leftId, left], [rightId, right]) => right - left || leftId.localeCompare(rightId))[0]?.[0]
+    || world.locations[0]?.id
+    || "town-square";
+  const attemptCount = directive.attemptCount + 1;
+  const started = startTownLongAction({
+    world,
+    state: ruleState,
+    actor,
+    kind: response.longActionKind,
+    events,
+    tick: runtime.tick,
+    targetLocationId,
+    institutionId: institution.id
+  });
+  if (!started.action) {
+    updateDirective(runtime, {
+      ...directive,
+      status: "blocked",
+      blockedAtTick: runtime.tick,
+      institutionId: institution.id,
+      actorId: actor.id,
+      attemptCount,
+      blockedCategory: directiveBlockedCategory(started.blockedReason)
+    });
+    return { events: [] as WorldEvent[], excludedInstitutionIds: [] as string[] };
+  }
+  const eventId = `world-arc-directive-start-${directive.id}-${directive.choice}-${attemptCount}`;
+  started.action.eventIds = [eventId];
+  const decision: InstitutionDecision = {
+    id: `world-arc-directive-decision-${directive.id}-${directive.choice}-${attemptCount}`,
+    tick: runtime.tick,
+    institutionId: institution.id,
+    strategy: response.strategy,
+    reason: "A player-selected faction response enters the existing institution and long-action cycle.",
+    targetNpcId: actor.id,
+    targetLocationId,
+    eventId,
+    worldSystemLabels: [directive.lineLabel, directive.factionLabel]
+  };
+  ruleState.institutionDecisions = [decision, ...(ruleState.institutionDecisions || [])].slice(0, 80);
+  const event: WorldEvent = {
+    id: eventId,
+    worldId: world.id,
+    day: runtime.currentDay,
+    time: runtime.currentTime,
+    type: response.strategy === "chase-headline" || response.strategy === "cultivate-informant" ? "witness" : "obtain_item",
+    actorIds: [],
+    locationId: targetLocationId,
+    summary: "A faction directive operation begins through an existing town institution.",
+    publicSummary: "A bounded faction operation has started and will take multiple town ticks.",
+    hidden: false,
+    relatedCharacterIds: [],
+    tags: ["world_arc_directive", "directive_start", response.strategy],
+    causedByEventIds: [],
+    explanation: "The selected response passed institution, actor, and resource checks."
+  };
+  updateDirective(runtime, {
+    ...directive,
+    status: "running",
+    institutionId: institution.id,
+    actorId: actor.id,
+    longActionId: started.action.id,
+    startEventId: eventId,
+    startedAtTick: runtime.tick,
+    attemptCount,
+    reservedResources: started.reservedResources,
+    reservationReleasedAtTick: undefined,
+    blockedCategory: undefined
+  });
+  return { events: [event], excludedInstitutionIds: [institution.id] };
+}
+
+function currentWorldArc(runtime: PersistentTownRuntime | null | undefined) {
+  const lineId = runtime?.worldArcProgress?.currentLineId;
+  return lineId ? runtime?.worldArcProgress?.lines[lineId] : undefined;
+}
+
+export function deriveWorldArcActionPriorityBonus(runtime: PersistentTownRuntime | null | undefined, actionKind: NpcActionKind) {
+  const arc = currentWorldArc(runtime);
+  const hints = runtime?.worldSystemHints;
+  if (!arc || arc.status !== "active" || arc.completedStages < 1 || !hints?.summary.active) return 0;
+  const topKind = (Object.entries(hints.actionBias) as Array<[WorldSystemRuntimeActionKind, number]>)
+    .filter(([, value]) => typeof value === "number" && value > 0)
+    .sort(([leftKind, leftValue], [rightKind, rightValue]) => rightValue - leftValue || leftKind.localeCompare(rightKind))[0]?.[0];
+  return topKind === actionKind ? 1 : 0;
+}
+
+export function deriveWorldArcCasePriorityBonus(runtime: PersistentTownRuntime | null | undefined, caseType: TownCaseType | undefined) {
+  return deriveWorldArcCandidateInfluence(runtime, caseType)?.weight || 0;
+}
+
+export function createPersistentTownRuntime(
+  world: WorldState,
+  events: WorldEvent[] = [],
+  options: Partial<Pick<PersistentTownRuntime, "tickIntervalMinutes" | "maxTicks" | "worldSystemHints">> = {}
+): PersistentTownRuntime {
   const now = new Date().toISOString();
   const runtime: PersistentTownRuntime = {
     id: `runtime-${world.id}`,
@@ -1689,15 +3417,66 @@ export function createPersistentTownRuntime(world: WorldState, events: WorldEven
     consequences: [],
     longChainLedger: [],
     triggeredCases: [],
+    caseLifecycle: {
+      activeCaseIds: [],
+      solvedCaseIds: [],
+      failedCaseIds: [],
+      caseCooldownByNpcId: {},
+      casePairCooldown: {},
+      caseTypeHistory: [],
+      caseTypeCooldown: {},
+      locationCooldown: {},
+      casePressureByInstitutionId: {},
+      nextCaseWeights: {},
+      caseTimeline: [],
+      caseAftermathLog: []
+    },
     simulationPhases: [...TOWN_TICK_PHASES],
+    scenarioPresets: [],
+    scenarioPacks: [],
+    mapPacks: [],
+    packRegistry: [],
+    currentScenarioPackId: "small-town-review",
+    currentMapPackId: "fog-lamp-town",
+    currentRuleCatalogId: "detective-default",
+    currentExperiment: {
+      scenarioPackId: "small-town-review",
+      mapPackId: "fog-lamp-town",
+      ruleCatalogId: "detective-default",
+      selectedAt: now
+    },
     scenarioRuns: [],
+    runJobs: [],
+    benchmarkRuns: [],
     snapshots: [],
+    ruleState: undefined,
+    worldSystemHints: options.worldSystemHints,
+    worldSystemHintSummary: options.worldSystemHints?.summary ? { ...options.worldSystemHints.summary } : undefined,
+    worldLeadPreview: deriveWorldLeadPreview(options.worldSystemHints),
+    worldLeadDecisions: {},
+    playerResourceCommitments: { items: [] },
+    factionRelationships: { standings: {}, ledger: [] },
+    worldEventOffers: { items: [] },
+    campaignRecoveries: { items: [] },
+    townSocialResponses: { items: [] },
     createdAt: now,
     updatedAt: now
   };
+  ensureTownRuleRuntimeState(world, runtime);
   ensureSocialProfiles(world, runtime);
   ensureLocationProfiles(world, runtime);
   runtime.agentStates = world.npcs.map((npc) => deriveNpcAgentState(world, npc, events, runtime));
+  runtime.playerResourceCommitmentSummary = toPlayerResourceCommitmentPublicSummary(runtime);
+  ensureFactionRelationshipState(runtime);
+  runtime.factionRelationshipSummary = toFactionRelationshipPublicSummary(runtime);
+  runtime.worldEventOfferSummary = toWorldEventOfferPublicSummary(runtime);
+  ensureInvestigatorProgression(runtime);
+  runtime.investigatorProgressionSummary = toInvestigatorProgressionPublicSummary(runtime);
+  runtime.campaignRecoverySummary = toCampaignRecoveryPublicSummary(runtime);
+  refreshArcConvergence(runtime);
+  ensureCampaignSession(runtime);
+  refreshCampaignSession(runtime);
+  refreshTownSocialResponseSummary(world, runtime);
   return runtime;
 }
 
@@ -1762,8 +3541,8 @@ function memoryConfidenceSummary(world: WorldState, eventIds: string[], npcIds: 
   };
 }
 
-function buildStageEventIdsForPressure(world: WorldState, events: WorldEvent[], pressure: SocialPressure, runtime?: PersistentTownRuntime | null) {
-  const selected = selectRiskChainEvents(events, pressure);
+function buildStageEventIdsForPressure(world: WorldState, events: WorldEvent[], pressure: SocialPressure, runtime?: PersistentTownRuntime | null, index?: TownTickIndex) {
+  const selected = selectRiskChainEvents(events, pressure, index);
   const stageEventIds = emptyStageEventIds();
   for (const event of selected) {
     const stage = chainStageForEvent(event);
@@ -1779,7 +3558,7 @@ function buildStageEventIdsForPressure(world: WorldState, events: WorldEvent[], 
   }
   for (const observation of runtime?.eventObservations || []) {
     if (!pairIds.includes(observation.observerNpcId) && !(observation.subjectNpcId && pairIds.includes(observation.subjectNpcId))) continue;
-    if (!events.some((event) => event.id === observation.eventId)) continue;
+    if (index ? !index.eventById.has(observation.eventId) : !events.some((event) => event.id === observation.eventId)) continue;
     if (observation.kind === "direct" || observation.kind === "deduced" || observation.kind === "same-location") {
       if (!stageEventIds.memory.includes(observation.eventId)) stageEventIds.memory.push(observation.eventId);
     }
@@ -1795,8 +3574,8 @@ function buildStageEventIdsForPressure(world: WorldState, events: WorldEvent[], 
   return stageEventIds;
 }
 
-function summarizeLongChain(world: WorldState, events: WorldEvent[], runtime: PersistentTownRuntime, pressure: SocialPressure): TownLongChainLedgerEntry {
-  const stageEventIds = buildStageEventIdsForPressure(world, events, pressure, runtime);
+function summarizeLongChain(world: WorldState, events: WorldEvent[], runtime: PersistentTownRuntime, pressure: SocialPressure, index?: TownTickIndex): TownLongChainLedgerEntry {
+  const stageEventIds = buildStageEventIdsForPressure(world, events, pressure, runtime, index);
   const memoryConfidence = memoryConfidenceSummary(world, Object.values(stageEventIds).flat(), [pressure.npcId, pressure.targetId], runtime);
   const chainCompleteness = emptyChainCompleteness();
   for (const stage of Object.keys(chainCompleteness) as CaseChainStage[]) {
@@ -1819,20 +3598,27 @@ function summarizeLongChain(world: WorldState, events: WorldEvent[], runtime: Pe
   };
 }
 
-function refreshLongChainLedger(world: WorldState, events: WorldEvent[], runtime: PersistentTownRuntime) {
-  const pressures = computeSocialPressures(world, events).filter((pressure) => pressure.score >= 5).slice(0, 8);
-  runtime.longChainLedger = pressures.map((pressure) => summarizeLongChain(world, events, runtime, pressure));
+function refreshLongChainLedger(world: WorldState, events: WorldEvent[], runtime: PersistentTownRuntime, index?: TownTickIndex) {
+  if (runtime.longChainComputedAtTick === runtime.tick && runtime.longChainLedger?.length) return runtime.longChainLedger;
+  const pressures = (index?.socialPressures || computeSocialPressures(world, events)).filter((pressure) => pressure.score >= 5).slice(0, (runtime.campaignCaseTarget || 3) > 3 ? 16 : 8);
+  runtime.longChainLedger = pressures.map((pressure) => summarizeLongChain(world, events, runtime, pressure, index));
+  runtime.longChainComputedAtTick = runtime.tick;
   return runtime.longChainLedger;
 }
 
-function triggerLongChainCaseIfReady(world: RuntimeWorld, runtime: PersistentTownRuntime, events: WorldEvent[], createdEvents: WorldEvent[]) {
+function triggerLongChainCaseIfReady(world: RuntimeWorld, runtime: PersistentTownRuntime, events: WorldEvent[], createdEvents: WorldEvent[], index?: TownTickIndex) {
   runtime.triggeredCases ||= [];
-  const ledger = refreshLongChainLedger(world, events, runtime);
+  const ledger = refreshLongChainLedger(world, events, runtime, index);
+  const maturityThreshold = (runtime.campaignCaseTarget || 3) > 3 ? 82 : 90;
+  const lifecycle = ensureCaseLifecycle(runtime);
   const ready = ledger
     .filter((entry) =>
       entry.complete &&
-      entry.maturityScore >= 90 &&
+      entry.maturityScore >= maturityThreshold &&
       world.npcs.some((npc) => npc.id === entry.victimId && npc.alive) &&
+      ((lifecycle.caseCooldownByNpcId[entry.culpritId] || 0) <= runtime.tick) &&
+      ((lifecycle.caseCooldownByNpcId[entry.victimId] || 0) <= runtime.tick) &&
+      ((lifecycle.casePairCooldown?.[`${entry.culpritId}->${entry.victimId}`] || 0) <= runtime.tick) &&
       !runtime.triggeredCases?.some((trigger) => trigger.culpritId === entry.culpritId && trigger.victimId === entry.victimId)
     )
     .sort((a, b) => b.maturityScore - a.maturityScore)[0];
@@ -1915,15 +3701,21 @@ function eventMinuteValue(event: WorldEvent) {
   return event.day * 24 * 60 + timeToMinutes(event.time);
 }
 
-function selectRiskChainEvents(events: WorldEvent[], pressure: SocialPressure) {
-  const related = events
-    .filter((event) =>
-      pressure.sourceEventIds.includes(event.id) ||
-      event.actorIds.includes(pressure.npcId) ||
-      event.actorIds.includes(pressure.targetId) ||
-      event.relatedCharacterIds.includes(pressure.npcId) ||
-      event.relatedCharacterIds.includes(pressure.targetId)
-    )
+function selectRiskChainEvents(events: WorldEvent[], pressure: SocialPressure, index?: TownTickIndex) {
+  const relatedSource = index
+    ? Array.from(new Map([
+        ...(index.eventsByActorId.get(pressure.npcId) || []),
+        ...(index.eventsByActorId.get(pressure.targetId) || []),
+        ...pressure.sourceEventIds.map((eventId) => index.eventById.get(eventId)).filter((event): event is WorldEvent => Boolean(event))
+      ].map((event) => [event.id, event])).values())
+    : events.filter((event) =>
+        pressure.sourceEventIds.includes(event.id) ||
+        event.actorIds.includes(pressure.npcId) ||
+        event.actorIds.includes(pressure.targetId) ||
+        event.relatedCharacterIds.includes(pressure.npcId) ||
+        event.relatedCharacterIds.includes(pressure.targetId)
+      );
+  const related = relatedSource
     .sort((a, b) => eventMinuteValue(a) - eventMinuteValue(b));
   const stageOrder = ["motive", "means", "opportunity", "cover-up", "memory", "exclusion", "context"];
   const selected: WorldEvent[] = [];
@@ -1932,18 +3724,317 @@ function selectRiskChainEvents(events: WorldEvent[], pressure: SocialPressure) {
     if (event) selected.push(event);
   }
   for (const eventId of pressure.sourceEventIds) {
-    const event = events.find((item) => item.id === eventId);
+    const event = index?.eventById.get(eventId) || events.find((item) => item.id === eventId);
     if (event && !selected.some((item) => item.id === event.id)) selected.push(event);
   }
   return selected.slice(0, 8);
 }
 
-export function buildCaseCandidatesFromRuntime(world: WorldState, events: WorldEvent[] = [], runtime?: PersistentTownRuntime | null): CaseCandidate[] {
+function ensureCaseLifecycle(runtime: PersistentTownRuntime): TownCaseLifecycleState {
+  runtime.caseLifecycle ||= {
+    activeCaseIds: [],
+    solvedCaseIds: [],
+    failedCaseIds: [],
+    caseCooldownByNpcId: {},
+    casePairCooldown: {},
+    caseTypeHistory: [],
+    caseTypeCooldown: {},
+    locationCooldown: {},
+    casePressureByInstitutionId: {},
+    nextCaseWeights: {},
+    caseTimeline: [],
+    caseAftermathLog: []
+  };
+  runtime.caseLifecycle.caseTypeHistory ||= [];
+  runtime.caseLifecycle.casePairCooldown ||= {};
+  runtime.caseLifecycle.caseTypeCooldown ||= {};
+  runtime.caseLifecycle.locationCooldown ||= {};
+  runtime.caseLifecycle.caseTimeline ||= [];
+  return runtime.caseLifecycle;
+}
+
+function inferCaseTypeFromSignals(input: {
+  events?: WorldEvent[];
+  evidenceItems?: EvidenceChainItem[];
+  ruleState?: TownRuleRuntimeState;
+  culpritId?: string;
+  victimId?: string;
+}): TownCaseType {
+  const events = input.events || [];
+  const tags = new Set(events.flatMap((event) => event.tags || []));
+  const evidenceKinds = new Set((input.evidenceItems || []).map((item) => item.kind));
+  const opinion = input.ruleState?.publicOpinion;
+  const institutions = input.ruleState?.institutions || [];
+  const courtPressure = institutions.find((institution) => institution.kind === "court")?.pressure || 0;
+  const dockPressure = institutions.find((institution) => institution.kind === "dock_union")?.pressure || 0;
+  const dockResources = institutions.find((institution) => institution.kind === "dock_union")?.resources || 50;
+  const informantSignals = (input.evidenceItems || []).filter((item) => item.kind === "anonymous-tip").length;
+  if (evidenceKinds.has("court-record") && evidenceKinds.has("receipt") && (tags.has("commerce") || tags.has("market"))) return "permit-forgery";
+  if (evidenceKinds.has("court-record") && (evidenceKinds.has("document") || evidenceKinds.has("trace"))) return "archive-vanishing";
+  if ((evidenceKinds.has("medical") || evidenceKinds.has("autopsy-note")) && evidenceKinds.has("ledger")) return "clinic-inventory-gap";
+  if (informantSignals >= 1 && (evidenceKinds.has("footprint") || tags.has("dock"))) return "dock-witness-swap";
+  if (evidenceKinds.has("newspaper-proof") && evidenceKinds.has("testimony")) return "editorial-coercion";
+  if (evidenceKinds.has("family-letter") && (evidenceKinds.has("receipt") || evidenceKinds.has("key-impression"))) return "household-escrow";
+  if (evidenceKinds.has("cargo-log") || tags.has("dock") || tags.has("cargo") || dockPressure >= 62 || dockResources <= 42) return "dock-smuggling";
+  if (evidenceKinds.has("court-record") && (courtPressure >= 58 || tags.has("court"))) return "court-intimidation";
+  if (evidenceKinds.has("family-letter") || tags.has("will")) return "forged-will";
+  if (evidenceKinds.has("telegram") || (evidenceKinds.has("newspaper-proof") && (opinion?.mediaPressure || 0) >= 55)) return "blackmail";
+  if (informantSignals >= 1 && (opinion?.witnessFear || 0) >= 45) return "witness-disappearance";
+  if (evidenceKinds.has("ledger") || tags.has("ledger") || tags.has("commerce")) return "ledger-fraud";
+  if (evidenceKinds.has("medical") || evidenceKinds.has("autopsy-note") || tags.has("medical") || tags.has("autopsy")) return "medical-coverup";
+  if (evidenceKinds.has("rumor") || (opinion && opinion.mediaPressure + opinion.rumorVelocity >= 95)) return "media-rumor";
+  if ((evidenceKinds.has("testimony") || evidenceKinds.has("alibi-note")) && (opinion?.witnessFear || 0) >= 55) return "false-testimony";
+  if (institutions.some((institution) => institution.kind === "family" && institution.pressure >= 60)) return "family-scandal";
+  if (institutions.some((institution) => institution.kind === "commerce" && institution.resources <= 45)) return "merchant-extortion";
+  if (institutions.some((institution) => institution.kind === "police" && institution.pressure >= 70)) return "police-misjudgment";
+  if ((input.evidenceItems || []).some((item) => (item.tamperHistory || []).length || item.contamination >= 55)) return "evidence-tampering";
+  if (events.some((event) => event.type === "death")) return "murder";
+  return tags.has("missing") ? "missing-person" : "murder";
+}
+
+function chooseCampaignCaseType(baseType: TownCaseType, lifecycle: TownCaseLifecycleState, runtime: PersistentTownRuntime, candidateIndex: number): TownCaseType {
+  const history = lifecycle.caseTypeHistory || [];
+  const historyCount = history.length;
+  if (historyCount < 1) return baseType;
+  const counts = new Map<TownCaseType, number>();
+  for (const type of history) counts.set(type, (counts.get(type) || 0) + 1);
+  const targetDistinct = historyCount >= 4 ? 4 : historyCount >= 2 ? 3 : 2;
+  const distinct = counts.size;
+  const tick = runtime.tick;
+  const typeScores = TOWN_CASE_TYPES.map((type, index) => {
+    const cooldownActive = ((lifecycle.caseTypeCooldown || {})[type] || 0) > tick;
+    const weight = lifecycle.nextCaseWeights[type] || 1;
+    const novelty = counts.has(type) ? 0 : distinct < targetDistinct ? 40 : 5;
+    const repeatPenalty = (counts.get(type) || 0) * 12 + (cooldownActive ? 16 : 0);
+    const baseBonus = type === baseType ? 4 : 0;
+    const rotation = ((candidateIndex + historyCount + index) % TOWN_CASE_TYPES.length) / 10;
+    return { type, score: weight * 10 + novelty + baseBonus + rotation - repeatPenalty };
+  }).sort((left, right) => right.score - left.score);
+  if (distinct < targetDistinct) {
+    const unseen = typeScores.find((item) => !counts.has(item.type) && (((lifecycle.caseTypeCooldown || {})[item.type] || 0) <= tick));
+    if (unseen) return unseen.type;
+  }
+  return typeScores[0]?.type || baseType;
+}
+
+function buildCaseInfluenceTrace(runtime: PersistentTownRuntime, culpritId: string, victimId: string, evidenceItems?: EvidenceChainItem[]): CaseInfluenceTrace {
+  const ruleState = runtime.ruleState;
+  const professions = ruleState?.professions.filter((profession) => [culpritId, victimId].includes(profession.npcId)) || [];
+  const institutionIds = Array.from(new Set([
+    ...professions.map((profession) => profession.institutionId).filter((id): id is string => Boolean(id)),
+    ...(ruleState?.institutions || []).filter((institution) => institution.pressure >= 55 || institution.resources <= 35).map((institution) => institution.id)
+  ]));
+  const longActions = (ruleState?.longActions || []).filter((action) =>
+    [culpritId, victimId].includes(action.actorId) ||
+    (action.targetNpcId ? [culpritId, victimId].includes(action.targetNpcId) : false)
+  );
+  const aftermaths = ruleState?.aftermaths || [];
+  const relatedEvidence = evidenceItems?.length ? evidenceItems : (ruleState?.evidenceChain.items || []).slice(0, 5);
+  return {
+    institutionIds,
+    professionIds: professions.map((profession) => `${profession.npcId}:${profession.kind}`),
+    longActionIds: longActions.map((action) => action.id),
+    institutionDecisionIds: (ruleState?.institutionDecisions || []).slice(0, 5).map((decision) => decision.id),
+    evidenceChainItemIds: relatedEvidence.slice(0, 8).map((item) => item.id),
+    relatedEvidenceIds: relatedEvidence.slice(0, 8).map((item) => item.id),
+    contaminatedEvidenceIds: relatedEvidence.filter((item) => item.contamination >= 45 || (item.tamperHistory || []).length).map((item) => item.id).slice(0, 8),
+    provenanceSources: Array.from(new Set(relatedEvidence.flatMap((item) => item.sourceEventIds))).slice(0, 12),
+    evidenceWarnings: relatedEvidence
+      .filter((item) => item.contamination >= 55 || item.integrity <= 45 || item.provenance === "weak")
+      .map((item) => `${item.id}:${item.provenance}:${item.integrity}/${item.contamination}`)
+      .slice(0, 8),
+    resourceDeltas: Object.fromEntries((ruleState?.institutions || []).map((institution) => [institution.id, institution.resources - 50])),
+    aftermathIds: aftermaths.slice(0, 5).map((aftermath) => aftermath.id),
+    publicOpinionDelta: {
+      heat: ruleState ? ruleState.publicOpinion.heat - 20 : 0,
+      trustInPolice: ruleState ? ruleState.publicOpinion.trustInPolice - 58 : 0,
+      witnessFear: ruleState ? ruleState.publicOpinion.witnessFear - 20 : 0,
+      mediaPressure: ruleState ? ruleState.publicOpinion.mediaPressure - 30 : 0
+    },
+    evidenceContaminationDelta: ruleState ? ruleState.evidenceContamination.contamination - 10 : 0
+  };
+}
+
+export function applyCaseResolutionToWorld(world: WorldState, runtime: PersistentTownRuntime, input: CaseResolutionInput): CaseResolutionResult {
+  const lifecycle = ensureCaseLifecycle(runtime);
+  const alreadyResolved = lifecycle.solvedCaseIds.includes(input.caseId) || lifecycle.failedCaseIds.includes(input.caseId);
+  if (alreadyResolved) {
+    return { lifecycle, influenceTrace: buildCaseInfluenceTrace(runtime, input.culpritId || "", input.victimId || "") };
+  }
+  const ruleState = ensureTownRuleRuntimeState(world, runtime);
+  const aftermath = applyCaseAftermath(ruleState, {
+    tick: runtime.tick,
+    caseId: input.caseId,
+    outcome: input.outcome,
+    culpritId: input.culpritId,
+    victimId: input.victimId,
+    valid: input.valid
+  });
+  lifecycle.activeCaseIds = lifecycle.activeCaseIds.filter((id) => id !== input.caseId);
+  if (input.valid || input.outcome === "solved" || input.outcome === "extracted") {
+    lifecycle.solvedCaseIds = Array.from(new Set([input.caseId, ...lifecycle.solvedCaseIds])).slice(0, 40);
+  } else {
+    lifecycle.failedCaseIds = Array.from(new Set([input.caseId, ...lifecycle.failedCaseIds])).slice(0, 40);
+  }
+  const campaignCooldownTicks = (runtime.campaignCaseTarget || 3) >= 30 ? 160 : (runtime.campaignCaseTarget || 3) > 3 ? 24 : 8;
+  for (const npcId of [input.culpritId, input.victimId].filter((id): id is string => Boolean(id))) {
+    lifecycle.caseCooldownByNpcId[npcId] = runtime.tick + (input.valid ? campaignCooldownTicks : Math.max(4, Math.floor(campaignCooldownTicks / 2)));
+  }
+  if (input.culpritId && input.victimId) {
+    const pairCooldownTicks = (runtime.campaignCaseTarget || 3) >= 30 ? 0 : campaignCooldownTicks * 2;
+    lifecycle.casePairCooldown = {
+      ...(lifecycle.casePairCooldown || {}),
+      [`${input.culpritId}->${input.victimId}`]: runtime.tick + pairCooldownTicks
+    };
+  }
+  const primaryEvidenceItems = input.evidenceItemIds?.length
+    ? ruleState.evidenceChain.items.filter((item) => input.evidenceItemIds?.includes(item.id))
+    : [];
+  const primaryEvidenceIds = new Set(primaryEvidenceItems.map((item) => item.id));
+  const fallbackEvidenceItems = ruleState.evidenceChain.items
+    .filter((item) => !primaryEvidenceIds.has(item.id))
+    .slice(0, Math.max(0, 3 - primaryEvidenceItems.length));
+  const evidenceItems = (primaryEvidenceItems.length ? [...primaryEvidenceItems, ...fallbackEvidenceItems] : ruleState.evidenceChain.items.slice(0, 6)).slice(0, 6);
+  const caseType = input.caseType || inferCaseTypeFromSignals({ evidenceItems, ruleState, culpritId: input.culpritId, victimId: input.victimId });
+  lifecycle.caseTypeHistory = [caseType, ...(lifecycle.caseTypeHistory || [])].slice(0, 80);
+  lifecycle.caseTypeCooldown = {
+    ...(lifecycle.caseTypeCooldown || {}),
+    [caseType]: runtime.tick + (input.valid ? Math.max(12, Math.min(campaignCooldownTicks, 36)) : 6)
+  };
+  if (input.locationId) {
+    lifecycle.locationCooldown = {
+      ...(lifecycle.locationCooldown || {}),
+      [input.locationId]: runtime.tick + (input.valid ? Math.max(10, Math.min(campaignCooldownTicks, 30)) : 5)
+    };
+  }
+  if (evidenceItems.length) {
+    const evidenceIds = new Set(evidenceItems.map((item) => item.id));
+    ruleState.evidenceChain = {
+      ...ruleState.evidenceChain,
+      updatedAtTick: runtime.tick,
+      items: ruleState.evidenceChain.items.map((item) => evidenceIds.has(item.id)
+        ? {
+          ...item,
+          caseId: input.caseId,
+          caseIds: Array.from(new Set([...(item.caseIds || (item.caseId ? [item.caseId] : [])), input.caseId])).slice(-12),
+          usedInResolution: true
+        }
+        : item)
+    };
+  }
+  const policePressure = ruleState.institutions.find((institution) => institution.id === "inst-police")?.pressure || 0;
+  const mediaPressure = ruleState.institutions.find((institution) => institution.id === "inst-media")?.pressure || 0;
+  const familyPressure = ruleState.institutions.find((institution) => institution.id === "inst-family")?.pressure || 0;
+  const commerceResources = ruleState.institutions.find((institution) => institution.id === "inst-commerce")?.resources || 50;
+  const medicalResources = ruleState.institutions.find((institution) => institution.id === "inst-medical")?.resources || 50;
+  const courtPressure = ruleState.institutions.find((institution) => institution.id === "inst-court")?.pressure || 0;
+  const courtResources = ruleState.institutions.find((institution) => institution.id === "inst-court")?.resources || 50;
+  const dockPressure = ruleState.institutions.find((institution) => institution.id === "inst-dock-union")?.pressure || 0;
+  const dockResources = ruleState.institutions.find((institution) => institution.id === "inst-dock-union")?.resources || 50;
+  const informantLedger = ruleState.resourceLedger.informant_trust;
+  const informantPressure = informantLedger ? 100 - informantLedger.available + informantLedger.pressure : 0;
+  const recentStrategies = new Set((ruleState.institutionDecisions || []).slice(0, 8).map((decision) => decision.strategy));
+  const weakEvidenceCount = (ruleState.evidenceChain.items || []).filter((item) => item.provenance === "weak" || item.integrity <= 35).length;
+  lifecycle.casePressureByInstitutionId = {
+    "inst-police": policePressure,
+    "inst-media": mediaPressure,
+    "inst-family": familyPressure,
+    "inst-commerce": 100 - commerceResources,
+    "inst-medical": 100 - medicalResources,
+    "inst-court": Math.max(courtPressure, 100 - courtResources),
+    "inst-dock-union": Math.max(dockPressure, 100 - dockResources)
+  };
+  lifecycle.nextCaseWeights = {
+    suppressOrMisjudge: policePressure >= 60 ? 1.35 : 1,
+    rumorAndFear: mediaPressure >= 60 ? 1.45 : 1,
+    briberyOrScapegoat: familyPressure >= 60 ? 1.4 : 1,
+    ledgerMotive: commerceResources <= 45 ? 1.35 : 1,
+    autopsyDelay: medicalResources <= 45 ? 1.3 : 1,
+    courtDocketPressure: courtPressure >= 58 || courtResources <= 45 ? 1.45 : 1,
+    dockCargoPressure: dockPressure >= 58 || dockResources <= 45 ? 1.45 : 1,
+    informantNetwork: informantPressure >= 45 ? 1.35 : 1,
+    evidencePollution: ruleState.evidenceContamination.contamination >= 55 || weakEvidenceCount >= 2 ? 1.35 : 1,
+    headlineChase: recentStrategies.has("chase-headline") ? 1.25 : 1,
+    policeInvestigation: recentStrategies.has("allocate-investigation") ? 0.9 : 1,
+    courtReview: recentStrategies.has("review-court-record") ? 1.3 : 1,
+    cargoTrace: recentStrategies.has("trace-cargo") ? 1.3 : 1,
+    informantCultivation: recentStrategies.has("cultivate-informant") ? 1.2 : 1,
+    murder: 1 + (ruleState.evidenceChain.items.some((item) => item.kind === "physical" || item.kind === "blood-pattern" || item.kind === "weapon-mark") ? 0.1 : 0),
+    "missing-person": 1 + (ruleState.publicOpinion.witnessFear >= 55 ? 0.2 : 0),
+    "ledger-fraud": commerceResources <= 45 ? 1.45 : 1,
+    "false-testimony": ruleState.publicOpinion.witnessFear >= 55 ? 1.45 : 1,
+    "medical-coverup": medicalResources <= 45 ? 1.4 : 1,
+    "family-scandal": familyPressure >= 60 ? 1.45 : 1,
+    "merchant-extortion": commerceResources <= 45 ? 1.35 : 1,
+    "police-misjudgment": policePressure >= 65 ? 1.4 : 1,
+    "media-rumor": mediaPressure >= 60 ? 1.5 : 1,
+    "evidence-tampering": ruleState.evidenceContamination.contamination >= 55 || weakEvidenceCount >= 2 ? 1.5 : 1,
+    "dock-smuggling": dockPressure >= 58 || dockResources <= 45 || ruleState.evidenceChain.items.some((item) => item.kind === "cargo-log") ? 1.6 : 1,
+    "forged-will": familyPressure >= 58 || courtPressure >= 58 || ruleState.evidenceChain.items.some((item) => item.kind === "family-letter") ? 1.5 : 1,
+    "court-intimidation": courtPressure >= 58 || ruleState.evidenceChain.items.some((item) => item.kind === "court-record") ? 1.55 : 1,
+    "blackmail": mediaPressure >= 58 || ruleState.evidenceChain.items.some((item) => item.kind === "telegram" || item.kind === "newspaper-proof") ? 1.45 : 1,
+    "witness-disappearance": ruleState.publicOpinion.witnessFear >= 55 || informantPressure >= 45 || ruleState.evidenceChain.items.some((item) => item.kind === "anonymous-tip") ? 1.5 : 1,
+    "archive-vanishing": courtPressure >= 55 || ruleState.evidenceChain.items.some((item) => item.kind === "court-record" || item.kind === "document") ? 1.45 : 1,
+    "clinic-inventory-gap": medicalResources <= 48 || ruleState.evidenceChain.items.some((item) => item.kind === "medical" || item.kind === "ledger") ? 1.4 : 1,
+    "dock-witness-swap": dockPressure >= 55 || informantPressure >= 42 || ruleState.evidenceChain.items.some((item) => item.kind === "anonymous-tip" || item.kind === "footprint") ? 1.45 : 1,
+    "editorial-coercion": mediaPressure >= 55 || ruleState.evidenceChain.items.some((item) => item.kind === "newspaper-proof" || item.kind === "testimony") ? 1.45 : 1,
+    "household-escrow": familyPressure >= 55 || commerceResources <= 48 || ruleState.evidenceChain.items.some((item) => item.kind === "family-letter" || item.kind === "receipt") ? 1.4 : 1,
+    "permit-forgery": courtPressure >= 52 || commerceResources <= 48 || ruleState.evidenceChain.items.some((item) => item.kind === "court-record" || item.kind === "document") ? 1.4 : 1
+  };
+  const influenceTrace = buildCaseInfluenceTrace(runtime, input.culpritId || "", input.victimId || "", evidenceItems);
+  const timelineEntry: CampaignCaseTimelineEntry = {
+    caseId: input.caseId,
+    tick: runtime.tick,
+    caseType,
+    culpritId: input.culpritId,
+    victimId: input.victimId,
+    locationId: input.locationId,
+    outcome: aftermath.outcome,
+    influence: [
+      ...influenceTrace.institutionIds.slice(0, 3),
+      ...influenceTrace.aftermathIds.slice(0, 3),
+      ...influenceTrace.evidenceChainItemIds.slice(0, 3)
+    ]
+  };
+  lifecycle.caseTimeline = [timelineEntry, ...(lifecycle.caseTimeline || [])].slice(0, 120);
+  lifecycle.caseAftermathLog = [{
+    id: aftermath.id,
+    caseId: input.caseId,
+    outcome: aftermath.outcome,
+    tick: runtime.tick,
+    influence: [
+      `police pressure ${policePressure}`,
+      `media pressure ${mediaPressure}`,
+      `evidence contamination ${ruleState.evidenceContamination.contamination}`
+    ]
+  }, ...lifecycle.caseAftermathLog].slice(0, 40);
+  invalidateTownCandidateCache(runtime);
+  runtime.longChainComputedAtTick = undefined;
+  runtime.updatedAt = new Date().toISOString();
+  return { lifecycle, influenceTrace };
+}
+
+export function resolveCaseInWorld(world: WorldState, runtime: PersistentTownRuntime, input: CaseResolutionInput): CaseResolutionResult {
+  return applyCaseResolutionToWorld(world, runtime, input);
+}
+
+function buildCaseCandidatesFromRuntimeIndexed(
+  world: WorldState,
+  events: WorldEvent[],
+  runtime: PersistentTownRuntime | null | undefined,
+  index?: TownTickIndex
+): CaseCandidate[] {
   const activeRuntime = runtime || getRuntime(world as RuntimeWorld) || createPersistentTownRuntime(world, events);
-  const pressures = computeSocialPressures(world, events);
-  const sortedPressures = pressures.filter((pressure) => pressure.score >= 5).slice(0, 5);
-  const candidates = sortedPressures.map((pressure, index): CaseCandidate => {
-    const riskChainEvents = selectRiskChainEvents(events, pressure);
+  const lifecycle = ensureCaseLifecycle(activeRuntime);
+  const pressures = index?.socialPressures || computeSocialPressures(world, events);
+  const sortedPressures = pressures
+    .filter((pressure) =>
+      pressure.score >= 5 &&
+      ((activeRuntime.campaignCaseTarget || 3) < 30 || ((lifecycle.casePairCooldown?.[`${pressure.npcId}->${pressure.targetId}`] || 0) <= activeRuntime.tick))
+    )
+    .slice(0, 16);
+  const candidates = sortedPressures.map((pressure, candidateIndex): CaseCandidate => {
+    const riskChainEvents = selectRiskChainEvents(events, pressure, index);
     const riskChainEventIds = riskChainEvents.map((event) => event.id);
     const ledgerEntry = activeRuntime.longChainLedger?.find((entry) => entry.culpritId === pressure.npcId && entry.victimId === pressure.targetId);
     const triggeredCase = activeRuntime.triggeredCases?.find((item) => item.culpritId === pressure.npcId && item.victimId === pressure.targetId);
@@ -1954,28 +4045,59 @@ export function buildCaseCandidatesFromRuntime(world: WorldState, events: WorldE
       ...riskChainEvents.map(chainStageForEvent),
       ...Object.entries(chainCompleteness || {}).filter(([, complete]) => complete).map(([stage]) => stage)
     ]));
-    const memoryIds = (world.memories || [])
-      .filter((memory) => riskChainEventIds.includes(memory.eventId) && [pressure.npcId, pressure.targetId].includes(memory.npcId))
+    const memorySource = index
+      ? riskChainEventIds.flatMap((eventId) => index.memoryByEventId.get(eventId) || [])
+      : (world.memories || []).filter((memory) => riskChainEventIds.includes(memory.eventId));
+    const memoryIds = memorySource
+      .filter((memory) => [pressure.npcId, pressure.targetId].includes(memory.npcId))
       .map((memory) => memory.id);
     const observationSupport = observationSupportSummary(activeRuntime, riskChainEventIds, [pressure.npcId, pressure.targetId]);
     const goalIds = activeRuntime.agentStates
       .filter((state) => [pressure.npcId, pressure.targetId].includes(state.npcId))
       .map((state) => `goal:${state.npcId}:${state.currentGoal.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`);
+    const relatedEvidence = (activeRuntime.ruleState?.evidenceChain.items || []).filter((item) =>
+      item.sourceEventIds.some((eventId) => riskChainEventIds.includes(eventId)) ||
+      riskChainEvents.some((event) => event.locationId === item.locationId)
+    ).slice(0, 8);
+    const baseCaseType = inferCaseTypeFromSignals({ events: riskChainEvents, evidenceItems: relatedEvidence, ruleState: activeRuntime.ruleState, culpritId: pressure.npcId, victimId: pressure.targetId });
+    const caseType = chooseCampaignCaseType(baseCaseType, lifecycle, activeRuntime, candidateIndex);
+    const locationId = riskChainEvents[0]?.locationId;
+    const caseTypeCooldownPenalty = ((lifecycle.caseTypeCooldown || {})[caseType] || 0) > activeRuntime.tick ? 1.5 : 0;
+    const locationCooldownPenalty = locationId && (lifecycle.locationCooldown || {})[locationId] > activeRuntime.tick ? 1.25 : 0;
+    const caseTypeWeight = lifecycle.nextCaseWeights[caseType] || 1;
+    const lifecycleWeight = Math.max(
+      lifecycle.nextCaseWeights.rumorAndFear || 1,
+      lifecycle.nextCaseWeights.briberyOrScapegoat || 1,
+      lifecycle.nextCaseWeights.ledgerMotive || 1,
+      lifecycle.nextCaseWeights.evidencePollution || 1,
+      lifecycle.nextCaseWeights.courtDocketPressure || 1,
+      lifecycle.nextCaseWeights.dockCargoPressure || 1,
+      lifecycle.nextCaseWeights.informantNetwork || 1,
+      caseTypeWeight
+    );
+    const npcCooldownPenalty = [pressure.npcId, pressure.targetId].some((npcId) => (lifecycle.caseCooldownByNpcId[npcId] || 0) > activeRuntime.tick)
+      ? (activeRuntime.campaignCaseTarget || 3) >= 30 ? 40 : 2
+      : 0;
+    const cooldownPenalty = npcCooldownPenalty + caseTypeCooldownPenalty + locationCooldownPenalty;
+    const pressureScore = Math.max(0, Math.round(pressure.score * lifecycleWeight - cooldownPenalty));
+    const influenceTrace = buildCaseInfluenceTrace(activeRuntime, pressure.npcId, pressure.targetId, relatedEvidence);
     const candidate: CaseCandidate = {
-      id: `candidate-${world.seed.replace(/[^a-z0-9-]/gi, "-").toLowerCase()}-${activeRuntime.tick}-${index}`,
+      id: `candidate-${world.seed.replace(/[^a-z0-9-]/gi, "-").toLowerCase()}-${activeRuntime.tick}-${candidateIndex}`,
       worldId: world.id,
       tick: activeRuntime.tick,
       status: "forming",
       culpritId: pressure.npcId,
       victimId: pressure.targetId,
-      pressureScore: pressure.score,
+      pressureScore,
       riskChainEventIds,
       memoryIds,
       goalIds,
       chainStageTags,
       maturityScore: ledgerEntry?.maturityScore,
       triggeredEventId: triggeredCase?.eventId || ledgerEntry?.triggeredEventId,
+      caseType,
       chainCompleteness,
+      influenceTrace,
       validation: {
         valid: false,
         hardLogicValid: false,
@@ -1993,7 +4115,7 @@ export function buildCaseCandidatesFromRuntime(world: WorldState, events: WorldE
         warnings: []
       }
     };
-    candidate.validation = validateCaseCandidate(world, events, candidate);
+    candidate.validation = validateCaseCandidateIndexed(world, events, candidate, index);
     candidate.status = candidate.validation.valid ? "valid" : "invalid";
     candidate.motiveGap = candidate.validation.failureReasons?.find((reason) => reason.includes("motive"));
     candidate.meansGap = candidate.validation.failureReasons?.find((reason) => reason.includes("means"));
@@ -2001,16 +4123,74 @@ export function buildCaseCandidatesFromRuntime(world: WorldState, events: WorldE
     candidate.timelineGap = candidate.validation.failureReasons?.find((reason) => reason.includes("timeline"));
     return candidate;
   });
-  return candidates.length ? candidates : activeRuntime.candidates;
+  // Arc convergence may only bind to a candidate that has already survived the
+  // ordinary fairness checks. Re-run the unchanged validator after replacing
+  // that candidate's family so an invalid leading pressure pair cannot hide the
+  // finale and the finale never bypasses route integrity.
+  const convergenceCarrier = activeRuntime.arcConvergence?.status === "ready"
+    ? candidates.find((candidate) => candidate.validation.valid)
+    : undefined;
+  if (convergenceCarrier) {
+    convergenceCarrier.caseType = selectArcConvergenceCaseType(activeRuntime, convergenceCarrier.caseType || "murder", 0);
+    convergenceCarrier.validation = validateCaseCandidateIndexed(world, events, convergenceCarrier, index);
+    convergenceCarrier.status = convergenceCarrier.validation.valid ? "valid" : "invalid";
+    convergenceCarrier.motiveGap = convergenceCarrier.validation.failureReasons?.find((reason) => reason.includes("motive"));
+    convergenceCarrier.meansGap = convergenceCarrier.validation.failureReasons?.find((reason) => reason.includes("means"));
+    convergenceCarrier.exclusionGap = convergenceCarrier.validation.failureReasons?.find((reason) => reason.includes("exclusion"));
+    convergenceCarrier.timelineGap = convergenceCarrier.validation.failureReasons?.find((reason) => reason.includes("timeline"));
+  }
+
+  const rankedCandidates = [...candidates].sort((left, right) => {
+    const chainScore = (candidate: CaseCandidate) => {
+      const completeStages = Object.values(candidate.validation.chainCompleteness || candidate.chainCompleteness || {}).filter(Boolean).length;
+      const evidenceCount = candidate.validation.evidenceChain?.relatedEvidenceIds.length || 0;
+      const warningPenalty = (candidate.validation.evidenceChain?.warningReasons.length || 0) + candidate.validation.warnings.length;
+      const typeCooldownPenalty = ((lifecycle.caseTypeCooldown || {})[candidate.caseType || "murder"] || 0) > activeRuntime.tick ? 4 : 0;
+      const pairCooldownPenalty = ((lifecycle.casePairCooldown || {})[`${candidate.culpritId}->${candidate.victimId}`] || 0) > activeRuntime.tick ? 8 : 0;
+      const locationPenalty = candidate.riskChainEventIds.some((eventId) => {
+        const event = index?.eventById.get(eventId) || events.find((item) => item.id === eventId);
+        return event && ((lifecycle.locationCooldown || {})[event.locationId] || 0) > activeRuntime.tick;
+      }) ? 3 : 0;
+      const influenceBonus = deriveCandidateInfluenceBudget(activeRuntime, candidate.caseType);
+      const convergenceBonus = deriveArcConvergenceCandidateBonus(activeRuntime, candidate.caseType);
+      return (candidate.validation.valid ? 100 : 0) +
+        (candidate.triggeredEventId ? 18 : 0) +
+        completeStages * 8 +
+        Math.min(24, evidenceCount * 4) +
+        Math.min(18, candidate.validation.observationSupport?.supportScore || 0) / 3 +
+        Math.min(18, candidate.validation.memoryConfidence?.supportScore || 0) / 3 +
+        (candidate.maturityScore || 0) +
+        candidate.pressureScore -
+        warningPenalty * 2 -
+        typeCooldownPenalty -
+        pairCooldownPenalty -
+        locationPenalty +
+        influenceBonus +
+        convergenceBonus;
+    };
+    return chainScore(right) - chainScore(left) || right.pressureScore - left.pressureScore || left.id.localeCompare(right.id);
+  });
+  return rankedCandidates.length ? rankedCandidates : activeRuntime.candidates;
 }
 
-export function validateCaseCandidate(world: WorldState, events: WorldEvent[] = [], candidate: CaseCandidate): CaseCandidateValidation {
+export function buildCaseCandidatesFromRuntime(world: WorldState, events: WorldEvent[] = [], runtime?: PersistentTownRuntime | null): CaseCandidate[] {
+  return buildCaseCandidatesFromRuntimeIndexed(world, events, runtime);
+}
+
+function validateCaseCandidateIndexed(
+  world: WorldState,
+  events: WorldEvent[],
+  candidate: CaseCandidate,
+  index?: TownTickIndex
+): CaseCandidateValidation {
   const errors: string[] = [];
   const warnings: string[] = [];
   const runtime = getRuntime(world as RuntimeWorld);
   const culprit = world.npcs.find((npc) => npc.id === candidate.culpritId);
   const victim = world.npcs.find((npc) => npc.id === candidate.victimId);
-  const sourceEvents = events.filter((event) => candidate.riskChainEventIds.includes(event.id));
+  const sourceEvents = index
+    ? candidate.riskChainEventIds.map((eventId) => index.eventById.get(eventId)).filter((event): event is WorldEvent => Boolean(event))
+    : events.filter((event) => candidate.riskChainEventIds.includes(event.id));
   const chainStages = Array.from(new Set(sourceEvents.map(chainStageForEvent)));
   const completeness = candidate.chainCompleteness || emptyChainCompleteness();
   const observationSupport = candidate.validation.observationSupport || observationSupportSummary(runtime, candidate.riskChainEventIds, [candidate.culpritId, candidate.victimId]) || {
@@ -2033,6 +4213,44 @@ export function validateCaseCandidate(world: WorldState, events: WorldEvent[] = 
     (observation.kind === "alibi" || observation.kind === "exclusion") &&
     observation.observerNpcId !== candidate.culpritId
   );
+  const ruleState = runtime ? ensureTownRuleRuntimeState(world, runtime) : undefined;
+  const contamination = ruleState?.evidenceContamination.contamination || 0;
+  const evidenceIntegrity = 100 - contamination;
+  const candidateLocationContamination = sourceEvents.reduce(
+    (max, event) => Math.max(max, ruleState?.evidenceContamination.riskByLocation[event.locationId] || 0),
+    0
+  );
+  const evidenceChainItems = index
+    ? Array.from(new Map([
+        ...candidate.riskChainEventIds.flatMap((eventId) => index.evidenceByEventId.get(eventId) || []),
+        ...sourceEvents.flatMap((event) => index.evidenceByLocationId.get(event.locationId) || [])
+      ].map((item) => [item.id, item])).values())
+    : ruleState?.evidenceChain.items.filter((item) =>
+        item.sourceEventIds.some((eventId) => candidate.riskChainEventIds.includes(eventId)) ||
+        sourceEvents.some((event) => item.locationId === event.locationId)
+      ) || [];
+  const evidenceRules = ruleState?.evidenceRules || [];
+  const evidenceRuleFor = (item: EvidenceChainItem) => evidenceRules.find((rule) => rule.kind === item.kind);
+  const strongEvidenceChain = evidenceChainItems.some((item) => item.provenance === "strong" && item.integrity >= (evidenceRuleFor(item)?.strongProvenanceIntegrityFloor ?? 55));
+  const weakEvidenceChain = evidenceChainItems.length > 0 && evidenceChainItems.every((item) =>
+    item.provenance === "weak" ||
+    item.integrity <= 30 ||
+    item.contamination >= (evidenceRuleFor(item)?.weakContaminationThreshold ?? 72)
+  );
+  const contaminatedEvidenceIds = evidenceChainItems
+    .filter((item) => item.contamination >= (evidenceRuleFor(item)?.weakContaminationThreshold ?? 72) || (item.tamperHistory || []).length)
+    .map((item) => item.id);
+  const evidenceChainSummary: EvidenceChainValidationSummary = {
+    relatedEvidenceIds: evidenceChainItems.map((item) => item.id).slice(0, 12),
+    contaminatedEvidenceIds: contaminatedEvidenceIds.slice(0, 12),
+    strongProvenanceIds: evidenceChainItems.filter((item) => item.provenance === "strong").map((item) => item.id).slice(0, 12),
+    weakProvenanceIds: evidenceChainItems.filter((item) => item.provenance === "weak").map((item) => item.id).slice(0, 12),
+    warningReasons: [],
+    minimumEvidenceCountMet: evidenceChainItems.length >= 3
+  };
+  const lifecycle = runtime ? ensureCaseLifecycle(runtime) : undefined;
+  const institutionPressure = Math.max(0, ...Object.values(lifecycle?.casePressureByInstitutionId || {}));
+  const hasStrongProvenance = (observationSupport.supportScore >= 75 && confidence.supportScore >= 75 && Boolean(candidate.triggeredEventId)) || strongEvidenceChain;
   const hasExclusionSeed = completeness.exclusion || hasObservationExclusion || sourceEvents.some((event) => event.tags.includes("alibi_seed") || event.type === "alibi") || events.some((event) => event.type === "alibi" && !event.actorIds.includes(candidate.culpritId));
   const hasTriggeredCase = Boolean(candidate.triggeredEventId);
   if (!culprit) errors.push("culprit candidate is missing from world");
@@ -2044,8 +4262,16 @@ export function validateCaseCandidate(world: WorldState, events: WorldEvent[] = 
   if (!hasCoverUp) errors.push("cover-up insufficient: no cover-up or staging event");
   if (!memoryScopedTestimony) errors.push("memory support insufficient: no scoped memory links candidate events to testimony");
   if (!hasTriggeredCase) errors.push("real case trigger missing: six-stage chain has not produced a death or crime event");
+  if (!evidenceChainSummary.minimumEvidenceCountMet) errors.push("evidence chain insufficient: fewer than three related evidence items");
+  if ((contamination >= 82 || candidateLocationContamination >= 82 || evidenceIntegrity <= 18 || weakEvidenceChain) && !hasStrongProvenance) errors.push("evidence contamination too high: source chain is no longer fair-play reliable");
   if (candidate.riskChainEventIds.length < 2) warnings.push("timeline is shallow: fewer than two risk-chain events");
   if (!hasExclusionSeed) warnings.push("non-culprit exclusion seed missing: no alibi or exclusion-stage event yet");
+  if (contamination >= 55 || candidateLocationContamination >= 55) warnings.push("evidence contamination is high: evidence chain needs explicit provenance");
+  if (institutionPressure >= 70) warnings.push("institution pressure is high: next-case weighting may bias witness behavior and evidence reliability");
+  if (evidenceIntegrity <= 45 && hasStrongProvenance) warnings.push("evidence integrity is low but provenance is strong enough to remain reviewable");
+  if (strongEvidenceChain) warnings.push("evidence chain provenance is strong enough to preserve fair-play reviewability");
+  if (contaminatedEvidenceIds.length && strongEvidenceChain) warnings.push("contaminated evidence remains playable because provenance is strong");
+  evidenceChainSummary.warningReasons = warnings.filter((warning) => warning.includes("evidence") || warning.includes("provenance") || warning.includes("contaminated"));
   const failureReasons = [
     !hasMotive ? "missing motive stage: pressure chain is too weak" : "",
     !hasMeans ? "missing means stage: no resource or means-access event" : "",
@@ -2053,10 +4279,12 @@ export function validateCaseCandidate(world: WorldState, events: WorldEvent[] = 
     !hasCoverUp ? "missing cover-up stage: no staging or cover-up event" : "",
     !memoryScopedTestimony ? "missing memory support: candidate has no scoped testimony memory" : "",
     !hasTriggeredCase ? "missing real case trigger: no death or crime event has been written yet" : "",
+    !evidenceChainSummary.minimumEvidenceCountMet ? "missing evidence chain depth: fewer than three related evidence items" : "",
+    (contamination >= 82 || candidateLocationContamination >= 82 || evidenceIntegrity <= 18 || weakEvidenceChain) && !hasStrongProvenance ? "evidence contamination too high: source chain is no longer fair-play reliable" : "",
     candidate.riskChainEventIds.length < 2 ? "missing timeline depth: fewer than two risk-chain events" : "",
     !hasExclusionSeed ? "missing non-culprit exclusion seed: no alibi or exclusion event" : ""
   ].filter(Boolean);
-  const valid = errors.length === 0 && hasMotive && hasMeans && hasOpportunity && hasCoverUp && memoryScopedTestimony && hasExclusionSeed && hasTriggeredCase;
+  const valid = errors.length === 0 && hasMotive && hasMeans && hasOpportunity && hasCoverUp && memoryScopedTestimony && hasExclusionSeed && hasTriggeredCase && evidenceChainSummary.minimumEvidenceCountMet;
   return {
     valid,
     hardLogicValid: false,
@@ -2076,10 +4304,15 @@ export function validateCaseCandidate(world: WorldState, events: WorldEvent[] = 
     },
     memoryConfidence: confidence,
     observationSupport,
+    evidenceChain: evidenceChainSummary,
     failureReasons,
     errors,
     warnings
   };
+}
+
+export function validateCaseCandidate(world: WorldState, events: WorldEvent[] = [], candidate: CaseCandidate): CaseCandidateValidation {
+  return validateCaseCandidateIndexed(world, events, candidate);
 }
 
 function uniqueIds(ids: Array<string | undefined>) {
@@ -2210,7 +4443,14 @@ export function buildPersistentCaseExtractionView(world: WorldState, events: Wor
   };
 }
 
-export function extractPlayableCaseFromCandidate(world: WorldState, events: WorldEvent[] = [], candidate: CaseCandidate): { world: WorldState; events: WorldEvent[]; activeCase: CaseFromLog; candidate: CaseCandidate } {
+export type CaseResolutionMode = "preview" | "resolve";
+
+export function extractPlayableCaseFromCandidate(
+  world: WorldState,
+  events: WorldEvent[] = [],
+  candidate: CaseCandidate,
+  options: { resolutionMode?: CaseResolutionMode } = {}
+): { world: WorldState; events: WorldEvent[]; activeCase: CaseFromLog; candidate: CaseCandidate } {
   let tick = { world, events: [] as WorldEvent[] };
   let allEvents = events;
   const extractionView = buildPersistentCaseExtractionView(world, events, candidate);
@@ -2256,6 +4496,26 @@ export function extractPlayableCaseFromCandidate(world: WorldState, events: Worl
       warnings: validation.warnings
     }
   };
+  const runtime = (caseWorld as RuntimeWorld).persistentRuntime || (world as RuntimeWorld).persistentRuntime;
+  if (runtime?.worldLeadOutcome && runtime.worldLeadOutcome.caseId !== activeCase.id) {
+    settleWorldLeadOutcome(caseWorld, runtime, runtime.worldLeadOutcome.caseId);
+  }
+  if (runtime && options.resolutionMode === "resolve") {
+    const resolution = resolveCaseInWorld(caseWorld, runtime, {
+      caseId: activeCase.id,
+      outcome: validation.valid ? "extracted" : "failed",
+      culpritId: candidate.culpritId,
+      victimId: candidate.victimId,
+      caseType: candidate.caseType,
+      locationId: events.find((event) => event.id === candidate.triggeredEventId)?.locationId,
+      evidenceItemIds: candidate.validation.evidenceChain?.relatedEvidenceIds,
+      valid: validation.valid
+    });
+    nextCandidate.influenceTrace = resolution.influenceTrace;
+    runtime.updatedAt = new Date().toISOString();
+  } else if (runtime) {
+    nextCandidate.influenceTrace = buildCaseInfluenceTrace(runtime, candidate.culpritId, candidate.victimId);
+  }
   return { world: { ...tick.world, activeCaseId: activeCase.id }, events: allEvents, activeCase, candidate: nextCandidate };
 }
 
@@ -2265,7 +4525,12 @@ export function buildAgentDecisionTrace(runtime: PersistentTownRuntime, decision
 
 export function buildTownEmergenceQueue(world: WorldState, events: WorldEvent[] = [], runtime?: PersistentTownRuntime | null): TownEmergenceQueue {
   const activeRuntime = runtime || getRuntime(world as RuntimeWorld) || createPersistentTownRuntime(world, events);
-  const candidates = buildCaseCandidatesFromRuntime(world, events, activeRuntime);
+  const reusable = reusableTownCandidates(activeRuntime);
+  const candidates = reusable || buildCaseCandidatesFromRuntime(world, events, activeRuntime);
+  if (!reusable) {
+    storeTownCandidates(activeRuntime, candidates);
+    if (activeRuntime.performance) activeRuntime.performance.counters.candidateRebuildCount += 1;
+  }
   const validCount = candidates.filter((candidate) => candidate.validation.valid).length;
   const blockedCount = candidates.filter((candidate) => !candidate.validation.valid).length;
   return {
@@ -2398,6 +4663,18 @@ export function buildTownSituationBrief(
     urgency,
     headline,
     nextAction: activeQueue.nextAction,
+    worldArcDirective: toWorldArcDirectivePublicSummary(activeRuntime),
+    worldPressureCascade: toWorldPressureCascadePublicSummary(activeRuntime),
+    playerResourceCommitment: activeRuntime.playerResourceCommitmentSummary || toPlayerResourceCommitmentPublicSummary(activeRuntime),
+    factionRelationship: activeRuntime.factionRelationshipSummary || toFactionRelationshipPublicSummary(activeRuntime),
+    worldEventOffer: activeRuntime.worldEventOfferSummary || toWorldEventOfferPublicSummary(activeRuntime),
+    investigatorProgression: activeRuntime.investigatorProgressionSummary || toInvestigatorProgressionPublicSummary(activeRuntime),
+    campaignRecovery: activeRuntime.campaignRecoverySummary || toCampaignRecoveryPublicSummary(activeRuntime),
+    arcConvergence: activeRuntime.arcConvergenceSummary || toArcConvergencePublicSummary(activeRuntime),
+    campaignSession: activeRuntime.campaignSessionSummary || toCampaignSessionPublicSummary(activeRuntime),
+    campaignFinaleDebrief: activeRuntime.campaignFinaleDebrief || toCampaignFinaleDebriefPublicSummary(activeRuntime),
+    townSocialResponse: activeRuntime.townSocialResponseSummary || toTownSocialResponsePublicSummary(world, activeRuntime),
+    worldInfluenceBudget: toWorldInfluenceBudgetPublicSummary(activeRuntime),
     hotLocations,
     riskAgents,
     actionMix,
@@ -2414,16 +4691,11 @@ export function buildTownSituationBrief(
 }
 
 function snapshotRuntime(runtime: PersistentTownRuntime): Omit<PersistentTownRuntime, "snapshots" | "scenarioRuns"> {
-  const copy = cloneWorld(runtime as unknown as WorldState) as unknown as PersistentTownRuntime;
-  delete copy.snapshots;
-  delete copy.scenarioRuns;
-  return copy;
+  return cloneTownSnapshotRuntime(runtime);
 }
 
 function snapshotWorld(world: WorldState) {
-  const copy = cloneWorld(world);
-  delete copy.persistentRuntime;
-  return copy as WorldState;
+  return cloneTownSnapshotWorld(world);
 }
 
 function uniqueAdded(after: string[], before: string[]) {
@@ -2438,13 +4710,17 @@ function arrayChanged(before: string[], after: string[]) {
 export function createTownStateSnapshot(
   world: WorldState,
   events: WorldEvent[] = [],
-  options: { label?: string; scenarioId?: string; branchId?: string; id?: string } = {}
+  options: { label?: string; scenarioId?: string; branchId?: string; id?: string; mode?: TownSnapshotMode } = {}
 ): TownStateSnapshot {
   const runtimeWorld = world as RuntimeWorld;
   const runtime = runtimeWorld.persistentRuntime || createPersistentTownRuntime(world, events);
   const createdAt = new Date().toISOString();
   const suffix = options.branchId || "main";
-  return {
+  const mode = options.mode || "checkpoint";
+  const eventSource = mode === "summary" ? events.slice(-200) : events;
+  const memorySource = mode === "summary" ? (world.memories || []).slice(-200) : (world.memories || []);
+  const observationSource = mode === "summary" ? (runtime.eventObservations || []).slice(-200) : (runtime.eventObservations || []);
+  const snapshot: TownStateSnapshot = {
     id: options.id || `snapshot-${world.id}-${runtime.tick}-${suffix}-${runtime.snapshots?.length || 0}`,
     worldId: world.id,
     runtimeId: runtime.id,
@@ -2487,16 +4763,22 @@ export function createTownStateSnapshot(
       triggeredEventId: candidate.triggeredEventId,
       chainCompleteness: candidate.chainCompleteness || candidate.validation.chainCompleteness
     })),
-    eventIds: events.map((event) => event.id),
-    memoryIds: (world.memories || []).map((memory) => memory.id),
-    observationIds: (runtime.eventObservations || []).map((observation) => observation.id),
+    eventIds: eventSource.map((event) => event.id),
+    memoryIds: memorySource.map((memory) => memory.id),
+    observationIds: observationSource.map((observation) => observation.id),
     interventionIds: runtime.interventions.map((intervention) => intervention.id),
+    ruleSummary: buildTownRuleSnapshotSummary(ensureTownRuleRuntimeState(world, runtime)),
+    mode,
+    rollbackEligible: mode === "checkpoint",
     createdAt,
-    checkpoint: {
+  };
+  if (mode === "checkpoint") {
+    snapshot.checkpoint = {
       world: snapshotWorld(world),
       runtime: snapshotRuntime(runtime)
-    }
-  };
+    };
+  }
+  return snapshot;
 }
 
 export function diffTownStateSnapshots(from: TownStateSnapshot, to: TownStateSnapshot): TownStateDiff {
@@ -2562,7 +4844,8 @@ export function diffTownStateSnapshots(from: TownStateSnapshot, to: TownStateSna
     changedAgents,
     changedLocations,
     candidateStatusChanges,
-    branchOnlyInterventionIds: uniqueAdded(to.interventionIds, from.interventionIds)
+    branchOnlyInterventionIds: uniqueAdded(to.interventionIds, from.interventionIds),
+    ruleChanges: diffTownRuleSnapshots(from.ruleSummary, to.ruleSummary)
   };
 }
 
@@ -2574,6 +4857,7 @@ export function rollbackTownRuntimeToSnapshot(world: WorldState, snapshot: TownS
   const runtime: PersistentTownRuntime = {
     ...snapshotRuntime(snapshot.checkpoint.runtime as PersistentTownRuntime),
     status: "paused",
+    scenarioPresets: currentRuntime?.scenarioPresets || (snapshot.checkpoint.runtime as PersistentTownRuntime).scenarioPresets || [],
     scenarioRuns: currentRuntime?.scenarioRuns || [],
     snapshots: currentRuntime?.snapshots || [],
     updatedAt: new Date().toISOString()
@@ -2594,8 +4878,26 @@ function normalizeScenarioConfig(world: WorldState, config: ScenarioConfig): Req
   };
 }
 
+function inheritScenarioRuntimeContext(source: PersistentTownRuntime | null, target: PersistentTownRuntime) {
+  if (!source) return target;
+  target.scenarioPresets = source.scenarioPresets;
+  target.scenarioPacks = source.scenarioPacks;
+  target.mapPacks = source.mapPacks;
+  target.packRegistry = source.packRegistry;
+  target.currentScenarioPackId = source.currentScenarioPackId;
+  target.currentMapPackId = source.currentMapPackId;
+  target.currentRuleCatalogId = source.currentRuleCatalogId;
+  target.currentExperiment = source.currentExperiment;
+  target.scenarioRuns = source.scenarioRuns;
+  target.runJobs = source.runJobs;
+  target.benchmarkRuns = source.benchmarkRuns;
+  target.ruleState = source.ruleState;
+  return target;
+}
+
 function prepareScenarioStart(world: WorldState, events: WorldEvent[], config: ScenarioConfig) {
   let nextWorld = cloneWorld(world);
+  const sourceRuntime = getRuntime(nextWorld);
   nextWorld.seed = config.seed || world.seed;
   if (config.worldOptions?.mode) nextWorld.mode = config.worldOptions.mode;
   if (config.worldOptions?.timelineHours) nextWorld.timelineHours = config.worldOptions.timelineHours;
@@ -2610,7 +4912,10 @@ function prepareScenarioStart(world: WorldState, events: WorldEvent[], config: S
     nextWorld = preSim.world as RuntimeWorld;
     nextEvents = [...nextEvents, ...preSim.events];
   }
-  nextWorld.persistentRuntime = createPersistentTownRuntime(nextWorld, nextEvents);
+  nextWorld.persistentRuntime = inheritScenarioRuntimeContext(
+    sourceRuntime,
+    createPersistentTownRuntime(nextWorld, nextEvents)
+  );
   return { world: nextWorld, events: nextEvents };
 }
 
@@ -2621,7 +4926,10 @@ function runScenarioBranch(
   branch: ScenarioBranchConfig
 ) {
   let branchWorld = cloneWorld(startWorld);
-  branchWorld.persistentRuntime = createPersistentTownRuntime(branchWorld, startEvents);
+  branchWorld.persistentRuntime = inheritScenarioRuntimeContext(
+    getRuntime(branchWorld),
+    createPersistentTownRuntime(branchWorld, startEvents)
+  );
   let branchEvents = [...startEvents];
   const startSnapshot = createTownStateSnapshot(branchWorld, branchEvents, {
     id: `snapshot-${scenarioId}-${branch.id}-start`,
@@ -2794,24 +5102,42 @@ export function applyTownRuntimeIntervention(world: WorldState, intervention: Om
   return { world: nextWorld, runtime, intervention: created };
 }
 
-function createTownTickContext(world: RuntimeWorld, baseEvents: WorldEvent[], runtime: PersistentTownRuntime, createdEvents: WorldEvent[]): TownTickContext {
+function createTownTickContext(
+  world: RuntimeWorld,
+  baseEvents: WorldEvent[],
+  runtime: PersistentTownRuntime,
+  createdEvents: WorldEvent[],
+  executionPolicy: TownExecutionPolicy
+): TownTickContext {
   runtime.simulationPhases = [...TOWN_TICK_PHASES];
   runtime.pressureLedger ||= [];
   runtime.eventObservations ||= [];
   runtime.memoryPropagations ||= [];
   runtime.consequences ||= [];
+  ensureTownRuleRuntimeState(world, runtime);
+  const allEvents = [...baseEvents, ...createdEvents];
+  const indexEvents = executionPolicy.indexEventLimit ? allEvents.slice(-executionPolicy.indexEventLimit) : allEvents;
+  const index = createTownTickIndex(world, indexEvents, runtime);
+  if (runtime.performance) runtime.performance.counters.socialPressureRebuildCount += 1;
   return {
     world,
     baseEvents,
     runtime,
-    allEvents: [...baseEvents, ...createdEvents],
+    allEvents,
     createdEvents,
     createdMemories: [],
     createdObservations: [],
     createdConsequences: [],
+    actionPlans: [],
     decisionIds: [],
-    phases: [...TOWN_TICK_PHASES]
+    phases: [...TOWN_TICK_PHASES],
+    index,
+    executionPolicy
   };
+}
+
+function tickEventWindow(ctx: TownTickContext) {
+  return ctx.executionPolicy.indexEventLimit ? ctx.allEvents.slice(-ctx.executionPolicy.indexEventLimit) : ctx.allEvents;
 }
 
 function advanceTownClock(ctx: TownTickContext) {
@@ -2825,7 +5151,7 @@ function advanceTownClock(ctx: TownTickContext) {
 
 function phaseObserveTown(ctx: TownTickContext) {
   decayLocationProfiles(ctx.world, ctx.runtime);
-  for (const pressure of computeSocialPressures(ctx.world, ctx.allEvents).filter((item) => item.score >= 3).slice(0, 6)) {
+  for (const pressure of ctx.index.socialPressures.filter((item) => item.score >= 3).slice(0, 6)) {
     ctx.runtime.pressureLedger!.push({
       tick: ctx.runtime.tick,
       npcId: pressure.npcId,
@@ -2838,35 +5164,245 @@ function phaseObserveTown(ctx: TownTickContext) {
   ctx.runtime.pressureLedger = ctx.runtime.pressureLedger!.slice(-120);
 }
 
+function phasePropagateExistingMemory(ctx: TownTickContext) {
+  ctx.runtime.memoryPropagations ||= [];
+}
+
 function phaseUpdateGoals(ctx: TownTickContext) {
   ensureSocialProfiles(ctx.world, ctx.runtime);
+  const events = tickEventWindow(ctx);
   ctx.runtime.agentStates = ctx.world.npcs
-    .map((npc) => deriveNpcAgentState(ctx.world, npc, ctx.allEvents, ctx.runtime));
+    .map((npc) => deriveNpcAgentStateIndexed(ctx.world, npc, events, ctx.runtime, ctx.index));
+  ctx.index.agentStateByNpcId = new Map(ctx.runtime.agentStates.map((state) => [state.npcId, state]));
 }
 
 function selectTickActors(ctx: TownTickContext) {
   const living = ctx.world.npcs.filter((npc) => npc.alive);
   const random = makeRandom(`${ctx.world.seed}:persistent:${ctx.runtime.tick}`);
   const actorCount = Math.min(3, living.length);
+  const events = tickEventWindow(ctx);
+  const recentActorCounts = new Map<string, number>();
+  for (const trace of ctx.runtime.decisionTraces.slice(-12)) {
+    recentActorCounts.set(trace.npcId, (recentActorCounts.get(trace.npcId) || 0) + 1);
+  }
   return [...living].sort((a, b) => {
-    const aState = deriveNpcAgentState(ctx.world, a, ctx.allEvents, ctx.runtime);
-    const bState = deriveNpcAgentState(ctx.world, b, ctx.allEvents, ctx.runtime);
-    return bState.goalPriority + random() - (aState.goalPriority + random());
+    const aState = ctx.index.agentStateByNpcId.get(a.id) || deriveNpcAgentStateIndexed(ctx.world, a, events, ctx.runtime, ctx.index);
+    const bState = ctx.index.agentStateByNpcId.get(b.id) || deriveNpcAgentStateIndexed(ctx.world, b, events, ctx.runtime, ctx.index);
+    const actorScore = (npc: NPCProfile, state: NpcAgentState) => {
+      const recentPenalty = (recentActorCounts.get(npc.id) || 0) * 1.8;
+      const unresolvedPressure = (ctx.index.pressureByNpcId.get(npc.id)?.[0]?.score || 0) / 2;
+      const chainNeed = chainStageNeedForActor(ctx.runtime, npc.id) * 1.35;
+      const rhythm = ((ctx.runtime.tick + npc.id.length + state.currentPlan.length) % 7) / 10;
+      return state.goalPriority + unresolvedPressure + chainNeed + rhythm - recentPenalty + random() / 4;
+    };
+    return actorScore(b, bState) - actorScore(a, aState);
   }).slice(0, actorCount);
+}
+
+function recentSelectedActionKinds(runtime: PersistentTownRuntime, window = 12) {
+  return runtime.decisionTraces.slice(-window)
+    .map((trace) => trace.candidates.find((candidate) => candidate.id === trace.selectedCandidateId)?.kind)
+    .filter((kind): kind is NpcActionKind => Boolean(kind));
+}
+
+function chainStageNeedForActor(runtime: PersistentTownRuntime, npcId: string) {
+  const related = (runtime.longChainLedger || [])
+    .filter((entry) => entry.culpritId === npcId || entry.victimId === npcId)
+    .sort((left, right) => right.maturityScore - left.maturityScore)
+    .slice(0, 3);
+  if (!related.length) return 0;
+  const missing = related.reduce((sum, entry) => sum + (Object.keys(emptyChainCompleteness()) as CaseChainStage[])
+    .filter((stage) => stage === "memory"
+      ? (entry.memoryConfidence?.supportScore || 0) < 55
+      : entry.stageEventIds[stage].length === 0)
+    .length, 0);
+  return Math.min(5, missing);
+}
+
+function actionStageNeed(runtime: PersistentTownRuntime, kind: NpcActionKind) {
+  const stage = chainStageForAction(kind);
+  if (!stage) return 0;
+  const ledger = (runtime.longChainLedger || [])
+    .filter((entry) => !entry.complete)
+    .sort((left, right) => right.maturityScore - left.maturityScore)
+    .slice(0, 5);
+  if (!ledger.length) return 0;
+  const caseStage: CaseChainStage | null =
+    stage === "alibi" ? "exclusion" :
+    stage === "motive" || stage === "means" || stage === "opportunity" || stage === "cover-up" || stage === "memory" ? stage :
+    null;
+  if (!caseStage) return 0;
+  return ledger.reduce((sum, entry) => {
+    const complete = caseStage === "memory"
+      ? (entry.memoryConfidence?.supportScore || 0) >= 55
+      : entry.stageEventIds[caseStage].length > 0;
+    return sum + (complete ? 0 : 1);
+  }, 0);
+}
+
+function rulePressureActionNeed(runtime: PersistentTownRuntime, kind: NpcActionKind) {
+  const ruleState = runtime.ruleState;
+  if (!ruleState) return 0;
+  const institutionNeed =
+    kind === "investigate" || kind === "seek-alibi"
+      ? Math.ceil(((ruleState.institutions.find((item) => item.kind === "police")?.pressure || 0) + ruleState.evidenceContamination.contamination) / 38)
+      : kind === "spread-rumor"
+        ? Math.ceil((ruleState.publicOpinion.mediaPressure + ruleState.publicOpinion.rumorVelocity) / 42)
+        : kind === "obtain-resource"
+          ? Math.ceil(Math.max(0, 55 - Math.min(...ruleState.institutions.map((item) => item.resources))) / 10)
+          : kind === "cover-up" || kind === "hide-trace"
+            ? Math.ceil((ruleState.evidenceContamination.contamination + ruleState.publicOpinion.witnessFear) / 44)
+            : kind === "pressure" || kind === "confront"
+              ? Math.ceil((ruleState.publicOpinion.heat + ruleState.publicOpinion.witnessFear) / 48)
+              : 0;
+  return Math.min(4, Math.max(0, institutionNeed));
 }
 
 function selectActionCandidate(runtime: PersistentTownRuntime, npc: NPCProfile, candidates: NpcActionCandidate[], actorIndex: number) {
   const legalCandidates = candidates.filter((candidate) => candidate.legal).sort((a, b) => b.score.total - a.score.total);
-  const topCandidate = legalCandidates[0] || candidates[0];
-  const phaseKinds: NpcActionKind[] = ["pressure", "obtain-resource", "investigate", "cover-up", "spread-rumor", "seek-alibi"];
-  const phasePreferred = legalCandidates.find((candidate) => candidate.kind === phaseKinds[(runtime.tick + actorIndex) % phaseKinds.length]);
+  const topCandidate = strongestLegalAction(candidates);
   const biasedCandidate = legalCandidates.find((candidate) => (candidate.score.directorBias || 0) > 0);
-  return biasedCandidate || (phasePreferred && phasePreferred.score.total >= topCandidate.score.total - 12 ? phasePreferred : topCandidate);
+  if (biasedCandidate) return biasedCandidate;
+  if (!legalCandidates.length) return topCandidate;
+  const recentActionCounts = new Map<NpcActionKind, number>();
+  for (const kind of recentSelectedActionKinds(runtime)) {
+    recentActionCounts.set(kind, (recentActionCounts.get(kind) || 0) + 1);
+  }
+  const stageTieBreak = (candidate: NpcActionCandidate) => {
+    const recentPenalty = (recentActionCounts.get(candidate.kind) || 0) * 2.8;
+    const stageNeed = actionStageNeed(runtime, candidate.kind) * 4;
+    const ruleNeed = rulePressureActionNeed(runtime, candidate.kind) * 1.5;
+    const worldSystemNeed = candidate.score.worldSystemBias || 0;
+    const actorRhythm = ((runtime.tick + actorIndex + candidate.kind.length + npc.id.length) % 5) / 10;
+    return candidate.score.total + stageNeed + ruleNeed + worldSystemNeed + actorRhythm - recentPenalty;
+  };
+  const eligibleBand = legalCandidates.filter((candidate) => candidate.score.total >= topCandidate.score.total - 12);
+  const selected = [...eligibleBand].sort((left, right) => stageTieBreak(right) - stageTieBreak(left) || right.score.total - left.score.total || left.id.localeCompare(right.id))[0] || topCandidate;
+  recordSelectedWorldSystemBias(runtime, selected);
+  return selected;
 }
 
-function phaseExecuteAgentAction(ctx: TownTickContext, npc: NPCProfile, selectedActors: NPCProfile[], actorIndex: number) {
-  const candidates = scoreNpcActionCandidates(ctx.world, npc, ctx.allEvents, ctx.runtime);
-  const selected = selectActionCandidate(ctx.runtime, npc, candidates, actorIndex);
+function phaseScoreActions(ctx: TownTickContext) {
+  const events = tickEventWindow(ctx);
+  ctx.actionPlans = selectTickActors(ctx).map((npc, actorIndex) => {
+    const candidates = scoreNpcActionCandidatesIndexed(ctx.world, npc, events, ctx.runtime, ctx.index);
+    return {
+      npc,
+      actorIndex,
+      candidates,
+      selected: selectActionCandidate(ctx.runtime, npc, candidates, actorIndex)
+    };
+  });
+}
+
+function enqueueCompletedCampaignRecoverySocialResponses(world: WorldState, runtime: PersistentTownRuntime) {
+  for (const recovery of runtime.campaignRecoveries?.items || []) {
+    if (recovery.status !== "completed") continue;
+    const deltas = {
+      resourceAvailableDelta: recovery.appliedResourceDelta || 0,
+      resourcePressureDelta: recovery.appliedPressureDelta || 0,
+      relationshipDelta: recovery.appliedStandingDelta || 0,
+      opportunityDelta: recovery.appliedOpportunityDelta || 0
+    };
+    if (!townSocialResponseActualDelta(deltas)) continue;
+    const institution = [...(runtime.ruleState?.institutions || [])]
+      .filter((item) => item.kind === recovery.factionKind)
+      .sort((left, right) => left.id.localeCompare(right.id))[0];
+    enqueueTownSocialResponse(world, runtime, {
+      sourceKey: recovery.id,
+      sourceKind: "campaign-recovery",
+      direction: deriveTownSocialResponseDirectionFromDeltas(deltas),
+      institutionId: institution?.id,
+      institutionKind: recovery.factionKind
+    });
+  }
+}
+
+function enqueueCompletedWorldEventOfferSocialResponses(world: WorldState, runtime: PersistentTownRuntime) {
+  const ruleState = ensureTownRuleRuntimeState(world, runtime);
+  for (const offer of runtime.worldEventOffers?.items || []) {
+    if (offer.status !== "completed" || !offer.longActionId) continue;
+    const action = ruleState.longActions.find((item) => item.id === offer.longActionId);
+    if (!action || action.status !== "completed") continue;
+    enqueueTownSocialResponse(world, runtime, {
+      sourceKey: offer.id,
+      sourceKind: "world-event-offer",
+      direction: deriveTownSocialResponseDirectionFromCompletedAction(ruleState, action),
+      institutionId: offer.institutionId,
+      institutionKind: offer.response.institutionKind,
+      anchorNpcId: offer.actorId,
+      locationId: action.targetLocationId
+    });
+  }
+}
+
+function phaseAdvanceLongActions(ctx: TownTickContext) {
+  reconcileCampaignRecovery(ctx.runtime);
+  advanceTownLongActions(ctx.world, ensureTownRuleRuntimeState(ctx.world, ctx.runtime), ctx.allEvents, ctx.runtime.tick);
+  const directiveEvents = reconcileWorldArcDirectiveLongAction(ctx.world, ctx.runtime);
+  const offerEvents = reconcileWorldEventOfferLongAction(ctx.world, ctx.runtime);
+  enqueueCompletedCampaignRecoverySocialResponses(ctx.world, ctx.runtime);
+  enqueueCompletedWorldEventOfferSocialResponses(ctx.world, ctx.runtime);
+  advanceTownSocialResponse(ctx.world, ctx.runtime);
+  for (const event of [...directiveEvents, ...offerEvents]) {
+    ctx.createdEvents.push(event);
+    addEventToTownTickIndex(ctx.index, event);
+  }
+  if (directiveEvents.length || offerEvents.length) ctx.allEvents = [...ctx.baseEvents, ...ctx.createdEvents];
+}
+
+function phaseInstitutionStrategy(ctx: TownTickContext) {
+  const ruleState = ensureTownRuleRuntimeState(ctx.world, ctx.runtime);
+  const directiveStart = startScheduledWorldArcDirective(ctx.world, ctx.allEvents, ctx.runtime);
+  const offerStart = startAcceptedWorldEventOffer(ctx.world, [...ctx.allEvents, ...directiveStart.events], ctx.runtime);
+  for (const event of [...directiveStart.events, ...offerStart.events]) {
+    ctx.createdEvents.push(event);
+    addEventToTownTickIndex(ctx.index, event);
+  }
+  const decisions = advanceTownInstitutionStrategies(ctx.world, ruleState, ctx.runtime.tick, ctx.runtime.worldSystemHints, {
+    excludeInstitutionIds: Array.from(new Set([...directiveStart.excludedInstitutionIds, ...offerStart.excludedInstitutionIds]))
+  });
+  for (const decision of decisions.filter((item) => item.strategy !== "hold-position")) {
+    const institution = ruleState.institutions.find((item) => item.id === decision.institutionId);
+    const strategyTags =
+      decision.strategy === "review-court-record" ? ["court", "record", "testimony"] :
+      decision.strategy === "trace-cargo" ? ["dock", "cargo", "receipt"] :
+      decision.strategy === "cultivate-informant" ? ["informant", "tip", "witness"] :
+      [];
+    const event: WorldEvent = {
+      id: `institution-event-${decision.id}`,
+      worldId: ctx.world.id,
+      day: ctx.runtime.currentDay,
+      time: ctx.runtime.currentTime,
+      type: decision.strategy === "chase-headline" || decision.strategy === "cultivate-informant" ? "witness" :
+        decision.strategy === "audit-ledger" || decision.strategy === "trace-cargo" || decision.strategy === "review-court-record" ? "obtain_item" :
+        "forensic_clue",
+      actorIds: decision.targetNpcId ? [decision.targetNpcId] : [],
+      locationId: decision.targetLocationId || ctx.world.locations[0]?.id || "town-square",
+      summary: `${institution?.name || decision.institutionId} chooses ${decision.strategy}.`,
+      publicSummary: `${institution?.name || "A town institution"} shifts its case posture.`,
+      hidden: false,
+      relatedCharacterIds: decision.targetNpcId ? [decision.targetNpcId] : [],
+      tags: ["institution_strategy", decision.strategy, institution?.kind || "institution", ...strategyTags],
+      causedByEventIds: [],
+      explanation: decision.reason
+    };
+    decision.eventId = event.id;
+    ctx.createdEvents.push(event);
+  }
+  ctx.allEvents = [...ctx.baseEvents, ...ctx.createdEvents];
+}
+
+function phaseApplyActionEvolution(ctx: TownTickContext, npc: NPCProfile, selected: NpcActionCandidate, event: WorldEvent, agent: NpcAgentState, consequence: AgentConsequenceSummary, memoryIds: string[]) {
+  applyConsequenceToAgent(agent, consequence, event, selected, memoryIds);
+  evolveRelationship(ctx.world, npc.id, selected);
+  updateSocialAfterAction(ctx.world, ctx.runtime, npc.id, selected, event);
+  updateLocationAfterAction(ctx.world, ctx.runtime, selected, event);
+  agent.socialProfile = deriveNpcAgentStateIndexed(ctx.world, npc, tickEventWindow(ctx), ctx.runtime, ctx.index).socialProfile;
+}
+
+function phaseExecuteAgentAction(ctx: TownTickContext, plan: TownTickActionPlan) {
+  const { npc, candidates, selected } = plan;
   const traceId = `decision-${ctx.world.id}-${ctx.runtime.tick}-${npc.id}`;
   const intervention = ctx.runtime.interventions.find((item) =>
     item.actorId === npc.id &&
@@ -2875,9 +5411,14 @@ function phaseExecuteAgentAction(ctx: TownTickContext, npc: NPCProfile, selected
   );
   const definition = getTownActionDefinition(selected.kind);
   const beforeObservationIds = new Set((ctx.runtime.eventObservations || []).map((observation) => observation.id));
-  const event = definition.execute({ world: ctx.world, runtime: ctx.runtime, npc, candidate: selected, intervention, allEvents: ctx.allEvents });
+  const event = definition.execute({ world: ctx.world, runtime: ctx.runtime, npc, candidate: selected, intervention, allEvents: tickEventWindow(ctx) });
   ctx.createdEvents.push(event);
+  addEventToTownTickIndex(ctx.index, event);
   ctx.allEvents = [...ctx.baseEvents, ...ctx.createdEvents];
+  const ruleState = ensureTownRuleRuntimeState(ctx.world, ctx.runtime);
+  updateTownRulePressureFromEvent(ruleState, event, ctx.runtime.tick);
+  const longAction = maybeStartLongActionFromCandidate(ctx.world, ruleState, npc, selected, ctx.allEvents, ctx.runtime.tick);
+  if (longAction) selected.score.reasons.push(`started long action ${longAction.kind}`);
   const participantMemories = observeEventParticipants(ctx.world, ctx.runtime, event, npc.id, selected.targetNpcId);
   const propagatedMemories = propagateEventMemories(ctx.world, ctx.runtime, event, npc.id, selected.targetNpcId);
   const memoryIds = [...participantMemories, ...propagatedMemories].map((item) => item.id);
@@ -2895,7 +5436,7 @@ function phaseExecuteAgentAction(ctx: TownTickContext, npc: NPCProfile, selected
     day: ctx.runtime.currentDay,
     time: ctx.runtime.currentTime,
     npcId: npc.id,
-    observedEventIds: deriveNpcAgentState(ctx.world, npc, ctx.allEvents, ctx.runtime).knownFactIds.slice(-5),
+    observedEventIds: deriveNpcAgentStateIndexed(ctx.world, npc, tickEventWindow(ctx), ctx.runtime, ctx.index).knownFactIds.slice(-5),
     memoryIds,
     candidates,
     selectedCandidateId: selected.id,
@@ -2908,34 +5449,58 @@ function phaseExecuteAgentAction(ctx: TownTickContext, npc: NPCProfile, selected
   };
   ctx.runtime.decisionTraces.push(trace);
   ctx.decisionIds.push(trace.id);
-  const agent = deriveNpcAgentState(ctx.world, npc, ctx.allEvents, ctx.runtime);
+  const agent = deriveNpcAgentStateIndexed(ctx.world, npc, tickEventWindow(ctx), ctx.runtime, ctx.index);
   agent.locationId = selected.targetLocationId;
   agent.lastDecisionId = trace.id;
   agent.nextActionPreview = selected.description;
-  applyConsequenceToAgent(agent, consequence, event, selected, memoryIds);
-  evolveRelationship(ctx.world, npc.id, selected);
-  updateSocialAfterAction(ctx.world, ctx.runtime, npc.id, selected, event);
-  updateLocationAfterAction(ctx.world, ctx.runtime, selected, event);
-  agent.socialProfile = deriveNpcAgentState(ctx.world, npc, ctx.allEvents, ctx.runtime).socialProfile;
+  phaseApplyActionEvolution(ctx, npc, selected, event, agent, consequence, memoryIds);
   ctx.runtime.agentStates = [agent, ...ctx.runtime.agentStates.filter((state) => state.npcId !== npc.id)];
+  cacheNpcAgentState(ctx.index, agent);
 }
 
 function phaseExecuteActions(ctx: TownTickContext) {
-  const selectedActors = selectTickActors(ctx);
-  selectedActors.forEach((npc, index) => phaseExecuteAgentAction(ctx, npc, selectedActors, index));
+  if (!ctx.actionPlans.length) phaseScoreActions(ctx);
+  ctx.actionPlans.forEach((plan) => phaseExecuteAgentAction(ctx, plan));
 }
 
 function phaseAdvanceCaseChain(ctx: TownTickContext) {
-  triggerLongChainCaseIfReady(ctx.world, ctx.runtime, ctx.allEvents, ctx.createdEvents);
+  const lifecycleCaseCount = (ctx.runtime.caseLifecycle?.solvedCaseIds.length || 0) + (ctx.runtime.caseLifecycle?.failedCaseIds.length || 0);
+  const triggeredCaseCount = ctx.runtime.triggeredCases?.length || 0;
+  const target = Math.max(3, ctx.runtime.campaignCaseTarget || 3);
+  if (Math.max(lifecycleCaseCount, triggeredCaseCount) >= target && ctx.runtime.tick % 20 !== 0 && ctx.runtime.longChainComputedAtTick !== undefined) {
+    return;
+  }
+  const triggered = triggerLongChainCaseIfReady(ctx.world, ctx.runtime, ctx.allEvents, ctx.createdEvents, ctx.index);
   ctx.allEvents = [...ctx.baseEvents, ...ctx.createdEvents];
-  refreshLongChainLedger(ctx.world, ctx.allEvents, ctx.runtime);
+  if (triggered) {
+    ctx.runtime.longChainComputedAtTick = undefined;
+    refreshLongChainLedger(ctx.world, ctx.allEvents, ctx.runtime);
+  }
 }
 
 function phaseExtractCandidates(ctx: TownTickContext) {
-  ctx.runtime.candidates = buildCaseCandidatesFromRuntime(ctx.world, ctx.allEvents, ctx.runtime).slice(0, 8);
+  if (
+    ctx.executionPolicy.candidateEveryTicks > 1 &&
+    ctx.runtime.candidates.length > 0 &&
+    ctx.runtime.tick % ctx.executionPolicy.candidateEveryTicks !== 0
+  ) {
+    return;
+  }
+  storeTownCandidates(ctx.runtime, buildCaseCandidatesFromRuntimeIndexed(ctx.world, tickEventWindow(ctx), ctx.runtime, ctx.index).slice(0, 16));
+  if (ctx.runtime.performance) ctx.runtime.performance.counters.candidateRebuildCount += 1;
+}
+
+function phaseValidateCandidates(ctx: TownTickContext) {
+  // Candidate construction already performs full validation. Keep the phase as
+  // an explicit boundary without scanning the accumulated event history twice.
+  ctx.runtime.candidates = ctx.runtime.candidates.slice(0, 16);
 }
 
 function finalizeTownTick(ctx: TownTickContext) {
+  syncCampaignRecoveryFromRuntime(ctx.runtime);
+  refreshArcConvergence(ctx.runtime);
+  refreshCampaignSession(ctx.runtime);
+  refreshTownSocialResponseSummary(ctx.world, ctx.runtime);
   const report: PersistentTownRuntimeReport = {
     tick: ctx.runtime.tick,
     status: ctx.runtime.status,
@@ -2949,38 +5514,100 @@ function finalizeTownTick(ctx: TownTickContext) {
   }
   ctx.runtime.reports.push(report);
   ctx.world.persistentRuntime = ctx.runtime;
-  const tickSnapshot = createTownStateSnapshot(ctx.world, ctx.allEvents, {
-    id: `snapshot-${ctx.world.id}-tick-${ctx.runtime.tick}`,
-    label: `Tick ${ctx.runtime.tick}`
-  });
-  ctx.runtime.snapshots = [tickSnapshot, ...(ctx.runtime.snapshots || []).filter((snapshot) => snapshot.id !== tickSnapshot.id)].slice(0, 30);
+  if (ctx.runtime.tick % ctx.executionPolicy.snapshotEveryTicks === 0) {
+    const mode: TownSnapshotMode = ctx.runtime.tick % ctx.executionPolicy.checkpointEveryTicks === 0 ? "checkpoint" : "summary";
+    const tickSnapshot = createTownStateSnapshot(ctx.world, ctx.allEvents, {
+      id: `snapshot-${ctx.world.id}-tick-${ctx.runtime.tick}`,
+      label: `Tick ${ctx.runtime.tick}`,
+      mode
+    });
+    ctx.runtime.snapshots = [tickSnapshot, ...(ctx.runtime.snapshots || []).filter((snapshot) => snapshot.id !== tickSnapshot.id)].slice(0, 30);
+    if (ctx.runtime.performance) {
+      ctx.runtime.performance.counters.snapshotCount += 1;
+      if (mode === "checkpoint") ctx.runtime.performance.counters.checkpointCount += 1;
+    }
+  }
 }
 
 function runTownTickPhases(ctx: TownTickContext) {
-  advanceTownClock(ctx);
-  phaseObserveTown(ctx);
-  phaseUpdateGoals(ctx);
-  phaseExecuteActions(ctx);
-  phaseAdvanceCaseChain(ctx);
-  phaseExtractCandidates(ctx);
-  finalizeTownTick(ctx);
+  const phases: Array<[string, () => void]> = [
+    ["clock", () => advanceTownClock(ctx)],
+    ["observe", () => phaseObserveTown(ctx)],
+    ["memory", () => phasePropagateExistingMemory(ctx)],
+    ["goals", () => phaseUpdateGoals(ctx)],
+    ["action-scoring", () => phaseScoreActions(ctx)],
+    ["long-actions", () => phaseAdvanceLongActions(ctx)],
+    ["institutions", () => phaseInstitutionStrategy(ctx)],
+    ["action-execution", () => phaseExecuteActions(ctx)],
+    ["case-chain", () => phaseAdvanceCaseChain(ctx)],
+    ["candidates", () => phaseExtractCandidates(ctx)],
+    ["validation", () => phaseValidateCandidates(ctx)],
+    ["snapshot", () => finalizeTownTick(ctx)]
+  ];
+  for (const [name, execute] of phases) {
+    if (
+      ctx.executionPolicy.actionEveryTicks > 1 &&
+      (name === "action-scoring" || name === "action-execution") &&
+      ctx.runtime.tick % ctx.executionPolicy.actionEveryTicks !== 0
+    ) {
+      continue;
+    }
+    if (!ctx.executionPolicy.profile || !ctx.runtime.performance) {
+      execute();
+      continue;
+    }
+    const startedAt = performance.now();
+    execute();
+    recordTownPhaseTiming(ctx.runtime.performance, name, performance.now() - startedAt);
+  }
 }
 
-export function advancePersistentTownTick(world: WorldState, events: WorldEvent[] = [], options: { steps?: number; status?: PersistentTownRuntimeStatus } = {}) {
-  let nextWorld = cloneWorld(world);
+export function advancePersistentTownTick(
+  world: WorldState,
+  events: WorldEvent[] = [],
+  options: {
+    steps?: number;
+    status?: PersistentTownRuntimeStatus;
+    profile?: boolean;
+    snapshotEveryTicks?: number;
+    checkpointEveryTicks?: number;
+    candidateEveryTicks?: number;
+    actionEveryTicks?: number;
+    indexEventLimit?: number;
+  } = {}
+) {
+  const executionPolicy = normalizeTownExecutionPolicy(options);
+  const startedAt = performance.now();
+  let nextWorld = cloneTownWorldForAdvance(world);
   let runtime = nextWorld.persistentRuntime || createPersistentTownRuntime(nextWorld, events);
   runtime.status = options.status || runtime.status || "running";
+  if (executionPolicy.profile) runtime.performance = createTownPerformanceSummary();
+  const initialEventCount = events.length;
+  const initialMemoryCount = nextWorld.memories?.length || 0;
+  const initialObservationCount = runtime.eventObservations?.length || 0;
   const createdEvents: WorldEvent[] = [];
   const steps = Math.max(1, Math.min(60, options.steps || 1));
+  let completedSteps = 0;
   for (let step = 0; step < steps; step += 1) {
     if (runtime.tick >= runtime.maxTicks) {
       runtime.status = "completed";
       break;
     }
-    runTownTickPhases(createTownTickContext(nextWorld, events, runtime, createdEvents));
+    runTownTickPhases(createTownTickContext(nextWorld, events, runtime, createdEvents, executionPolicy));
+    completedSteps += 1;
   }
   runtime.updatedAt = new Date().toISOString();
   nextWorld.updatedAt = runtime.updatedAt;
   nextWorld.persistentRuntime = runtime;
+  if (runtime.performance) {
+    runtime.performance.totalMs = performance.now() - startedAt;
+    runtime.performance.tickCount = completedSteps;
+    runtime.performance.averageTickMs = completedSteps ? runtime.performance.totalMs / completedSteps : 0;
+    runtime.performance.growth = {
+      events: events.length + createdEvents.length - initialEventCount,
+      memories: (nextWorld.memories?.length || 0) - initialMemoryCount,
+      observations: (runtime.eventObservations?.length || 0) - initialObservationCount
+    };
+  }
   return { world: nextWorld as WorldState, runtime, events: createdEvents, queue: buildTownEmergenceQueue(nextWorld, [...events, ...createdEvents], runtime) };
 }

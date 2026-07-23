@@ -1,0 +1,43 @@
+{
+  "manifest": {
+    "id": "court-dock-map",
+    "name": "Court Dock Map",
+    "version": "1.0.0",
+    "schemaVersion": "town-map-pack.v1",
+    "description": "Map pack emphasizing court records, dock cargo and informant routes.",
+    "createdAt": "2026-07-02T00:00:00.000Z",
+    "entrypoint": "map.json"
+  },
+  "locations": [
+    { "id": "town-square", "name": "Town Square", "kind": "public", "description": "Public notices and witness traffic between court and docks.", "connectedLocationIds": ["court-house", "dock-gate", "market"], "x": 0, "y": 0 },
+    { "id": "court-house", "name": "Magistrate Court", "kind": "work", "description": "Dockets, wills, warrants and sworn testimony records.", "connectedLocationIds": ["town-square", "archive"], "x": -1, "y": 1 },
+    { "id": "archive", "name": "Court Archive", "kind": "restricted", "description": "Older probate files and sealed witness transcripts.", "connectedLocationIds": ["court-house", "market"], "x": -2, "y": 2 },
+    { "id": "dock-gate", "name": "Dock Gate", "kind": "work", "description": "Cargo crews, shipping tallies and union access favors.", "connectedLocationIds": ["town-square", "warehouse"], "x": 1, "y": 1 },
+    { "id": "warehouse", "name": "Bonded Warehouse", "kind": "restricted", "description": "Crates, receipts, cargo logs and hidden transfer routes.", "connectedLocationIds": ["dock-gate", "market"], "x": 2, "y": 2 },
+    { "id": "market", "name": "Market Arcade", "kind": "public", "description": "Merchants exchange receipts and gossip from the dock road.", "connectedLocationIds": ["town-square", "archive", "warehouse"], "x": 0, "y": -1 }
+  ],
+  "connections": [
+    { "from": "town-square", "to": "court-house", "kind": "street", "travelMinutes": 7 },
+    { "from": "town-square", "to": "dock-gate", "kind": "street", "travelMinutes": 10 },
+    { "from": "town-square", "to": "market", "kind": "street", "travelMinutes": 6 },
+    { "from": "court-house", "to": "archive", "kind": "interior", "travelMinutes": 4 },
+    { "from": "dock-gate", "to": "warehouse", "kind": "route", "travelMinutes": 5 },
+    { "from": "archive", "to": "market", "kind": "alley", "travelMinutes": 8 },
+    { "from": "warehouse", "to": "market", "kind": "alley", "travelMinutes": 9 }
+  ],
+  "interactions": [
+    { "id": "review-docket", "locationId": "court-house", "kind": "work", "label": "Review court docket", "risk": 25, "tags": ["court", "record"] },
+    { "id": "search-archive", "locationId": "archive", "kind": "search", "label": "Search sealed transcript", "risk": 45, "tags": ["court", "record"] },
+    { "id": "trace-cargo", "locationId": "dock-gate", "kind": "work", "label": "Trace cargo movement", "risk": 35, "tags": ["dock", "cargo"] },
+    { "id": "inspect-warehouse", "locationId": "warehouse", "kind": "search", "label": "Inspect cargo receipts", "risk": 55, "tags": ["dock", "receipt"] },
+    { "id": "listen-market", "locationId": "market", "kind": "socialize", "label": "Cultivate informant", "risk": 25, "tags": ["informant", "tip"] }
+  ],
+  "spawnPoints": [
+    { "id": "spawn-detective", "locationId": "town-square", "roleHint": "detective", "weight": 80 },
+    { "id": "spawn-court", "locationId": "court-house", "roleHint": "official", "weight": 55 },
+    { "id": "spawn-dock", "locationId": "dock-gate", "roleHint": "worker", "weight": 55 },
+    { "id": "spawn-market", "locationId": "market", "roleHint": "witness", "weight": 45 }
+  ],
+  "assets": {},
+  "docs": {}
+}

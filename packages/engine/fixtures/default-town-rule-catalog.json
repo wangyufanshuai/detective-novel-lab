@@ -1,0 +1,1141 @@
+{
+  "id": "detective-default",
+  "name": "Detective Default Rule Catalog",
+  "version": "1.0.0",
+  "resources": [
+    {
+      "kind": "police_time",
+      "label": "Police Time",
+      "value": 62,
+      "capacity": 100,
+      "pressure": 35
+    },
+    {
+      "kind": "media_attention",
+      "label": "Media Attention",
+      "value": 48,
+      "capacity": 100,
+      "pressure": 42
+    },
+    {
+      "kind": "family_influence",
+      "label": "Family Influence",
+      "value": 58,
+      "capacity": 100,
+      "pressure": 45
+    },
+    {
+      "kind": "merchant_credit",
+      "label": "Merchant Credit",
+      "value": 70,
+      "capacity": 100,
+      "pressure": 38
+    },
+    {
+      "kind": "medical_capacity",
+      "label": "Medical Capacity",
+      "value": 46,
+      "capacity": 100,
+      "pressure": 30
+    },
+    {
+      "kind": "evidence_integrity",
+      "label": "Evidence Integrity",
+      "value": 90,
+      "capacity": 100,
+      "pressure": 10
+    },
+    {
+      "kind": "court_docket",
+      "label": "Court Docket",
+      "value": 52,
+      "capacity": 100,
+      "pressure": 46
+    },
+    {
+      "kind": "dock_credit",
+      "label": "Dock Credit",
+      "value": 56,
+      "capacity": 100,
+      "pressure": 47
+    },
+    {
+      "kind": "informant_trust",
+      "label": "Informant Trust",
+      "value": 50,
+      "capacity": 100,
+      "pressure": 42
+    }
+  ],
+  "longActionDefinitions": [
+    {
+      "kind": "investigate-scene",
+      "label": "Investigate scene",
+      "durationTicks": 3,
+      "resourceCosts": {
+        "police_time": 4
+      },
+      "institutionDeltas": {
+        "inst-police": {
+          "resources": -4,
+          "reputation": 2,
+          "pressure": -3
+        }
+      },
+      "publicOpinionDelta": {
+        "trustInPolice": 2,
+        "witnessFear": -2
+      },
+      "evidenceContaminationDelta": -8
+    },
+    {
+      "kind": "file-police-report",
+      "label": "File police report",
+      "durationTicks": 2,
+      "requiredInstitutionId": "inst-police",
+      "resourceCosts": {
+        "police_time": 2
+      },
+      "institutionDeltas": {
+        "inst-police": {
+          "reputation": 2,
+          "pressure": -5
+        },
+        "inst-media": {
+          "pressure": 2
+        }
+      },
+      "publicOpinionDelta": {
+        "trustInPolice": 3,
+        "heat": -2
+      },
+      "evidenceContaminationDelta": -4
+    },
+    {
+      "kind": "publish-rumor",
+      "label": "Publish rumor",
+      "durationTicks": 2,
+      "resourceCosts": {
+        "media_attention": -3
+      },
+      "institutionDeltas": {
+        "inst-media": {
+          "resources": 3,
+          "reputation": -2,
+          "pressure": 5
+        },
+        "inst-police": {
+          "pressure": 4
+        }
+      },
+      "publicOpinionDelta": {
+        "heat": 12,
+        "mediaPressure": 10,
+        "rumorVelocity": 15,
+        "witnessFear": 5
+      },
+      "evidenceContaminationDelta": 5
+    },
+    {
+      "kind": "suppress-story",
+      "label": "Suppress story",
+      "durationTicks": 3,
+      "resourceCosts": {
+        "police_time": 3,
+        "media_attention": 5
+      },
+      "institutionDeltas": {
+        "inst-police": {
+          "reputation": -2,
+          "pressure": -3
+        },
+        "inst-media": {
+          "pressure": -5
+        }
+      },
+      "publicOpinionDelta": {
+        "heat": -10,
+        "mediaPressure": -10,
+        "trustInPolice": -4
+      },
+      "evidenceContaminationDelta": 3
+    },
+    {
+      "kind": "tamper-evidence",
+      "label": "Tamper evidence",
+      "durationTicks": 2,
+      "resourceCosts": {
+        "evidence_integrity": 18
+      },
+      "institutionDeltas": {
+        "inst-police": {
+          "pressure": 6,
+          "reputation": -4
+        }
+      },
+      "publicOpinionDelta": {
+        "trustInPolice": -6,
+        "witnessFear": 6
+      },
+      "evidenceContaminationDelta": 18
+    },
+    {
+      "kind": "protect-witness",
+      "label": "Protect witness",
+      "durationTicks": 3,
+      "requiredInstitutionId": "inst-police",
+      "resourceCosts": {
+        "police_time": 5
+      },
+      "institutionDeltas": {
+        "inst-police": {
+          "resources": -5,
+          "reputation": 3,
+          "pressure": -2
+        }
+      },
+      "publicOpinionDelta": {
+        "witnessFear": -12,
+        "trustInPolice": 3
+      },
+      "evidenceContaminationDelta": -3
+    },
+    {
+      "kind": "bribe-witness",
+      "label": "Bribe witness",
+      "durationTicks": 2,
+      "resourceCosts": {
+        "merchant_credit": 4
+      },
+      "institutionDeltas": {
+        "inst-commerce": {
+          "resources": -4,
+          "pressure": 4
+        },
+        "inst-police": {
+          "reputation": -3
+        }
+      },
+      "publicOpinionDelta": {
+        "witnessFear": 9,
+        "trustInPolice": -4
+      },
+      "evidenceContaminationDelta": 10
+    },
+    {
+      "kind": "conduct-autopsy",
+      "label": "Conduct autopsy",
+      "durationTicks": 4,
+      "requiredInstitutionId": "inst-medical",
+      "resourceCosts": {
+        "medical_capacity": 3
+      },
+      "institutionDeltas": {
+        "inst-medical": {
+          "resources": -3,
+          "reputation": 4
+        },
+        "inst-police": {
+          "pressure": -4
+        }
+      },
+      "publicOpinionDelta": {
+        "trustInPolice": 2,
+        "heat": -2
+      },
+      "evidenceContaminationDelta": -12
+    },
+    {
+      "kind": "audit-ledger",
+      "label": "Audit ledger",
+      "durationTicks": 4,
+      "resourceCosts": {
+        "merchant_credit": 2
+      },
+      "institutionDeltas": {
+        "inst-commerce": {
+          "reputation": -2,
+          "pressure": 6
+        },
+        "inst-civic": {
+          "reputation": 3
+        }
+      },
+      "publicOpinionDelta": {
+        "heat": 4,
+        "mediaPressure": 3
+      },
+      "evidenceContaminationDelta": -6
+    },
+    {
+      "kind": "family-pressure",
+      "label": "Apply family pressure",
+      "durationTicks": 3,
+      "resourceCosts": {
+        "family_influence": 2
+      },
+      "institutionDeltas": {
+        "inst-family": {
+          "resources": -2,
+          "reputation": -2,
+          "pressure": 5
+        },
+        "inst-police": {
+          "pressure": 3
+        }
+      },
+      "publicOpinionDelta": {
+        "witnessFear": 8,
+        "heat": -2
+      },
+      "evidenceContaminationDelta": 4
+    },
+    {
+      "kind": "surveil-suspect",
+      "label": "Surveil suspect",
+      "durationTicks": 4,
+      "resourceCosts": {
+        "police_time": 3
+      },
+      "institutionDeltas": {
+        "inst-police": {
+          "resources": -3,
+          "reputation": 1,
+          "pressure": -2
+        }
+      },
+      "publicOpinionDelta": {
+        "witnessFear": -1,
+        "trustInPolice": 1
+      },
+      "evidenceContaminationDelta": -4
+    },
+    {
+      "kind": "interview-witness",
+      "label": "Interview witness",
+      "durationTicks": 2,
+      "resourceCosts": {
+        "police_time": 2
+      },
+      "institutionDeltas": {
+        "inst-police": {
+          "resources": -2,
+          "reputation": 2
+        }
+      },
+      "publicOpinionDelta": {
+        "witnessFear": -4,
+        "trustInPolice": 2
+      },
+      "evidenceContaminationDelta": -2
+    },
+    {
+      "kind": "intimidate-witness",
+      "label": "Intimidate witness",
+      "durationTicks": 2,
+      "resourceCosts": {
+        "family_influence": 3
+      },
+      "institutionDeltas": {
+        "inst-family": {
+          "resources": -3,
+          "pressure": 5
+        },
+        "inst-police": {
+          "reputation": -3,
+          "pressure": 4
+        }
+      },
+      "publicOpinionDelta": {
+        "witnessFear": 12,
+        "trustInPolice": -5
+      },
+      "evidenceContaminationDelta": 8
+    },
+    {
+      "kind": "request-warrant",
+      "label": "Request warrant",
+      "durationTicks": 3,
+      "requiredInstitutionId": "inst-police",
+      "resourceCosts": {
+        "police_time": 3
+      },
+      "institutionDeltas": {
+        "inst-police": {
+          "resources": -3,
+          "reputation": 3,
+          "pressure": -3
+        },
+        "inst-civic": {
+          "pressure": 2
+        }
+      },
+      "publicOpinionDelta": {
+        "trustInPolice": 3,
+        "heat": 1
+      },
+      "evidenceContaminationDelta": -5
+    },
+    {
+      "kind": "leak-to-press",
+      "label": "Leak to press",
+      "durationTicks": 2,
+      "resourceCosts": {
+        "media_attention": -4
+      },
+      "institutionDeltas": {
+        "inst-media": {
+          "resources": 4,
+          "reputation": -3,
+          "pressure": 7
+        },
+        "inst-police": {
+          "reputation": -4,
+          "pressure": 5
+        }
+      },
+      "publicOpinionDelta": {
+        "heat": 15,
+        "mediaPressure": 14,
+        "rumorVelocity": 12,
+        "witnessFear": 6
+      },
+      "evidenceContaminationDelta": 7
+    },
+    {
+      "kind": "verify-alibi",
+      "label": "Verify alibi",
+      "durationTicks": 3,
+      "resourceCosts": {
+        "police_time": 2
+      },
+      "institutionDeltas": {
+        "inst-police": {
+          "resources": -2,
+          "reputation": 2,
+          "pressure": -2
+        }
+      },
+      "publicOpinionDelta": {
+        "trustInPolice": 2,
+        "witnessFear": -2
+      },
+      "evidenceContaminationDelta": -7
+    },
+    {
+      "kind": "hold-inquest",
+      "label": "Hold inquest",
+      "durationTicks": 4,
+      "requiredInstitutionId": "inst-court",
+      "resourceCosts": {
+        "court_docket": 4
+      },
+      "institutionDeltas": {
+        "inst-court": {
+          "resources": -4,
+          "reputation": 4,
+          "pressure": -4
+        },
+        "inst-police": {
+          "pressure": -2
+        },
+        "inst-media": {
+          "pressure": 3
+        }
+      },
+      "publicOpinionDelta": {
+        "heat": 4,
+        "trustInPolice": 2,
+        "witnessFear": -3
+      },
+      "evidenceContaminationDelta": -8
+    },
+    {
+      "kind": "cross-examine-witness",
+      "label": "Cross-examine witness",
+      "durationTicks": 3,
+      "requiredInstitutionId": "inst-court",
+      "resourceCosts": {
+        "court_docket": 3
+      },
+      "institutionDeltas": {
+        "inst-court": {
+          "resources": -3,
+          "reputation": 3,
+          "pressure": -2
+        },
+        "inst-family": {
+          "pressure": 4
+        }
+      },
+      "publicOpinionDelta": {
+        "witnessFear": 5,
+        "trustInPolice": 1
+      },
+      "evidenceContaminationDelta": -5
+    },
+    {
+      "kind": "review-court-record",
+      "label": "Review court record",
+      "durationTicks": 3,
+      "requiredInstitutionId": "inst-court",
+      "resourceCosts": {
+        "court_docket": 2
+      },
+      "institutionDeltas": {
+        "inst-court": {
+          "resources": -2,
+          "reputation": 2,
+          "pressure": -3
+        },
+        "inst-civic": {
+          "reputation": 2
+        }
+      },
+      "publicOpinionDelta": {
+        "trustInPolice": 1
+      },
+      "evidenceContaminationDelta": -6
+    },
+    {
+      "kind": "trace-cargo",
+      "label": "Trace cargo",
+      "durationTicks": 4,
+      "requiredInstitutionId": "inst-dock-union",
+      "resourceCosts": {
+        "dock_credit": 4
+      },
+      "institutionDeltas": {
+        "inst-dock-union": {
+          "resources": -4,
+          "reputation": 2,
+          "pressure": 3
+        },
+        "inst-commerce": {
+          "pressure": 4
+        }
+      },
+      "publicOpinionDelta": {
+        "heat": 3,
+        "mediaPressure": 2
+      },
+      "evidenceContaminationDelta": -4
+    },
+    {
+      "kind": "bribe-dockhand",
+      "label": "Bribe dockhand",
+      "durationTicks": 2,
+      "resourceCosts": {
+        "dock_credit": 5,
+        "merchant_credit": 2
+      },
+      "institutionDeltas": {
+        "inst-dock-union": {
+          "resources": -5,
+          "reputation": -4,
+          "pressure": 7
+        },
+        "inst-commerce": {
+          "pressure": 5
+        }
+      },
+      "publicOpinionDelta": {
+        "witnessFear": 8,
+        "trustInPolice": -3
+      },
+      "evidenceContaminationDelta": 9
+    },
+    {
+      "kind": "inspect-warehouse",
+      "label": "Inspect warehouse",
+      "durationTicks": 3,
+      "requiredInstitutionId": "inst-dock-union",
+      "resourceCosts": {
+        "dock_credit": 3
+      },
+      "institutionDeltas": {
+        "inst-dock-union": {
+          "resources": -3,
+          "reputation": 2,
+          "pressure": -2
+        },
+        "inst-police": {
+          "pressure": -1
+        }
+      },
+      "publicOpinionDelta": {
+        "trustInPolice": 1
+      },
+      "evidenceContaminationDelta": -7
+    },
+    {
+      "kind": "seal-autopsy-record",
+      "label": "Seal autopsy record",
+      "durationTicks": 3,
+      "requiredInstitutionId": "inst-medical",
+      "resourceCosts": {
+        "medical_capacity": 3,
+        "evidence_integrity": 4
+      },
+      "institutionDeltas": {
+        "inst-medical": {
+          "resources": -3,
+          "reputation": -2,
+          "pressure": 5
+        },
+        "inst-court": {
+          "pressure": 3
+        }
+      },
+      "publicOpinionDelta": {
+        "heat": -2,
+        "witnessFear": 3,
+        "trustInPolice": -2
+      },
+      "evidenceContaminationDelta": 6
+    },
+    {
+      "kind": "second-medical-opinion",
+      "label": "Second medical opinion",
+      "durationTicks": 4,
+      "requiredInstitutionId": "inst-medical",
+      "resourceCosts": {
+        "medical_capacity": 4
+      },
+      "institutionDeltas": {
+        "inst-medical": {
+          "resources": -4,
+          "reputation": 5,
+          "pressure": -4
+        },
+        "inst-court": {
+          "reputation": 2
+        }
+      },
+      "publicOpinionDelta": {
+        "trustInPolice": 2,
+        "witnessFear": -2
+      },
+      "evidenceContaminationDelta": -10
+    },
+    {
+      "kind": "secure-evidence-locker",
+      "label": "Secure evidence locker",
+      "durationTicks": 3,
+      "requiredInstitutionId": "inst-police",
+      "resourceCosts": {
+        "police_time": 3,
+        "evidence_integrity": 2
+      },
+      "institutionDeltas": {
+        "inst-police": {
+          "resources": -3,
+          "reputation": 3,
+          "pressure": -4
+        },
+        "inst-court": {
+          "reputation": 1
+        }
+      },
+      "publicOpinionDelta": {
+        "trustInPolice": 3,
+        "witnessFear": -2
+      },
+      "evidenceContaminationDelta": -14
+    },
+    {
+      "kind": "protect-chain-of-custody",
+      "label": "Protect chain of custody",
+      "durationTicks": 3,
+      "requiredInstitutionId": "inst-police",
+      "resourceCosts": {
+        "police_time": 3,
+        "evidence_integrity": 2
+      },
+      "institutionDeltas": {
+        "inst-police": {
+          "resources": -3,
+          "reputation": 2,
+          "pressure": -3
+        },
+        "inst-court": {
+          "pressure": -2
+        }
+      },
+      "publicOpinionDelta": {
+        "trustInPolice": 2
+      },
+      "evidenceContaminationDelta": -12
+    },
+    {
+      "kind": "summon-family-council",
+      "label": "Summon family council",
+      "durationTicks": 3,
+      "resourceCosts": {
+        "family_influence": 4
+      },
+      "institutionDeltas": {
+        "inst-family": {
+          "resources": -4,
+          "reputation": -2,
+          "pressure": 6
+        },
+        "inst-court": {
+          "pressure": 2
+        }
+      },
+      "publicOpinionDelta": {
+        "witnessFear": 7,
+        "heat": -1
+      },
+      "evidenceContaminationDelta": 3
+    },
+    {
+      "kind": "pressure-editor",
+      "label": "Pressure editor",
+      "durationTicks": 2,
+      "resourceCosts": {
+        "media_attention": 3,
+        "family_influence": 2
+      },
+      "institutionDeltas": {
+        "inst-media": {
+          "resources": -3,
+          "reputation": -4,
+          "pressure": 7
+        },
+        "inst-family": {
+          "pressure": 3
+        }
+      },
+      "publicOpinionDelta": {
+        "heat": -6,
+        "mediaPressure": -4,
+        "rumorVelocity": 5,
+        "trustInPolice": -2
+      },
+      "evidenceContaminationDelta": 4
+    },
+    {
+      "kind": "cultivate-informant",
+      "label": "Cultivate informant",
+      "durationTicks": 4,
+      "resourceCosts": {
+        "informant_trust": 4,
+        "police_time": 1
+      },
+      "institutionDeltas": {
+        "inst-police": {
+          "resources": -1,
+          "reputation": 2
+        },
+        "inst-media": {
+          "pressure": 2
+        },
+        "inst-dock-union": {
+          "pressure": 2
+        }
+      },
+      "publicOpinionDelta": {
+        "witnessFear": -3,
+        "rumorVelocity": 3
+      },
+      "evidenceContaminationDelta": -6
+    },
+    {
+      "kind": "verify-anonymous-tip",
+      "label": "Verify anonymous tip",
+      "durationTicks": 3,
+      "resourceCosts": {
+        "informant_trust": 2,
+        "police_time": 2
+      },
+      "institutionDeltas": {
+        "inst-police": {
+          "resources": -2,
+          "reputation": 2,
+          "pressure": -2
+        },
+        "inst-media": {
+          "pressure": -1
+        }
+      },
+      "publicOpinionDelta": {
+        "trustInPolice": 2,
+        "rumorVelocity": -3
+      },
+      "evidenceContaminationDelta": -7
+    }
+  ],
+  "randomEvents": [
+    {
+      "id": "rumor-spike",
+      "label": "Rumor spike",
+      "weight": 30,
+      "tags": [
+        "media",
+        "public-opinion"
+      ]
+    },
+    {
+      "id": "ledger-gap",
+      "label": "Ledger gap discovered",
+      "weight": 20,
+      "tags": [
+        "commerce",
+        "evidence"
+      ]
+    },
+    {
+      "id": "witness-recants",
+      "label": "Witness recants testimony",
+      "weight": 18,
+      "tags": [
+        "testimony",
+        "fear"
+      ]
+    },
+    {
+      "id": "autopsy-delay",
+      "label": "Autopsy delay",
+      "weight": 15,
+      "tags": [
+        "medical",
+        "evidence"
+      ]
+    },
+    {
+      "id": "family-alibi",
+      "label": "Family-backed alibi",
+      "weight": 16,
+      "tags": [
+        "family",
+        "alibi"
+      ]
+    },
+    {
+      "id": "press-leak",
+      "label": "Press leak",
+      "weight": 22,
+      "tags": [
+        "media",
+        "rumor"
+      ]
+    },
+    {
+      "id": "court-docket-gap",
+      "label": "Court docket gap",
+      "weight": 16,
+      "tags": [
+        "court",
+        "record",
+        "testimony"
+      ]
+    },
+    {
+      "id": "cargo-ledger-gap",
+      "label": "Cargo ledger gap",
+      "weight": 18,
+      "tags": [
+        "dock",
+        "cargo",
+        "commerce"
+      ]
+    },
+    {
+      "id": "anonymous-tip",
+      "label": "Anonymous tip",
+      "weight": 14,
+      "tags": [
+        "informant",
+        "witness",
+        "tip"
+      ]
+    },
+    {
+      "id": "chain-custody-break",
+      "label": "Chain of custody break",
+      "weight": 12,
+      "tags": [
+        "evidence",
+        "custody",
+        "court"
+      ]
+    }
+  ],
+  "casePressureRules": [
+    {
+      "id": "low-evidence-integrity",
+      "resource": "evidence_integrity",
+      "threshold": 45,
+      "effect": "candidate validation requires stronger provenance"
+    },
+    {
+      "id": "high-media-attention",
+      "resource": "media_attention",
+      "threshold": 70,
+      "effect": "witness fear rises and media long actions become likelier"
+    },
+    {
+      "id": "low-police-time",
+      "resource": "police_time",
+      "threshold": 35,
+      "effect": "police misjudgment and delayed protection become likelier"
+    },
+    {
+      "id": "high-family-pressure",
+      "resource": "family_influence",
+      "threshold": 65,
+      "effect": "family scandal and witness intimidation become likelier"
+    },
+    {
+      "id": "low-merchant-credit",
+      "resource": "merchant_credit",
+      "threshold": 45,
+      "effect": "ledger fraud and merchant extortion become likelier"
+    },
+    {
+      "id": "low-medical-capacity",
+      "resource": "medical_capacity",
+      "threshold": 40,
+      "effect": "medical coverup and autopsy delay become likelier"
+    },
+    {
+      "id": "weak-evidence-provenance",
+      "resource": "evidence_integrity",
+      "threshold": 60,
+      "effect": "evidence tampering warnings become likelier"
+    },
+    {
+      "id": "high-public-heat",
+      "resource": "media_attention",
+      "threshold": 55,
+      "effect": "media rumor and false testimony become likelier"
+    },
+    {
+      "id": "court-docket-pressure",
+      "resource": "court_docket",
+      "threshold": 58,
+      "effect": "court intimidation, forged wills, and witness reversals become likelier"
+    },
+    {
+      "id": "low-dock-credit",
+      "resource": "dock_credit",
+      "threshold": 45,
+      "effect": "dock smuggling and cargo record pressure become likelier"
+    },
+    {
+      "id": "low-informant-trust",
+      "resource": "informant_trust",
+      "threshold": 42,
+      "effect": "anonymous tips become weaker and witness disappearance becomes likelier"
+    }
+  ],
+  "evidenceRules": [
+    {
+      "id": "physical-trace",
+      "kind": "physical",
+      "weakContaminationThreshold": 72,
+      "strongProvenanceIntegrityFloor": 55,
+      "relatedCaseTypes": [
+        "murder",
+        "evidence-tampering"
+      ]
+    },
+    {
+      "id": "testimony-chain",
+      "kind": "testimony",
+      "weakContaminationThreshold": 65,
+      "strongProvenanceIntegrityFloor": 50,
+      "relatedCaseTypes": [
+        "false-testimony",
+        "media-rumor"
+      ],
+      "publicExposureDelta": 8
+    },
+    {
+      "id": "medical-finding",
+      "kind": "medical",
+      "weakContaminationThreshold": 78,
+      "strongProvenanceIntegrityFloor": 60,
+      "relatedCaseTypes": [
+        "murder",
+        "medical-coverup"
+      ]
+    },
+    {
+      "id": "ledger-entry",
+      "kind": "ledger",
+      "weakContaminationThreshold": 70,
+      "strongProvenanceIntegrityFloor": 58,
+      "relatedCaseTypes": [
+        "ledger-fraud",
+        "merchant-extortion"
+      ]
+    },
+    {
+      "id": "rumor-source",
+      "kind": "rumor",
+      "weakContaminationThreshold": 55,
+      "strongProvenanceIntegrityFloor": 45,
+      "relatedCaseTypes": [
+        "media-rumor",
+        "family-scandal"
+      ],
+      "publicExposureDelta": 14
+    },
+    {
+      "id": "document-chain",
+      "kind": "document",
+      "weakContaminationThreshold": 68,
+      "strongProvenanceIntegrityFloor": 58,
+      "relatedCaseTypes": [
+        "police-misjudgment",
+        "family-scandal"
+      ]
+    },
+    {
+      "id": "scene-trace",
+      "kind": "trace",
+      "weakContaminationThreshold": 75,
+      "strongProvenanceIntegrityFloor": 55,
+      "relatedCaseTypes": [
+        "missing-person",
+        "evidence-tampering"
+      ]
+    },
+    {
+      "id": "court-record-chain",
+      "kind": "court-record",
+      "weakContaminationThreshold": 66,
+      "strongProvenanceIntegrityFloor": 60,
+      "relatedCaseTypes": [
+        "court-intimidation",
+        "forged-will",
+        "false-testimony"
+      ]
+    },
+    {
+      "id": "cargo-log-chain",
+      "kind": "cargo-log",
+      "weakContaminationThreshold": 70,
+      "strongProvenanceIntegrityFloor": 58,
+      "relatedCaseTypes": [
+        "dock-smuggling",
+        "merchant-extortion"
+      ]
+    },
+    {
+      "id": "telegram-chain",
+      "kind": "telegram",
+      "weakContaminationThreshold": 64,
+      "strongProvenanceIntegrityFloor": 55,
+      "relatedCaseTypes": [
+        "blackmail",
+        "media-rumor"
+      ]
+    },
+    {
+      "id": "receipt-chain",
+      "kind": "receipt",
+      "weakContaminationThreshold": 68,
+      "strongProvenanceIntegrityFloor": 58,
+      "relatedCaseTypes": [
+        "ledger-fraud",
+        "dock-smuggling"
+      ]
+    },
+    {
+      "id": "footprint-chain",
+      "kind": "footprint",
+      "weakContaminationThreshold": 74,
+      "strongProvenanceIntegrityFloor": 56,
+      "relatedCaseTypes": [
+        "missing-person",
+        "murder"
+      ]
+    },
+    {
+      "id": "blood-pattern-chain",
+      "kind": "blood-pattern",
+      "weakContaminationThreshold": 78,
+      "strongProvenanceIntegrityFloor": 62,
+      "relatedCaseTypes": [
+        "murder",
+        "medical-coverup"
+      ]
+    },
+    {
+      "id": "autopsy-note-chain",
+      "kind": "autopsy-note",
+      "weakContaminationThreshold": 76,
+      "strongProvenanceIntegrityFloor": 62,
+      "relatedCaseTypes": [
+        "medical-coverup",
+        "murder"
+      ]
+    },
+    {
+      "id": "alibi-note-chain",
+      "kind": "alibi-note",
+      "weakContaminationThreshold": 63,
+      "strongProvenanceIntegrityFloor": 52,
+      "relatedCaseTypes": [
+        "false-testimony",
+        "witness-disappearance"
+      ]
+    },
+    {
+      "id": "newspaper-proof-chain",
+      "kind": "newspaper-proof",
+      "weakContaminationThreshold": 58,
+      "strongProvenanceIntegrityFloor": 50,
+      "relatedCaseTypes": [
+        "media-rumor",
+        "blackmail"
+      ],
+      "publicExposureDelta": 12
+    },
+    {
+      "id": "family-letter-chain",
+      "kind": "family-letter",
+      "weakContaminationThreshold": 62,
+      "strongProvenanceIntegrityFloor": 55,
+      "relatedCaseTypes": [
+        "family-scandal",
+        "forged-will"
+      ]
+    },
+    {
+      "id": "weapon-mark-chain",
+      "kind": "weapon-mark",
+      "weakContaminationThreshold": 76,
+      "strongProvenanceIntegrityFloor": 60,
+      "relatedCaseTypes": [
+        "murder",
+        "evidence-tampering"
+      ]
+    },
+    {
+      "id": "key-impression-chain",
+      "kind": "key-impression",
+      "weakContaminationThreshold": 72,
+      "strongProvenanceIntegrityFloor": 58,
+      "relatedCaseTypes": [
+        "missing-person",
+        "court-intimidation"
+      ]
+    },
+    {
+      "id": "anonymous-tip-chain",
+      "kind": "anonymous-tip",
+      "weakContaminationThreshold": 60,
+      "strongProvenanceIntegrityFloor": 48,
+      "relatedCaseTypes": [
+        "blackmail",
+        "witness-disappearance"
+      ],
+      "publicExposureDelta": 6
+    }
+  ]
+}

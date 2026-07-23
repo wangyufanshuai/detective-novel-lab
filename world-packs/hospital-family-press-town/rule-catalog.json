@@ -1,0 +1,56 @@
+{
+  "id": "hospital-family-press-rules",
+  "name": "Hospital Family Press Rules",
+  "version": "1.0.0",
+  "resources": [
+    { "kind": "police_time", "label": "Police Time", "value": 58, "capacity": 100, "pressure": 36 },
+    { "kind": "media_attention", "label": "Media Attention", "value": 44, "capacity": 100, "pressure": 62 },
+    { "kind": "family_influence", "label": "Family Influence", "value": 66, "capacity": 100, "pressure": 60 },
+    { "kind": "merchant_credit", "label": "Merchant Credit", "value": 55, "capacity": 100, "pressure": 32 },
+    { "kind": "medical_capacity", "label": "Medical Capacity", "value": 42, "capacity": 100, "pressure": 58 },
+    { "kind": "evidence_integrity", "label": "Evidence Integrity", "value": 82, "capacity": 100, "pressure": 22 },
+    { "kind": "court_docket", "label": "Court Docket", "value": 50, "capacity": 100, "pressure": 42 },
+    { "kind": "dock_credit", "label": "Dock Credit", "value": 55, "capacity": 100, "pressure": 30 },
+    { "kind": "informant_trust", "label": "Informant Trust", "value": 46, "capacity": 100, "pressure": 48 }
+  ],
+  "institutions": [
+    { "id": "inst-police", "name": "Town Police", "kind": "police", "resources": 58, "reputation": 56, "pressure": 36, "agenda": "Close cases with admissible evidence.", "influenceByLocation": { "town-hall": 55, "hospital": 45 }, "trustByNpcId": {}, "activeCaseIds": [], "policyPressure": 36 },
+    { "id": "inst-media", "name": "Local Gazette", "kind": "media", "resources": 44, "reputation": 52, "pressure": 62, "agenda": "Publish hospital and family scandal carefully.", "influenceByLocation": { "gazette-office": 80, "town-hall": 60 }, "trustByNpcId": { "npc-hfp-3": 75 }, "activeCaseIds": [], "policyPressure": 62 },
+    { "id": "inst-family", "name": "Vale Family", "kind": "family", "resources": 66, "reputation": 60, "pressure": 60, "agenda": "Protect household reputation and alibis.", "influenceByLocation": { "family-house": 82, "garden": 70 }, "trustByNpcId": { "npc-hfp-2": 75 }, "activeCaseIds": [], "policyPressure": 60 },
+    { "id": "inst-commerce", "name": "Merchants Guild", "kind": "commerce", "resources": 55, "reputation": 52, "pressure": 32, "agenda": "Keep accounts steady.", "influenceByLocation": { "town-hall": 45 }, "trustByNpcId": {}, "activeCaseIds": [], "policyPressure": 32 },
+    { "id": "inst-civic", "name": "Town Hall", "kind": "civic", "resources": 52, "reputation": 50, "pressure": 42, "agenda": "Defend public records.", "influenceByLocation": { "town-hall": 80 }, "trustByNpcId": { "npc-hfp-4": 75 }, "activeCaseIds": [], "policyPressure": 42 },
+    { "id": "inst-medical", "name": "Charity Hospital", "kind": "medical", "resources": 42, "reputation": 57, "pressure": 58, "agenda": "Protect patients and medical records.", "influenceByLocation": { "hospital": 85 }, "trustByNpcId": { "npc-hfp-1": 75 }, "activeCaseIds": [], "policyPressure": 58 },
+    { "id": "inst-court", "name": "Magistrate Court", "kind": "court", "resources": 50, "reputation": 53, "pressure": 42, "agenda": "Require clean testimony.", "influenceByLocation": { "town-hall": 50 }, "trustByNpcId": {}, "activeCaseIds": [], "policyPressure": 42 },
+    { "id": "inst-dock-union", "name": "Dock Union", "kind": "dock_union", "resources": 55, "reputation": 49, "pressure": 30, "agenda": "Stay outside hospital scandal.", "influenceByLocation": {}, "trustByNpcId": {}, "activeCaseIds": [], "policyPressure": 30 }
+  ],
+  "professions": [
+    { "npcId": "npc-hfp-1", "kind": "doctor", "institutionId": "inst-medical", "rank": 3, "skills": ["doctor", "autopsy"], "income": 58, "workload": 62 },
+    { "npcId": "npc-hfp-2", "kind": "servant", "institutionId": "inst-family", "rank": 1, "skills": ["servant", "observation"], "income": 32, "workload": 48 },
+    { "npcId": "npc-hfp-3", "kind": "reporter", "institutionId": "inst-media", "rank": 2, "skills": ["reporter", "rumor"], "income": 42, "workload": 50 },
+    { "npcId": "npc-hfp-4", "kind": "clerk", "institutionId": "inst-civic", "rank": 2, "skills": ["clerk", "records"], "income": 40, "workload": 45 }
+  ],
+  "longActionDefinitions": [
+    { "kind": "conduct-autopsy", "label": "Conduct autopsy", "durationTicks": 4, "requiredInstitutionId": "inst-medical", "resourceCosts": { "medical_capacity": 3 }, "institutionDeltas": { "inst-medical": { "resources": -3, "reputation": 4 }, "inst-police": { "pressure": -4 } }, "publicOpinionDelta": { "trustInPolice": 2, "heat": -2 }, "evidenceContaminationDelta": -12 },
+    { "kind": "second-medical-opinion", "label": "Second medical opinion", "durationTicks": 4, "requiredInstitutionId": "inst-medical", "resourceCosts": { "medical_capacity": 4 }, "institutionDeltas": { "inst-medical": { "resources": -4, "reputation": 5, "pressure": -4 } }, "publicOpinionDelta": { "trustInPolice": 2 }, "evidenceContaminationDelta": -10 },
+    { "kind": "seal-autopsy-record", "label": "Seal autopsy record", "durationTicks": 3, "requiredInstitutionId": "inst-medical", "resourceCosts": { "medical_capacity": 3, "evidence_integrity": 4 }, "institutionDeltas": { "inst-medical": { "resources": -3, "reputation": -2, "pressure": 5 }, "inst-media": { "pressure": 4 } }, "publicOpinionDelta": { "heat": -2, "witnessFear": 3 }, "evidenceContaminationDelta": 6 },
+    { "kind": "summon-family-council", "label": "Summon family council", "durationTicks": 3, "resourceCosts": { "family_influence": 4 }, "institutionDeltas": { "inst-family": { "resources": -4, "reputation": -2, "pressure": 6 } }, "publicOpinionDelta": { "witnessFear": 7, "heat": -1 }, "evidenceContaminationDelta": 3 },
+    { "kind": "pressure-editor", "label": "Pressure editor", "durationTicks": 2, "resourceCosts": { "media_attention": 3, "family_influence": 2 }, "institutionDeltas": { "inst-media": { "resources": -3, "reputation": -4, "pressure": 7 }, "inst-family": { "pressure": 3 } }, "publicOpinionDelta": { "heat": -6, "mediaPressure": -4, "rumorVelocity": 5 }, "evidenceContaminationDelta": 4 }
+  ],
+  "randomEvents": [
+    { "id": "autopsy-delay", "label": "Autopsy delay", "weight": 24, "tags": ["medical", "autopsy"] },
+    { "id": "family-alibi-letter", "label": "Family alibi letter", "weight": 22, "tags": ["family", "alibi"] },
+    { "id": "newspaper-proof-leak", "label": "Newspaper proof leak", "weight": 24, "tags": ["press", "newspaper", "rumor"] }
+  ],
+  "casePressureRules": [
+    { "id": "medical-capacity-pressure", "resource": "medical_capacity", "threshold": 50, "effect": "medical coverup and autopsy disputes become prominent" },
+    { "id": "family-obligation-pressure", "resource": "family_influence", "threshold": 60, "effect": "family alibis and forged wills become prominent" },
+    { "id": "press-pressure", "resource": "media_attention", "threshold": 55, "effect": "blackmail and newspaper proof become prominent" }
+  ],
+  "evidenceRules": [
+    { "id": "autopsy-note-chain", "kind": "autopsy-note", "weakContaminationThreshold": 78, "strongProvenanceIntegrityFloor": 60, "relatedCaseTypes": ["medical-coverup", "murder"] },
+    { "id": "blood-pattern-chain", "kind": "blood-pattern", "weakContaminationThreshold": 75, "strongProvenanceIntegrityFloor": 58, "relatedCaseTypes": ["murder", "medical-coverup"] },
+    { "id": "family-letter-chain", "kind": "family-letter", "weakContaminationThreshold": 68, "strongProvenanceIntegrityFloor": 55, "relatedCaseTypes": ["forged-will", "false-testimony"] },
+    { "id": "newspaper-proof-chain", "kind": "newspaper-proof", "weakContaminationThreshold": 64, "strongProvenanceIntegrityFloor": 50, "relatedCaseTypes": ["blackmail", "media-rumor"] },
+    { "id": "alibi-note-chain", "kind": "alibi-note", "weakContaminationThreshold": 62, "strongProvenanceIntegrityFloor": 52, "relatedCaseTypes": ["false-testimony", "forged-will"] }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "manifest": { "id": "city-hall-merchant-debt-ecosystem", "name": "City Hall Merchant Debt Ecosystem", "version": "1.0.0", "schemaVersion": "ecosystem-catalog.v1", "createdAt": "2026-07-03T00:00:00.000Z", "description": "Table-driven civic permit, merchant debt, family obligation and press pressure ecology." },
+  "factions": [
+    { "id": "city-hall-clerks", "name": "City Hall Clerks", "institutionKind": "civic", "pressureBias": 10, "resourceBias": { "police_time": -2, "evidence_integrity": -2 }, "preferredCaseTypes": ["court-intimidation", "forged-will"] },
+    { "id": "merchant-creditors", "name": "Merchant Creditors", "institutionKind": "commerce", "pressureBias": 14, "resourceBias": { "merchant_credit": -8, "media_attention": 4 }, "preferredCaseTypes": ["ledger-fraud", "blackmail"] },
+    { "id": "hale-household", "name": "Hale Household", "institutionKind": "family", "pressureBias": 12, "resourceBias": { "family_influence": -7, "court_docket": 3 }, "preferredCaseTypes": ["forged-will", "blackmail"] },
+    { "id": "gazette-editors", "name": "Gazette Editors", "institutionKind": "media", "pressureBias": 12, "resourceBias": { "media_attention": -6, "informant_trust": 3 }, "preferredCaseTypes": ["witness-disappearance", "blackmail"] }
+  ],
+  "resources": [
+    { "kind": "merchant_credit", "label": "Merchant Credit", "valueDelta": -8, "pressureDelta": 10 },
+    { "kind": "family_influence", "label": "Family Influence", "valueDelta": -6, "pressureDelta": 8 },
+    { "kind": "media_attention", "label": "Media Attention", "valueDelta": -4, "pressureDelta": 10 },
+    { "kind": "court_docket", "label": "Court Docket", "valueDelta": -3, "pressureDelta": 6 }
+  ],
+  "markets": [
+    { "id": "permit-credit-market", "label": "Permit Credit Market", "resource": "merchant_credit", "volatility": 0.38, "tags": ["commerce", "permit", "debt"] },
+    { "id": "proof-sheet-market", "label": "Proof Sheet Market", "resource": "media_attention", "volatility": 0.32, "tags": ["media", "proof"] }
+  ],
+  "territories": [
+    { "id": "civic-record-territory", "locationId": "permit-archive", "factionId": "city-hall-clerks", "influence": 82, "tags": ["civic", "record"] },
+    { "id": "merchant-debt-territory", "locationId": "merchant-bank", "factionId": "merchant-creditors", "influence": 84, "tags": ["commerce", "debt"] },
+    { "id": "family-letter-territory", "locationId": "family-parlor", "factionId": "hale-household", "influence": 78, "tags": ["family", "letter"] },
+    { "id": "press-proof-territory", "locationId": "gazette-office", "factionId": "gazette-editors", "influence": 80, "tags": ["media", "proof"] }
+  ],
+  "taskTemplates": [
+    { "id": "audit-permit-ledger", "label": "Audit permit ledger", "institutionKind": "civic", "tags": ["permit", "record"], "pressureDelta": 6, "evidenceKinds": ["court-record", "receipt"] },
+    { "id": "trace-merchant-debt", "label": "Trace merchant debt", "institutionKind": "commerce", "tags": ["debt", "receipt"], "pressureDelta": 8, "evidenceKinds": ["receipt", "alibi-note"] },
+    { "id": "inspect-proof-sheet", "label": "Inspect proof sheet", "institutionKind": "media", "tags": ["proof", "press"], "pressureDelta": 7, "evidenceKinds": ["newspaper-proof", "anonymous-tip"] },
+    { "id": "recover-family-letter", "label": "Recover family letter", "institutionKind": "family", "tags": ["family", "letter"], "pressureDelta": 7, "evidenceKinds": ["family-letter", "key-impression"] }
+  ],
+  "randomWorldEvents": [
+    { "id": "permit-vote-moved", "label": "Permit vote moved", "weight": 24, "tags": ["civic", "permit"], "pressureDelta": 6 },
+    { "id": "debt-note-called", "label": "Debt note called", "weight": 26, "tags": ["commerce", "debt"], "pressureDelta": 8 },
+    { "id": "proof-sheet-delayed", "label": "Proof sheet delayed", "weight": 22, "tags": ["media", "proof"], "pressureDelta": 7 },
+    { "id": "family-letter-circulates", "label": "Family letter circulates", "weight": 20, "tags": ["family", "letter"], "pressureDelta": 7 }
+  ],
+  "pressureRules": [
+    { "id": "merchant-debt-pressure", "resource": "merchant_credit", "threshold": 50, "effect": "merchant-linked blackmail and ledger fraud increase" },
+    { "id": "family-obligation-pressure", "resource": "family_influence", "threshold": 55, "effect": "family-letter evidence and forged wills increase" },
+    { "id": "press-proof-pressure", "resource": "media_attention", "threshold": 50, "effect": "newspaper-proof discoveries and witness reversals increase" }
+  ]
+}

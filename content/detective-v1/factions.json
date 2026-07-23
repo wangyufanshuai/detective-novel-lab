@@ -1,0 +1,74 @@
+[
+  {
+    "id": "civic-records-office",
+    "label": "Civic Records Office",
+    "kind": "institution",
+    "tags": ["permit", "copy", "chain-of-custody"],
+    "caseTypeIds": ["court-intimidation", "evidence-tampering", "forged-will", "archive-vanishing", "permit-forgery"],
+    "locationIds": ["court"],
+    "roleIds": ["clerk", "officer", "lawyer"],
+    "resourceIds": ["court-docket", "evidence-integrity"],
+    "publicTension": "Protect procedure while hiding embarrassing gaps.",
+    "weight": 8
+  },
+  {
+    "id": "merchant-ledger-circle",
+    "label": "Merchant Ledger Circle",
+    "kind": "commerce",
+    "tags": ["credit", "receipt", "favor"],
+    "caseTypeIds": ["ledger-fraud", "dock-smuggling", "blackmail", "clinic-inventory-gap", "household-escrow", "permit-forgery"],
+    "locationIds": ["market", "dock"],
+    "roleIds": ["merchant", "dockworker", "informant"],
+    "resourceIds": ["merchant-credit", "dock-labor"],
+    "publicTension": "Keep trade moving while suppressing debt exposure.",
+    "weight": 8
+  },
+  {
+    "id": "gazette-proof-desk",
+    "label": "Gazette Proof Desk",
+    "kind": "media",
+    "tags": ["headline", "proof", "source"],
+    "caseTypeIds": ["blackmail", "false-testimony", "ledger-fraud", "editorial-coercion"],
+    "locationIds": ["gazette"],
+    "roleIds": ["reporter", "informant", "clerk"],
+    "resourceIds": ["media-attention", "court-docket"],
+    "publicTension": "Publish clean proof before sources become compromised.",
+    "weight": 7
+  },
+  {
+    "id": "clinic-review-board",
+    "label": "Clinic Review Board",
+    "kind": "medical",
+    "tags": ["autopsy", "delay", "forensic"],
+    "caseTypeIds": ["medical-coverup", "evidence-tampering", "witness-disappearance", "archive-vanishing", "clinic-inventory-gap"],
+    "locationIds": ["clinic"],
+    "roleIds": ["doctor", "officer", "clerk"],
+    "resourceIds": ["evidence-integrity", "court-docket"],
+    "publicTension": "Balance medical caution against official pressure.",
+    "weight": 7
+  },
+  {
+    "id": "household-trust-network",
+    "label": "Household Trust Network",
+    "kind": "private",
+    "tags": ["letter", "inheritance", "loyalty"],
+    "caseTypeIds": ["family-scandal", "forged-will", "false-testimony", "household-escrow"],
+    "locationIds": ["family-house"],
+    "roleIds": ["servant", "lawyer", "merchant"],
+    "resourceIds": ["family-influence", "merchant-credit"],
+    "publicTension": "Preserve household standing while private letters surface.",
+    "weight": 7
+  },
+  {
+    "id": "dock-shift-union",
+    "label": "Dock Shift Union",
+    "kind": "labor",
+    "tags": ["shift", "cargo", "warehouse"],
+    "caseTypeIds": ["dock-smuggling", "witness-disappearance", "ledger-fraud", "dock-witness-swap", "permit-forgery"],
+    "locationIds": ["dock"],
+    "roleIds": ["dockworker", "merchant", "informant"],
+    "resourceIds": ["dock-labor", "merchant-credit"],
+    "publicTension": "Protect workers while cargo records expose hidden routes.",
+    "weight": 6
+  }
+]

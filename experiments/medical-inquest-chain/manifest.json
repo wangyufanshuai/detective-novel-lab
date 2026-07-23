@@ -1,0 +1,14 @@
+{
+  "id": "medical-inquest-chain",
+  "name": "Medical Inquest Chain",
+  "version": "1.0.0",
+  "schemaVersion": "experiment-folder.v1",
+  "description": "v2.5 experiment proving medical evidence, inquest and chain-of-custody rules affect campaign distribution.",
+  "author": "Detective Novel Lab",
+  "createdAt": "2026-07-02T00:00:00.000Z",
+  "scenarioPackPath": "scenario-pack.json",
+  "mapPackPath": "map-pack.json",
+  "ruleCatalogPath": "rule-catalog.json",
+  "expectationsPath": "expectations.json",
+  "stepsPath": "steps.json"
+}

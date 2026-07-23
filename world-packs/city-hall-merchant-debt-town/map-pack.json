@@ -1,0 +1,33 @@
+{
+  "manifest": { "id": "city-hall-merchant-debt-map", "name": "City Hall Merchant Debt Map", "version": "1.0.0", "schemaVersion": "town-map-pack.v1", "description": "Semantic map for permits, merchant debt, family letters and press pressure.", "createdAt": "2026-07-03T00:00:00.000Z", "entrypoint": "map.json" },
+  "locations": [
+    { "id": "city-hall", "name": "City Hall", "kind": "work", "description": "Permit ledgers, council minutes and public notices are processed here.", "connectedLocationIds": ["merchant-bank", "gazette-office", "family-parlor"], "x": 0, "y": 0 },
+    { "id": "permit-archive", "name": "Permit Archive", "kind": "restricted", "description": "Stamped permits, clerk initials and missing application slips.", "connectedLocationIds": ["city-hall"], "x": -1, "y": 0 },
+    { "id": "merchant-bank", "name": "Merchant Bank", "kind": "work", "description": "Debt renewals, receipts and quiet pressure from the merchant sector.", "connectedLocationIds": ["city-hall", "market-lane"], "x": 1, "y": 0 },
+    { "id": "gazette-office", "name": "Gazette Office", "kind": "work", "description": "Proof sheets and editorials turn private debt into public heat.", "connectedLocationIds": ["city-hall", "market-lane"], "x": 0, "y": 1 },
+    { "id": "family-parlor", "name": "Hale Family Parlor", "kind": "private", "description": "Family obligations, inheritance pressure and private letters.", "connectedLocationIds": ["city-hall", "market-lane"], "x": -1, "y": 1 },
+    { "id": "market-lane", "name": "Market Lane", "kind": "public", "description": "Clerks, merchants and reporters trade rumor against debt.", "connectedLocationIds": ["merchant-bank", "gazette-office", "family-parlor"], "x": 1, "y": 1 }
+  ],
+  "connections": [
+    { "from": "city-hall", "to": "permit-archive", "kind": "interior", "travelMinutes": 3 },
+    { "from": "city-hall", "to": "merchant-bank", "kind": "street", "travelMinutes": 6 },
+    { "from": "city-hall", "to": "gazette-office", "kind": "street", "travelMinutes": 5 },
+    { "from": "city-hall", "to": "family-parlor", "kind": "lane", "travelMinutes": 8 },
+    { "from": "merchant-bank", "to": "market-lane", "kind": "street", "travelMinutes": 4 },
+    { "from": "gazette-office", "to": "market-lane", "kind": "alley", "travelMinutes": 4 },
+    { "from": "family-parlor", "to": "market-lane", "kind": "lane", "travelMinutes": 5 }
+  ],
+  "interactions": [
+    { "id": "review-permits", "locationId": "permit-archive", "kind": "work", "label": "Review permit archive", "risk": 28, "tags": ["civic", "record"] },
+    { "id": "trace-debt", "locationId": "merchant-bank", "kind": "work", "label": "Trace merchant debt", "risk": 42, "tags": ["commerce", "debt", "receipt"] },
+    { "id": "inspect-proof", "locationId": "gazette-office", "kind": "work", "label": "Inspect newspaper proof", "risk": 35, "tags": ["media", "proof"] },
+    { "id": "family-letter", "locationId": "family-parlor", "kind": "socialize", "label": "Ask about family letter", "risk": 45, "tags": ["family", "letter"] }
+  ],
+  "spawnPoints": [
+    { "id": "spawn-civic", "locationId": "city-hall", "roleHint": "clerk", "weight": 75 },
+    { "id": "spawn-merchant", "locationId": "merchant-bank", "roleHint": "merchant", "weight": 65 },
+    { "id": "spawn-media", "locationId": "gazette-office", "roleHint": "reporter", "weight": 60 }
+  ],
+  "assets": {},
+  "docs": {}
+}

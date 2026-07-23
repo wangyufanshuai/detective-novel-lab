@@ -1,0 +1,12 @@
+{
+  "seed": "medical-inquest-chain",
+  "tickCount": 500,
+  "minimumCaseCount": 5,
+  "checkpointEveryTicks": 5,
+  "qualityGate": {
+    "minCandidateDiversityScore": 70,
+    "maxCandidateRepeatRate": 20,
+    "minCausalLinkCount": 70,
+    "minCrossCaseInfluenceCount": 5
+  }
+}

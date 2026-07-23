@@ -1,0 +1,14 @@
+{
+  "id": "evidence-contamination-pressure",
+  "name": "Evidence Contamination Pressure",
+  "version": "1.0.0",
+  "schemaVersion": "experiment-folder.v1",
+  "description": "Campaign experiment stressing evidence contamination, provenance and tamper history.",
+  "author": "Detective Novel Lab",
+  "createdAt": "2026-07-01T00:00:00.000Z",
+  "scenarioPackPath": "scenario-pack.json",
+  "mapPackPath": "map-pack.json",
+  "ruleCatalogPath": "rule-catalog.json",
+  "expectationsPath": "expectations.json",
+  "stepsPath": "steps.json"
+}

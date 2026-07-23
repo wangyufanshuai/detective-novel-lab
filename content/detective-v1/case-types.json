@@ -1,0 +1,180 @@
+[
+  {
+    "id": "blackmail",
+    "label": "Blackmail",
+    "family": "social-pressure",
+    "tags": ["letter", "reputation", "private-debt"],
+    "evidenceTypeIds": ["telegram", "family-letter", "receipt"],
+    "roleIds": ["reporter", "merchant", "informant"],
+    "motiveIds": ["reputation-protection", "debt-pressure"],
+    "weight": 8
+  },
+  {
+    "id": "court-intimidation",
+    "label": "Court Intimidation",
+    "family": "institutional-pressure",
+    "tags": ["court", "witness", "record"],
+    "evidenceTypeIds": ["court-record", "alibi-note", "testimony"],
+    "roleIds": ["lawyer", "officer", "clerk"],
+    "motiveIds": ["case-suppression", "career-preservation"],
+    "weight": 8
+  },
+  {
+    "id": "dock-smuggling",
+    "label": "Dock Smuggling",
+    "family": "commerce-pressure",
+    "tags": ["dock", "cargo", "warehouse"],
+    "evidenceTypeIds": ["cargo-log", "receipt", "footprint"],
+    "roleIds": ["dockworker", "merchant", "informant"],
+    "motiveIds": ["debt-pressure", "territory-control"],
+    "weight": 8
+  },
+  {
+    "id": "evidence-tampering",
+    "label": "Evidence Tampering",
+    "family": "chain-risk",
+    "tags": ["custody", "trace", "official-delay"],
+    "evidenceTypeIds": ["physical", "trace", "weapon-mark"],
+    "roleIds": ["officer", "clerk", "servant"],
+    "motiveIds": ["case-suppression", "loyalty-pressure"],
+    "weight": 7
+  },
+  {
+    "id": "false-testimony",
+    "label": "False Testimony",
+    "family": "witness-pressure",
+    "tags": ["alibi", "fear", "court"],
+    "evidenceTypeIds": ["testimony", "alibi-note", "newspaper-proof"],
+    "roleIds": ["servant", "lawyer", "reporter"],
+    "motiveIds": ["loyalty-pressure", "reputation-protection"],
+    "weight": 7
+  },
+  {
+    "id": "family-scandal",
+    "label": "Family Scandal",
+    "family": "social-pressure",
+    "tags": ["family", "inheritance", "private-letter"],
+    "evidenceTypeIds": ["family-letter", "document", "receipt"],
+    "roleIds": ["servant", "lawyer", "merchant"],
+    "motiveIds": ["inheritance-conflict", "reputation-protection"],
+    "weight": 7
+  },
+  {
+    "id": "forged-will",
+    "label": "Forged Will",
+    "family": "document-pressure",
+    "tags": ["will", "court", "signature"],
+    "evidenceTypeIds": ["court-record", "document", "key-impression"],
+    "roleIds": ["lawyer", "clerk", "servant"],
+    "motiveIds": ["inheritance-conflict", "career-preservation"],
+    "weight": 7
+  },
+  {
+    "id": "ledger-fraud",
+    "label": "Ledger Fraud",
+    "family": "commerce-pressure",
+    "tags": ["ledger", "market", "receipt"],
+    "evidenceTypeIds": ["ledger", "receipt", "telegram"],
+    "roleIds": ["merchant", "clerk", "reporter"],
+    "motiveIds": ["debt-pressure", "career-preservation"],
+    "weight": 7
+  },
+  {
+    "id": "medical-coverup",
+    "label": "Medical Coverup",
+    "family": "forensic-pressure",
+    "tags": ["clinic", "autopsy", "delay"],
+    "evidenceTypeIds": ["medical", "autopsy-note", "blood-pattern"],
+    "roleIds": ["doctor", "officer", "clerk"],
+    "motiveIds": ["case-suppression", "career-preservation"],
+    "weight": 6
+  },
+  {
+    "id": "witness-disappearance",
+    "label": "Witness Disappearance",
+    "family": "witness-pressure",
+    "tags": ["informant", "fear", "movement"],
+    "evidenceTypeIds": ["anonymous-tip", "footprint", "telegram"],
+    "roleIds": ["informant", "officer", "dockworker"],
+    "motiveIds": ["loyalty-pressure", "territory-control"],
+    "weight": 6
+  },
+  {
+    "id": "archive-vanishing",
+    "label": "Archive Vanishing",
+    "family": "institutional-pressure",
+    "tags": ["archive", "copy", "custody"],
+    "evidenceTypeIds": ["court-record", "document", "trace"],
+    "roleIds": ["clerk", "officer", "lawyer"],
+    "motiveIds": ["case-suppression", "career-preservation"],
+    "weight": 6,
+    "authoredCluster": "civic-records",
+    "contrastKey": "missing-record",
+    "campaignTags": ["records", "custody", "institution"]
+  },
+  {
+    "id": "clinic-inventory-gap",
+    "label": "Clinic Inventory Gap",
+    "family": "forensic-pressure",
+    "tags": ["clinic", "inventory", "timing"],
+    "evidenceTypeIds": ["medical", "autopsy-note", "ledger"],
+    "roleIds": ["doctor", "clerk", "officer"],
+    "motiveIds": ["career-preservation", "debt-pressure"],
+    "weight": 6,
+    "authoredCluster": "medical-timing",
+    "contrastKey": "missing-supply",
+    "campaignTags": ["medical", "inventory", "timing"]
+  },
+  {
+    "id": "dock-witness-swap",
+    "label": "Dock Witness Swap",
+    "family": "witness-pressure",
+    "tags": ["dock", "shift", "identity"],
+    "evidenceTypeIds": ["anonymous-tip", "footprint", "telegram"],
+    "roleIds": ["dockworker", "informant", "officer"],
+    "motiveIds": ["territory-control", "loyalty-pressure"],
+    "weight": 6,
+    "authoredCluster": "dock-commerce",
+    "contrastKey": "shifted-witness",
+    "campaignTags": ["dock", "witness", "route"]
+  },
+  {
+    "id": "editorial-coercion",
+    "label": "Editorial Coercion",
+    "family": "media-escalation",
+    "tags": ["gazette", "headline", "source"],
+    "evidenceTypeIds": ["newspaper-proof", "telegram", "testimony"],
+    "roleIds": ["reporter", "lawyer", "informant"],
+    "motiveIds": ["reputation-protection", "case-suppression"],
+    "weight": 6,
+    "authoredCluster": "media-distortion",
+    "contrastKey": "press-coercion",
+    "campaignTags": ["media", "headline", "source"]
+  },
+  {
+    "id": "household-escrow",
+    "label": "Household Escrow",
+    "family": "document-pressure",
+    "tags": ["family", "escrow", "signature"],
+    "evidenceTypeIds": ["family-letter", "receipt", "key-impression"],
+    "roleIds": ["servant", "merchant", "lawyer"],
+    "motiveIds": ["inheritance-conflict", "debt-pressure"],
+    "weight": 6,
+    "authoredCluster": "family-pressure",
+    "contrastKey": "held-inheritance",
+    "campaignTags": ["family", "inheritance", "access"]
+  },
+  {
+    "id": "permit-forgery",
+    "label": "Permit Forgery",
+    "family": "commerce-pressure",
+    "tags": ["permit", "market", "signature"],
+    "evidenceTypeIds": ["document", "court-record", "receipt"],
+    "roleIds": ["clerk", "merchant", "officer"],
+    "motiveIds": ["career-preservation", "debt-pressure"],
+    "weight": 6,
+    "authoredCluster": "civic-commerce",
+    "contrastKey": "false-permit",
+    "campaignTags": ["permit", "market", "records"]
+  }
+]

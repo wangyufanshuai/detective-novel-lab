@@ -1,20 +1,59 @@
 # Release Checklist
 
-Use this checklist before pushing a launch or demo-readiness change.
+Use this checklist before pushing a launch or demo-readiness change. The v3.x public baseline is the Static Demo reader path plus the 5000 tick dataset handoff.
 
-## Local Validation
+## Refresh
 
 ```powershell
-npm run test
-npm run build
-npm run benchmark:emergence
-npm run test:e2e
-node scripts/run-agent-api-smoke.mjs
-node scripts/run-novel-agent-api-smoke.mjs
-node scripts/run-persistent-town-api-smoke.mjs
-node scripts/run-scenario-runner-api-smoke.mjs
-node scripts/run-sdk-client-smoke.mjs
+npm run replay:audit
+npm run package:validate
+npm run package:sync -- --json
+npm run dataset:reader -- --path=outputs/dataset-packages/detective-town-v3-5000-campaign
+npm run dataset:static-reader -- --path=outputs/dataset-packages/detective-town-v3-5000-campaign
+npm run qa:static-reader -- --json
 ```
+
+When package or dataset handoff changed, also run:
+
+```powershell
+npm run dataset:export -- --run=campaign-campaign-validation-5000
+npm run dataset:validate -- --path=outputs/dataset-packages/detective-town-v3-5000-campaign
+npm run dataset:smoke -- --path=outputs/dataset-packages/detective-town-v3-5000-campaign
+npm run dataset:reader -- --path=outputs/dataset-packages/detective-town-v3-5000-campaign
+npm run dataset:static-reader -- --path=outputs/dataset-packages/detective-town-v3-5000-campaign
+npm run dataset:reader -- --path=public/dataset-reader/detective-town-v3-5000-campaign
+```
+
+## Public Catalog Verify
+
+```powershell
+npm run public-catalog:build -- --json
+npm run content:validate -- --json
+npm run public-catalog:validate -- --json
+npm run dataset:reader -- --path=public/dataset-reader/detective-town-v3-5000-campaign --json
+npm run qa:static-browser -- --json
+npm run qa:release-local -- --json
+```
+
+`public/dataset-reader/` and `public/review-catalog/` are tracked public release snapshots. They must be reproducible from the validated local dataset package, static reader metadata, and the aggregate v3.8 detective content summary: `qa:release-local` repeats static reader + catalog generation and fails if the public artifact tree hash changes. The public catalog is generated from `public/dataset-reader/<datasetId>/manifest-lite.json`, `reader-index.json`, and aggregate `content/detective-v1/` validation summary only; it must not read `data/`, `outputs/`, SQLite, or `/api/*`.
+
+## Full Regression Gate
+
+```powershell
+npm run test:storage
+npm run test:replay-audit
+npm run replay:audit
+npm run test:persistent-town
+npm run test:long-run
+npm run test:simulation-quality
+npm run benchmark:campaign -- --ticks=1000
+npm run benchmark:campaign -- --ticks=5000
+npm run benchmark:experiment-matrix
+npm run build
+npm run replay:audit
+```
+
+The final replay audit should report `Errors: 0`, `Secret leaks: 0`, and `Hidden truth leaks: 0`. Legacy manifest warnings are acceptable in default audit mode while older local artifacts remain.
 
 When Docker, dependencies, runtime startup, or deployment files changed:
 
@@ -27,10 +66,10 @@ Then open `http://127.0.0.1:3000/api/v1/query/runtime/status`.
 
 ## Browser QA
 
-- Static Demo: open `http://127.0.0.1:3000/?runtime=static`; verify no `/api/*` requests are made.
-- OpenAPI: open `http://127.0.0.1:3000/openapi.v1.json`; verify valid JSON.
-- Server Runtime: open `http://127.0.0.1:3000/?runtime=server`; verify Persistent Agent Town can start, step, run Scenario Runner, and inspect Time Machine diff.
-- Mobile: verify no page-level horizontal overflow.
+- Static Demo: `npm run qa:static-browser` must show Public Catalog, Dataset Reader, Reader Summary, 5000 gate, top distributions, RunCatalog, and ReplayBundle.
+- Network: Static Demo must make zero `/api/*` requests. It may fetch only `/review-catalog/*` and `/dataset-reader/*` public files.
+- Mobile: 390px viewport must have no page-level horizontal overflow.
+- Server Runtime: `?runtime=server` must still show Dataset Package, Replay Dataset, World Packages, RunCatalog, and ReplayBundle.
 - Console/network: no app runtime errors; Next dev-server HMR warnings are not release blockers for local dev screenshots.
 
 ## Screenshots
@@ -49,4 +88,4 @@ Replace `docs/assets/detective-town-workbench.png` only after reviewing the new 
 - Keep `NEXT_CHAT_HANDOFF.md` local unless explicitly asked to publish it.
 - Commit with a short capability-focused message.
 - Push `main` only after the validation matrix passes.
-- Tag `v0.1.0` only after CI and Docker Smoke are green on `main`.
+- Tag or release only after CI and Docker smoke are green on `main`.

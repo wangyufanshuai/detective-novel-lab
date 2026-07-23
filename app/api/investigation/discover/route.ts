@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { worldRepository } from "@/lib/world/repository";
+import { getRuntimeFactionRelationshipSummary, recordRuntimeInvestigatorProgressionStep, recordRuntimePlayerResourceCommitmentStep } from "@/app/api/v1/_town-runtime";
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,7 +18,12 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date().toISOString()
     };
     worldRepository.saveSession(next);
-    return NextResponse.json({ ok: true, session: next });
+    const investigatorProgression = session.playerId === "auto-player"
+      ? undefined
+      : recordRuntimeInvestigatorProgressionStep(session.worldId, { sourceKey: `${session.id}:${session.caseId}:search`, kind: "search" });
+    const playerResourceCommitment = recordRuntimePlayerResourceCommitmentStep(session.worldId, { sessionId: session.id, caseId: session.caseId, lane: "search" });
+    const factionRelationship = playerResourceCommitment ? getRuntimeFactionRelationshipSummary(session.worldId) : undefined;
+    return NextResponse.json({ ok: true, session: next, playerResourceCommitment, factionRelationship, investigatorProgression });
   } catch (error) {
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
   }

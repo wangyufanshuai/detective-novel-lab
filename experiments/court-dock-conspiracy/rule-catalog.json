@@ -1,0 +1,59 @@
+{
+  "id": "court-dock-v25",
+  "name": "Court Dock v2.5",
+  "version": "1.0.0",
+  "resources": [
+    { "kind": "police_time", "label": "Police Time", "value": 60, "capacity": 100, "pressure": 35 },
+    { "kind": "media_attention", "label": "Media Attention", "value": 50, "capacity": 100, "pressure": 45 },
+    { "kind": "family_influence", "label": "Family Influence", "value": 52, "capacity": 100, "pressure": 42 },
+    { "kind": "merchant_credit", "label": "Merchant Credit", "value": 58, "capacity": 100, "pressure": 48 },
+    { "kind": "medical_capacity", "label": "Medical Capacity", "value": 48, "capacity": 100, "pressure": 30 },
+    { "kind": "evidence_integrity", "label": "Evidence Integrity", "value": 86, "capacity": 100, "pressure": 18 },
+    { "kind": "court_docket", "label": "Court Docket", "value": 46, "capacity": 100, "pressure": 58 },
+    { "kind": "dock_credit", "label": "Dock Credit", "value": 44, "capacity": 100, "pressure": 60 },
+    { "kind": "informant_trust", "label": "Informant Trust", "value": 48, "capacity": 100, "pressure": 52 }
+  ],
+  "institutions": [
+    { "id": "inst-police", "name": "Town Police", "kind": "police", "resources": 60, "reputation": 56, "pressure": 40, "agenda": "Close cases without panic.", "influenceByLocation": { "town-square": 50, "court-house": 55, "dock-gate": 40 }, "trustByNpcId": { "npc-00": 70 }, "activeCaseIds": [], "policyPressure": 38 },
+    { "id": "inst-media", "name": "Local Gazette", "kind": "media", "resources": 50, "reputation": 52, "pressure": 45, "agenda": "Publish defensible court and dock stories.", "influenceByLocation": { "town-square": 65, "court-house": 55, "market": 55 }, "trustByNpcId": { "npc-04": 70, "npc-05": 60 }, "activeCaseIds": [], "policyPressure": 48 },
+    { "id": "inst-family", "name": "Old Families", "kind": "family", "resources": 52, "reputation": 58, "pressure": 42, "agenda": "Protect inheritance standing.", "influenceByLocation": { "court-house": 45, "archive": 50 }, "trustByNpcId": {}, "activeCaseIds": [], "policyPressure": 42 },
+    { "id": "inst-commerce", "name": "Merchants Guild", "kind": "commerce", "resources": 58, "reputation": 52, "pressure": 48, "agenda": "Keep trade records quiet.", "influenceByLocation": { "market": 70, "warehouse": 65, "dock-gate": 55 }, "trustByNpcId": { "npc-03": 70 }, "activeCaseIds": [], "policyPressure": 48 },
+    { "id": "inst-civic", "name": "Town Hall", "kind": "civic", "resources": 50, "reputation": 50, "pressure": 40, "agenda": "Maintain official records.", "influenceByLocation": { "court-house": 55, "archive": 60 }, "trustByNpcId": {}, "activeCaseIds": [], "policyPressure": 42 },
+    { "id": "inst-medical", "name": "Clinic", "kind": "medical", "resources": 48, "reputation": 55, "pressure": 30, "agenda": "Preserve medical evidence.", "influenceByLocation": { "town-square": 30 }, "trustByNpcId": {}, "activeCaseIds": [], "policyPressure": 30 },
+    { "id": "inst-court", "name": "Magistrate Court", "kind": "court", "resources": 46, "reputation": 53, "pressure": 58, "agenda": "Protect dockets, wills and testimony.", "influenceByLocation": { "court-house": 80, "archive": 75, "town-square": 45 }, "trustByNpcId": { "npc-01": 75 }, "activeCaseIds": [], "policyPressure": 58 },
+    { "id": "inst-dock-union", "name": "Dock Union", "kind": "dock_union", "resources": 44, "reputation": 49, "pressure": 60, "agenda": "Control cargo and warehouse access.", "influenceByLocation": { "dock-gate": 80, "warehouse": 75, "market": 50 }, "trustByNpcId": { "npc-02": 75 }, "activeCaseIds": [], "policyPressure": 60 }
+  ],
+  "professions": [
+    { "npcId": "npc-00", "kind": "detective", "institutionId": "inst-police", "rank": 3, "skills": ["detective", "interview"], "income": 50, "workload": 42 },
+    { "npcId": "npc-01", "kind": "lawyer", "institutionId": "inst-court", "rank": 3, "skills": ["law", "records"], "income": 62, "workload": 58 },
+    { "npcId": "npc-02", "kind": "dockworker", "institutionId": "inst-dock-union", "rank": 2, "skills": ["dock", "cargo"], "income": 42, "workload": 62 },
+    { "npcId": "npc-03", "kind": "merchant", "institutionId": "inst-commerce", "rank": 2, "skills": ["merchant", "ledger"], "income": 58, "workload": 52 },
+    { "npcId": "npc-04", "kind": "reporter", "institutionId": "inst-media", "rank": 2, "skills": ["reporter", "rumor"], "income": 40, "workload": 45 },
+    { "npcId": "npc-05", "kind": "informant", "institutionId": "inst-media", "rank": 1, "skills": ["informant", "tip"], "income": 30, "workload": 38 }
+  ],
+  "longActionDefinitions": [
+    { "kind": "review-court-record", "label": "Review court record", "durationTicks": 3, "requiredInstitutionId": "inst-court", "resourceCosts": { "court_docket": 2 }, "institutionDeltas": { "inst-court": { "resources": -2, "reputation": 2, "pressure": -3 } }, "publicOpinionDelta": { "trustInPolice": 1 }, "evidenceContaminationDelta": -6 },
+    { "kind": "cross-examine-witness", "label": "Cross-examine witness", "durationTicks": 3, "requiredInstitutionId": "inst-court", "resourceCosts": { "court_docket": 3 }, "institutionDeltas": { "inst-court": { "resources": -3, "reputation": 3, "pressure": -2 }, "inst-family": { "pressure": 4 } }, "publicOpinionDelta": { "witnessFear": 5 }, "evidenceContaminationDelta": -5 },
+    { "kind": "trace-cargo", "label": "Trace cargo", "durationTicks": 4, "requiredInstitutionId": "inst-dock-union", "resourceCosts": { "dock_credit": 4 }, "institutionDeltas": { "inst-dock-union": { "resources": -4, "reputation": 2, "pressure": 3 }, "inst-commerce": { "pressure": 4 } }, "publicOpinionDelta": { "heat": 3 }, "evidenceContaminationDelta": -4 },
+    { "kind": "inspect-warehouse", "label": "Inspect warehouse", "durationTicks": 3, "requiredInstitutionId": "inst-dock-union", "resourceCosts": { "dock_credit": 3 }, "institutionDeltas": { "inst-dock-union": { "resources": -3, "reputation": 2, "pressure": -2 } }, "publicOpinionDelta": { "trustInPolice": 1 }, "evidenceContaminationDelta": -7 },
+    { "kind": "cultivate-informant", "label": "Cultivate informant", "durationTicks": 4, "resourceCosts": { "informant_trust": 4 }, "institutionDeltas": { "inst-media": { "pressure": 2 }, "inst-dock-union": { "pressure": 2 } }, "publicOpinionDelta": { "witnessFear": -3, "rumorVelocity": 3 }, "evidenceContaminationDelta": -6 },
+    { "kind": "verify-anonymous-tip", "label": "Verify anonymous tip", "durationTicks": 3, "resourceCosts": { "informant_trust": 2, "police_time": 2 }, "institutionDeltas": { "inst-police": { "resources": -2, "reputation": 2 } }, "publicOpinionDelta": { "trustInPolice": 2 }, "evidenceContaminationDelta": -7 }
+  ],
+  "randomEvents": [
+    { "id": "court-docket-gap", "label": "Court docket gap", "weight": 24, "tags": ["court", "record", "testimony"] },
+    { "id": "cargo-ledger-gap", "label": "Cargo ledger gap", "weight": 26, "tags": ["dock", "cargo", "commerce"] },
+    { "id": "anonymous-tip", "label": "Anonymous tip", "weight": 20, "tags": ["informant", "witness", "tip"] }
+  ],
+  "casePressureRules": [
+    { "id": "court-docket-pressure", "resource": "court_docket", "threshold": 58, "effect": "court intimidation and forged wills become likelier" },
+    { "id": "low-dock-credit", "resource": "dock_credit", "threshold": 45, "effect": "dock smuggling and cargo record pressure become likelier" },
+    { "id": "low-informant-trust", "resource": "informant_trust", "threshold": 42, "effect": "anonymous tips become weaker and witness disappearance becomes likelier" }
+  ],
+  "evidenceRules": [
+    { "id": "court-record-chain", "kind": "court-record", "weakContaminationThreshold": 66, "strongProvenanceIntegrityFloor": 60, "relatedCaseTypes": ["court-intimidation", "forged-will", "false-testimony"] },
+    { "id": "cargo-log-chain", "kind": "cargo-log", "weakContaminationThreshold": 70, "strongProvenanceIntegrityFloor": 58, "relatedCaseTypes": ["dock-smuggling", "merchant-extortion"] },
+    { "id": "receipt-chain", "kind": "receipt", "weakContaminationThreshold": 68, "strongProvenanceIntegrityFloor": 58, "relatedCaseTypes": ["ledger-fraud", "dock-smuggling"] },
+    { "id": "anonymous-tip-chain", "kind": "anonymous-tip", "weakContaminationThreshold": 60, "strongProvenanceIntegrityFloor": 48, "relatedCaseTypes": ["blackmail", "witness-disappearance"] },
+    { "id": "testimony-chain", "kind": "testimony", "weakContaminationThreshold": 65, "strongProvenanceIntegrityFloor": 50, "relatedCaseTypes": ["false-testimony", "court-intimidation"] }
+  ]
+}

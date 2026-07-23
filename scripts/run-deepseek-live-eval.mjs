@@ -32,7 +32,7 @@ async function compileFile(sourcePath, targetPath) {
     targetPath,
     compiled
       .replaceAll("@/lib/engine", "../../engine/index.cjs")
-      .replace(/require\("\.\/(.+?)"\)/g, 'require("./$1.cjs")'),
+      .replace(/require\("(\.{1,2}\/.+?)"\)/g, (match, specifier) => specifier.endsWith(".cjs") ? match : `require("${specifier}.cjs")`),
     "utf8"
   );
 }
@@ -41,8 +41,17 @@ async function loadEngineAndAi() {
   const sourceDir = path.join(root, "packages", "engine", "src");
   const engineDir = path.join(runtimeDir, "engine");
   await fs.mkdir(engineDir, { recursive: true });
-  for (const entry of (await fs.readdir(sourceDir)).filter((name) => name.endsWith(".ts"))) {
-    await compileFile(path.join(sourceDir, entry), path.join(engineDir, entry.replace(/\.ts$/, ".cjs")));
+  async function collectTsFiles(dir) {
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+    const nested = await Promise.all(entries.map(async (entry) => {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) return collectTsFiles(fullPath);
+      return entry.isFile() && entry.name.endsWith(".ts") ? [fullPath] : [];
+    }));
+    return nested.flat();
+  }
+  for (const file of await collectTsFiles(sourceDir)) {
+    await compileFile(file, path.join(engineDir, path.relative(sourceDir, file).replace(/\.ts$/, ".cjs")));
   }
   await compileFile(path.join(root, "lib", "world", "ai.ts"), path.join(runtimeDir, "lib", "world", "ai.cjs"));
   return {

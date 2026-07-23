@@ -1,0 +1,40 @@
+{
+  "manifest": {
+    "id": "medical-inquest-map",
+    "name": "Medical Inquest Map",
+    "version": "1.0.0",
+    "schemaVersion": "town-map-pack.v1",
+    "description": "Map pack emphasizing clinic, morgue, inquest court and records annex.",
+    "createdAt": "2026-07-02T00:00:00.000Z",
+    "entrypoint": "map.json"
+  },
+  "locations": [
+    { "id": "town-square", "name": "Town Square", "kind": "public", "description": "Public notices and witness movement near the clinic.", "connectedLocationIds": ["clinic", "court-house", "archive"], "x": 0, "y": 0 },
+    { "id": "clinic", "name": "Birch Clinic", "kind": "work", "description": "Medical records, patient ledgers and coroner desk.", "connectedLocationIds": ["town-square", "morgue"], "x": -1, "y": 1 },
+    { "id": "morgue", "name": "Coroner Room", "kind": "restricted", "description": "Autopsy notes, sealed samples and chain-of-custody tags.", "connectedLocationIds": ["clinic", "court-house"], "x": -2, "y": 2 },
+    { "id": "court-house", "name": "Inquest Court", "kind": "work", "description": "Inquest hearings and sworn medical testimony.", "connectedLocationIds": ["town-square", "morgue", "archive"], "x": 1, "y": 1 },
+    { "id": "archive", "name": "Records Annex", "kind": "restricted", "description": "Older death certificates and sealed correspondence.", "connectedLocationIds": ["town-square", "court-house"], "x": 2, "y": 2 }
+  ],
+  "connections": [
+    { "from": "town-square", "to": "clinic", "kind": "street", "travelMinutes": 7 },
+    { "from": "town-square", "to": "court-house", "kind": "street", "travelMinutes": 8 },
+    { "from": "town-square", "to": "archive", "kind": "street", "travelMinutes": 9 },
+    { "from": "clinic", "to": "morgue", "kind": "interior", "travelMinutes": 3 },
+    { "from": "morgue", "to": "court-house", "kind": "route", "travelMinutes": 5 },
+    { "from": "court-house", "to": "archive", "kind": "interior", "travelMinutes": 4 }
+  ],
+  "interactions": [
+    { "id": "inspect-clinic", "locationId": "clinic", "kind": "work", "label": "Inspect medical register", "risk": 30, "tags": ["medical"] },
+    { "id": "search-morgue", "locationId": "morgue", "kind": "search", "label": "Search autopsy notes", "risk": 55, "tags": ["autopsy", "custody"] },
+    { "id": "hold-inquest", "locationId": "court-house", "kind": "work", "label": "Review inquest record", "risk": 30, "tags": ["court", "medical"] },
+    { "id": "search-annex", "locationId": "archive", "kind": "search", "label": "Find death certificate", "risk": 45, "tags": ["record", "telegram"] }
+  ],
+  "spawnPoints": [
+    { "id": "spawn-detective", "locationId": "town-square", "roleHint": "detective", "weight": 80 },
+    { "id": "spawn-medical", "locationId": "clinic", "roleHint": "official", "weight": 55 },
+    { "id": "spawn-court", "locationId": "court-house", "roleHint": "official", "weight": 55 },
+    { "id": "spawn-witness", "locationId": "archive", "roleHint": "witness", "weight": 45 }
+  ],
+  "assets": {},
+  "docs": {}
+}

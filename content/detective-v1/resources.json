@@ -1,0 +1,68 @@
+[
+  {
+    "id": "court-docket",
+    "label": "Court Docket",
+    "kind": "institutional-access",
+    "tags": ["court", "record", "schedule"],
+    "caseTypeIds": ["court-intimidation", "forged-will", "false-testimony", "archive-vanishing", "permit-forgery"],
+    "locationIds": ["court"],
+    "roleIds": ["lawyer", "clerk", "officer"],
+    "pressure": 68,
+    "publicDescription": "Controls hearing timing, witness order, and formal record access."
+  },
+  {
+    "id": "merchant-credit",
+    "label": "Merchant Credit",
+    "kind": "economic-leverage",
+    "tags": ["debt", "receipt", "market"],
+    "caseTypeIds": ["ledger-fraud", "dock-smuggling", "blackmail", "clinic-inventory-gap", "household-escrow", "permit-forgery"],
+    "locationIds": ["market", "dock"],
+    "roleIds": ["merchant", "dockworker", "informant"],
+    "pressure": 72,
+    "publicDescription": "Turns favors, debts, and delayed payments into investigative pressure."
+  },
+  {
+    "id": "evidence-integrity",
+    "label": "Evidence Integrity",
+    "kind": "forensic-trust",
+    "tags": ["custody", "trace", "medical"],
+    "caseTypeIds": ["evidence-tampering", "medical-coverup", "witness-disappearance", "archive-vanishing", "clinic-inventory-gap"],
+    "locationIds": ["clinic", "court"],
+    "roleIds": ["officer", "doctor", "clerk"],
+    "pressure": 81,
+    "publicDescription": "Measures whether records, traces, and medical notes remain reliable."
+  },
+  {
+    "id": "media-attention",
+    "label": "Media Attention",
+    "kind": "public-pressure",
+    "tags": ["headline", "proof", "rumor"],
+    "caseTypeIds": ["blackmail", "false-testimony", "ledger-fraud", "editorial-coercion"],
+    "locationIds": ["gazette", "market"],
+    "roleIds": ["reporter", "informant", "merchant"],
+    "pressure": 64,
+    "publicDescription": "Amplifies scandal, narrows timelines, and changes witness behavior."
+  },
+  {
+    "id": "family-influence",
+    "label": "Family Influence",
+    "kind": "private-leverage",
+    "tags": ["inheritance", "letter", "household"],
+    "caseTypeIds": ["family-scandal", "forged-will", "blackmail", "household-escrow"],
+    "locationIds": ["family-house"],
+    "roleIds": ["servant", "lawyer", "merchant"],
+    "pressure": 59,
+    "publicDescription": "Shapes private access, loyalty pressure, and inheritance disputes."
+  },
+  {
+    "id": "dock-labor",
+    "label": "Dock Labor",
+    "kind": "movement-capacity",
+    "tags": ["cargo", "warehouse", "shift"],
+    "caseTypeIds": ["dock-smuggling", "witness-disappearance", "evidence-tampering", "dock-witness-swap"],
+    "locationIds": ["dock"],
+    "roleIds": ["dockworker", "merchant", "informant"],
+    "pressure": 66,
+    "publicDescription": "Controls who can move cargo, hide witnesses, or alter delivery timing."
+  }
+]

@@ -1,6 +1,13 @@
 # Scenario Runner Example
 
-Runs a baseline town simulation and one counterfactual branch through the Agent API. It uses the shared SDK starter in `examples/sdk`.
+Runs a review-mode flow through the Agent API and shared SDK starter:
+
+- list built-in scenario presets;
+- save one custom preset;
+- run a deterministic scenario from that preset;
+- list run history;
+- export a markdown review bundle;
+- delete the temporary custom preset.
 
 ```powershell
 node examples/scenario-runner/index.mjs

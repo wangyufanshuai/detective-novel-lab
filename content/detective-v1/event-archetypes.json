@@ -1,0 +1,320 @@
+[
+  {
+    "id": "record-access-delay",
+    "label": "Record Access Delay",
+    "kind": "institutional-friction",
+    "tags": ["record", "delay", "docket"],
+    "caseTypeIds": ["court-intimidation", "forged-will", "evidence-tampering"],
+    "locationIds": ["court"],
+    "roleIds": ["clerk", "lawyer", "officer"],
+    "resourceIds": ["court-docket", "evidence-integrity"],
+    "factionIds": ["civic-records-office"],
+    "risk": 42,
+    "publicDescription": "A formal record becomes slower to inspect as pressure rises.",
+    "directiveResponses": {
+      "support": {
+        "institutionKind": "court",
+        "strategy": "review-court-record",
+        "longActionKind": "review-court-record",
+        "label": "Open a formal record review",
+        "benefitLabel": "The record trail receives a stronger institutional review.",
+        "costLabel": "Court capacity is committed while the review runs."
+      },
+      "contain": {
+        "institutionKind": "police",
+        "strategy": "allocate-investigation",
+        "longActionKind": "protect-chain-of-custody",
+        "label": "Secure the custody trail",
+        "benefitLabel": "Evidence handling receives protected attention.",
+        "costLabel": "Police time is reserved for custody work."
+      }
+    }
+  },
+  {
+    "id": "credit-pressure-spike",
+    "label": "Credit Pressure Spike",
+    "kind": "economic-shock",
+    "tags": ["debt", "receipt", "favor"],
+    "caseTypeIds": ["ledger-fraud", "dock-smuggling", "blackmail"],
+    "locationIds": ["market", "dock"],
+    "roleIds": ["merchant", "dockworker", "informant"],
+    "resourceIds": ["merchant-credit", "dock-labor"],
+    "factionIds": ["merchant-ledger-circle", "dock-shift-union"],
+    "risk": 55,
+    "publicDescription": "A debt deadline changes who will talk and which receipts matter.",
+    "directiveResponses": {
+      "support": {
+        "institutionKind": "commerce",
+        "strategy": "audit-ledger",
+        "longActionKind": "audit-ledger",
+        "label": "Audit the pressured ledger",
+        "benefitLabel": "Commercial records gain a durable audit trail.",
+        "costLabel": "Merchant credit is tied up during the audit."
+      },
+      "contain": {
+        "institutionKind": "media",
+        "strategy": "cultivate-informant",
+        "longActionKind": "cultivate-informant",
+        "label": "Build a protected source channel",
+        "benefitLabel": "A safer information channel can outlast the deadline.",
+        "costLabel": "Informant trust is committed to the operation."
+      }
+    }
+  },
+  {
+    "id": "proof-sheet-leak",
+    "label": "Proof Sheet Leak",
+    "kind": "media-escalation",
+    "tags": ["headline", "proof", "source"],
+    "caseTypeIds": ["blackmail", "false-testimony", "ledger-fraud"],
+    "locationIds": ["gazette"],
+    "roleIds": ["reporter", "informant", "clerk"],
+    "resourceIds": ["media-attention", "court-docket"],
+    "factionIds": ["gazette-proof-desk", "civic-records-office"],
+    "risk": 49,
+    "publicDescription": "A public proof changes witness incentives before the case closes.",
+    "directiveResponses": {
+      "support": {
+        "institutionKind": "media",
+        "strategy": "chase-headline",
+        "longActionKind": "leak-to-press",
+        "label": "Publish the controlled lead",
+        "benefitLabel": "Public attention can surface new reactions.",
+        "costLabel": "Media pressure rises while the lead circulates."
+      },
+      "contain": {
+        "institutionKind": "family",
+        "strategy": "protect-family",
+        "longActionKind": "suppress-story",
+        "label": "Contain the proof sheet",
+        "benefitLabel": "Witness exposure is reduced while facts are checked.",
+        "costLabel": "Family influence is spent holding the story back."
+      }
+    }
+  },
+  {
+    "id": "forensic-timing-gap",
+    "label": "Forensic Timing Gap",
+    "kind": "evidence-risk",
+    "tags": ["medical", "trace", "custody"],
+    "caseTypeIds": ["medical-coverup", "evidence-tampering", "witness-disappearance"],
+    "locationIds": ["clinic", "court"],
+    "roleIds": ["doctor", "officer", "clerk"],
+    "resourceIds": ["evidence-integrity", "court-docket"],
+    "factionIds": ["clinic-review-board", "civic-records-office"],
+    "risk": 63,
+    "publicDescription": "Medical timing and custody timing stop agreeing cleanly.",
+    "directiveResponses": {
+      "support": {
+        "institutionKind": "medical",
+        "strategy": "schedule-autopsy",
+        "longActionKind": "second-medical-opinion",
+        "label": "Commission a second medical opinion",
+        "benefitLabel": "The timing gap receives an independent review.",
+        "costLabel": "Medical capacity is committed to the second review."
+      },
+      "contain": {
+        "institutionKind": "medical",
+        "strategy": "schedule-autopsy",
+        "longActionKind": "seal-autopsy-record",
+        "label": "Seal the disputed record",
+        "benefitLabel": "The disputed timing record is protected from further drift.",
+        "costLabel": "Access narrows while medical staff secure the file."
+      }
+    }
+  },
+  {
+    "id": "household-letter-surfaced",
+    "label": "Household Letter Surfaced",
+    "kind": "private-reveal",
+    "tags": ["letter", "inheritance", "loyalty"],
+    "caseTypeIds": ["family-scandal", "forged-will", "blackmail", "household-escrow"],
+    "locationIds": ["family-house", "gazette"],
+    "roleIds": ["servant", "lawyer", "reporter"],
+    "resourceIds": ["family-influence", "media-attention", "merchant-credit"],
+    "factionIds": ["household-trust-network", "gazette-proof-desk", "merchant-ledger-circle"],
+    "risk": 47,
+    "publicDescription": "A private letter becomes visible enough to change testimony.",
+    "directiveResponses": {
+      "support": {
+        "institutionKind": "media",
+        "strategy": "chase-headline",
+        "longActionKind": "pressure-editor",
+        "label": "Press for an accountable review",
+        "benefitLabel": "Editorial scrutiny may clarify the public account.",
+        "costLabel": "The letter draws additional public attention."
+      },
+      "contain": {
+        "institutionKind": "family",
+        "strategy": "protect-family",
+        "longActionKind": "summon-family-council",
+        "label": "Convene a private council",
+        "benefitLabel": "The household can stabilize its shared account.",
+        "costLabel": "Family influence is committed to the meeting."
+      }
+    }
+  },
+  {
+    "id": "cargo-route-shift",
+    "label": "Cargo Route Shift",
+    "kind": "movement-change",
+    "tags": ["cargo", "warehouse", "movement"],
+    "caseTypeIds": ["dock-smuggling", "witness-disappearance", "evidence-tampering"],
+    "locationIds": ["dock", "market"],
+    "roleIds": ["dockworker", "merchant", "informant"],
+    "resourceIds": ["dock-labor", "merchant-credit"],
+    "factionIds": ["dock-shift-union", "merchant-ledger-circle"],
+    "risk": 58,
+    "publicDescription": "A route change creates new opportunity for hidden movement.",
+    "directiveResponses": {
+      "support": {
+        "institutionKind": "dock_union",
+        "strategy": "trace-cargo",
+        "longActionKind": "trace-cargo",
+        "label": "Trace the shifted cargo route",
+        "benefitLabel": "The new route gains a durable movement record.",
+        "costLabel": "Dock capacity is committed to the trace."
+      },
+      "contain": {
+        "institutionKind": "dock_union",
+        "strategy": "trace-cargo",
+        "longActionKind": "inspect-warehouse",
+        "label": "Inspect the receiving warehouse",
+        "benefitLabel": "The route change is checked at its receiving point.",
+        "costLabel": "Dock resources are reserved for the inspection."
+      }
+    }
+  },
+  {
+    "id": "archive-stamp-conflict",
+    "label": "Archive Stamp Conflict",
+    "kind": "institutional-friction",
+    "tags": ["archive", "permit", "copy"],
+    "caseTypeIds": ["archive-vanishing", "permit-forgery", "forged-will"],
+    "locationIds": ["court", "market"],
+    "roleIds": ["clerk", "officer", "lawyer"],
+    "resourceIds": ["court-docket", "evidence-integrity", "merchant-credit"],
+    "factionIds": ["civic-records-office", "merchant-ledger-circle"],
+    "risk": 51,
+    "publicDescription": "A missing stamp makes two public copies disagree about who had access.",
+    "authoredCluster": "civic-records",
+    "campaignTags": ["records", "permit", "custody"],
+    "directiveResponses": {
+      "support": {
+        "institutionKind": "court",
+        "strategy": "review-court-record",
+        "longActionKind": "review-court-record",
+        "label": "Reconcile the archive copies",
+        "benefitLabel": "The archive gains a durable copy comparison.",
+        "costLabel": "Court capacity is committed to the comparison."
+      },
+      "contain": {
+        "institutionKind": "police",
+        "strategy": "allocate-investigation",
+        "longActionKind": "protect-chain-of-custody",
+        "label": "Lock the disputed stamp",
+        "benefitLabel": "The disputed copy is protected while access is checked.",
+        "costLabel": "Police time is reserved for custody control."
+      }
+    }
+  },
+  {
+    "id": "clinic-supply-shortfall",
+    "label": "Clinic Supply Shortfall",
+    "kind": "evidence-risk",
+    "tags": ["clinic", "inventory", "timing"],
+    "caseTypeIds": ["clinic-inventory-gap", "medical-coverup", "evidence-tampering"],
+    "locationIds": ["clinic", "market"],
+    "roleIds": ["doctor", "clerk", "officer"],
+    "resourceIds": ["evidence-integrity", "merchant-credit"],
+    "factionIds": ["clinic-review-board", "merchant-ledger-circle"],
+    "risk": 59,
+    "publicDescription": "A missing clinical supply shifts the timing of a forensic account.",
+    "authoredCluster": "medical-timing",
+    "campaignTags": ["medical", "inventory", "forensic"],
+    "directiveResponses": {
+      "support": {
+        "institutionKind": "medical",
+        "strategy": "schedule-autopsy",
+        "longActionKind": "second-medical-opinion",
+        "label": "Commission a supply audit",
+        "benefitLabel": "The medical timing record gains an independent check.",
+        "costLabel": "Medical capacity is committed to the audit."
+      },
+      "contain": {
+        "institutionKind": "medical",
+        "strategy": "schedule-autopsy",
+        "longActionKind": "seal-autopsy-record",
+        "label": "Seal the inventory record",
+        "benefitLabel": "The disputed supply trail is protected from drift.",
+        "costLabel": "Access narrows while the clinic secures the file."
+      }
+    }
+  },
+  {
+    "id": "dock-shift-dispute",
+    "label": "Dock Shift Dispute",
+    "kind": "movement-change",
+    "tags": ["dock", "shift", "witness"],
+    "caseTypeIds": ["dock-witness-swap", "dock-smuggling", "witness-disappearance"],
+    "locationIds": ["dock"],
+    "roleIds": ["dockworker", "informant", "officer"],
+    "resourceIds": ["dock-labor", "merchant-credit"],
+    "factionIds": ["dock-shift-union", "merchant-ledger-circle"],
+    "risk": 56,
+    "publicDescription": "A shift handoff changes which witness can safely confirm a route.",
+    "authoredCluster": "dock-commerce",
+    "campaignTags": ["dock", "witness", "route"],
+    "directiveResponses": {
+      "support": {
+        "institutionKind": "dock_union",
+        "strategy": "trace-cargo",
+        "longActionKind": "trace-cargo",
+        "label": "Trace the disputed shift",
+        "benefitLabel": "The shift handoff gains a durable route record.",
+        "costLabel": "Dock capacity is committed to the trace."
+      },
+      "contain": {
+        "institutionKind": "dock_union",
+        "strategy": "trace-cargo",
+        "longActionKind": "inspect-warehouse",
+        "label": "Inspect the receiving bay",
+        "benefitLabel": "The disputed handoff is checked at its destination.",
+        "costLabel": "Dock resources are reserved for the inspection."
+      }
+    }
+  },
+  {
+    "id": "editorial-pressure-wave",
+    "label": "Editorial Pressure Wave",
+    "kind": "media-escalation",
+    "tags": ["gazette", "headline", "coercion"],
+    "caseTypeIds": ["editorial-coercion", "false-testimony", "blackmail"],
+    "locationIds": ["gazette", "court"],
+    "roleIds": ["reporter", "lawyer", "informant"],
+    "resourceIds": ["media-attention", "court-docket"],
+    "factionIds": ["gazette-proof-desk", "civic-records-office"],
+    "risk": 54,
+    "publicDescription": "A headline deadline narrows which source can safely correct the public record.",
+    "authoredCluster": "media-distortion",
+    "campaignTags": ["media", "headline", "source"],
+    "directiveResponses": {
+      "support": {
+        "institutionKind": "media",
+        "strategy": "chase-headline",
+        "longActionKind": "leak-to-press",
+        "label": "Publish a verified correction",
+        "benefitLabel": "Public attention can surface a safer source reaction.",
+        "costLabel": "Media pressure rises while the correction circulates."
+      },
+      "contain": {
+        "institutionKind": "family",
+        "strategy": "protect-family",
+        "longActionKind": "suppress-story",
+        "label": "Hold the disputed headline",
+        "benefitLabel": "Witness exposure is reduced while the account is checked.",
+        "costLabel": "Family influence is spent holding the story back."
+      }
+    }
+  }
+]

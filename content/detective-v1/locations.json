@@ -1,0 +1,8 @@
+[
+  { "id": "court", "label": "Court", "kind": "institution", "tags": ["record", "witness", "docket"], "caseTypeIds": ["court-intimidation", "forged-will", "false-testimony", "archive-vanishing", "permit-forgery"], "evidenceTypeIds": ["court-record", "alibi-note"], "weight": 8 },
+  { "id": "dock", "label": "Dock", "kind": "commerce", "tags": ["cargo", "warehouse", "labor"], "caseTypeIds": ["dock-smuggling", "witness-disappearance", "dock-witness-swap"], "evidenceTypeIds": ["cargo-log", "footprint"], "weight": 8 },
+  { "id": "market", "label": "Market", "kind": "commerce", "tags": ["ledger", "receipt", "credit"], "caseTypeIds": ["ledger-fraud", "blackmail", "clinic-inventory-gap", "household-escrow", "permit-forgery"], "evidenceTypeIds": ["ledger", "receipt"], "weight": 7 },
+  { "id": "clinic", "label": "Clinic", "kind": "medical", "tags": ["autopsy", "delay", "forensic"], "caseTypeIds": ["medical-coverup", "evidence-tampering", "clinic-inventory-gap"], "evidenceTypeIds": ["medical", "autopsy-note", "blood-pattern"], "weight": 7 },
+  { "id": "family-house", "label": "Family House", "kind": "private", "tags": ["letter", "inheritance", "reputation"], "caseTypeIds": ["family-scandal", "forged-will", "household-escrow"], "evidenceTypeIds": ["family-letter", "document"], "weight": 7 },
+  { "id": "gazette", "label": "Gazette Office", "kind": "media", "tags": ["headline", "proof", "rumor"], "caseTypeIds": ["blackmail", "false-testimony", "editorial-coercion", "archive-vanishing"], "evidenceTypeIds": ["newspaper-proof", "telegram"], "weight": 6 }
+]

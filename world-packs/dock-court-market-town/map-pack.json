@@ -1,0 +1,30 @@
+{
+  "manifest": { "id": "dock-court-market-map", "name": "Dock Court Market Map", "version": "1.0.0", "schemaVersion": "town-map-pack.v1", "description": "Semantic map for court and dock market pressure.", "createdAt": "2026-07-03T00:00:00.000Z", "entrypoint": "map.json" },
+  "locations": [
+    { "id": "market-square", "name": "Market Square", "kind": "public", "description": "Market gossip, legal notices and cargo receipts meet in one public square.", "connectedLocationIds": ["court-house", "dock-office", "warehouse"], "x": 0, "y": 0 },
+    { "id": "court-house", "name": "Court House", "kind": "work", "description": "Dockets, warrants and inheritance filings are handled here.", "connectedLocationIds": ["market-square", "records-room"], "x": -1, "y": 1 },
+    { "id": "records-room", "name": "Records Room", "kind": "restricted", "description": "Probate papers, witness statements and sealed docket slips.", "connectedLocationIds": ["court-house"], "x": -2, "y": 1 },
+    { "id": "dock-office", "name": "Dock Office", "kind": "work", "description": "Cargo tallies, union favors and late-night manifests.", "connectedLocationIds": ["market-square", "warehouse"], "x": 1, "y": 1 },
+    { "id": "warehouse", "name": "Bonded Warehouse", "kind": "restricted", "description": "Receipts, crates and a second ledger that should not exist.", "connectedLocationIds": ["market-square", "dock-office"], "x": 2, "y": 1 }
+  ],
+  "connections": [
+    { "from": "market-square", "to": "court-house", "kind": "street", "travelMinutes": 7 },
+    { "from": "court-house", "to": "records-room", "kind": "interior", "travelMinutes": 3 },
+    { "from": "market-square", "to": "dock-office", "kind": "street", "travelMinutes": 9 },
+    { "from": "dock-office", "to": "warehouse", "kind": "route", "travelMinutes": 5 },
+    { "from": "market-square", "to": "warehouse", "kind": "alley", "travelMinutes": 8 }
+  ],
+  "interactions": [
+    { "id": "review-docket", "locationId": "court-house", "kind": "work", "label": "Review docket", "risk": 25, "tags": ["court", "record"] },
+    { "id": "trace-cargo", "locationId": "dock-office", "kind": "work", "label": "Trace cargo", "risk": 35, "tags": ["dock", "cargo"] },
+    { "id": "inspect-warehouse", "locationId": "warehouse", "kind": "search", "label": "Inspect warehouse receipts", "risk": 55, "tags": ["dock", "receipt"] },
+    { "id": "listen-market", "locationId": "market-square", "kind": "socialize", "label": "Listen for informant tips", "risk": 20, "tags": ["informant", "tip"] }
+  ],
+  "spawnPoints": [
+    { "id": "spawn-detective", "locationId": "market-square", "roleHint": "detective", "weight": 80 },
+    { "id": "spawn-court", "locationId": "court-house", "roleHint": "official", "weight": 55 },
+    { "id": "spawn-dock", "locationId": "dock-office", "roleHint": "worker", "weight": 55 }
+  ],
+  "assets": {},
+  "docs": {}
+}

@@ -4,7 +4,7 @@ import { worldRepository } from "@/lib/world/repository";
 
 export async function POST(request: Request) {
   try {
-    const body = await readJson<{ caseId?: string; persist?: boolean; includeDetails?: boolean }>(request, {});
+    const body = await readJson<{ caseId?: string; persist?: boolean; includeDetails?: boolean; includeSession?: boolean }>(request, {});
     if (!body.caseId) return fail("BAD_REQUEST", "caseId is required");
     const caseFromLog = worldRepository.getCase(body.caseId);
     if (!caseFromLog) return fail("CASE_NOT_FOUND", "Case not found", 404);
@@ -18,6 +18,7 @@ export async function POST(request: Request) {
     const persisted = Boolean(body.persist && report.passed);
     if (persisted) worldRepository.saveSession(report.session);
     if (body.includeDetails) return ok({ report, sessionId: persisted ? report.session.id : undefined });
+    if (body.includeSession) return ok({ summary: spoilerSafeCaseAutoSolveReport(report), session: persisted ? report.session : undefined, sessionId: persisted ? report.session.id : undefined });
     return ok({ summary: spoilerSafeCaseAutoSolveReport(report), sessionId: persisted ? report.session.id : undefined });
   } catch (error) {
     return errorResponse(error);

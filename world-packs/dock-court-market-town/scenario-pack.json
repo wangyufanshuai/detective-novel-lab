@@ -1,0 +1,28 @@
+{
+  "manifest": { "id": "dock-court-market-town", "name": "Dock Court Market Town", "version": "1.0.0", "schemaVersion": "scenario-pack.v1", "description": "Court, cargo and market pressure package.", "createdAt": "2026-07-03T00:00:00.000Z", "entrypoint": "scenario.json" },
+  "world": {
+    "seed": "dock-court-market-town",
+    "mode": "advanced",
+    "timelineHours": 96,
+    "locations": [
+      { "id": "market-square", "name": "Market Square", "kind": "public", "description": "Market gossip, legal notices and cargo receipts meet in one public square.", "connectedLocationIds": ["court-house", "dock-office", "warehouse"], "x": 0, "y": 0 },
+      { "id": "court-house", "name": "Court House", "kind": "work", "description": "Dockets, warrants and inheritance filings are handled here.", "connectedLocationIds": ["market-square", "records-room"], "x": -1, "y": 1 },
+      { "id": "records-room", "name": "Records Room", "kind": "restricted", "description": "Probate papers, witness statements and sealed docket slips.", "connectedLocationIds": ["court-house"], "x": -2, "y": 1 },
+      { "id": "dock-office", "name": "Dock Office", "kind": "work", "description": "Cargo tallies, union favors and late-night manifests.", "connectedLocationIds": ["market-square", "warehouse"], "x": 1, "y": 1 },
+      { "id": "warehouse", "name": "Bonded Warehouse", "kind": "restricted", "description": "Receipts, crates and a second ledger that should not exist.", "connectedLocationIds": ["market-square", "dock-office"], "x": 2, "y": 1 }
+    ],
+    "npcs": [
+      { "id": "npc-dcm-1", "name": "Ada Vale", "role": "detective", "homeLocationId": "market-square", "schedule": { "08:00": "market-square", "12:00": "court-house", "18:00": "dock-office" }, "relationships": { "npc-dcm-2": "source" }, "secret": "Tracks public inconsistencies between docket and cargo dates.", "motiveSeed": "protect procedure", "skills": ["detective", "interview"], "memoryEventIds": [], "liePolicy": "omits sources", "alive": true },
+      { "id": "npc-dcm-2", "name": "Nell Tallow", "role": "informant", "homeLocationId": "market-square", "schedule": { "08:00": "market-square", "12:00": "dock-office", "18:00": "warehouse" }, "relationships": { "npc-dcm-3": "debt" }, "secret": "Saw a receipt copied after the court bell.", "motiveSeed": "sell a safe tip", "skills": ["informant", "tip"], "memoryEventIds": [], "liePolicy": "speaks indirectly", "alive": true },
+      { "id": "npc-dcm-3", "name": "Bram Lyle", "role": "merchant", "homeLocationId": "warehouse", "schedule": { "08:00": "warehouse", "12:00": "market-square", "18:00": "court-house" }, "relationships": { "npc-dcm-4": "contract" }, "secret": "Keeps two cargo ledgers.", "motiveSeed": "hide smuggling debt", "skills": ["merchant", "ledger"], "memoryEventIds": [], "liePolicy": "minimizes money trail", "alive": true },
+      { "id": "npc-dcm-4", "name": "Silas Wren", "role": "lawyer", "homeLocationId": "court-house", "schedule": { "08:00": "court-house", "12:00": "records-room", "18:00": "market-square" }, "relationships": { "npc-dcm-3": "contract" }, "secret": "Filed a docket correction without a witness.", "motiveSeed": "protect a client", "skills": ["law", "records"], "memoryEventIds": [], "liePolicy": "answers narrowly", "alive": true }
+    ],
+    "institutions": [],
+    "professions": []
+  },
+  "rules": { "enabledModules": ["institutions", "professions", "long-actions", "public-opinion", "evidence-contamination", "case-aftermath"], "phaseConfig": { "snapshotEveryTicks": 1, "maxRunningLongActions": 8 }, "thresholds": { "maxEvidenceContamination": 75, "maxPublicOpinionHeat": 85, "minInstitutionTrust": 35 }, "longActionKinds": ["review-court-record", "trace-cargo", "inspect-warehouse", "cultivate-informant"] },
+  "scenario": { "id": "dock-court-market-town", "name": "Dock Court Market Town", "seed": "dock-court-market-town", "worldOptions": { "mode": "advanced", "npcCount": 4, "timelineHours": 96 }, "baselineSteps": 8, "branches": [], "passCriteria": { "minValidCandidates": 0, "minEventGrowth": 1, "minMemoryGrowth": 1, "maxBlockedCandidates": 8 } },
+  "expectations": { "minValidCandidates": 1, "minEvidenceCoverage": 80, "maxEvidenceContamination": 75, "maxPublicOpinionHeat": 85, "benchmarkPreset": "quick-10" },
+  "assets": {},
+  "docs": {}
+}

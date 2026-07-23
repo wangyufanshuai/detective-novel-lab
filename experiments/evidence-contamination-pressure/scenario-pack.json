@@ -1,0 +1,129 @@
+{
+  "manifest": {
+    "id": "evidence-contamination-pressure",
+    "name": "Evidence Contamination Pressure",
+    "version": "1.0.0",
+    "schemaVersion": "scenario-pack.v1",
+    "description": "Scenario pack for contamination-heavy campaign validation.",
+    "createdAt": "2026-07-01T00:00:00.000Z",
+    "entrypoint": "scenario.json"
+  },
+  "world": {
+    "seed": "evidence-contamination-pressure",
+    "mode": "advanced",
+    "timelineHours": 96,
+    "locations": [
+      {
+        "id": "town-square",
+        "name": "Town Square",
+        "kind": "public",
+        "description": "Public notice board, fountain, and common witness traffic.",
+        "connectedLocationIds": ["archive", "clinic"],
+        "x": 0,
+        "y": 0
+      },
+      {
+        "id": "archive",
+        "name": "Archive",
+        "kind": "work",
+        "description": "Old records, debt contracts, and missing-person clippings.",
+        "connectedLocationIds": ["town-square", "clinic"],
+        "x": -1,
+        "y": 1
+      },
+      {
+        "id": "clinic",
+        "name": "Clinic",
+        "kind": "restricted",
+        "description": "Medical cabinet, coroner desk, and guarded autopsy notes.",
+        "connectedLocationIds": ["town-square", "archive"],
+        "x": 1,
+        "y": 1
+      }
+    ],
+    "npcs": [
+      {
+        "id": "npc-00",
+        "name": "Ada Vale",
+        "role": "detective",
+        "homeLocationId": "town-square",
+        "schedule": { "08:00": "town-square", "12:00": "archive", "18:00": "clinic" },
+        "relationships": { "npc-01": "friend", "npc-02": "rival" },
+        "secret": "Knows an old police filing error.",
+        "motiveSeed": "protect reputation",
+        "skills": ["detective", "interview"],
+        "memoryEventIds": [],
+        "liePolicy": "omits sources",
+        "alive": true
+      },
+      {
+        "id": "npc-01",
+        "name": "Milo Hart",
+        "role": "police officer",
+        "homeLocationId": "archive",
+        "schedule": { "08:00": "archive", "12:00": "town-square", "18:00": "clinic" },
+        "relationships": { "npc-00": "friend", "npc-03": "debt" },
+        "secret": "Misplaced a key evidence bag.",
+        "motiveSeed": "avoid discipline",
+        "skills": ["officer", "report"],
+        "memoryEventIds": [],
+        "liePolicy": "minimizes mistakes",
+        "alive": true
+      },
+      {
+        "id": "npc-02",
+        "name": "Iris Quill",
+        "role": "reporter",
+        "homeLocationId": "town-square",
+        "schedule": { "08:00": "town-square", "12:00": "clinic", "18:00": "archive" },
+        "relationships": { "npc-00": "rival", "npc-03": "secret" },
+        "secret": "Has a source inside the clinic.",
+        "motiveSeed": "break a headline",
+        "skills": ["reporter", "rumor"],
+        "memoryEventIds": [],
+        "liePolicy": "protects source",
+        "alive": true
+      },
+      {
+        "id": "npc-03",
+        "name": "Dr. Rowan Pike",
+        "role": "doctor",
+        "homeLocationId": "clinic",
+        "schedule": { "08:00": "clinic", "12:00": "archive", "18:00": "town-square" },
+        "relationships": { "npc-01": "debt", "npc-02": "secret" },
+        "secret": "Delayed an autopsy report.",
+        "motiveSeed": "hide medical negligence",
+        "skills": ["doctor", "autopsy"],
+        "memoryEventIds": [],
+        "liePolicy": "answers narrowly",
+        "alive": true
+      }
+    ],
+    "institutions": [],
+    "professions": []
+  },
+  "rules": {
+    "enabledModules": ["institutions", "professions", "long-actions", "public-opinion", "evidence-contamination", "case-aftermath"],
+    "phaseConfig": { "snapshotEveryTicks": 1, "maxRunningLongActions": 8 },
+    "thresholds": { "maxEvidenceContamination": 70, "maxPublicOpinionHeat": 80, "minInstitutionTrust": 35 },
+    "longActionKinds": ["investigate-scene", "tamper-evidence", "verify-alibi", "conduct-autopsy", "audit-ledger"]
+  },
+  "scenario": {
+    "id": "evidence-contamination-pressure",
+    "name": "Evidence Contamination Pressure",
+    "seed": "evidence-contamination-pressure",
+    "worldOptions": { "mode": "advanced", "npcCount": 4, "timelineHours": 96 },
+    "baselineSteps": 8,
+    "branches": [],
+    "passCriteria": { "minValidCandidates": 0, "minEventGrowth": 1, "minMemoryGrowth": 1, "maxBlockedCandidates": 8 }
+  },
+  "expectations": {
+    "minValidCandidates": 1,
+    "minEvidenceCoverage": 80,
+    "maxEvidenceContamination": 70,
+    "maxPublicOpinionHeat": 80,
+    "benchmarkPreset": "quick-10"
+  },
+  "assets": {},
+  "docs": {}
+}

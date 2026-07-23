@@ -1,0 +1,7 @@
+{
+  "minValidCandidates": 1,
+  "minEvidenceCoverage": 80,
+  "maxEvidenceContamination": 75,
+  "maxPublicOpinionHeat": 90,
+  "benchmarkPreset": "quick-10"
+}

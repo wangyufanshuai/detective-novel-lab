@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { makeRuleBoundInterrogation, updateTestimonyWithContradiction } from "@/lib/engine";
 import { generateGuardedNpcReplyWithAudit } from "@/lib/world/ai";
 import { worldRepository } from "@/lib/world/repository";
+import { getRuntimeFactionRelationshipSummary, recordRuntimeInvestigatorProgressionStep, recordRuntimePlayerResourceCommitmentStep } from "@/app/api/v1/_town-runtime";
 
 export async function POST(request: NextRequest) {
   try {
@@ -49,6 +50,17 @@ export async function POST(request: NextRequest) {
       aiResult.content
     );
     const next = worldRepository.appendInterrogation(session, entry);
+    const commitmentLane = testimonyUpdate.contradictionHit.hit ? "challenge" : body.evidenceId ? undefined : "question";
+    const investigatorProgression = session.playerId === "auto-player" || !commitmentLane
+      ? undefined
+      : recordRuntimeInvestigatorProgressionStep(session.worldId, {
+          sourceKey: `${session.id}:${session.caseId}:${commitmentLane}`,
+          kind: commitmentLane
+        });
+    const playerResourceCommitment = commitmentLane
+      ? recordRuntimePlayerResourceCommitmentStep(session.worldId, { sessionId: session.id, caseId: session.caseId, lane: commitmentLane })
+      : undefined;
+    const factionRelationship = playerResourceCommitment ? getRuntimeFactionRelationshipSummary(session.worldId) : undefined;
     return NextResponse.json({
       ok: true,
       entry,
@@ -60,7 +72,10 @@ export async function POST(request: NextRequest) {
       memoryCount: aiResult.memoryCount,
       evidenceCount: aiResult.evidenceCount,
       contradictionHit: testimonyUpdate.contradictionHit,
-      testimonyUpdated: testimonyUpdate.updated
+      testimonyUpdated: testimonyUpdate.updated,
+      playerResourceCommitment,
+      factionRelationship,
+      investigatorProgression
     });
   } catch (error) {
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });

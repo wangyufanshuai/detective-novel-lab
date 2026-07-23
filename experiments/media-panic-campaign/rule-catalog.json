@@ -1,0 +1,46 @@
+{
+  "id": "detective-media-panic",
+  "name": "Detective Media Panic",
+  "version": "1.0.0",
+  "resources": [
+    { "kind": "police_time", "label": "Police Time", "value": 62, "capacity": 100, "pressure": 35 },
+    { "kind": "media_attention", "label": "Media Attention", "value": 76, "capacity": 100, "pressure": 70 },
+    { "kind": "family_influence", "label": "Family Influence", "value": 58, "capacity": 100, "pressure": 45 },
+    { "kind": "merchant_credit", "label": "Merchant Credit", "value": 70, "capacity": 100, "pressure": 38 },
+    { "kind": "medical_capacity", "label": "Medical Capacity", "value": 46, "capacity": 100, "pressure": 30 },
+    { "kind": "evidence_integrity", "label": "Evidence Integrity", "value": 90, "capacity": 100, "pressure": 10 }
+  ],
+  "institutions": [
+    { "id": "inst-police", "name": "Town Police", "kind": "police", "resources": 62, "reputation": 58, "pressure": 35, "agenda": "Close cases without public panic.", "influenceByLocation": { "town-square": 40, "archive": 70, "clinic": 45 }, "trustByNpcId": { "npc-00": 70, "npc-01": 70, "npc-02": 45, "npc-03": 45 }, "activeCaseIds": [], "policyPressure": 35 },
+    { "id": "inst-media", "name": "Local Gazette", "kind": "media", "resources": 76, "reputation": 52, "pressure": 70, "agenda": "Publish dramatic but defensible stories.", "influenceByLocation": { "town-square": 80, "archive": 40, "clinic": 50 }, "trustByNpcId": { "npc-00": 45, "npc-01": 35, "npc-02": 70, "npc-03": 45 }, "activeCaseIds": [], "policyPressure": 72 },
+    { "id": "inst-family", "name": "Old Families", "kind": "family", "resources": 58, "reputation": 60, "pressure": 45, "agenda": "Protect family standing.", "influenceByLocation": { "town-square": 45, "archive": 35, "clinic": 40 }, "trustByNpcId": { "npc-00": 45, "npc-01": 45, "npc-02": 45, "npc-03": 45 }, "activeCaseIds": [], "policyPressure": 40 },
+    { "id": "inst-commerce", "name": "Merchants Guild", "kind": "commerce", "resources": 70, "reputation": 55, "pressure": 38, "agenda": "Keep trade moving.", "influenceByLocation": { "town-square": 55, "archive": 60, "clinic": 25 }, "trustByNpcId": { "npc-00": 45, "npc-01": 45, "npc-02": 45, "npc-03": 45 }, "activeCaseIds": [], "policyPressure": 44 },
+    { "id": "inst-civic", "name": "Town Hall", "kind": "civic", "resources": 54, "reputation": 50, "pressure": 36, "agenda": "Preserve civic order.", "influenceByLocation": { "town-square": 55, "archive": 60, "clinic": 30 }, "trustByNpcId": { "npc-00": 45, "npc-01": 45, "npc-02": 45, "npc-03": 45 }, "activeCaseIds": [], "policyPressure": 42 },
+    { "id": "inst-medical", "name": "Clinic and Coroner", "kind": "medical", "resources": 46, "reputation": 57, "pressure": 30, "agenda": "Protect forensic integrity.", "influenceByLocation": { "town-square": 30, "archive": 35, "clinic": 75 }, "trustByNpcId": { "npc-00": 45, "npc-01": 45, "npc-02": 45, "npc-03": 70 }, "activeCaseIds": [], "policyPressure": 28 }
+  ],
+  "professions": [
+    { "npcId": "npc-00", "kind": "detective", "institutionId": "inst-police", "rank": 3, "skills": ["detective", "interview"], "income": 50, "workload": 40 },
+    { "npcId": "npc-01", "kind": "officer", "institutionId": "inst-police", "rank": 2, "skills": ["officer", "report"], "income": 40, "workload": 48 },
+    { "npcId": "npc-02", "kind": "reporter", "institutionId": "inst-media", "rank": 2, "skills": ["reporter", "rumor"], "income": 38, "workload": 45 },
+    { "npcId": "npc-03", "kind": "doctor", "institutionId": "inst-medical", "rank": 3, "skills": ["doctor", "autopsy"], "income": 58, "workload": 52 }
+  ],
+  "longActionDefinitions": [
+    { "kind": "investigate-scene", "label": "Investigate scene", "durationTicks": 3, "resourceCosts": { "police_time": 4 }, "institutionDeltas": { "inst-police": { "resources": -4, "reputation": 2, "pressure": -3 } }, "publicOpinionDelta": { "trustInPolice": 2, "witnessFear": -2 }, "evidenceContaminationDelta": -8 },
+    { "kind": "publish-rumor", "label": "Publish rumor", "durationTicks": 2, "resourceCosts": { "media_attention": -3 }, "institutionDeltas": { "inst-media": { "resources": 3, "reputation": -2, "pressure": 5 }, "inst-police": { "pressure": 4 } }, "publicOpinionDelta": { "heat": 12, "mediaPressure": 10, "rumorVelocity": 15, "witnessFear": 5 }, "evidenceContaminationDelta": 5 },
+    { "kind": "conduct-autopsy", "label": "Conduct autopsy", "durationTicks": 4, "requiredInstitutionId": "inst-medical", "resourceCosts": { "medical_capacity": 3 }, "institutionDeltas": { "inst-medical": { "resources": -3, "reputation": 4 }, "inst-police": { "pressure": -4 } }, "publicOpinionDelta": { "trustInPolice": 2, "heat": -2 }, "evidenceContaminationDelta": -12 }
+  ],
+  "randomEvents": [
+    { "id": "rumor-spike", "label": "Rumor spike", "weight": 30, "tags": ["media", "public-opinion"] },
+    { "id": "ledger-gap", "label": "Ledger gap discovered", "weight": 20, "tags": ["commerce", "evidence"] }
+  ],
+  "casePressureRules": [
+    { "id": "low-evidence-integrity", "resource": "evidence_integrity", "threshold": 45, "effect": "candidate validation requires stronger provenance" },
+    { "id": "high-media-attention", "resource": "media_attention", "threshold": 55, "effect": "witness fear rises and media long actions become likelier" },
+    { "id": "high-public-heat", "resource": "media_attention", "threshold": 65, "effect": "media rumor and false testimony become likelier" }
+  ],
+  "evidenceRules": [
+    { "id": "rumor-source", "kind": "rumor", "weakContaminationThreshold": 50, "strongProvenanceIntegrityFloor": 45, "relatedCaseTypes": ["media-rumor", "family-scandal"], "publicExposureDelta": 16 },
+    { "id": "testimony-chain", "kind": "testimony", "weakContaminationThreshold": 58, "strongProvenanceIntegrityFloor": 50, "relatedCaseTypes": ["false-testimony", "media-rumor"], "publicExposureDelta": 10 },
+    { "id": "document-chain", "kind": "document", "weakContaminationThreshold": 68, "strongProvenanceIntegrityFloor": 58, "relatedCaseTypes": ["police-misjudgment", "family-scandal"] }
+  ]
+}

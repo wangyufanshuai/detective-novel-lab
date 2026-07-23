@@ -24,6 +24,26 @@ import {
   X
 } from "lucide-react";
 import { useRef, useState, type PointerEvent, type ReactNode } from "react";
+import { BenchmarkSeedTable, CurrentExperimentPanel, DatasetPackagePanel, PublicReviewCatalogPanel, ReplayDatasetCatalogPanel, ReviewExportActions, RunCatalogPanel, ScenarioPackPanel, ScenarioPresetEditor, ScenarioRunHistory, WorldPackageCatalogPanel } from "@/app/components/ReviewModePanels";
+import {
+  WorldCampaignPanel,
+  type WorldArcDirectiveSummary,
+  type WorldArcSummary,
+  type WorldLeadHandoffSummary,
+  type WorldLeadOutcomeSummary,
+  type WorldLeadSummary,
+  type WorldInfluenceBudgetSummary,
+  type WorldPressureCascadeSummary,
+  type PlayerResourceCommitmentSummary,
+  type FactionRelationshipSummary,
+  type WorldEventOfferSummary,
+  type InvestigatorProgressionSummary,
+  type CampaignRecoverySummary,
+  type ArcConvergenceSummary,
+  type CampaignSessionSummary,
+  type CampaignFinaleDebriefSummary,
+  type TownSocialResponseSummary
+} from "@/app/components/WorldCampaignPanel";
 import type {
   CaseLogicReport,
   CaseTemplateId,
@@ -52,13 +72,21 @@ import type {
   ProofTourStep,
   ProofViewMode,
   RuntimeMode,
+  RunCatalogEntry,
+  RunJob,
+  ScenarioConfig,
+  ScenarioPack,
+  ScenarioPreset,
   ScenarioReport,
   ScenarioRun,
+  ScenarioRunSummary,
   SuspectBoardRow,
   TownStateDiff,
   TownStateSnapshot,
   TownRuntimeIntervention,
+  TownCaseLifecycleState,
   TownEmergenceQueue,
+  TownRuleSnapshotSummary,
   TownSituationBrief,
   WorldEvent,
   WorldMapActor,
@@ -75,18 +103,7 @@ export type InspectorTabId = "events" | "investigation" | "logic" | "agent" | "p
 
 type CaseTemplateOption = { id: CaseTemplateId; title: string; description?: string; archetype: MurderArchetype };
 type CaseMode = "premium" | "generated";
-type BenchmarkSummary = Pick<
-  EmergenceBenchmarkReport,
-  | "seedCount"
-  | "passed"
-  | "failed"
-  | "passRate"
-  | "averageQualityScore"
-  | "averageEmergenceScore"
-  | "routeCertifiedRate"
-  | "autoSolvePassRate"
-  | "averageAutoSolveSteps"
->;
+type BenchmarkSummary = EmergenceBenchmarkReport;
 type AiSafetyView = {
   promptAudit?: { safe?: boolean };
   memoryCount?: number;
@@ -161,6 +178,276 @@ export type NpcPopoverState = {
 };
 
 type NotebookAction = "source" | "challenge" | "chain";
+type PlayableInvestigationPathKind = "join" | "search" | "question" | "challenge" | "select-evidence" | "submit" | "review-source";
+type PlayableInvestigationPathStep = {
+  kind: PlayableInvestigationPathKind;
+  label: string;
+  question: string;
+  detail: string;
+  metric: string;
+  status: "done" | "current" | "ready" | "locked";
+  action: PlayableCaseNextAction;
+};
+type CertifiedPlaythroughProofSummary = {
+  title: string;
+  actionLabel: string;
+  acceptedLabel: string;
+  readyLabel: string;
+  blockedLabel: string;
+  boundaryText: string;
+  testId: string;
+  runTestId: string;
+  status: "ready" | "running" | "accepted" | "blocked";
+  routeCertified: boolean;
+  sourceBackedRoute?: boolean;
+  autoRoutePassed: boolean;
+  acceptedTheory: boolean;
+  searchStepCount: number;
+  questionedWitnessCount: number;
+  challengeHitCount: number;
+  selectedEvidenceCount: number;
+  coveredRequiredObligations: number;
+  totalRequiredObligations: number;
+  blockerCount: number;
+};
+type GuidedManualRunSummary = {
+  currentStep: PlayableInvestigationPathKind;
+  currentLabel: string;
+  completedSteps: number;
+  totalSteps: number;
+  lastResult: string;
+  blockerSummary: string;
+  readyToReview: boolean;
+  running: boolean;
+};
+type GuidedStepJournalEntry = {
+  id: string;
+  journalKey?: string;
+  step: PlayableInvestigationPathKind;
+  label: string;
+  status: "done" | "blocked" | "info";
+  result: string;
+  progressDelta: string;
+  nextAction: string;
+  fallbackUsed?: boolean;
+  reviewUnlocked?: boolean;
+};
+type SourceReviewUnlockSummary = {
+  unlocked: boolean;
+  statusLabel: string;
+  sourceEventCount: number;
+  memoryCount: number;
+  coveredObligations: number;
+  totalObligations: number;
+  routeStepCount: number;
+  challengeHitCount: number;
+  selectedEvidenceCount: number;
+  proofGapCount: number;
+};
+type SolvedCaseDebriefSummary = {
+  accepted: boolean;
+  manualStepsCompleted: number;
+  totalManualSteps: number;
+  lastStepResult: string;
+  fallbackUsed: boolean;
+  selectedEvidenceCount: number;
+  challengeHitCount: number;
+  coveredObligations: number;
+  totalObligations: number;
+  proofGapCount: number;
+  sourceEventCount: number;
+  memoryCount: number;
+  routeStepCount: number;
+  sourceReviewUnlocked: boolean;
+  worldLeadOutcomeStatus: "active" | "settled" | "not-used";
+  worldLeadHandoffStatus: "ready" | "consumed" | "not-used";
+  worldArcStatus: "active" | "completed" | "not-used";
+  worldArcProgress: string;
+  worldArcDirectiveStatus: "ready" | "scheduled" | "running" | "completed" | "blocked" | "not-used";
+  worldPressureCascadeStatus: "active" | "consumed" | "empty";
+  townSocialResponseStatus: "empty" | "ready" | "active" | "settled";
+};
+type ReplayGoalCoachSummary = {
+  visible: boolean;
+  activeAttempt: boolean;
+  previousGuidedSteps: number;
+  previousFallbackUsed: boolean;
+  previousFallbackTheoryFieldCount: number;
+  previousSelectedEvidenceCount: number;
+  previousProofGapCount: number;
+  previousSourceReviewUnlocked: boolean;
+  currentStep: PlayableInvestigationPathKind;
+  lastResult: string;
+  completedGoalCount: number;
+  totalGoalCount: number;
+  goals: Array<{
+    id: string;
+    label: string;
+    status: "done" | "active" | "ready";
+    detail: string;
+  }>;
+};
+type ReplayPracticeLoopPhase = "start" | "discover" | "pick-evidence" | "fill-theory" | "submit" | "review-source" | "scorecard";
+type ReplayPracticeLoopSummary = {
+  visible: boolean;
+  activeAttempt: boolean;
+  currentPhase: ReplayPracticeLoopPhase;
+  currentPhaseLabel: string;
+  nextAction: string;
+  manualEvidencePickCount: number;
+  manualTheoryFieldCount: number;
+  fallbackEvidencePickCount: number;
+  fallbackTheoryFieldCount: number;
+  blockedGapCount: number;
+  sourceReviewUnlocked: boolean;
+  scorecardStatus: "pending" | "completed" | "waiting";
+  worldLeadOutcomeStatus: "active" | "settled" | "not-used";
+  worldLeadHandoffStatus: "ready" | "consumed" | "not-used";
+  worldArcStatus: "active" | "completed" | "not-used";
+  worldArcProgress: string;
+  worldArcDirectiveStatus: "ready" | "scheduled" | "running" | "completed" | "blocked" | "not-used";
+  worldPressureCascadeStatus: "active" | "consumed" | "empty";
+  townSocialResponseStatus: "empty" | "ready" | "active" | "settled";
+  stages: Array<{
+    id: ReplayPracticeLoopPhase;
+    label: string;
+    status: "done" | "current" | "ready" | "locked";
+  }>;
+};
+type ReplayAttemptDeltaStatus = "improved" | "unchanged" | "regressed" | "completed" | "pending";
+type ReplayAttemptScorecardSummary = {
+  visible: boolean;
+  status: "pending" | "completed";
+  activeAttempt: boolean;
+  currentStep: PlayableInvestigationPathKind;
+  lastResult: string;
+  completedGuidedSteps: number;
+  fallbackUsed: boolean;
+  selectedEvidenceCount: number;
+  manualEvidencePickCount: number;
+  fallbackEvidencePickCount: number;
+  manualTheoryFieldCount: number;
+  fallbackTheoryFieldCount: number;
+  blockedTheoryGapCount: number;
+  proofGapCount: number;
+  sourceReviewUnlocked: boolean;
+  worldLeadOutcomeStatus: "active" | "settled" | "not-used";
+  worldLeadHandoffStatus: "ready" | "consumed" | "not-used";
+  worldArcStatus: "active" | "completed" | "not-used";
+  worldArcProgress: string;
+  worldArcDirectiveStatus: "ready" | "scheduled" | "running" | "completed" | "blocked" | "not-used";
+  worldPressureCascadeStatus: "active" | "consumed" | "empty";
+  townSocialResponseStatus: "empty" | "ready" | "active" | "settled";
+  completedReplayGoals: number;
+  totalReplayGoals: number;
+  rows: Array<{
+    id: string;
+    label: string;
+    previous: string;
+    current: string;
+    status: ReplayAttemptDeltaStatus;
+    detail: string;
+  }>;
+};
+type ManualEvidenceDrillCandidate = {
+  evidenceId: string;
+  title: string;
+  locationLabel: string;
+  sourceLabel: string;
+  supports: string[];
+  contradicts: string[];
+  selected: boolean;
+};
+type ManualEvidenceDrillSummary = {
+  visible: boolean;
+  selectedEvidenceCount: number;
+  routeEvidenceTargetCount: number;
+  manualPickCount: number;
+  remainingProofSlots: number;
+  readyForSubmit: boolean;
+  candidates: ManualEvidenceDrillCandidate[];
+};
+type ManualTheoryDrillSummary = {
+  visible: boolean;
+  manualFieldCount: number;
+  remainingFieldCount: number;
+  fallbackFieldCount: number;
+  blockedGapCount: number;
+  evidenceReady: boolean;
+  readyForSubmit: boolean;
+  fallbackApproved: boolean;
+  suspectOptions: Array<{
+    id: string;
+    label: string;
+  }>;
+  selectedCulpritId: string;
+  motiveText: string;
+  methodText: string;
+  evidencePrompts: Array<{
+    title: string;
+    detail: string;
+    supportLabels: string[];
+  }>;
+};
+
+type RuleStatePanelProps = {
+  ruleState?: TownRuleSnapshotSummary | null;
+  caseLifecycle?: TownCaseLifecycleState | null;
+};
+
+function RuleStatePanel({ ruleState, caseLifecycle }: RuleStatePanelProps) {
+  const institutions = ruleState?.institutions || [];
+  const pressureLeaders = [...institutions]
+    .sort((left, right) => right.pressure - left.pressure || left.resources - right.resources)
+    .slice(0, 3);
+  const latestDecision = ruleState?.institutionDecisions?.[0];
+  const timeline = caseLifecycle?.caseTimeline || [];
+  const uniqueCaseCount = new Set(timeline.map((item) => item.caseId)).size;
+  const caseGraphEdgeCount = timeline.slice(1).reduce((sum, item) => sum + Math.max(1, item.influence?.length || 0), 0);
+  const evidenceWarnings = timeline.filter((item) =>
+    (ruleState?.evidenceChain.items || []).filter((evidence) =>
+      evidence.usedInResolution && (evidence.caseId === item.caseId || evidence.caseIds?.includes(item.caseId))
+    ).length < 3
+  ).length;
+  return (
+    <section className="ruleStatePanel" data-testid="rule-state-panel">
+      <div className="panelHeaderLine">
+        <h3>Rule State / Case Lifecycle</h3>
+        <span>{ruleState ? "live" : "not loaded"}</span>
+      </div>
+      <div className="reviewMetricGrid compact">
+        <span><b>{ruleState?.publicOpinion.heat ?? 0}</b>media heat</span>
+        <span><b>{ruleState?.publicOpinion.witnessFear ?? 0}</b>witness fear</span>
+        <span><b>{ruleState?.evidenceChain.items.length ?? 0}</b>evidence chain</span>
+        <span><b>{ruleState?.evidenceContamination.contamination ?? 0}</b>contamination</span>
+        <span><b>{caseLifecycle?.activeCaseIds.length ?? 0}</b>active cases</span>
+        <span><b>{caseLifecycle?.caseAftermathLog.length ?? 0}</b>aftermath</span>
+        <span><b>{uniqueCaseCount}/{timeline.length}</b>unique cases</span>
+        <span><b>{caseGraphEdgeCount}</b>case graph edges</span>
+        <span className={evidenceWarnings ? "fail" : "pass"}><b>{evidenceWarnings}</b>evidence graph warnings</span>
+      </div>
+      <div className="reviewHistoryList compactJobs">
+        {pressureLeaders.map((institution) => (
+          <div key={institution.id} className="reviewJobCard">
+            <strong>{institution.kind}</strong>
+            <span>pressure {institution.pressure}</span>
+            <small>resources {institution.resources} / reputation {institution.reputation}</small>
+          </div>
+        ))}
+        {latestDecision && (
+          <div className="reviewJobCard">
+            <strong>{latestDecision.strategy}</strong>
+            <span>{latestDecision.institutionId}</span>
+            <small>{latestDecision.reason}</small>
+          </div>
+        )}
+      </div>
+      <small>
+        Evidence and institution strategy are read-only here. Case lifecycle changes only after an explicit resolution path.
+      </small>
+    </section>
+  );
+}
 
 const markerGlyph: Record<string, string> = {
   crime: "!",
@@ -1023,6 +1310,7 @@ export function SuspectBoardPanel({
 }
 
 export function AgentControlPanel({
+  runtimeMode,
   runtime,
   queue,
   selectedAgent,
@@ -1035,8 +1323,34 @@ export function AgentControlPanel({
   resetRuntime,
   interveneAgent,
   extractCase,
+  scenarioPresets,
+  scenarioPacks,
+  scenarioRuns,
+  runCatalog,
+  runJobs,
+  ruleState,
+  caseLifecycle,
+  selectedScenarioPackId,
+  setSelectedScenarioPackId,
+  selectedRunCatalogId,
+  setSelectedRunCatalogId,
+  selectedScenarioPresetId,
+  setSelectedScenarioPresetId,
+  selectScenarioRun,
   runScenario,
+  saveScenarioPreset,
+  deleteScenarioPreset,
+  exportScenarioPack,
+  validateScenarioPack,
+  exportReplayBundle,
+  startScenarioJob,
+  startBenchmarkJob,
+  cancelRunJob,
+  copyReviewJson,
+  exportReviewMarkdown,
+  exportReviewBundle,
   rollbackSnapshot,
+  markReviewExportTarget,
   selectedScenarioRun,
   scenarioReport,
   snapshots,
@@ -1045,8 +1359,11 @@ export function AgentControlPanel({
   setSelectedSnapshotFromId,
   setSelectedSnapshotToId,
   snapshotDiff,
-  benchmarkSummary
+  benchmarkSummary,
+  runBenchmark,
+  reviewBusy
 }: {
+  runtimeMode: RuntimeMode;
   runtime: PersistentTownRuntime | null;
   queue: TownEmergenceQueue | null;
   selectedAgent?: NpcAgentState | null;
@@ -1059,8 +1376,34 @@ export function AgentControlPanel({
   resetRuntime: () => void;
   interveneAgent: (kind?: TownRuntimeIntervention["kind"], value?: string | number | boolean) => void;
   extractCase: (candidate: CaseCandidate) => void;
-  runScenario: () => void;
+  scenarioPresets: ScenarioPreset[];
+  scenarioPacks: Array<ScenarioPack & { builtIn?: boolean; source?: string; experimentId?: string; experimentHash?: string; experimentPathHash?: string; validation?: { ok: boolean } }>;
+  scenarioRuns: ScenarioRunSummary[];
+  runCatalog: RunCatalogEntry[];
+  runJobs: RunJob[];
+  ruleState?: TownRuleSnapshotSummary | null;
+  caseLifecycle?: TownCaseLifecycleState | null;
+  selectedScenarioPackId: string;
+  setSelectedScenarioPackId: (packId: string) => void;
+  selectedRunCatalogId: string;
+  setSelectedRunCatalogId: (runId: string) => void;
+  selectedScenarioPresetId: string;
+  setSelectedScenarioPresetId: (presetId: string) => void;
+  selectScenarioRun: (scenarioId: string) => void;
+  runScenario: (config?: ScenarioConfig) => void;
+  saveScenarioPreset: (preset: ScenarioPreset, overwrite: boolean) => void;
+  deleteScenarioPreset: (presetId: string) => void;
+  exportScenarioPack: () => void;
+  validateScenarioPack: () => void;
+  exportReplayBundle: () => void;
+  startScenarioJob: () => void;
+  startBenchmarkJob: () => void;
+  cancelRunJob: (jobId: string) => void;
+  copyReviewJson: () => void;
+  exportReviewMarkdown: () => void;
+  exportReviewBundle: () => void;
   rollbackSnapshot: (snapshotId: string) => void;
+  markReviewExportTarget: () => void;
   selectedScenarioRun?: ScenarioRun | null;
   scenarioReport?: ScenarioReport | null;
   snapshots: TownStateSnapshot[];
@@ -1070,6 +1413,8 @@ export function AgentControlPanel({
   setSelectedSnapshotToId: (value: string) => void;
   snapshotDiff?: TownStateDiff | null;
   benchmarkSummary?: BenchmarkSummary | null;
+  runBenchmark: (seedCount: 10 | 20) => void;
+  reviewBusy?: boolean;
 }) {
   const [copyStatus, setCopyStatus] = useState("");
   const candidates = queue?.candidates || [];
@@ -1110,13 +1455,22 @@ export function AgentControlPanel({
     "memory-propagation": "传播",
     "propagate-memory": "传播",
     plan: "计划",
+    "update-goals": "目标",
     "goal-update": "目标",
     "plan-update": "计划",
     "generate-candidates": "候选",
     score: "评分",
+    "score-actions": "评分",
     execute: "执行",
+    "execute-actions": "执行",
+    "observe-events": "观察",
     consequence: "后果",
-    "candidate-extraction": "成案"
+    "apply-consequences": "后果",
+    "advance-case-chain": "推进",
+    "trigger-case": "触发",
+    "candidate-extraction": "成案",
+    "extract-candidates": "成案",
+    finalize: "快照"
   };
   const runtimePhases = runtime?.simulationPhases?.length ? runtime.simulationPhases : ["observe", "memory-propagation", "goal-update", "generate-candidates", "score", "execute", "consequence", "candidate-extraction"];
   const currentPhase = runtimePhases.length ? runtimePhases[Math.max(0, (runtime?.tick ?? 0) % runtimePhases.length)] : "observe";
@@ -1125,6 +1479,9 @@ export function AgentControlPanel({
   const selectedDecision = selectedAgent?.lastDecisionId ? runtime?.decisionTraces.find((trace) => trace.id === selectedAgent.lastDecisionId) : undefined;
   const selectedConsequences = selectedAgent ? (runtime?.consequences || []).filter((item) => item.npcId === selectedAgent.npcId).slice(-3).reverse() : [];
   const topCandidate = candidates[0];
+  const selectedScenarioPack = scenarioPacks.find((pack) => pack.manifest.id === selectedScenarioPackId) || scenarioPacks[0];
+  const latestQualityRun = runCatalog.find((run) => typeof run.packMetadata?.qualityScore === "number");
+  const worldSystemHintSummary = runtime?.worldSystemHintSummary;
 
   async function copyScenarioReport() {
     if (!scenarioReport) {
@@ -1179,6 +1536,29 @@ export function AgentControlPanel({
           <span><b>{consequenceCount}</b>行动后果</span>
           <span><b>{topCandidate?.chainStageTags?.length || topCandidate?.validation.chainStages?.length || 0}</b>链条阶段</span>
         </div>
+        {worldSystemHintSummary && (
+          <div className="worldSystemRuntimeHints" data-testid="world-system-runtime-hints">
+            <div>
+              <span className="eyebrow">World-System Influence Audit</span>
+              <strong>{worldSystemHintSummary.active ? "active deterministic bias" : "inactive"}</strong>
+              <small>Current Server Runtime hint health; run <code>npm run audit:world-system-hints</code> for the local on/off aggregate audit. No ids, proof structure, or public artifacts are changed.</small>
+            </div>
+            <div className="reviewMetricGrid compact">
+              <span><b>{worldSystemHintSummary.resourcePressure}</b>Resource pressure</span>
+              <span><b>{worldSystemHintSummary.eventRisk}</b>Event risk</span>
+              <span><b>{worldSystemHintSummary.progressionStageCount}</b>Growth stages</span>
+              <span><b>{worldSystemHintSummary.actionKinds.length}</b>Action hints</span>
+              <span><b>{worldSystemHintSummary.maxActionBias}</b>Max bias</span>
+              <span><b>{worldSystemHintSummary.appliedBiasCount}</b>Applied</span>
+            </div>
+            <div className="logicBadges">
+              <span>{worldSystemHintSummary.resourcePressureLabel}</span>
+              <span>{worldSystemHintSummary.factionLaneLabel}</span>
+              <span>{worldSystemHintSummary.eventArchetypeLabel}</span>
+              <span>{worldSystemHintSummary.progressionLineLabel}</span>
+            </div>
+          </div>
+        )}
         <div className="townRuntimeActions">
           <button type="button" className="primaryButton compact" onClick={startRuntime} disabled={runningBusy}>开始</button>
           <button type="button" onClick={pauseRuntime} disabled={runningBusy || !runtime}>暂停</button>
@@ -1211,6 +1591,13 @@ export function AgentControlPanel({
           <h2><GitBranch size={16} /> 场景推演</h2>
           <span className={`runtimePill ${selectedScenarioRun?.status || "paused"}`}>{scenarioReport ? (scenarioReport.passed ? "通过" : "失败") : selectedScenarioRun?.status || "未运行"}</span>
         </div>
+        <div className="reviewPathCta" data-testid="agent-review-path-cta">
+          <strong>Review Mode: 5-minute evaluator path</strong>
+          <span>Scenario Presets</span>
+          <span>Run History</span>
+          <span>Time Machine Diff</span>
+          <span>Export Review Bundle</span>
+        </div>
         <p>运行确定性基线，再比较反事实分支；源世界不会被分支污染。</p>
         <div className="reviewMetricGrid compact">
           <span className={reviewStatus}><b>{scenarioReport ? (scenarioReport.passed ? "通过" : "失败") : "-"}</b>结果</span>
@@ -1221,10 +1608,78 @@ export function AgentControlPanel({
           <span><b>{passedChecks}/{totalChecks}</b>检查</span>
         </div>
         <div className="townRuntimeActions">
-          <button type="button" className="secondaryButton full" onClick={runScenario} disabled={runningBusy}>运行默认场景</button>
+          <button type="button" className="secondaryButton full" onClick={() => runScenario()} disabled={runningBusy}>运行默认场景</button>
           <button type="button" className="secondaryButton full" onClick={copyScenarioReport} disabled={!scenarioReport}>复制报告 JSON</button>
         </div>
         {copyStatus && <small data-testid="scenario-copy-status">{copyStatus}</small>}
+        <ScenarioPresetEditor
+          presets={scenarioPresets}
+          selectedPresetId={selectedScenarioPresetId}
+          onSelectPresetId={setSelectedScenarioPresetId}
+          onRunScenario={runScenario}
+          onSavePreset={saveScenarioPreset}
+          onDeletePreset={deleteScenarioPreset}
+          busy={runningBusy || reviewBusy}
+        />
+        <CurrentExperimentPanel
+          scenarioPackId={runtime?.currentScenarioPackId}
+          mapPackId={runtime?.currentMapPackId}
+          ruleCatalogId={runtime?.currentRuleCatalogId}
+          selectedScenarioPackId={selectedScenarioPackId}
+          experimentId={runtime?.currentExperiment?.experimentId || selectedScenarioPack?.experimentId}
+          experimentHash={runtime?.currentExperiment?.experimentHash || selectedScenarioPack?.experimentHash}
+          experimentPathHash={runtime?.currentExperiment?.experimentPathHash || selectedScenarioPack?.experimentPathHash}
+          validationOk={selectedScenarioPack?.validation?.ok}
+          qualityScore={latestQualityRun?.packMetadata?.qualityScore}
+          onStartNewRun={startScenarioJob}
+          busy={runningBusy || reviewBusy}
+        />
+        <ScenarioPackPanel
+          packs={scenarioPacks}
+          selectedPackId={selectedScenarioPackId}
+          onSelectPackId={setSelectedScenarioPackId}
+          onExportPack={exportScenarioPack}
+          onValidatePack={validateScenarioPack}
+          busy={runningBusy || reviewBusy}
+        />
+        {runtimeMode !== "static-demo" && (
+          <WorldPackageCatalogPanel
+            worldId={runtime?.worldId}
+            selectedScenarioPackId={selectedScenarioPackId}
+            onSelectPackId={setSelectedScenarioPackId}
+            busy={runningBusy || reviewBusy}
+          />
+        )}
+        <RunCatalogPanel
+          runs={runCatalog}
+          jobs={runJobs}
+          selectedRunId={selectedRunCatalogId}
+          onSelectRunId={setSelectedRunCatalogId}
+          onExportReplayBundle={exportReplayBundle}
+          onStartScenarioJob={startScenarioJob}
+          onStartBenchmarkJob={startBenchmarkJob}
+          onCancelJob={cancelRunJob}
+          busy={runningBusy || reviewBusy}
+        />
+        {runtimeMode !== "static-demo" && (
+          <ReplayDatasetCatalogPanel
+            selectedRunId={selectedRunCatalogId}
+            onSelectRunId={setSelectedRunCatalogId}
+            busy={runningBusy || reviewBusy}
+          />
+        )}
+        {runtimeMode === "static-demo" && (
+          <PublicReviewCatalogPanel busy={runningBusy || reviewBusy} />
+        )}
+        <DatasetPackagePanel busy={runningBusy || reviewBusy} runtimeMode={runtimeMode} />
+        <RuleStatePanel ruleState={ruleState} caseLifecycle={caseLifecycle} />
+        <ReviewExportActions
+          busy={runningBusy || reviewBusy || !scenarioReport}
+          onCopyJson={copyReviewJson}
+          onExportMarkdown={exportReviewMarkdown}
+          onExportBundle={exportReviewBundle}
+        />
+        <ScenarioRunHistory runs={scenarioRuns} selectedRunId={selectedScenarioRun?.id} onSelectRunId={selectScenarioRun} />
         {scenarioReport ? (
           <div className="reviewStack">
             <div className="scenarioCheckList" data-testid="scenario-check-list">
@@ -1287,6 +1742,24 @@ export function AgentControlPanel({
           <span>事件 +{snapshotDiff?.addedEventIds.length ?? 0}</span>
           <span>记忆 +{snapshotDiff?.addedMemoryIds.length ?? 0}</span>
         </div>
+        <div className="reviewActionRow">
+          <button type="button" onClick={selectBaselineDiff} disabled={!baselineStartId || !baselineEndId}>Return to run baseline</button>
+          <button
+            type="button"
+            onClick={() => {
+              const branch = scenarioReport?.branches?.[0];
+              if (!branch || !baselineEndId) return;
+              setSelectedSnapshotFromId(baselineEndId);
+              setSelectedSnapshotToId(branch.endSnapshotId);
+            }}
+            disabled={!scenarioReport?.branches?.[0] || !baselineEndId}
+          >
+            Branch end vs baseline end
+          </button>
+          <button type="button" onClick={markReviewExportTarget} disabled={!selectedSnapshotFromId || !selectedSnapshotToId}>
+            Use current diff for export
+          </button>
+        </div>
         {!!sortedSnapshots.length && (
           <div className="snapshotTimeline" data-testid="snapshot-timeline">
             {sortedSnapshots.map((snapshot) => (
@@ -1330,6 +1803,7 @@ export function AgentControlPanel({
             <span><b>{benchmarkSummary.passed}</b>通过种子</span>
           </div>
         ) : <p>未找到基准报告。运行 <code>npm run benchmark:emergence</code> 会生成 <code>outputs/emergence-benchmark.json</code>，该文件会被 Git 忽略。</p>}
+        <BenchmarkSeedTable report={benchmarkSummary || null} busy={reviewBusy} onRunBenchmark={runBenchmark} />
       </section>
 
       <section className="actionPanel agentStatePanel" id="director-dossier" data-testid="agent-state-panel">
@@ -1376,6 +1850,7 @@ export function AgentControlPanel({
                 <span>传闻 {candidate.score.rumorValue ?? 0}</span>
                 <span>不在场 {candidate.score.alibiPressure ?? 0}</span>
                 <span>掩盖 {candidate.score.coverUpUrgency ?? 0}</span>
+                <span>World hint {candidate.score.worldSystemBias ?? 0}</span>
               </div>
               <small>{candidate.legal ? candidate.score.reasons.join(" / ") || "可执行行动" : candidate.blockedReason || "被本地规则阻止"}</small>
             </article>
@@ -1418,6 +1893,7 @@ export function AgentControlPanel({
 }
 
 export function PersistentTownCommandCenter({
+  runtimeMode,
   worldName,
   caseTitle,
   runtime,
@@ -1437,8 +1913,34 @@ export function PersistentTownCommandCenter({
   resetRuntime,
   interveneAgent,
   extractCase,
+  scenarioPresets,
+  scenarioPacks,
+  scenarioRuns,
+  runCatalog,
+  runJobs,
+  ruleState,
+  caseLifecycle,
+  selectedScenarioPackId,
+  setSelectedScenarioPackId,
+  selectedRunCatalogId,
+  setSelectedRunCatalogId,
+  selectedScenarioPresetId,
+  setSelectedScenarioPresetId,
+  selectScenarioRun,
   runScenario,
+  saveScenarioPreset,
+  deleteScenarioPreset,
+  exportScenarioPack,
+  validateScenarioPack,
+  exportReplayBundle,
+  startScenarioJob,
+  startBenchmarkJob,
+  cancelRunJob,
+  copyReviewJson,
+  exportReviewMarkdown,
+  exportReviewBundle,
   rollbackSnapshot,
+  markReviewExportTarget,
   backToPlay,
   onActorSelect,
   onLocationSelect,
@@ -1450,8 +1952,11 @@ export function PersistentTownCommandCenter({
   setSelectedSnapshotFromId,
   setSelectedSnapshotToId,
   snapshotDiff,
-  benchmarkSummary
+  benchmarkSummary,
+  runBenchmark,
+  reviewBusy
 }: {
+  runtimeMode: RuntimeMode;
   worldName: string;
   caseTitle: string;
   runtime: PersistentTownRuntime | null;
@@ -1471,8 +1976,34 @@ export function PersistentTownCommandCenter({
   resetRuntime: () => void;
   interveneAgent: (kind?: TownRuntimeIntervention["kind"], value?: string | number | boolean) => void;
   extractCase: (candidate: CaseCandidate) => void;
-  runScenario: () => void;
+  scenarioPresets: ScenarioPreset[];
+  scenarioPacks: Array<ScenarioPack & { builtIn?: boolean; source?: string; experimentId?: string; experimentHash?: string; experimentPathHash?: string; validation?: { ok: boolean } }>;
+  scenarioRuns: ScenarioRunSummary[];
+  runCatalog: RunCatalogEntry[];
+  runJobs: RunJob[];
+  ruleState?: TownRuleSnapshotSummary | null;
+  caseLifecycle?: TownCaseLifecycleState | null;
+  selectedScenarioPackId: string;
+  setSelectedScenarioPackId: (packId: string) => void;
+  selectedRunCatalogId: string;
+  setSelectedRunCatalogId: (runId: string) => void;
+  selectedScenarioPresetId: string;
+  setSelectedScenarioPresetId: (presetId: string) => void;
+  selectScenarioRun: (scenarioId: string) => void;
+  runScenario: (config?: ScenarioConfig) => void;
+  saveScenarioPreset: (preset: ScenarioPreset, overwrite: boolean) => void;
+  deleteScenarioPreset: (presetId: string) => void;
+  exportScenarioPack: () => void;
+  validateScenarioPack: () => void;
+  exportReplayBundle: () => void;
+  startScenarioJob: () => void;
+  startBenchmarkJob: () => void;
+  cancelRunJob: (jobId: string) => void;
+  copyReviewJson: () => void;
+  exportReviewMarkdown: () => void;
+  exportReviewBundle: () => void;
   rollbackSnapshot: (snapshotId: string) => void;
+  markReviewExportTarget: () => void;
   backToPlay: () => void;
   onActorSelect: (actor: WorldMapActor) => void;
   onLocationSelect: (locationId: string) => void;
@@ -1485,6 +2016,8 @@ export function PersistentTownCommandCenter({
   setSelectedSnapshotToId: (value: string) => void;
   snapshotDiff?: TownStateDiff | null;
   benchmarkSummary?: BenchmarkSummary | null;
+  runBenchmark: (seedCount: 10 | 20) => void;
+  reviewBusy?: boolean;
 }) {
   const candidates = queue?.candidates || runtime?.candidates || [];
   const actionLabels: Record<string, string> = {
@@ -1511,11 +2044,21 @@ export function PersistentTownCommandCenter({
   const phaseLabels: Record<string, string> = {
     observe: "感知",
     propagate: "传播",
+    "propagate-memory": "传播",
     plan: "计划",
+    "update-goals": "目标",
     score: "评分",
+    "score-actions": "评分",
     execute: "执行",
+    "execute-actions": "执行",
+    "observe-events": "观察",
     consequence: "后果",
-    "candidate-extraction": "成案"
+    "apply-consequences": "后果",
+    "advance-case-chain": "推进",
+    "trigger-case": "触发",
+    "candidate-extraction": "成案",
+    "extract-candidates": "成案",
+    finalize: "快照"
   };
   const currentPhase = runtime?.simulationPhases?.length ? runtime.simulationPhases[Math.max(0, (runtime.tick || 0) % runtime.simulationPhases.length)] : "execute";
   const recentTraces = [...(runtime?.decisionTraces || [])].slice(-6).reverse();
@@ -1572,6 +2115,9 @@ export function PersistentTownCommandCenter({
   const branchSummary = scenarioReport?.branches?.[0];
   const actionPriority = ["investigate", "spread-rumor", "seek-alibi", "pressure", "cover-up", "talk", "observe", "move", "obtain-resource", "confront", "hide-trace"];
   const displayedActionCandidates = [...selectedAgentCandidates].sort((a, b) => actionPriority.indexOf(a.kind) - actionPriority.indexOf(b.kind)).slice(0, 5);
+  const canExportCurrentDiff = Boolean(selectedSnapshotFromId && selectedSnapshotToId);
+  const selectedScenarioPack = scenarioPacks.find((pack) => pack.manifest.id === selectedScenarioPackId) || scenarioPacks[0];
+  const latestQualityRun = runCatalog.find((run) => typeof run.packMetadata?.qualityScore === "number");
 
   function describeAction(candidate?: NpcActionCandidate) {
     if (!candidate) return "等待行动";
@@ -1696,10 +2242,103 @@ export function PersistentTownCommandCenter({
         <div className="commandHudMetric"><span>行动后果</span><strong>{runtime?.consequences?.length ?? 0}</strong><small>最近 {recentConsequences.length}</small></div>
         <div className="commandHudMetric"><span>有效候选</span><strong>{queue?.validCount ?? candidates.filter((candidate) => candidate.validation.valid).length}</strong><small>{candidates.length} 总数</small></div>
         <div className="commandHudMetric hot"><span>案件成熟度</span><strong>{topLongChain?.maturityScore ?? 0}%</strong><small>{triggeredCases.length ? "真实案件已触发" : "六阶段链"}</small></div>
-        <button type="button" className={`commandPass ${scenarioState}`} onClick={runScenario} disabled={runningBusy}>
-          {scenarioReport?.passed ? "基线通过" : "运行基线"} <ShieldCheck size={16} />
+        <button type="button" className={`commandPass ${scenarioState}`} onClick={() => runScenario()} disabled={runningBusy}>
+          {scenarioReport?.passed ? "基线通过 / Baseline passed" : "运行基线 / Run baseline scenario"} <ShieldCheck size={16} />
         </button>
       </header>
+
+      <section className="commandReviewPath commandPanel" data-testid="command-review-path">
+        <div className="panelHeaderLine">
+          <h2><GitBranch size={16} /> Review Mode: 5-minute evaluator path</h2>
+          <span className={`runtimePill ${scenarioState}`}>{scenarioReport ? (scenarioReport.passed ? "scenario passed" : "scenario failed") : "ready"}</span>
+        </div>
+        <p className="commandReviewSteps">
+          1. Pick Scenario Preset, 2. Run selected preset, 3. Select Scenario Run History, 4. Choose Time Machine Diff, 5. Export Review Bundle.
+        </p>
+        <div className="reviewMetricGrid compact">
+          <span><b>{scenarioPresets.length}</b>Scenario Presets</span>
+          <span><b>{scenarioRuns.length}</b>Run History</span>
+          <span><b>{snapshots.length}</b>Snapshots</span>
+          <span><b>{snapshotDiff ? snapshotDiff.addedEventIds.length : 0}</b>Time Machine Diff events</span>
+          <span><b>{benchmarkSummary ? `${benchmarkSummary.passRate}%` : "N/A"}</b>Benchmark latest</span>
+        </div>
+        <ScenarioPresetEditor
+          presets={scenarioPresets}
+          selectedPresetId={selectedScenarioPresetId}
+          onSelectPresetId={setSelectedScenarioPresetId}
+          onRunScenario={runScenario}
+          onSavePreset={saveScenarioPreset}
+          onDeletePreset={deleteScenarioPreset}
+          busy={runningBusy || reviewBusy}
+        />
+        <CurrentExperimentPanel
+          scenarioPackId={runtime?.currentScenarioPackId}
+          mapPackId={runtime?.currentMapPackId}
+          ruleCatalogId={runtime?.currentRuleCatalogId}
+          selectedScenarioPackId={selectedScenarioPackId}
+          experimentId={runtime?.currentExperiment?.experimentId || selectedScenarioPack?.experimentId}
+          experimentHash={runtime?.currentExperiment?.experimentHash || selectedScenarioPack?.experimentHash}
+          experimentPathHash={runtime?.currentExperiment?.experimentPathHash || selectedScenarioPack?.experimentPathHash}
+          validationOk={selectedScenarioPack?.validation?.ok}
+          qualityScore={latestQualityRun?.packMetadata?.qualityScore}
+          onStartNewRun={startScenarioJob}
+          busy={runningBusy || reviewBusy}
+        />
+        <ScenarioPackPanel
+          packs={scenarioPacks}
+          selectedPackId={selectedScenarioPackId}
+          onSelectPackId={setSelectedScenarioPackId}
+          onExportPack={exportScenarioPack}
+          onValidatePack={validateScenarioPack}
+          busy={runningBusy || reviewBusy}
+        />
+        {runtimeMode !== "static-demo" && (
+          <WorldPackageCatalogPanel
+            worldId={runtime?.worldId}
+            selectedScenarioPackId={selectedScenarioPackId}
+            onSelectPackId={setSelectedScenarioPackId}
+            busy={runningBusy || reviewBusy}
+          />
+        )}
+        <ScenarioRunHistory runs={scenarioRuns} selectedRunId={selectedScenarioRun?.id} onSelectRunId={selectScenarioRun} />
+        <RunCatalogPanel
+          runs={runCatalog}
+          jobs={runJobs}
+          selectedRunId={selectedRunCatalogId}
+          onSelectRunId={setSelectedRunCatalogId}
+          onExportReplayBundle={exportReplayBundle}
+          onStartScenarioJob={startScenarioJob}
+          onStartBenchmarkJob={startBenchmarkJob}
+          onCancelJob={cancelRunJob}
+          busy={runningBusy || reviewBusy}
+        />
+        {runtimeMode !== "static-demo" && (
+          <ReplayDatasetCatalogPanel
+            selectedRunId={selectedRunCatalogId}
+            onSelectRunId={setSelectedRunCatalogId}
+            busy={runningBusy || reviewBusy}
+          />
+        )}
+        {runtimeMode === "static-demo" && (
+          <PublicReviewCatalogPanel busy={runningBusy || reviewBusy} />
+        )}
+        <DatasetPackagePanel busy={runningBusy || reviewBusy} runtimeMode={runtimeMode} />
+        <RuleStatePanel ruleState={ruleState} caseLifecycle={caseLifecycle} />
+        <div className="reviewActionRow">
+          <button type="button" onClick={chooseBaselineDiff} disabled={!scenarioReport}>
+            Select baseline Time Machine diff
+          </button>
+          <button type="button" onClick={markReviewExportTarget} disabled={!canExportCurrentDiff}>
+            Use current diff for export
+          </button>
+        </div>
+        <ReviewExportActions
+          busy={runningBusy || reviewBusy || !scenarioReport}
+          onCopyJson={copyReviewJson}
+          onExportMarkdown={exportReviewMarkdown}
+          onExportBundle={exportReviewBundle}
+        />
+      </section>
 
       <aside className="commandLeftRail">
         <section className={`commandPanel commandArchive ${menuExpanded ? "expanded" : "collapsed"}`}>
@@ -1717,7 +2356,7 @@ export function PersistentTownCommandCenter({
           <button className="primaryButton full" type="button" onClick={startRuntime} disabled={runningBusy}>开始</button>
           <button type="button" onClick={pauseRuntime} disabled={runningBusy || !runtime}>暂停</button>
           <div className="commandSplit">
-            <button type="button" onClick={stepRuntime} disabled={runningBusy || !runtime}>单步</button>
+            <button data-testid="persistent-town-step" type="button" onClick={stepRuntime} disabled={runningBusy || !runtime}>单步</button>
             <button type="button" onClick={stepRuntimeFast} disabled={runningBusy || !runtime}>快速 x5</button>
           </div>
           <button type="button" onClick={resetRuntime} disabled={runningBusy || !runtime}>重置</button>
@@ -1732,6 +2371,83 @@ export function PersistentTownCommandCenter({
               <span><b>{brief.caseReadiness.validCount}</b>ready</span>
               <span><b>{brief.observationMix.direct + brief.observationMix.deduced}</b>grounded</span>
             </div>
+            {brief.townSocialResponse && brief.townSocialResponse.reactions.slice(-1).map((reaction) => (
+              <div className={`situationSocialResponse ${brief.townSocialResponse?.status}`} data-testid="situation-town-social-response" key={`${reaction.actorName}-${reaction.locationLabel}`}>
+                <span>Latest Town Reaction</span>
+                <b>{reaction.actorName} · {reaction.roleLabel}</b>
+                <small>{reaction.locationLabel} · {reaction.reactionLabel}</small>
+              </div>
+            ))}
+            {brief.playerResourceCommitment && (
+              <div className={`situationInfluenceBudget ${brief.playerResourceCommitment.status}`} data-testid="situation-player-resource">
+                <span>Case Resource</span>
+                <b>{brief.playerResourceCommitment.status} / {brief.playerResourceCommitment.label}</b>
+                <small>{brief.playerResourceCommitment.progressLabel}</small>
+              </div>
+            )}
+            {brief.factionRelationship && (
+              <div className={`situationInfluenceBudget ${brief.factionRelationship.status}`} data-testid="situation-faction-relationship">
+                <span>Faction Standing</span>
+                <b>{brief.factionRelationship.trustedCount} trusted / {brief.factionRelationship.strainedCount} guarded</b>
+                <small>{brief.factionRelationship.lastChangeLabel}</small>
+              </div>
+            )}
+            {brief.worldEventOffer && (
+              <div className={`situationInfluenceBudget ${brief.worldEventOffer.status}`} data-testid="situation-world-event-offer">
+                <span>World Opportunity</span>
+                <b>{brief.worldEventOffer.status} / {brief.worldEventOffer.actionLabel}</b>
+                <small>{brief.worldEventOffer.progressLabel}</small>
+              </div>
+            )}
+            {brief.investigatorProgression && (
+              <div className={`situationInfluenceBudget ${brief.investigatorProgression.status}`} data-testid="situation-investigator-progression">
+                <span>Investigator Practice</span>
+                <b>{brief.investigatorProgression.status} / {brief.investigatorProgression.points} marks</b>
+                <small>{brief.investigatorProgression.unlockedLabels.length} bounded unlock(s)</small>
+              </div>
+            )}
+            {brief.campaignRecovery && (
+              <div className={`situationInfluenceBudget ${brief.campaignRecovery.status}`} data-testid="situation-campaign-recovery">
+                <span>Campaign recovery</span>
+                <b>{brief.campaignRecovery.status} / {brief.campaignRecovery.recoveryActionLabel}</b>
+                <small>{brief.campaignRecovery.progressLabel}</small>
+              </div>
+            )}
+            {brief.arcConvergence && (
+              <div className={`situationInfluenceBudget ${brief.arcConvergence.status}`} data-testid="situation-arc-convergence">
+                <span>Arc Convergence</span>
+                <b>{brief.arcConvergence.status} / {brief.arcConvergence.finaleLabel}</b>
+                <small>{brief.arcConvergence.approachLabel} / {brief.arcConvergence.caseProgressLabel}</small>
+              </div>
+            )}
+            {brief.campaignSession && (
+              <div className={`situationInfluenceBudget ${brief.campaignSession.status}`} data-testid="situation-campaign-session">
+                <span>Campaign Journey</span>
+                <b>{brief.campaignSession.chapterLabel} / {brief.campaignSession.progressLabel}</b>
+                <small>{brief.campaignSession.primaryActionLabel}</small>
+              </div>
+            )}
+            {brief.worldArcDirective && (
+              <div className={`situationDirective ${brief.worldArcDirective.status}`} data-testid="situation-faction-directive">
+                <span>Faction Directive</span>
+                <b>{brief.worldArcDirective.status} / {brief.worldArcDirective.operationLabel}</b>
+                <small>{brief.worldArcDirective.progressLabel}</small>
+              </div>
+            )}
+            {brief.worldPressureCascade && (
+              <div className={`situationPressure ${brief.worldPressureCascade.status}`} data-testid="situation-world-pressure">
+                <span>World Pressure</span>
+                <b>{brief.worldPressureCascade.status} / {brief.worldPressureCascade.directionLabel}</b>
+                <small>{brief.worldPressureCascade.focusLabel} · {brief.worldPressureCascade.remainingLayers} layer(s)</small>
+              </div>
+            )}
+            {brief.worldInfluenceBudget && (
+              <div className={`situationInfluenceBudget ${brief.worldInfluenceBudget.status}`} data-testid="situation-influence-budget">
+                <span>Influence Budget</span>
+                <b>{brief.worldInfluenceBudget.strengthLabel} / ±{brief.worldInfluenceBudget.maximumAbsoluteBonus} cap</b>
+                <small>{brief.worldInfluenceBudget.sourceCount} source(s) · {brief.worldInfluenceBudget.directionLabel}</small>
+              </div>
+            )}
             <div className="situationList">
               {brief.hotLocations.slice(0, 2).map((location) => (
                 <button key={location.locationId} type="button" onClick={() => { onLocationSelect(location.locationId); setActiveSection("map"); }}>
@@ -1910,7 +2626,7 @@ export function PersistentTownCommandCenter({
               <small>记忆可信度 {candidate.validation.memoryConfidence?.supportScore ?? 0}% / 观察支撑 {candidate.validation.observationSupport?.supportScore ?? 0}% / 触发链 {candidate.riskChainEventIds.length} 事件</small>
               <small>{candidate.validation.failureReasons?.[0] ? translateRuleText(candidate.validation.failureReasons[0]) : (candidate.validation.valid ? "可抽取案件" : "仍阻塞")}</small>
               <CandidatePlayabilityPreview candidate={candidate} />
-              <button type="button" onClick={() => extractCase(candidate)} disabled={runningBusy || !candidate.validation.valid}>抽取可玩案件</button>
+              <button type="button" onClick={() => extractCase(candidate)}>抽取可玩案件</button>
             </article>
           ))}
         </div>
@@ -1936,7 +2652,7 @@ export function PersistentTownCommandCenter({
         <label>终点<select value={selectedSnapshotToId} onChange={(event) => setSelectedSnapshotToId(event.target.value)}>{snapshots.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
         <div className="commandSplit">
           <button type="button" onClick={chooseBaselineDiff} disabled={!scenarioReport}>选择基线</button>
-          <button type="button" onClick={confirmRollback} disabled={!selectedSnapshotFromId || runningBusy}>回滚到起点</button>
+          <button type="button" onClick={confirmRollback} disabled={!selectedSnapshotFromId}>回滚到起点</button>
         </div>
         <div className="commandDiffStats">
           <span>事件 +{snapshotDiff?.addedEventIds.length ?? 0}</span>
@@ -1974,6 +2690,7 @@ export function PersistentTownCommandCenter({
         <span>Route {benchmarkSummary?.routeCertifiedRate ?? 0}%</span>
         <span>AutoSolve {benchmarkSummary?.autoSolvePassRate ?? 0}%</span>
         <span>Steps {benchmarkSummary?.averageAutoSolveSteps ?? 0}</span>
+        <BenchmarkSeedTable report={benchmarkSummary || null} busy={reviewBusy} onRunBenchmark={runBenchmark} />
       </section>
     </main>
   );
@@ -2039,6 +2756,782 @@ function CandidatePlayabilityPreview({ candidate }: { candidate: CaseCandidate }
         <span>{candidate.validation.failureReasons?.[0] || (candidate.validation.valid ? "extractable" : "validation pending")}</span>
       </div>
     </div>
+  );
+}
+
+function normalizePlayableActionKind(kind?: PlayableCaseNextAction["kind"] | PlayableInvestigationPathKind | "review" | "solved") {
+  if (!kind || kind === "review" || kind === "solved") return "review-source";
+  if (kind === "observe" || kind === "organize") return "search";
+  return kind as PlayableInvestigationPathKind;
+}
+
+function buildPathAction(input: {
+  kind: PlayableInvestigationPathKind;
+  label: string;
+  detail: string;
+  playableIntake?: PlayableCaseIntake | null;
+  notebookItems: EvidenceNotebookItem[];
+  characters: DeductionCase["characters"];
+  discoveredEvidence: Evidence[];
+}): PlayableCaseNextAction {
+  const nextAction = input.playableIntake?.nextAction;
+  if (nextAction && normalizePlayableActionKind(nextAction.kind) === input.kind) return nextAction;
+  const coachStep = input.playableIntake?.coach?.steps.find((step) => step.stage === input.kind);
+  if (coachStep) {
+    return {
+      kind: input.kind,
+      label: coachStep.label,
+      detail: coachStep.detail,
+      buttonLabel: coachStep.buttonLabel,
+      coachStepId: coachStep.id,
+      targetLocationId: coachStep.targetLocationId,
+      targetCharacterId: coachStep.targetCharacterId,
+      targetEvidenceId: coachStep.targetEvidenceId
+    };
+  }
+  const firstRouteItem = input.notebookItems.find((item) => !item.discovered) || input.notebookItems[0];
+  const firstDiscoveredRouteItem = input.notebookItems.find((item) => item.discovered && item.challengeNpcIds.length) || input.notebookItems.find((item) => item.discovered);
+  const firstWitness = firstDiscoveredRouteItem?.challengeNpcIds[0] || input.notebookItems.find((item) => item.challengeNpcIds.length)?.challengeNpcIds[0] || input.characters.find((item) => item.role !== "死者")?.id;
+  const firstEvidence = input.discoveredEvidence[0]?.id || firstDiscoveredRouteItem?.evidenceId;
+  return {
+    kind: input.kind,
+    label: input.label,
+    detail: input.detail,
+    buttonLabel: input.kind === "join" ? "Join investigation" : "Focus step",
+    targetLocationId: input.kind === "search" ? firstRouteItem?.locationId : firstDiscoveredRouteItem?.locationId,
+    targetCharacterId: input.kind === "question" || input.kind === "challenge" ? firstWitness : undefined,
+    targetEvidenceId: input.kind === "challenge" || input.kind === "select-evidence" ? firstEvidence : undefined
+  };
+}
+
+function buildPlayableInvestigationPath(input: {
+  playableIntake?: PlayableCaseIntake | null;
+  session: PlayerSession | null;
+  notebookItems: EvidenceNotebookItem[];
+  discoveredEvidence: Evidence[];
+  dialogueLog: PlayerSession["interrogationLog"];
+  playerTheoryEvidence: Set<string>;
+  characters: DeductionCase["characters"];
+}): PlayableInvestigationPathStep[] {
+  const progress = input.playableIntake?.progress;
+  const coach = input.playableIntake?.coach;
+  const routeCertificate = input.playableIntake?.routeCertificate;
+  const discoveredCount = progress?.discoveredEvidence ?? input.discoveredEvidence.length;
+  const totalEvidence = progress?.totalEvidence ?? Math.max(input.notebookItems.length, input.discoveredEvidence.length);
+  const questionedCount = progress?.questionedWitnesses ?? new Set(input.dialogueLog.map((entry) => entry.characterId)).size;
+  const totalWitnesses = progress?.totalWitnesses ?? Math.max(1, new Set(input.notebookItems.flatMap((item) => item.challengeNpcIds)).size);
+  const challengeHitCount = progress?.challengeHitCount ?? input.dialogueLog.filter((entry) => entry.challenge?.hit).length;
+  const challengeReadyCount = progress?.challengeReadyCount ?? input.notebookItems.filter((item) => item.discovered && item.challengeNpcIds.length).length;
+  const selectedTheoryEvidence = progress?.selectedTheoryEvidence ?? input.playerTheoryEvidence.size;
+  const submitReady = progress?.submitReady ?? Boolean(routeCertificate?.routeCertified && selectedTheoryEvidence > 0);
+  const solved = progress?.solved ?? Boolean(input.session?.judgement?.accepted);
+  const activeKind = normalizePlayableActionKind(input.playableIntake?.nextAction?.kind || coach?.stage || progress?.currentStage);
+  const base = [
+    {
+      kind: "join" as const,
+      label: "Join",
+      question: "Enter the case",
+      detail: "Start the investigation before searching or questioning.",
+      metric: input.session ? "joined" : "start",
+      complete: Boolean(input.session),
+      ready: true
+    },
+    {
+      kind: "search" as const,
+      label: "Search",
+      question: "Find clues",
+      detail: "Use the map or evidence notebook to locate discoverable clues.",
+      metric: `${discoveredCount}/${totalEvidence} clues`,
+      complete: discoveredCount > 0,
+      ready: Boolean(input.session)
+    },
+    {
+      kind: "question" as const,
+      label: "Question",
+      question: "Talk to witnesses",
+      detail: "Ask witnesses from the current memory scope.",
+      metric: `${questionedCount}/${totalWitnesses} witnesses`,
+      complete: questionedCount > 0,
+      ready: discoveredCount > 0
+    },
+    {
+      kind: "challenge" as const,
+      label: "Challenge",
+      question: "Test statements",
+      detail: "Use known clues to expose local testimony contradictions.",
+      metric: challengeHitCount > 0 ? `${challengeHitCount} hit` : `${challengeReadyCount} ready`,
+      complete: challengeHitCount > 0,
+      ready: questionedCount > 0 || challengeReadyCount > 0
+    },
+    {
+      kind: "select-evidence" as const,
+      label: "Select Evidence",
+      question: "Build the chain",
+      detail: "Choose discovered clues for the theory route.",
+      metric: `${selectedTheoryEvidence} selected`,
+      complete: selectedTheoryEvidence > 0,
+      ready: discoveredCount > 0
+    },
+    {
+      kind: "submit" as const,
+      label: "Submit",
+      question: "Test the theory",
+      detail: "Submit only after the route has enough discovered material.",
+      metric: solved ? "accepted" : submitReady ? "ready" : "not ready",
+      complete: solved,
+      ready: submitReady || selectedTheoryEvidence > 0
+    },
+    {
+      kind: "review-source" as const,
+      label: "Review Source",
+      question: "Audit the proof",
+      detail: "After solving, inspect the source-backed reasoning route.",
+      metric: solved ? "unlocked" : "locked",
+      complete: solved,
+      ready: solved
+    }
+  ];
+  const firstActionableKind = base.find((step) => !step.complete && step.ready)?.kind || "review-source";
+  return base.map((step) => {
+    const current = step.kind === activeKind || (!base.some((item) => item.kind === activeKind && !item.complete) && step.kind === firstActionableKind);
+    const status: PlayableInvestigationPathStep["status"] = step.complete ? "done" : current ? "current" : step.ready ? "ready" : "locked";
+    return {
+      kind: step.kind,
+      label: step.label,
+      question: step.question,
+      detail: step.detail,
+      metric: step.metric,
+      status,
+      action: buildPathAction({
+        kind: step.kind,
+        label: step.label,
+        detail: step.detail,
+        playableIntake: input.playableIntake,
+        notebookItems: input.notebookItems,
+        characters: input.characters,
+        discoveredEvidence: input.discoveredEvidence
+      })
+    };
+  });
+}
+
+function PlayableInvestigationPathPanel({
+  steps,
+  onStepAction,
+  joinCase
+}: {
+  steps: PlayableInvestigationPathStep[];
+  onStepAction: (action: PlayableCaseNextAction) => void;
+  joinCase: () => void;
+}) {
+  const currentStep = steps.find((step) => step.status === "current") || steps.find((step) => step.status === "ready") || steps[0];
+  function handleStep(step: PlayableInvestigationPathStep) {
+    if (step.action.kind === "join") joinCase();
+    else onStepAction(step.action);
+  }
+  return (
+    <section className="playableInvestigationPath" data-testid="playable-investigation-path">
+      <div className="playablePathHeader">
+        <div>
+          <span>Playable Investigation Path</span>
+          <strong>Join -&gt; Search -&gt; Question -&gt; Challenge -&gt; Select Evidence -&gt; Submit -&gt; Review Source</strong>
+        </div>
+        <button type="button" className="primaryButton" data-testid="playable-path-next-action" onClick={() => handleStep(currentStep)}>
+          {currentStep.action.buttonLabel}
+        </button>
+      </div>
+      <div className="playablePathSteps">
+        {steps.map((step) => (
+          <button key={step.kind} type="button" className={step.status} data-testid="playable-investigation-step" onClick={() => handleStep(step)}>
+            <span>{step.label}</span>
+            <b>{step.metric}</b>
+            <strong>{step.question}</strong>
+            <small>{step.detail}</small>
+          </button>
+        ))}
+      </div>
+      <small className="playablePathBoundary">Low-spoiler route guidance only: no hidden truth, raw bodies, internal ids, or source trail details.</small>
+    </section>
+  );
+}
+
+function CertifiedPlaythroughProofPanel({
+  proof,
+  onRun
+}: {
+  proof: CertifiedPlaythroughProofSummary;
+  onRun: () => void;
+}) {
+  const pass = proof.status === "accepted" || (proof.routeCertified && proof.autoRoutePassed && proof.blockerCount === 0);
+  const statusLabel = proof.status === "accepted" ? proof.acceptedLabel : proof.status === "blocked" ? proof.blockedLabel : proof.readyLabel;
+  return (
+    <section className={`staticPlaythroughProof ${pass ? "pass" : "check"}`} data-testid={proof.testId}>
+      <div className="staticPlaythroughHeader">
+        <div>
+          <span>{proof.title}</span>
+          <strong>{statusLabel}</strong>
+        </div>
+        <button type="button" className="primaryButton" data-testid={proof.runTestId} onClick={onRun}>
+          {proof.actionLabel}
+        </button>
+      </div>
+      <div className="staticPlaythroughMetrics">
+        {typeof proof.sourceBackedRoute === "boolean" && <span className={proof.sourceBackedRoute ? "pass" : "fail"}><b>{proof.sourceBackedRoute ? "source-backed" : "missing"}</b>source-backed route</span>}
+        <span className={proof.routeCertified ? "pass" : "fail"}><b>{proof.routeCertified ? "certified" : "blocked"}</b>route certified</span>
+        <span className={proof.autoRoutePassed ? "pass" : "fail"}><b>{proof.autoRoutePassed ? "pass" : "check"}</b>auto route pass</span>
+        <span className={proof.acceptedTheory ? "pass" : "check"}><b>{proof.acceptedTheory ? "accepted" : "pending"}</b>accepted theory</span>
+        <span><b>{proof.searchStepCount}</b>search steps</span>
+        <span><b>{proof.questionedWitnessCount}</b>questioned witnesses</span>
+        <span><b>{proof.challengeHitCount}</b>challenge hits</span>
+        <span><b>{proof.selectedEvidenceCount}</b>selected evidence</span>
+        <span><b>{proof.coveredRequiredObligations}/{proof.totalRequiredObligations}</b>covered obligations</span>
+      </div>
+      <small>{proof.boundaryText}</small>
+    </section>
+  );
+}
+
+function GuidedManualRunPanel({
+  summary,
+  onRunNext
+}: {
+  summary: GuidedManualRunSummary;
+  onRunNext: () => void;
+}) {
+  return (
+    <section className={`guidedManualRun ${summary.readyToReview ? "ready" : "active"}`} data-testid="guided-manual-run">
+      <div className="guidedManualHeader">
+        <div>
+          <span>Guided Manual Run</span>
+          <strong>{summary.currentLabel}</strong>
+        </div>
+        <button
+          type="button"
+          className="primaryButton"
+          data-testid="run-next-guided-step"
+          onClick={onRunNext}
+          disabled={summary.running}
+        >
+          {summary.running ? "Running Guided Step" : summary.readyToReview ? "Review Source" : "Run Next Guided Step"}
+        </button>
+      </div>
+      <div className="guidedManualMetrics">
+        <span><b>{summary.currentStep}</b>current step</span>
+        <span><b>{summary.completedSteps}/{summary.totalSteps}</b>completed steps</span>
+        <span className={summary.readyToReview ? "pass" : "check"}><b>{summary.readyToReview ? "ready" : "not ready"}</b>ready to review</span>
+        <span><b>{summary.lastResult}</b>last result</span>
+      </div>
+      <small>{summary.blockerSummary}</small>
+    </section>
+  );
+}
+
+function GuidedStepJournalPanel({ entries }: { entries: GuidedStepJournalEntry[] }) {
+  const visibleEntries = entries.slice(-20).reverse();
+  const completedCount = entries.filter((entry) => entry.status === "done").length;
+  const fallbackUsed = entries.some((entry) => entry.fallbackUsed);
+  const reviewUnlocked = entries.some((entry) => entry.reviewUnlocked);
+  const lastStatus = entries[entries.length - 1]?.status || "info";
+  return (
+    <section className="guidedStepJournal" data-testid="guided-step-journal">
+      <div className="guidedStepJournalHeader">
+        <div>
+          <span>Guided Step Journal</span>
+          <strong>{entries.length ? "Session route explanation" : "No guided steps run yet"}</strong>
+        </div>
+        <b>{reviewUnlocked ? "review unlocked" : "session-only"}</b>
+      </div>
+      <div className="guidedStepJournalMetrics">
+        <span><b>{completedCount}</b>completed entries</span>
+        <span><b>{lastStatus}</b>last status</span>
+        <span className={fallbackUsed ? "check" : "pass"}><b>{fallbackUsed ? "used" : "unused"}</b>certified fallback</span>
+        <span className={reviewUnlocked ? "pass" : "check"}><b>{reviewUnlocked ? "unlocked" : "locked"}</b>review source</span>
+      </div>
+      <div className="guidedStepJournalEntries">
+        {visibleEntries.length ? visibleEntries.map((entry) => (
+          <article key={entry.id} className={entry.status}>
+            <span>{entry.step} / {entry.status}</span>
+            <b>{entry.label}</b>
+            <small>{entry.result}</small>
+            <small>{entry.progressDelta}</small>
+            <em>{entry.nextAction}{entry.fallbackUsed ? " / certified fallback used" : ""}</em>
+          </article>
+        )) : (
+          <article className="info">
+            <span>ready / info</span>
+            <b>Run one guided step</b>
+            <small>The journal records only low-spoiler step results for this browser session.</small>
+            <em>No repo files, public artifacts, or SQLite schema are written.</em>
+          </article>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function sourceReviewRouteCopy(step: CaseRouteCertificate["steps"][number]) {
+  if (step.kind === "question") return { label: "Question a certified witness", detail: "Ask the required witness before presenting contradiction evidence." };
+  if (step.kind === "challenge") return { label: "Challenge certified testimony", detail: "Present discovered contradiction evidence to the required witness." };
+  if (step.kind === "select-evidence") return { label: "Select certified evidence", detail: "Add the required discovered evidence to the theory." };
+  if (step.kind === "submit") return { label: "Submit the certified theory", detail: "Complete local judgement after the proof obligations are covered." };
+  return { label: step.label, detail: step.detail };
+}
+
+function SourceReviewUnlockPanel({
+  summary,
+  intake,
+  proofLedger,
+  proofCoverage,
+  routeCertificate,
+  proofTourSteps,
+  revealText,
+  judgementExplanation
+}: {
+  summary: SourceReviewUnlockSummary;
+  intake?: PlayableCaseIntake | null;
+  proofLedger?: CaseTruthLedger | null;
+  proofCoverage?: CaseProofCoverage | null;
+  routeCertificate?: CaseRouteCertificate | null;
+  proofTourSteps: ProofTourStep[];
+  revealText: string;
+  judgementExplanation?: string;
+}) {
+  const sourceTrail = intake?.sourceTrail || [];
+  const obligations = proofLedger?.obligations || [];
+  const routeSteps = routeCertificate?.steps || [];
+  return (
+    <section className={`sourceReviewUnlock ${summary.unlocked ? "unlocked" : "locked"}`} data-testid="source-review-unlock">
+      <div className="sourceReviewHeader">
+        <div>
+          <span>Source Review Unlock</span>
+          <strong>{summary.statusLabel}</strong>
+        </div>
+        <b>{summary.unlocked ? "audit ready" : "accepted theory required"}</b>
+      </div>
+      <div className="sourceReviewMetrics">
+        <span><b>{summary.sourceEventCount}</b>source events</span>
+        <span><b>{summary.memoryCount}</b>memories</span>
+        <span><b>{summary.coveredObligations}/{summary.totalObligations}</b>covered obligations</span>
+        <span><b>{summary.routeStepCount}</b>route steps</span>
+        <span><b>{summary.challengeHitCount}</b>challenge hits</span>
+        <span><b>{summary.selectedEvidenceCount}</b>selected evidence</span>
+        <span><b>{summary.proofGapCount}</b>proof gaps</span>
+      </div>
+      {!summary.unlocked ? (
+        <small>Locked source audit: complete the certified route and submit an accepted theory before source trail labels and conclusion review are shown.</small>
+      ) : (
+        <div className="sourceReviewWorkbench" data-testid="source-review-workbench">
+          <section data-testid="source-review-trail">
+            <strong>Source Trail</strong>
+            {(sourceTrail.length ? sourceTrail : [{ id: "source-review-empty", kind: "source", label: "Solved source trail", detail: "No separate source trail rows are available for this case.", hidden: false }]).slice(0, 6).map((item, index) => (
+              <article key={`${item.kind}:${index}`} className={item.hidden ? "locked" : "complete"}>
+                <span>{item.kind}</span>
+                <b>{item.label}</b>
+                <small>{item.detail}</small>
+              </article>
+            ))}
+          </section>
+          <section data-testid="source-review-obligations">
+            <strong>Proof Obligations</strong>
+            {obligations.slice(0, 8).map((item, index) => {
+              const covered = Boolean(proofCoverage?.coveredObligationIds.includes(item.id));
+              return (
+                <article key={`${item.kind}:${index}`} className={covered ? "complete" : "locked"}>
+                  <span>{covered ? "covered" : "open"} / {item.kind}</span>
+                  <b>{item.label}</b>
+                  <small>{item.detail}</small>
+                </article>
+              );
+            })}
+          </section>
+          <section data-testid="source-review-route">
+            <strong>Certified Route</strong>
+            {routeSteps.slice(0, 8).map((step, index) => {
+              const copy = sourceReviewRouteCopy(step);
+              return (
+                <article key={`${step.kind}:${index}`} className={step.complete ? "complete" : "locked"}>
+                  <span>{step.complete ? "complete" : "blocked"} / {step.kind}</span>
+                  <b>{copy.label}</b>
+                  <small>{copy.detail}</small>
+                </article>
+              );
+            })}
+          </section>
+          <section data-testid="source-review-conclusion">
+            <strong>Conclusion Review</strong>
+            {proofTourSteps.filter((step) => !step.locked).slice(0, 5).map((step, index) => (
+              <article key={`${step.stage}:${index}`} className={step.complete ? "complete" : ""}>
+                <span>{step.stage}</span>
+                <b>{step.title}</b>
+                <small>{step.detail}</small>
+              </article>
+            ))}
+            <article className="complete conclusionText">
+              <span>accepted theory</span>
+              <b>{judgementExplanation || "Local judgement accepted the submitted theory."}</b>
+              <small>{revealText ? "Reveal text is available below without raw replay or case body." : "Generate the answer review for final prose."}</small>
+            </article>
+            {revealText && <pre className="revealBox">{revealText}</pre>}
+          </section>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function SolvedCaseDebriefPanel({ summary }: { summary: SolvedCaseDebriefSummary }) {
+  if (!summary.accepted) return null;
+  const coverageLabel = summary.totalObligations
+    ? `${summary.coveredObligations}/${summary.totalObligations}`
+    : `${summary.coveredObligations}`;
+  return (
+    <section className="solvedCaseDebrief" data-testid="solved-case-debrief">
+      <div className="solvedCaseDebriefHeader">
+        <div>
+          <span>Solved Case Debrief</span>
+          <strong>investigation completed / accepted</strong>
+        </div>
+        <b>{summary.sourceReviewUnlocked ? "source review unlocked" : "source review locked"}</b>
+      </div>
+      <div className="solvedCaseDebriefMetrics">
+        <span className="pass"><b>{summary.manualStepsCompleted}/{summary.totalManualSteps}</b>manual guided steps</span>
+        <span className={summary.fallbackUsed ? "check" : "pass"}><b>{summary.fallbackUsed ? "used" : "not used"}</b>certified fallback</span>
+        <span><b>{summary.selectedEvidenceCount}</b>selected evidence</span>
+        <span><b>{summary.challengeHitCount}</b>challenge hits</span>
+        <span><b>{coverageLabel}</b>covered obligations</span>
+        <span className={summary.proofGapCount ? "check" : "pass"}><b>{summary.proofGapCount}</b>proof gaps</span>
+        <span className={summary.worldLeadOutcomeStatus === "settled" ? "pass" : "check"}><b>{summary.worldLeadOutcomeStatus}</b>world lead outcome</span>
+        <span className={summary.worldLeadHandoffStatus === "consumed" ? "pass" : "check"}><b>{summary.worldLeadHandoffStatus}</b>next-case handoff</span>
+        <span className={summary.worldArcStatus === "completed" ? "pass" : "check"}><b>{summary.worldArcProgress}</b>world arc</span>
+        <span className={summary.worldArcDirectiveStatus === "completed" ? "pass" : summary.worldArcDirectiveStatus === "blocked" ? "check" : ""}><b>{summary.worldArcDirectiveStatus}</b>faction directive</span>
+        <span className={summary.worldPressureCascadeStatus === "consumed" ? "pass" : summary.worldPressureCascadeStatus === "active" ? "check" : ""}><b>{summary.worldPressureCascadeStatus}</b>world pressure</span>
+        <span className={summary.townSocialResponseStatus === "settled" ? "pass" : summary.townSocialResponseStatus === "active" || summary.townSocialResponseStatus === "ready" ? "check" : ""}><b>{summary.townSocialResponseStatus}</b>town reactions</span>
+      </div>
+      <div className="solvedCaseDebriefSections">
+        <article>
+          <span>Player Route</span>
+          <b>Seven-step route completed</b>
+          <small>Last guided result: {summary.lastStepResult || "accepted"}. Join, Search, Question, Challenge, Select Evidence, Submit, and Review Source are closed.</small>
+        </article>
+        <article>
+          <span>Evidence Closure</span>
+          <b>{summary.selectedEvidenceCount} selected proof clue(s)</b>
+          <small>{coverageLabel} proof obligation(s) covered with {summary.proofGapCount} public gap(s) remaining.</small>
+        </article>
+        <article>
+          <span>Source Confidence</span>
+          <b>{summary.sourceEventCount} source events / {summary.memoryCount} memories</b>
+          <small>{summary.routeStepCount} certified route step(s) and {summary.challengeHitCount} challenge hit(s) support the accepted theory.</small>
+        </article>
+        <article>
+          <span>Next Replay Goal</span>
+          <b>{summary.fallbackUsed ? "Reduce certified fallback use" : "Try a more manual replay"}</b>
+          <small>Replay with fewer guided clicks, choose evidence manually, and use the journal to compare route confidence without exposing hidden truth.</small>
+        </article>
+        <article>
+          <span>World Lead Outcome</span>
+          <b>{summary.worldLeadOutcomeStatus === "settled" ? "bounded effect settled" : summary.worldLeadOutcomeStatus === "active" ? "bounded effect active" : "not used"}</b>
+          <small>World state effects stay low-spoiler, reversible, and separate from the certified evidence route.</small>
+        </article>
+        <article>
+          <span>Next Case Handoff</span>
+          <b>{summary.worldLeadHandoffStatus === "ready" ? "follow-up ready" : summary.worldLeadHandoffStatus === "consumed" ? "follow-up carried" : "not used"}</b>
+          <small>The one-time queue preference never changes the next case's fair-play route or candidate legality.</small>
+        </article>
+        <article>
+          <span>Case-Scoped World Arc</span>
+          <b>{summary.worldArcStatus === "completed" ? "world line completed" : summary.worldArcStatus === "active" ? "world line active" : "not used"}</b>
+          <small>{summary.worldArcProgress} stages recorded through followed leads and accepted theories.</small>
+        </article>
+        <article>
+          <span>Faction Directive</span>
+          <b>{summary.worldArcDirectiveStatus}</b>
+          <small>The selected Support or Contain response uses the existing institution and multi-tick action cycle.</small>
+        </article>
+        <article>
+          <span>World Pressure Cascade</span>
+          <b>{summary.worldPressureCascadeStatus}</b>
+          <small>Completed world action pressure only influences future candidate ordering and is consumed one layer at a time.</small>
+        </article>
+        <article>
+          <span>Town Social Response</span>
+          <b>{summary.townSocialResponseStatus}</b>
+          <small>Named public reactions remain ambient presentation and never enter case proof, memory testimony, or action authority.</small>
+        </article>
+      </div>
+      <small className="solvedCaseDebriefBoundary">Low-spoiler solved-case summary only: no hidden truth, raw bodies, internal ids, source ids, public catalog writes, dataset refreshes, or SQLite schema changes.</small>
+    </section>
+  );
+}
+
+function ReplayGoalCoachPanel({
+  summary,
+  onStartReplay
+}: {
+  summary: ReplayGoalCoachSummary;
+  onStartReplay: () => void;
+}) {
+  if (!summary.visible) return null;
+  return (
+    <section className={`replayGoalCoach ${summary.activeAttempt ? "active" : ""}`} data-testid="replay-goal-coach">
+      <div className="replayGoalCoachHeader">
+        <div>
+          <span>Replay Goal Coach</span>
+          <strong>{summary.activeAttempt ? "replay attempt active" : "ready for replay practice"}</strong>
+        </div>
+        <button type="button" className="primaryButton" data-testid="start-replay-attempt" onClick={onStartReplay}>
+          Start Replay Attempt
+        </button>
+      </div>
+      <div className="replayGoalCoachMetrics">
+        <span><b>{summary.previousGuidedSteps}</b>previous guided steps</span>
+        <span className={summary.previousFallbackUsed ? "check" : "pass"}><b>{summary.previousFallbackUsed ? "used" : "not used"}</b>fallback used</span>
+        <span><b>{summary.previousSelectedEvidenceCount}</b>selected evidence</span>
+        <span><b>{summary.previousProofGapCount}</b>proof gaps</span>
+        <span className={summary.previousSourceReviewUnlocked ? "pass" : "check"}><b>{summary.previousSourceReviewUnlocked ? "unlocked" : "locked"}</b>source review</span>
+        <span><b>{summary.completedGoalCount}/{summary.totalGoalCount}</b>completed replay goals</span>
+        <span><b>{summary.currentStep}</b>current step</span>
+        <span><b>{summary.lastResult}</b>last result</span>
+      </div>
+      <div className="replayGoalCoachGoals">
+        {summary.goals.map((goal) => (
+          <article key={goal.id} className={goal.status}>
+            <span>{goal.status}</span>
+            <b>{goal.label}</b>
+            <small>{goal.detail}</small>
+          </article>
+        ))}
+      </div>
+      <small className="replayGoalCoachBoundary">Session-local replay practice only: no hidden truth, raw bodies, internal ids, source ids, public catalog writes, dataset refreshes, or SQLite schema changes.</small>
+    </section>
+  );
+}
+
+function ReplayPracticeLoopPanel({ summary }: { summary: ReplayPracticeLoopSummary }) {
+  if (!summary.visible) return null;
+  return (
+    <section className={`replayPracticeLoop ${summary.activeAttempt ? "active" : ""}`} data-testid="replay-practice-loop">
+      <div className="replayPracticeLoopHeader">
+        <div>
+          <span>Replay Practice Loop</span>
+          <strong>{summary.activeAttempt ? `${summary.currentPhaseLabel} / active attempt` : "ready for replay attempt"}</strong>
+        </div>
+        <b>{summary.nextAction}</b>
+      </div>
+      <div className="replayPracticeLoopStages" data-testid="replay-practice-loop-stages">
+        {summary.stages.map((stage) => (
+          <span key={stage.id} className={stage.status}>
+            <b>{stage.label}</b>
+            <small>{stage.status}</small>
+          </span>
+        ))}
+      </div>
+      <div className="replayPracticeLoopMetrics">
+        <span><b>{summary.manualEvidencePickCount}</b>manual evidence picks</span>
+        <span><b>{summary.manualTheoryFieldCount}</b>manual theory fields</span>
+        <span className={summary.fallbackEvidencePickCount ? "check" : "pass"}><b>{summary.fallbackEvidencePickCount}</b>fallback evidence picks</span>
+        <span className={summary.fallbackTheoryFieldCount ? "check" : "pass"}><b>{summary.fallbackTheoryFieldCount}</b>fallback theory fields</span>
+        <span className={summary.blockedGapCount ? "check" : "pass"}><b>{summary.blockedGapCount}</b>blocked gaps</span>
+        <span className={summary.sourceReviewUnlocked ? "pass" : "check"}><b>{summary.sourceReviewUnlocked ? "unlocked" : "locked"}</b>source review</span>
+        <span className={summary.scorecardStatus === "completed" ? "pass" : "check"}><b>{summary.scorecardStatus}</b>scorecard</span>
+        <span className={summary.worldLeadOutcomeStatus === "settled" ? "pass" : summary.worldLeadOutcomeStatus === "active" ? "check" : ""}><b>{summary.worldLeadOutcomeStatus}</b>world lead outcome</span>
+        <span className={summary.worldLeadHandoffStatus === "consumed" ? "pass" : summary.worldLeadHandoffStatus === "ready" ? "check" : ""}><b>{summary.worldLeadHandoffStatus}</b>next-case handoff</span>
+        <span className={summary.worldArcStatus === "completed" ? "pass" : summary.worldArcStatus === "active" ? "check" : ""}><b>{summary.worldArcProgress}</b>world arc</span>
+        <span className={summary.worldArcDirectiveStatus === "completed" ? "pass" : summary.worldArcDirectiveStatus === "blocked" ? "check" : ""}><b>{summary.worldArcDirectiveStatus}</b>faction directive</span>
+        <span className={summary.worldPressureCascadeStatus === "consumed" ? "pass" : summary.worldPressureCascadeStatus === "active" ? "check" : ""}><b>{summary.worldPressureCascadeStatus}</b>world pressure</span>
+        <span className={summary.townSocialResponseStatus === "settled" ? "pass" : summary.townSocialResponseStatus === "active" || summary.townSocialResponseStatus === "ready" ? "check" : ""}><b>{summary.townSocialResponseStatus}</b>town reactions</span>
+      </div>
+      <small className="replayPracticeLoopBoundary">Manual First practice loop only: aggregate counts, phase labels, and next action. No player text, hidden truth, raw bodies, internal ids, source ids, public catalog writes, dataset refreshes, or runtime scoring changes.</small>
+    </section>
+  );
+}
+
+function ManualEvidenceDrillPanel({
+  summary,
+  onToggleEvidence
+}: {
+  summary: ManualEvidenceDrillSummary;
+  onToggleEvidence: (evidenceId: string) => void;
+}) {
+  if (!summary.visible) return null;
+  const safeLabel = (label: string, fallback: string) => (
+    /\b(?:npc|evidence|event|source|ev)-[a-z0-9-]*\d[a-z0-9-]*\b/i.test(label) ? fallback : label
+  );
+  return (
+    <section className="manualEvidenceDrill" data-testid="manual-evidence-drill">
+      <div className="manualEvidenceDrillHeader">
+        <div>
+          <span>Manual Evidence Drill</span>
+          <strong>{summary.readyForSubmit ? "manual picks ready for submit" : "manual pick first"}</strong>
+        </div>
+        <b>{summary.manualPickCount} manual pick(s)</b>
+      </div>
+      <div className="manualEvidenceDrillMetrics">
+        <span><b>{summary.selectedEvidenceCount}</b>selected evidence</span>
+        <span><b>{summary.routeEvidenceTargetCount}</b>route target count</span>
+        <span><b>{summary.manualPickCount}</b>manual picks</span>
+        <span className={summary.remainingProofSlots ? "check" : "pass"}><b>{summary.remainingProofSlots}</b>remaining proof slots</span>
+        <span className={summary.readyForSubmit ? "pass" : "check"}><b>{summary.readyForSubmit ? "ready" : "not ready"}</b>ready for submit</span>
+      </div>
+      <div className="manualEvidenceDrillCandidates" data-testid="manual-evidence-drill-candidates">
+        {summary.candidates.map((candidate) => (
+          <article key={candidate.evidenceId} className={candidate.selected ? "selected" : ""}>
+            <span>{candidate.selected ? "selected" : "available"}</span>
+            <b>{candidate.title}</b>
+            <small>{candidate.locationLabel}{candidate.sourceLabel ? ` / ${candidate.sourceLabel}` : ""}</small>
+            <div className="manualEvidenceDrillTags">
+              {candidate.supports.slice(0, 2).map((label, index) => <em key={`s:${candidate.evidenceId}:${index}`}>supports: {safeLabel(label, `proof lane ${index + 1}`)}</em>)}
+              {candidate.contradicts.slice(0, 2).map((label, index) => <em key={`c:${candidate.evidenceId}:${index}`}>contradicts: {safeLabel(label, `testimony lane ${index + 1}`)}</em>)}
+              {!candidate.supports.length && !candidate.contradicts.length && <em>route evidence candidate</em>}
+            </div>
+            <button
+              type="button"
+              className={candidate.selected ? "secondaryButton" : "primaryButton"}
+              data-testid={candidate.selected ? "manual-evidence-remove" : "manual-evidence-add"}
+              onClick={() => onToggleEvidence(candidate.evidenceId)}
+            >
+              {candidate.selected ? "Remove from Theory" : "Add to Theory"}
+            </button>
+          </article>
+        ))}
+      </div>
+      <small className="manualEvidenceDrillBoundary">Manual pick first: browser/session-local theory evidence only. No hidden truth, raw bodies, internal ids, source ids, public catalog writes, dataset refreshes, SQLite schema changes, or runtime scoring changes.</small>
+    </section>
+  );
+}
+
+function ManualTheoryDrillPanel({
+  summary,
+  onFieldChange,
+  onApproveFallback
+}: {
+  summary: ManualTheoryDrillSummary;
+  onFieldChange: (field: "culpritId" | "motive" | "method", value: string) => void;
+  onApproveFallback: () => void;
+}) {
+  if (!summary.visible) return null;
+  const fallbackLabel = summary.blockedGapCount
+    ? "Use Explicit Fallback for Unresolved Fields"
+    : "Use Explicit Fallback for Remaining Fields";
+  return (
+    <section className="manualTheoryDrill" data-testid="manual-theory-drill">
+      <div className="manualTheoryDrillHeader">
+        <div>
+          <span>Manual Theory Drill</span>
+          <strong>{summary.readyForSubmit ? "manual theory ready" : summary.fallbackApproved ? "certified fallback approved" : "manual theory first"}</strong>
+        </div>
+        <b>{summary.manualFieldCount}/3 manual field(s)</b>
+      </div>
+      <div className="manualTheoryDrillMetrics">
+        <span><b>{summary.manualFieldCount}</b>manual fields</span>
+        <span className={summary.remainingFieldCount ? "check" : "pass"}><b>{summary.remainingFieldCount}</b>remaining fields</span>
+        <span className={summary.fallbackFieldCount ? "check" : "pass"}><b>{summary.fallbackFieldCount}</b>fallback fields</span>
+        <span className={summary.blockedGapCount ? "check" : "pass"}><b>{summary.blockedGapCount}</b>blocked gaps</span>
+        <span className={summary.evidenceReady ? "pass" : "check"}><b>{summary.evidenceReady ? "ready" : "not ready"}</b>evidence ready</span>
+        <span className={summary.readyForSubmit || summary.fallbackApproved ? "pass" : "check"}><b>{summary.readyForSubmit || summary.fallbackApproved ? "ready" : "not ready"}</b>ready for submit</span>
+      </div>
+      <div className="manualTheoryDrillForm">
+        <label>
+          Suspect hypothesis
+          <select
+            data-testid="manual-theory-culprit"
+            value={summary.selectedCulpritId}
+            onChange={(event) => onFieldChange("culpritId", event.target.value)}
+          >
+            <option value="">Choose a suspect</option>
+            {summary.suspectOptions.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+          </select>
+        </label>
+        <label>
+          Motive hypothesis
+          <textarea
+            data-testid="manual-theory-motive"
+            placeholder="Explain the pressure or conflict supported by discovered clues."
+            value={summary.motiveText}
+            onChange={(event) => onFieldChange("motive", event.target.value)}
+          />
+        </label>
+        <label>
+          Method hypothesis
+          <textarea
+            data-testid="manual-theory-method"
+            placeholder="Explain the means and scene mechanism supported by discovered clues."
+            value={summary.methodText}
+            onChange={(event) => onFieldChange("method", event.target.value)}
+          />
+        </label>
+      </div>
+      <div className="manualTheoryDrillPrompts" data-testid="manual-theory-evidence-prompts">
+        {summary.evidencePrompts.map((prompt, index) => (
+          <article key={`${prompt.title}:${index}`}>
+            <span>discovered clue</span>
+            <b>{prompt.title}</b>
+            <small>{prompt.detail}</small>
+            <div>
+              {prompt.supportLabels.map((label, labelIndex) => <em key={`${prompt.title}:${labelIndex}`}>{label}</em>)}
+            </div>
+          </article>
+        ))}
+      </div>
+      <button
+        type="button"
+        className="secondaryButton"
+        data-testid="manual-theory-fallback"
+        onClick={onApproveFallback}
+        disabled={summary.fallbackApproved || (!summary.remainingFieldCount && !summary.blockedGapCount)}
+      >
+        {summary.fallbackApproved ? "Explicit Fallback Approved" : fallbackLabel}
+      </button>
+      <small className="manualTheoryDrillBoundary">Evidence-guided free text only. Certified values stay internal and are never copied into visible fields. No hidden truth, raw bodies, internal ids, source ids, public writes, dataset refreshes, or runtime scoring changes.</small>
+    </section>
+  );
+}
+
+function ReplayAttemptScorecardPanel({ summary }: { summary: ReplayAttemptScorecardSummary }) {
+  if (!summary.visible) return null;
+  return (
+    <section className={`replayAttemptScorecard ${summary.status}`} data-testid="replay-attempt-scorecard">
+      <div className="replayAttemptScorecardHeader">
+        <div>
+          <span>Replay Attempt Scorecard</span>
+          <strong>{summary.status === "completed" ? "completed replay delta" : "pending replay delta"}</strong>
+        </div>
+        <b>{summary.activeAttempt ? "attempt active" : "waiting for attempt"}</b>
+      </div>
+      <div className="replayAttemptScorecardMetrics">
+        <span><b>{summary.currentStep}</b>current step</span>
+        <span><b>{summary.completedGuidedSteps}</b>guided steps</span>
+        <span className={summary.fallbackUsed ? "check" : "pass"}><b>{summary.fallbackUsed ? "used" : "not used"}</b>fallback</span>
+        <span><b>{summary.selectedEvidenceCount}</b>selected evidence</span>
+        <span><b>{summary.manualEvidencePickCount}</b>manual picks</span>
+        <span className={summary.fallbackEvidencePickCount ? "check" : "pass"}><b>{summary.fallbackEvidencePickCount}</b>fallback picks</span>
+        <span><b>{summary.manualTheoryFieldCount}</b>manual theory fields</span>
+        <span className={summary.fallbackTheoryFieldCount ? "check" : "pass"}><b>{summary.fallbackTheoryFieldCount}</b>fallback theory fields</span>
+        <span className={summary.blockedTheoryGapCount ? "check" : "pass"}><b>{summary.blockedTheoryGapCount}</b>blocked theory gaps</span>
+        <span><b>{summary.proofGapCount}</b>proof gaps</span>
+        <span className={summary.sourceReviewUnlocked ? "pass" : "check"}><b>{summary.sourceReviewUnlocked ? "unlocked" : "locked"}</b>source review</span>
+        <span className={summary.worldLeadOutcomeStatus === "settled" ? "pass" : summary.worldLeadOutcomeStatus === "active" ? "check" : ""}><b>{summary.worldLeadOutcomeStatus}</b>world lead outcome</span>
+        <span className={summary.worldLeadHandoffStatus === "consumed" ? "pass" : summary.worldLeadHandoffStatus === "ready" ? "check" : ""}><b>{summary.worldLeadHandoffStatus}</b>next-case handoff</span>
+        <span className={summary.worldArcStatus === "completed" ? "pass" : summary.worldArcStatus === "active" ? "check" : ""}><b>{summary.worldArcProgress}</b>world arc</span>
+        <span className={summary.worldArcDirectiveStatus === "completed" ? "pass" : summary.worldArcDirectiveStatus === "blocked" ? "check" : ""}><b>{summary.worldArcDirectiveStatus}</b>faction directive</span>
+        <span className={summary.worldPressureCascadeStatus === "consumed" ? "pass" : summary.worldPressureCascadeStatus === "active" ? "check" : ""}><b>{summary.worldPressureCascadeStatus}</b>world pressure</span>
+        <span className={summary.townSocialResponseStatus === "settled" ? "pass" : summary.townSocialResponseStatus === "active" || summary.townSocialResponseStatus === "ready" ? "check" : ""}><b>{summary.townSocialResponseStatus}</b>town reactions</span>
+        <span><b>{summary.completedReplayGoals}/{summary.totalReplayGoals}</b>replay goals</span>
+        <span><b>{summary.lastResult}</b>last result</span>
+      </div>
+      <div className="replayAttemptScorecardRows">
+        {summary.rows.map((row) => (
+          <article key={row.id} className={row.status}>
+            <span>{row.status}</span>
+            <b>{row.label}</b>
+            <small>Previous: {row.previous}</small>
+            <small>Current: {row.current}</small>
+            <em>{row.detail}</em>
+          </article>
+        ))}
+      </div>
+      <small className="replayAttemptScorecardBoundary">Descriptive session-local delta only: no score, no pass gate, no hidden truth, raw bodies, internal ids, source ids, public catalog writes, dataset refreshes, or runtime scoring changes.</small>
+    </section>
   );
 }
 
@@ -2194,7 +3687,9 @@ function CaseIntakePanel({
         ))}
       </div>
       {!session && <button type="button" className="primaryButton full" data-testid="case-intake-join" onClick={joinCase}>Join investigation</button>}
-      {session && <small className="sourceBackedPill" data-testid="source-backed-case">source-backed / emerged from town runtime</small>}
+      <small className="sourceBackedPill" data-testid="source-backed-case">
+        {session ? "source-backed / emerged from town runtime" : "source-backed / session pending"}
+      </small>
     </section>
   );
 }
@@ -2238,6 +3733,50 @@ export function InvestigationPanel({
   onGapSelect,
   nextStepAdvice,
   joinCase,
+  staticPlaythroughProof,
+  runStaticPlaythroughProof,
+  serverPlaythroughProof,
+  runServerPlaythroughProof,
+  runtimeMode,
+  worldLead,
+  worldLeadOutcome,
+  worldLeadCaseHandoff,
+  worldArc,
+  worldArcDirective,
+  worldPressureCascade,
+  worldInfluenceBudget,
+  playerResourceCommitment,
+  factionRelationship,
+  worldEventOffer,
+  investigatorProgression,
+  campaignRecovery,
+  arcConvergence,
+  campaignSession,
+  campaignFinaleDebrief,
+  townSocialResponse,
+  updateWorldLead,
+  updateWorldArcDirective,
+  updatePlayerResourceCommitment,
+  updateWorldEventOffer,
+  updateCampaignRecovery,
+  guidedManualRun,
+  runGuidedManualStep,
+  guidedStepJournal,
+  sourceReviewUnlock,
+  solvedCaseDebrief,
+  replayPracticeLoop,
+  replayGoalCoach,
+  manualEvidenceDrill,
+  toggleManualEvidenceDrillEvidence,
+  manualTheoryDrill,
+  updateManualTheoryDrillField,
+  approveManualTheoryFallback,
+  replayAttemptScorecard,
+  startReplayGoalAttempt,
+  proofLedger,
+  proofCoverage,
+  routeCertificate,
+  proofTourSteps,
   busy
 }: {
   playableIntake?: PlayableCaseIntake | null;
@@ -2278,10 +3817,93 @@ export function InvestigationPanel({
   onGapSelect: (card: GapCard) => void;
   nextStepAdvice?: string;
   joinCase: () => void;
+  staticPlaythroughProof?: CertifiedPlaythroughProofSummary | null;
+  runStaticPlaythroughProof?: () => void;
+  serverPlaythroughProof?: CertifiedPlaythroughProofSummary | null;
+  runServerPlaythroughProof?: () => void;
+  runtimeMode: "static-demo" | "server";
+  worldLead?: WorldLeadSummary | null;
+  worldLeadOutcome?: WorldLeadOutcomeSummary | null;
+  worldLeadCaseHandoff?: WorldLeadHandoffSummary | null;
+  worldArc?: WorldArcSummary | null;
+  worldArcDirective?: WorldArcDirectiveSummary | null;
+  worldPressureCascade?: WorldPressureCascadeSummary | null;
+  worldInfluenceBudget?: WorldInfluenceBudgetSummary | null;
+  playerResourceCommitment?: PlayerResourceCommitmentSummary | null;
+  factionRelationship?: FactionRelationshipSummary | null;
+  worldEventOffer?: WorldEventOfferSummary | null;
+  investigatorProgression?: InvestigatorProgressionSummary | null;
+  campaignRecovery?: CampaignRecoverySummary | null;
+  arcConvergence?: ArcConvergenceSummary | null;
+  campaignSession?: CampaignSessionSummary | null;
+  campaignFinaleDebrief?: CampaignFinaleDebriefSummary | null;
+  townSocialResponse?: TownSocialResponseSummary | null;
+  updateWorldLead?: (action: "follow" | "skip") => void;
+  updateWorldArcDirective?: (choice: "support" | "contain" | "defer") => void;
+  updatePlayerResourceCommitment?: (choice: "police-time" | "informant-trust" | "evidence-integrity" | "none") => void;
+  updateWorldEventOffer?: (choice: "accept" | "decline") => void;
+  updateCampaignRecovery?: (choice: "start" | "defer") => void;
+  guidedManualRun?: GuidedManualRunSummary | null;
+  runGuidedManualStep?: () => void;
+  guidedStepJournal: GuidedStepJournalEntry[];
+  sourceReviewUnlock?: SourceReviewUnlockSummary | null;
+  solvedCaseDebrief?: SolvedCaseDebriefSummary | null;
+  replayPracticeLoop?: ReplayPracticeLoopSummary | null;
+  replayGoalCoach?: ReplayGoalCoachSummary | null;
+  manualEvidenceDrill?: ManualEvidenceDrillSummary | null;
+  toggleManualEvidenceDrillEvidence?: (evidenceId: string) => void;
+  manualTheoryDrill?: ManualTheoryDrillSummary | null;
+  updateManualTheoryDrillField?: (field: "culpritId" | "motive" | "method", value: string) => void;
+  approveManualTheoryFallback?: () => void;
+  replayAttemptScorecard?: ReplayAttemptScorecardSummary | null;
+  startReplayGoalAttempt?: () => void;
+  proofLedger?: CaseTruthLedger | null;
+  proofCoverage?: CaseProofCoverage | null;
+  routeCertificate?: CaseRouteCertificate | null;
+  proofTourSteps: ProofTourStep[];
   busy: boolean;
 }) {
+  const playablePathSteps = buildPlayableInvestigationPath({
+    playableIntake,
+    session,
+    notebookItems,
+    discoveredEvidence,
+    dialogueLog,
+    playerTheoryEvidence,
+    characters
+  });
   return (
     <div className="stackedInspector">
+      <PlayableInvestigationPathPanel steps={playablePathSteps} onStepAction={onIntakeNextAction} joinCase={joinCase} />
+      <WorldCampaignPanel runtimeMode={runtimeMode} session={session} summary={worldLead} outcome={worldLeadOutcome} handoff={worldLeadCaseHandoff} arc={worldArc} directive={worldArcDirective} pressure={worldPressureCascade} influenceBudget={worldInfluenceBudget} playerResourceCommitment={playerResourceCommitment} factionRelationship={factionRelationship} worldEventOffer={worldEventOffer} investigatorProgression={investigatorProgression} campaignRecovery={campaignRecovery} arcConvergence={arcConvergence} campaignSession={campaignSession} campaignFinaleDebrief={campaignFinaleDebrief} townSocialResponse={townSocialResponse} onDecision={updateWorldLead} onDirectiveDecision={updateWorldArcDirective} onResourceCommitmentDecision={updatePlayerResourceCommitment} onWorldEventOfferDecision={updateWorldEventOffer} onCampaignRecoveryDecision={updateCampaignRecovery} busy={busy} />
+      {guidedManualRun && runGuidedManualStep && <GuidedManualRunPanel summary={guidedManualRun} onRunNext={runGuidedManualStep} />}
+      <GuidedStepJournalPanel entries={guidedStepJournal} />
+      {staticPlaythroughProof && runStaticPlaythroughProof && <CertifiedPlaythroughProofPanel proof={staticPlaythroughProof} onRun={runStaticPlaythroughProof} />}
+      {serverPlaythroughProof && runServerPlaythroughProof && <CertifiedPlaythroughProofPanel proof={serverPlaythroughProof} onRun={runServerPlaythroughProof} />}
+      {sourceReviewUnlock && (
+        <SourceReviewUnlockPanel
+          summary={sourceReviewUnlock}
+          intake={playableIntake}
+          proofLedger={proofLedger}
+          proofCoverage={proofCoverage}
+          routeCertificate={routeCertificate}
+          proofTourSteps={proofTourSteps}
+          revealText={revealText}
+          judgementExplanation={session?.judgement?.explanation}
+        />
+      )}
+      {solvedCaseDebrief && <SolvedCaseDebriefPanel summary={solvedCaseDebrief} />}
+      {replayPracticeLoop && <ReplayPracticeLoopPanel summary={replayPracticeLoop} />}
+      {replayGoalCoach && startReplayGoalAttempt && <ReplayGoalCoachPanel summary={replayGoalCoach} onStartReplay={startReplayGoalAttempt} />}
+      {manualEvidenceDrill && toggleManualEvidenceDrillEvidence && <ManualEvidenceDrillPanel summary={manualEvidenceDrill} onToggleEvidence={toggleManualEvidenceDrillEvidence} />}
+      {manualTheoryDrill && updateManualTheoryDrillField && approveManualTheoryFallback && (
+        <ManualTheoryDrillPanel
+          summary={manualTheoryDrill}
+          onFieldChange={updateManualTheoryDrillField}
+          onApproveFallback={approveManualTheoryFallback}
+        />
+      )}
+      {replayAttemptScorecard && <ReplayAttemptScorecardPanel summary={replayAttemptScorecard} />}
       {playableIntake && <CaseIntakePanel intake={playableIntake} session={session} joinCase={joinCase} onNextAction={onIntakeNextAction} />}
       <EvidenceNotebookPanel items={notebookItems} onAction={onNotebookAction} />
       <section className="actionPanel">

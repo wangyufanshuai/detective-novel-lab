@@ -258,6 +258,19 @@ export function createCaseGalleryEntry(
   };
 }
 
+export function createContentSeedBackupEntry(draft: AuthoringDraft, timestamp = now()): CaseGalleryEntry {
+  const entry = createCaseGalleryEntry(draft, {
+    id: `case-gallery:content-seed-backup:${timestamp}`,
+    source: "local",
+    createdAt: timestamp,
+    updatedAt: timestamp
+  });
+  return {
+    ...entry,
+    title: `Before Content Seed - ${draft.caseFromLog.deductionCase.title}`
+  };
+}
+
 export function exportCaseGalleryBundle(entries: CaseGalleryEntry[]): string {
   return JSON.stringify({ version: 1, entries: clone(entries), exportedAt: now() } satisfies CaseGalleryBundle, null, 2);
 }
@@ -269,13 +282,17 @@ export function importCaseGalleryEntries(value: unknown, baseDraft?: AuthoringDr
       .map((entry) => {
         const draft = normalizeAuthoringDraft(entry?.draft, baseDraft);
         if (!draft) return null;
-        return createCaseGalleryEntry(draft, {
+        const normalized = createCaseGalleryEntry(draft, {
           id: entry.id,
           source: entry.source === "built-in" ? "built-in" : entry.source === "local" ? "local" : "imported",
           templateId: entry.templateId,
           createdAt: entry.createdAt,
           updatedAt: entry.updatedAt
         });
+        return {
+          ...normalized,
+          title: typeof entry.title === "string" && entry.title.trim() ? entry.title : normalized.title
+        };
       })
       .filter((entry): entry is CaseGalleryEntry => Boolean(entry));
   }

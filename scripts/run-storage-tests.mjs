@@ -36,7 +36,7 @@ const workspace = {
   updatedAt: now
 };
 const saved = worldRepository.saveNovelProject(workspace);
-assert.equal(worldRepository.schemaVersion, 2, "repository reports schema v2");
+assert.equal(worldRepository.schemaVersion, 4, "repository reports schema v4");
 assert.equal(worldRepository.storageHealth().counts.novelProjects, 1, "storage health counts novel projects");
 assert.throws(
   () => worldRepository.saveNovelProject(workspace, "stale-version"),
@@ -50,6 +50,128 @@ assert.equal(restored.simulationRuns[0].id, "run-1", "simulation state survives 
 assert.equal(restored.project.identityRegistry.decisions[0].status, "auto-merged", "identity registry survives database reopen");
 assert.equal(restored.simulationRuns[0].branchComparison.materialDivergence, true, "branch comparison survives database reopen");
 assert.equal(restored.updatedAt, saved.updatedAt, "repository keeps the saved revision timestamp");
+
+const replayIndex = {
+  schemaVersion: 1,
+  generatedAt: "2026-07-03T00:00:00.000Z",
+  storeRoot: "data/replay-store",
+  runs: [{
+    runId: "storage-replay-run",
+    kind: "campaign",
+    status: "completed",
+    startedAt: "2026-07-03T00:00:00.000Z",
+    finishedAt: "2026-07-03T00:00:05.000Z",
+    experimentId: "storage-experiment",
+    seed: "storage-seed",
+    tickCount: 100,
+    qualityScore: 92,
+    deterministicRunHash: "fnv1a-storage",
+    files: [
+      { name: "manifest.json", path: "manifest.json", bytes: 33, sha256: "a".repeat(64), declared: true },
+      { name: "campaign-report.json", path: "campaign-report.json", bytes: 44, sha256: "b".repeat(64), declared: true }
+    ],
+    metrics: { caseCount: 8, uniqueCaseCount: 8 },
+    warnings: []
+  }],
+  summary: {
+    runCount: 1,
+    byKind: { campaign: 1 },
+    completedRunCount: 1,
+    failedRunCount: 0,
+    indexedFileCount: 2
+  },
+  audit: {
+    ok: true,
+    checkedRunCount: 1,
+    errorCount: 0,
+    warningCount: 1,
+    findings: [{ severity: "warning", code: "manifest.missing-summary", runId: "storage-replay-run", file: "manifest.json", message: "fixture warning" }],
+    secretLeakCount: 0,
+    hiddenTruthLeakCount: 0
+  }
+};
+const syncResult = worldRepository.syncReplayDatasetIndex(replayIndex);
+assert.equal(syncResult.syncedRunCount, 1, "replay sync writes one run");
+assert.equal(worldRepository.storageHealth().counts.replayRuns, 1, "storage health counts replay runs");
+assert.equal(worldRepository.storageHealth().counts.replayFiles, 2, "storage health counts replay files");
+const replayList = worldRepository.listReplayCatalogRuns({ kind: "campaign" });
+assert.equal(replayList.total, 1, "replay catalog list supports kind filter");
+assert.equal(replayList.runs[0].files.length, 0, "list rows do not include file payload");
+assert.equal(replayList.summary.auditWarningCount, 1, "replay catalog summary counts warnings");
+const replayDetail = worldRepository.getReplayCatalogRun("storage-replay-run");
+assert.equal(replayDetail.run.files.length, 2, "replay catalog detail includes files");
+assert.equal(replayDetail.findings[0].code, "manifest.missing-summary", "replay catalog detail includes findings");
+worldRepository.syncReplayDatasetIndex(replayIndex);
+assert.equal(worldRepository.storageHealth().counts.replayRuns, 1, "replay sync is idempotent for runs");
+assert.equal(worldRepository.storageHealth().counts.replayFiles, 2, "replay sync is idempotent for files");
+assert.throws(
+  () => worldRepository.syncReplayDatasetIndex({
+    ...replayIndex,
+    runs: [{ ...replayIndex.runs[0], files: [{ name: "escape", path: "../escape.json", bytes: 1, sha256: "c".repeat(64) }] }]
+  }),
+  /relative/,
+  "replay sync rejects unsafe relative paths"
+);
+
+const packageIndex = {
+  schemaVersion: 1,
+  generatedAt: "2026-07-03T00:00:00.000Z",
+  root: "local-workspace",
+  packages: [{
+    packageId: "storage-world-package",
+    kind: "world-package",
+    source: "world-packs",
+    name: "Storage World Package",
+    version: "1.0.0",
+    status: "valid",
+    directoryName: "storage-world-package",
+    relativePath: "world-packs/storage-world-package",
+    contentHash: "c".repeat(64),
+    pathHash: "d".repeat(64),
+    license: "project-local",
+    scenarioPackId: "storage-scenario",
+    mapPackId: "storage-map",
+    ruleCatalogId: "storage-rules",
+    agentPackId: "storage-agents",
+    ecosystemCatalogId: "storage-ecosystem",
+    validation: { ok: true, errors: [], warnings: [] },
+    metrics: { fileCount: 8, bytes: 2048, agentCount: 4, factionCount: 2, resourceCount: 3, taskTemplateCount: 5 }
+  }],
+  summary: {
+    packageCount: 1,
+    validPackageCount: 1,
+    invalidPackageCount: 0,
+    byKind: { "world-package": 1 },
+    bySource: { "world-packs": 1 }
+  }
+};
+const packageSync = worldRepository.syncPackageCatalogIndex(packageIndex);
+assert.equal(packageSync.syncedPackageCount, 1, "package sync writes one package");
+assert.equal(worldRepository.storageHealth().counts.packages, 1, "storage health counts package catalog rows");
+const packageList = worldRepository.listPackageCatalog({ kind: "world-package" });
+assert.equal(packageList.total, 1, "package catalog list supports kind filter");
+assert.equal(packageList.packages[0].packageId, "storage-world-package", "package catalog list returns metadata");
+const packageDetail = worldRepository.getPackageCatalogEntry("storage-world-package");
+assert.equal(packageDetail.package.scenarioPackId, "storage-scenario", "package catalog detail includes bound pack ids");
+worldRepository.syncPackageCatalogIndex(packageIndex);
+assert.equal(worldRepository.storageHealth().counts.packages, 1, "package sync is idempotent");
+const packageDb = new Database(sourcePath, { readonly: true, fileMustExist: true });
+const packageRows = packageDb.prepare("select * from package_catalog").all();
+packageDb.close();
+assert.equal(JSON.stringify(packageRows).includes("world-packs/storage-world-package"), true, "package catalog stores relative package paths");
+assert.equal(/[A-Za-z]:[\\/]/.test(JSON.stringify(packageRows)), false, "package catalog rows do not store absolute paths");
+assert.equal(JSON.stringify(packageRows).includes(".env.local"), false, "package catalog rows do not store env file references");
+assert.equal(JSON.stringify(packageRows).includes("apiKey"), false, "package catalog rows do not store API-key-like fields");
+assert.equal(JSON.stringify(packageRows).includes("truth"), false, "package catalog rows do not store hidden truth fields");
+assert.equal(JSON.stringify(packageRows).includes("scenario-pack.json"), false, "package catalog rows do not store package body text or file names");
+assert.throws(
+  () => worldRepository.syncPackageCatalogIndex({
+    ...packageIndex,
+    packages: [{ ...packageIndex.packages[0], relativePath: "../escape" }]
+  }),
+  /relativePath/,
+  "package sync rejects unsafe relative paths"
+);
 closeDatabase();
 
 const output = execFileSync("node", [

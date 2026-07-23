@@ -11,18 +11,116 @@ const runtimeDir = path.join(outDir, "world-test-runtime");
 
 async function loadEngine() {
   await fs.mkdir(runtimeDir, { recursive: true });
-  const entries = await fs.readdir(sourceDir);
-  for (const entry of entries.filter((name) => name.endsWith(".ts"))) {
-    const source = await fs.readFile(path.join(sourceDir, entry), "utf8");
+  async function collectTsFiles(dir) {
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+    const nested = await Promise.all(entries.map(async (entry) => {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) return collectTsFiles(fullPath);
+      return entry.isFile() && entry.name.endsWith(".ts") ? [fullPath] : [];
+    }));
+    return nested.flat();
+  }
+  for (const file of await collectTsFiles(sourceDir)) {
+    const source = await fs.readFile(file, "utf8");
     const compiled = ts.transpileModule(source, {
       compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true }
     }).outputText;
-    await fs.writeFile(path.join(runtimeDir, entry.replace(/\.ts$/, ".cjs")), compiled.replace(/require\("\.\/(.+?)"\)/g, 'require("./$1.cjs")'), "utf8");
+    const relative = path.relative(sourceDir, file).replace(/\.ts$/, ".cjs");
+    const target = path.join(runtimeDir, relative);
+    await fs.mkdir(path.dirname(target), { recursive: true });
+    await fs.writeFile(target, compiled.replace(/require\("(\.{1,2}\/.+?)"\)/g, 'require("$1.cjs")'), "utf8");
   }
   return import(pathToFileURL(path.join(runtimeDir, "index.cjs")).href);
 }
 
 const engine = await loadEngine();
+const contentRoot = path.join(root, "content", "detective-v1");
+async function readContentJson(name) {
+  return JSON.parse(await fs.readFile(path.join(contentRoot, name), "utf8"));
+}
+const detectiveContentPack = {
+  manifest: await readContentJson("manifest.json"),
+  caseTypes: await readContentJson("case-types.json"),
+  locations: await readContentJson("locations.json"),
+  roles: await readContentJson("roles.json"),
+  motives: await readContentJson("motives.json"),
+  evidenceTypes: await readContentJson("evidence-types.json"),
+  redHerringPatterns: await readContentJson("red-herring-patterns.json"),
+  escalationRules: await readContentJson("escalation-rules.json"),
+  resources: await readContentJson("resources.json"),
+  factions: await readContentJson("factions.json"),
+  eventArchetypes: await readContentJson("event-archetypes.json"),
+  progressionLines: await readContentJson("progression-lines.json")
+};
+
+{
+  const directiveMapping = Object.fromEntries(detectiveContentPack.eventArchetypes.map((row) => [row.id, [
+    `${row.directiveResponses?.support.institutionKind}/${row.directiveResponses?.support.strategy}/${row.directiveResponses?.support.longActionKind}`,
+    `${row.directiveResponses?.contain.institutionKind}/${row.directiveResponses?.contain.strategy}/${row.directiveResponses?.contain.longActionKind}`
+  ]]));
+  assert.deepEqual(Object.fromEntries(Object.entries(directiveMapping).filter(([id]) => ["record-access-delay", "credit-pressure-spike", "proof-sheet-leak", "forensic-timing-gap", "household-letter-surfaced", "cargo-route-shift"].includes(id))), {
+    "record-access-delay": ["court/review-court-record/review-court-record", "police/allocate-investigation/protect-chain-of-custody"],
+    "credit-pressure-spike": ["commerce/audit-ledger/audit-ledger", "media/cultivate-informant/cultivate-informant"],
+    "proof-sheet-leak": ["media/chase-headline/leak-to-press", "family/protect-family/suppress-story"],
+    "forensic-timing-gap": ["medical/schedule-autopsy/second-medical-opinion", "medical/schedule-autopsy/seal-autopsy-record"],
+    "household-letter-surfaced": ["media/chase-headline/pressure-editor", "family/protect-family/summon-family-council"],
+    "cargo-route-shift": ["dock_union/trace-cargo/trace-cargo", "dock_union/trace-cargo/inspect-warehouse"]
+  }, "all six event archetypes keep the fixed content-driven directive mapping");
+  assert.equal(detectiveContentPack.caseTypes.length, 16, "v5.37 content pack expands to sixteen authored case types");
+  assert.equal(detectiveContentPack.eventArchetypes.length, 10, "v5.37 content pack expands to ten event archetypes");
+  assert.deepEqual(directiveMapping["archive-stamp-conflict"], ["court/review-court-record/review-court-record", "police/allocate-investigation/protect-chain-of-custody"], "archive cluster keeps a deterministic institution-compatible directive mapping");
+  assert.deepEqual(directiveMapping["clinic-supply-shortfall"], ["medical/schedule-autopsy/second-medical-opinion", "medical/schedule-autopsy/seal-autopsy-record"], "medical cluster keeps a deterministic institution-compatible directive mapping");
+  assert.deepEqual(directiveMapping["dock-shift-dispute"], ["dock_union/trace-cargo/trace-cargo", "dock_union/trace-cargo/inspect-warehouse"], "dock cluster keeps a deterministic institution-compatible directive mapping");
+  assert.deepEqual(directiveMapping["editorial-pressure-wave"], ["media/chase-headline/leak-to-press", "family/protect-family/suppress-story"], "media cluster keeps a deterministic institution-compatible directive mapping");
+  assert.equal(detectiveContentPack.progressionLines.length, 8, "v5.37 content pack adds authored campaign growth lines");
+  assert.equal(["archive-vanishing", "clinic-inventory-gap", "dock-witness-swap", "editorial-coercion", "household-escrow", "permit-forgery"].every((caseTypeId) => engine.TOWN_CASE_TYPES.includes(caseTypeId)), true, "all v5.37 authored case types participate in the real future-case runtime rotation");
+  const contentReport = engine.validateDetectiveContentPack(detectiveContentPack);
+  assert.equal(contentReport.ok, true, "expanded authored content passes the backward-compatible grammar validator");
+  assert.equal(contentReport.summary.coverage.caseTypesWithEvidence, 16, "every authored case type has evidence coverage");
+  assert.deepEqual(contentReport.summary.authored, { clusterCount: 6, caseTypeCount: 6, eventArchetypeCount: 4, progressionLineCount: 8 }, "content summary exposes safe authored-cluster coverage counts");
+  assert.equal(detectiveContentPack.caseTypes.filter((row) => row.authoredCluster).length, 6, "new authored case clusters carry explicit cluster metadata");
+  assert.equal(new Set(detectiveContentPack.caseTypes.filter((row) => row.authoredCluster).map((row) => `${row.authoredCluster}:${row.contrastKey}`)).size, 6, "authored contrast keys are unique within their clusters");
+  const sequenceA = engine.selectAuthoredCaseTypeSequence(detectiveContentPack, { seed: "three-case-campaign", length: 3 });
+  const sequenceB = engine.selectAuthoredCaseTypeSequence(detectiveContentPack, { seed: "three-case-campaign", length: 3 });
+  assert.deepEqual(sequenceA, sequenceB, "authored case sequence selection is deterministic for a campaign seed");
+  assert.equal(sequenceA.distinctCaseTypeCount, 3, "three-case authored campaign selects three distinct case types");
+  assert.equal(sequenceA.distinctClusterCount, 3, "three-case authored campaign avoids repeating a cluster");
+  assert.equal(sequenceA.repeatedCaseTypeIds.length, 0, "three-case authored campaign has no repeated case ids");
+  for (const caseTypeId of ["archive-vanishing", "clinic-inventory-gap", "dock-witness-swap", "editorial-coercion", "household-escrow", "permit-forgery"]) {
+    const guide = engine.selectDefaultDetectiveContentAuthoringSelection(detectiveContentPack, { caseTypeId });
+    const authoredGuide = engine.buildDetectiveContentAuthoringGuide(detectiveContentPack, engine.createPremiumAuthoringDraft(), guide);
+    assert.equal(authoredGuide.selection.caseTypeId, caseTypeId, `${caseTypeId} retains an authoring selection`);
+    assert.equal(authoredGuide.coverage.compatibleEvidenceTypeCount >= 3, true, `${caseTypeId} has at least three compatible evidence families`);
+    assert.equal(authoredGuide.coverage.compatibleRedHerringCount > 0, true, `${caseTypeId} has a compatible red-herring pattern`);
+    assert.equal(authoredGuide.coverage.compatibleEventArchetypeCount > 0, true, `${caseTypeId} has a compatible event archetype`);
+    assert.equal(authoredGuide.coverage.compatibleProgressionLineCount > 0, true, `${caseTypeId} has a compatible progression line`);
+  }
+  const invalidDirective = structuredClone(detectiveContentPack);
+  invalidDirective.eventArchetypes[0].directiveResponses.support.institutionKind = "unknown-institution";
+  assert.equal(engine.validateDetectiveContentPack(invalidDirective).ok, false, "content validation rejects an unknown directive institution kind");
+  const incompatibleDirective = structuredClone(detectiveContentPack);
+  incompatibleDirective.eventArchetypes[0].directiveResponses.support.institutionKind = "media";
+  assert.equal(engine.validateDetectiveContentPack(incompatibleDirective).ok, false, "content validation rejects a directive that cannot satisfy the long action institution requirement");
+  const unsafeDirective = structuredClone(detectiveContentPack);
+  unsafeDirective.eventArchetypes[0].directiveResponses.support.label = "C:\\private\\directive.txt";
+  assert.equal(engine.validateDetectiveContentPack(unsafeDirective).ok, false, "content validation rejects unsafe directive copy");
+  const invalidCluster = structuredClone(detectiveContentPack);
+  invalidCluster.caseTypes.find((row) => row.authoredCluster).authoredCluster = "Unsafe Cluster";
+  assert.equal(engine.validateDetectiveContentPack(invalidCluster).ok, false, "content validation rejects non-slug authored cluster metadata");
+  const duplicateContrast = structuredClone(detectiveContentPack);
+  const authoredRows = duplicateContrast.caseTypes.filter((row) => row.authoredCluster);
+  authoredRows[1].authoredCluster = authoredRows[0].authoredCluster;
+  authoredRows[1].contrastKey = authoredRows[0].contrastKey;
+  assert.equal(engine.validateDetectiveContentPack(duplicateContrast).ok, false, "content validation rejects duplicate contrast keys within one authored cluster");
+  const orphanCluster = structuredClone(detectiveContentPack);
+  const orphanRow = orphanCluster.caseTypes.find((row) => row.authoredCluster);
+  orphanRow.authoredCluster = "orphan-cluster";
+  assert.equal(engine.validateDetectiveContentPack(orphanCluster).ok, false, "content validation rejects authored cases without a matching event or progression line");
+  const undersizedAuthoredPack = structuredClone(detectiveContentPack);
+  undersizedAuthoredPack.eventArchetypes = undersizedAuthoredPack.eventArchetypes.slice(0, 9);
+  const undersizedAuthoredReport = engine.validateDetectiveContentPack(undersizedAuthoredPack);
+  assert.equal(undersizedAuthoredReport.errors.includes("authored campaign grammar requires at least 10 event archetypes."), true, "authored campaign grammar enforces the ten-event minimum without invalidating legacy packs that omit the optional metadata");
+}
 
 {
   const premium = engine.createPremiumShowcaseWorld("premium-showcase");
@@ -300,6 +398,119 @@ const engine = await loadEngine();
   assert.equal(validReport.valid, true, "premium case converts to a valid authoring draft");
   assert.equal(validReport.hardLogicValid, true, "authoring draft keeps hard logic valid");
 
+  const selection = engine.selectDefaultDetectiveContentAuthoringSelection(detectiveContentPack, { caseTypeId: "dock-smuggling" });
+  const guide = engine.buildDetectiveContentAuthoringGuide(detectiveContentPack, draft, selection);
+  assert.equal(guide.selection.caseTypeId, "dock-smuggling", "content authoring guide keeps the selected case type");
+  assert.equal(guide.coverage.compatibleEvidenceTypeCount > 0, true, "content authoring guide reports compatible evidence coverage");
+  assert.equal(guide.coverage.compatibleRoleCount > 0, true, "content authoring guide reports compatible role coverage");
+  assert.equal(guide.coverage.compatibleResourceCount > 0, true, "content authoring guide reports compatible resource coverage");
+  assert.equal(guide.coverage.compatibleFactionCount > 0, true, "content authoring guide reports compatible faction coverage");
+  assert.equal(guide.coverage.compatibleEventArchetypeCount > 0, true, "content authoring guide reports compatible event coverage");
+  assert.equal(guide.coverage.compatibleProgressionLineCount > 0, true, "content authoring guide reports compatible growth-line coverage");
+  assert.equal(guide.selection.resourceId.length > 0, true, "content authoring guide selects a resource");
+  assert.equal(guide.selection.factionId.length > 0, true, "content authoring guide selects a faction");
+  assert.equal(guide.selection.eventArchetypeId.length > 0, true, "content authoring guide selects an event archetype");
+  assert.equal(guide.selection.progressionLineId.length > 0, true, "content authoring guide selects a progression line");
+  assert.equal(guide.preview.worldSystemLabels.length, 4, "content authoring guide previews world-system labels");
+  assert.equal(guide.preview.publicCaseFile.includes("World system:"), true, "content authoring guide includes world-system context in public case file");
+  assert.equal(guide.patches.some((patch) => patch.path === "caseFromLog.deductionCase.title"), true, "content authoring guide previews title patch");
+  assert.equal(guide.patches.every((patch) => !/\\.id$|suspectMatrix|requiredClueOrder|criticalReasoningChain|truth\\.culpritId/.test(patch.path)), true, "content authoring guide avoids hard-logic identity paths");
+  const seededDraft = guide.patches.reduce((current, patch) => engine.applyAuthoringPatch(current, { op: "set", path: patch.path, value: patch.after }), draft);
+  assert.equal(seededDraft.caseFromLog.deductionCase.title, "Dock Smuggling at Dock", "content seed updates safe public title text");
+  assert.equal(engine.validateAuthoringDraft(seededDraft).valid, true, "content seeded draft remains playable");
+  assert.deepEqual(
+    new Set(guide.patches.map((patch) => patch.group)),
+    new Set(["case", "characters", "evidence", "logic"]),
+    "content seed preview groups changes by authoring surface"
+  );
+  const runtimeHints = engine.deriveWorldSystemRuntimeHints(detectiveContentPack, { caseTypeId: "dock-smuggling" });
+  const runtimeHintsAgain = engine.deriveWorldSystemRuntimeHints(detectiveContentPack, { caseTypeId: "dock-smuggling" });
+  assert.deepEqual(runtimeHints, runtimeHintsAgain, "world-system runtime hints are deterministic for a content pack and case type");
+  assert.equal(runtimeHints.summary.active, true, "world-system runtime hints are active for dock-smuggling");
+  assert.equal(runtimeHints.source.caseTypeId, "dock-smuggling", "runtime hints retain the internal case binding used by the server loop");
+  assert.equal(runtimeHints.source.progressionCaseTypeIds.includes("dock-smuggling"), true, "selected progression line remains compatible with the bound case type");
+  assert.equal(Object.values(runtimeHints.caseTypeBias).every((value) => value === 1), true, "progression-compatible case preference is fixed to one point");
+  assert.equal(runtimeHints.summary.actionKinds.length > 0, true, "world-system runtime hints expose action-kind bias");
+  assert.equal(
+    Object.values(runtimeHints.actionBias).every((value) => value > 0 && value <= 4),
+    true,
+    "world-system runtime action bias is bounded to four points"
+  );
+  assert.equal(
+    /npc-|evidence-|event-|source-|culpritId|victimId|checkpoint|agent_state_snapshot/i.test(JSON.stringify(runtimeHints.summary)),
+    false,
+    "world-system runtime hint summary stays public-safe and aggregate-only"
+  );
+  const runtimeFixture = engine.createPremiumShowcaseWorld("world-system-runtime-hints");
+  const runtimeActor = runtimeFixture.world.npcs.find((npc) => npc.alive) || runtimeFixture.world.npcs[0];
+  const baseRuntime = engine.createPersistentTownRuntime(runtimeFixture.world, runtimeFixture.events, { maxTicks: 12 });
+  const hintedRuntime = engine.createPersistentTownRuntime(runtimeFixture.world, runtimeFixture.events, { maxTicks: 12, worldSystemHints: runtimeHints });
+  const baseCandidates = engine.scoreNpcActionCandidates(runtimeFixture.world, runtimeActor, runtimeFixture.events, baseRuntime);
+  const hintedCandidates = engine.scoreNpcActionCandidates(runtimeFixture.world, runtimeActor, runtimeFixture.events, hintedRuntime);
+  assert.equal(hintedRuntime.worldSystemHintSummary.active, true, "runtime stores the world-system hint summary");
+  assert.equal(hintedCandidates.length, baseCandidates.length, "world-system hints do not add or remove action candidates");
+  assert.equal(
+    hintedCandidates.filter((candidate) => candidate.legal).length,
+    baseCandidates.filter((candidate) => candidate.legal).length,
+    "world-system hints do not change action legality"
+  );
+  assert.equal(
+    hintedCandidates.some((candidate) => (candidate.score.worldSystemBias || 0) > 0 && candidate.score.reasons.some((reason) => reason.includes("world-system hint"))),
+    true,
+    "world-system hints annotate compatible action candidates with bounded scoring bias"
+  );
+  const influenceAudit = engine.runWorldSystemInfluenceAudit({
+    seeds: ["hint-audit-unit"],
+    tickCount: 20,
+    contentPack: detectiveContentPack
+  });
+  assert.equal(influenceAudit.schemaVersion, "world-system-influence-audit.v1", "world-system influence audit uses a stable local schema");
+  assert.equal(influenceAudit.ok, true, "world-system influence audit passes safety invariants");
+  assert.equal(influenceAudit.aggregate.appliedBiasCount > 0, true, "world-system influence audit proves hints were applied");
+  assert.equal(influenceAudit.aggregate.maxBias <= 4, true, "world-system influence audit keeps max bias bounded");
+  assert.equal(influenceAudit.safety.noLegalCandidateLoss, true, "world-system influence audit does not create no-legal-candidate decisions");
+  const influenceAuditAgain = engine.runWorldSystemInfluenceAudit({
+    seeds: ["hint-audit-unit"],
+    tickCount: 20,
+    contentPack: detectiveContentPack
+  });
+  assert.equal(
+    influenceAuditAgain.seeds[0].deterministicHash,
+    influenceAudit.seeds[0].deterministicHash,
+    "world-system influence audit hash is deterministic for the same config"
+  );
+  assert.equal(
+    /npc-|evidence-|event-|source-|culpritId|victimId|checkpoint|agent_state_snapshot/i.test(JSON.stringify(influenceAudit)),
+    false,
+    "world-system influence audit report stays aggregate-only"
+  );
+  const backupTimestamp = "2026-07-04T08:00:00.000Z";
+  const contentSeedBackup = engine.createContentSeedBackupEntry(draft, backupTimestamp);
+  assert.equal(contentSeedBackup.id, `case-gallery:content-seed-backup:${backupTimestamp}`, "content seed backup has a dedicated stable id prefix");
+  assert.equal(contentSeedBackup.title, `Before Content Seed - ${draft.caseFromLog.deductionCase.title}`, "content seed backup has a clear revert title");
+  assert.equal(contentSeedBackup.source, "local", "content seed backup remains browser-local");
+  assert.equal(contentSeedBackup.draft.caseFromLog.deductionCase.title, draft.caseFromLog.deductionCase.title, "content seed backup keeps the pre-apply title");
+  assert.deepEqual(
+    contentSeedBackup.draft.caseFromLog.deductionCase.logicPuzzle,
+    draft.caseFromLog.deductionCase.logicPuzzle,
+    "content seed backup keeps the complete pre-apply proof structure"
+  );
+  assert.deepEqual(
+    seededDraft.caseFromLog.deductionCase.evidence.map((item) => item.id),
+    draft.caseFromLog.deductionCase.evidence.map((item) => item.id),
+    "content seed does not change evidence ids"
+  );
+  assert.deepEqual(
+    seededDraft.caseFromLog.deductionCase.logicPuzzle.suspectMatrix,
+    draft.caseFromLog.deductionCase.logicPuzzle.suspectMatrix,
+    "content seed does not change the suspect matrix"
+  );
+  assert.deepEqual(
+    seededDraft.caseFromLog.deductionCase.logicPuzzle.requiredClueOrder,
+    draft.caseFromLog.deductionCase.logicPuzzle.requiredClueOrder,
+    "content seed does not change clue order"
+  );
+
   const withoutKeyEvidence = engine.applyAuthoringPatch(draft, {
     op: "delete-array-item",
     path: "caseFromLog.deductionCase.evidence",
@@ -349,6 +560,19 @@ const engine = await loadEngine();
   const importedBundle = engine.importCaseGalleryEntries(JSON.parse(bundle), draft);
   assert.equal(importedBundle.length, 2, "gallery bundle export/import round-trips entries");
   assert.deepEqual(importedBundle.map((entry) => entry.validation.valid), [true, false], "gallery bundle preserves validation status after import");
+
+  const seededGalleryEntry = engine.createCaseGalleryEntry(seededDraft, { source: "local", updatedAt: "2026-07-04T08:01:00.000Z" });
+  const contentBundle = engine.exportCaseGalleryBundle([contentSeedBackup, seededGalleryEntry]);
+  const importedContentBundle = engine.importCaseGalleryEntries(JSON.parse(contentBundle), draft);
+  assert.equal(importedContentBundle.length, 2, "content-guided gallery bundle round-trips backup and applied drafts");
+  assert.equal(importedContentBundle[0].title, contentSeedBackup.title, "content-guided gallery bundle preserves the backup label");
+  assert.equal(importedContentBundle[0].draft.caseFromLog.deductionCase.title, draft.caseFromLog.deductionCase.title, "gallery backup restores the pre-apply title");
+  assert.equal(importedContentBundle[1].draft.caseFromLog.deductionCase.title, seededDraft.caseFromLog.deductionCase.title, "gallery bundle preserves the applied title");
+  assert.deepEqual(
+    importedContentBundle[1].draft.caseFromLog.deductionCase.logicPuzzle.requiredClueOrder,
+    draft.caseFromLog.deductionCase.logicPuzzle.requiredClueOrder,
+    "content-guided gallery round-trip preserves clue order"
+  );
 
   const standaloneImported = engine.importCaseGalleryEntries(draft.caseFromLog.deductionCase, draft);
   assert.equal(standaloneImported.length, 1, "standalone DeductionCase imports as a gallery entry");

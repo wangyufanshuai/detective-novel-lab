@@ -1,0 +1,30 @@
+{
+  "manifest": { "id": "hospital-family-press-map", "name": "Hospital Family Press Map", "version": "1.0.0", "schemaVersion": "town-map-pack.v1", "description": "Semantic map for hospital records, family pressure and press proof.", "createdAt": "2026-07-03T00:00:00.000Z", "entrypoint": "map.json" },
+  "locations": [
+    { "id": "hospital", "name": "Charity Hospital", "kind": "work", "description": "Ward records, autopsy notes and quiet staff favors.", "connectedLocationIds": ["family-house", "gazette-office", "town-hall"], "x": 0, "y": 1 },
+    { "id": "family-house", "name": "Vale House", "kind": "home", "description": "Family letters, inheritance pressure and private alibis.", "connectedLocationIds": ["hospital", "garden"], "x": -1, "y": 0 },
+    { "id": "gazette-office", "name": "Gazette Office", "kind": "work", "description": "Proof sheets, source protection and headline pressure.", "connectedLocationIds": ["hospital", "town-hall"], "x": 1, "y": 0 },
+    { "id": "town-hall", "name": "Town Hall", "kind": "public", "description": "Public notices, civic records and official denials.", "connectedLocationIds": ["hospital", "gazette-office"], "x": 0, "y": -1 },
+    { "id": "garden", "name": "Winter Garden", "kind": "restricted", "description": "Footprints, family meetings and late-night medical visits.", "connectedLocationIds": ["family-house"], "x": -2, "y": 0 }
+  ],
+  "connections": [
+    { "from": "hospital", "to": "family-house", "kind": "street", "travelMinutes": 8 },
+    { "from": "hospital", "to": "gazette-office", "kind": "street", "travelMinutes": 7 },
+    { "from": "hospital", "to": "town-hall", "kind": "street", "travelMinutes": 6 },
+    { "from": "family-house", "to": "garden", "kind": "interior", "travelMinutes": 3 },
+    { "from": "gazette-office", "to": "town-hall", "kind": "street", "travelMinutes": 5 }
+  ],
+  "interactions": [
+    { "id": "review-autopsy", "locationId": "hospital", "kind": "work", "label": "Review autopsy note", "risk": 35, "tags": ["medical", "autopsy"] },
+    { "id": "read-family-letter", "locationId": "family-house", "kind": "question", "label": "Question family staff", "risk": 40, "tags": ["family", "alibi"] },
+    { "id": "check-proof", "locationId": "gazette-office", "kind": "work", "label": "Check newspaper proof", "risk": 30, "tags": ["press", "newspaper"] },
+    { "id": "search-garden", "locationId": "garden", "kind": "search", "label": "Search winter garden", "risk": 45, "tags": ["footprint", "family"] }
+  ],
+  "spawnPoints": [
+    { "id": "spawn-doctor", "locationId": "hospital", "roleHint": "official", "weight": 65 },
+    { "id": "spawn-family", "locationId": "family-house", "roleHint": "witness", "weight": 55 },
+    { "id": "spawn-press", "locationId": "gazette-office", "roleHint": "worker", "weight": 55 }
+  ],
+  "assets": {},
+  "docs": {}
+}

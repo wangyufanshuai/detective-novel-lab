@@ -1,0 +1,28 @@
+{
+  "manifest": { "id": "hospital-family-press-town", "name": "Hospital Family Press Town", "version": "1.0.0", "schemaVersion": "scenario-pack.v1", "description": "Medical evidence, family obligation and press pressure package.", "createdAt": "2026-07-03T00:00:00.000Z", "entrypoint": "scenario.json" },
+  "world": {
+    "seed": "hospital-family-press-town",
+    "mode": "advanced",
+    "timelineHours": 96,
+    "locations": [
+      { "id": "hospital", "name": "Charity Hospital", "kind": "work", "description": "Ward records, autopsy notes and quiet staff favors.", "connectedLocationIds": ["family-house", "gazette-office", "town-hall"], "x": 0, "y": 1 },
+      { "id": "family-house", "name": "Vale House", "kind": "home", "description": "Family letters, inheritance pressure and private alibis.", "connectedLocationIds": ["hospital", "garden"], "x": -1, "y": 0 },
+      { "id": "gazette-office", "name": "Gazette Office", "kind": "work", "description": "Proof sheets, source protection and headline pressure.", "connectedLocationIds": ["hospital", "town-hall"], "x": 1, "y": 0 },
+      { "id": "town-hall", "name": "Town Hall", "kind": "public", "description": "Public notices, civic records and official denials.", "connectedLocationIds": ["hospital", "gazette-office"], "x": 0, "y": -1 },
+      { "id": "garden", "name": "Winter Garden", "kind": "restricted", "description": "Footprints, family meetings and late-night medical visits.", "connectedLocationIds": ["family-house"], "x": -2, "y": 0 }
+    ],
+    "npcs": [
+      { "id": "npc-hfp-1", "name": "Mira Holt", "role": "doctor", "homeLocationId": "hospital", "schedule": { "08:00": "hospital", "12:00": "town-hall", "18:00": "family-house" }, "relationships": { "npc-hfp-2": "family" }, "secret": "Noted a mismatch in the visible autopsy hour.", "motiveSeed": "protect patients", "skills": ["doctor", "autopsy"], "memoryEventIds": [], "liePolicy": "protects patients", "alive": true },
+      { "id": "npc-hfp-2", "name": "Eleanor Vale", "role": "servant", "homeLocationId": "family-house", "schedule": { "08:00": "family-house", "12:00": "garden", "18:00": "hospital" }, "relationships": { "npc-hfp-1": "family" }, "secret": "Carried a sealed family letter after visiting hours.", "motiveSeed": "protect the household", "skills": ["servant", "observation"], "memoryEventIds": [], "liePolicy": "omits family names", "alive": true },
+      { "id": "npc-hfp-3", "name": "Iris Quill", "role": "reporter", "homeLocationId": "gazette-office", "schedule": { "08:00": "gazette-office", "12:00": "town-hall", "18:00": "hospital" }, "relationships": { "npc-hfp-4": "source" }, "secret": "Held a proof sheet before police saw the note.", "motiveSeed": "break a defensible story", "skills": ["reporter", "rumor"], "memoryEventIds": [], "liePolicy": "protects source", "alive": true },
+      { "id": "npc-hfp-4", "name": "Otto Finch", "role": "clerk", "homeLocationId": "town-hall", "schedule": { "08:00": "town-hall", "12:00": "gazette-office", "18:00": "garden" }, "relationships": { "npc-hfp-3": "source" }, "secret": "Logged a hospital file after the public notice.", "motiveSeed": "avoid civic blame", "skills": ["clerk", "records"], "memoryEventIds": [], "liePolicy": "quotes procedure", "alive": true }
+    ],
+    "institutions": [],
+    "professions": []
+  },
+  "rules": { "enabledModules": ["institutions", "professions", "long-actions", "public-opinion", "evidence-contamination", "case-aftermath"], "phaseConfig": { "snapshotEveryTicks": 1, "maxRunningLongActions": 8 }, "thresholds": { "maxEvidenceContamination": 75, "maxPublicOpinionHeat": 90, "minInstitutionTrust": 35 }, "longActionKinds": ["conduct-autopsy", "second-medical-opinion", "seal-autopsy-record", "summon-family-council", "pressure-editor"] },
+  "scenario": { "id": "hospital-family-press-town", "name": "Hospital Family Press Town", "seed": "hospital-family-press-town", "worldOptions": { "mode": "advanced", "npcCount": 4, "timelineHours": 96 }, "baselineSteps": 8, "branches": [], "passCriteria": { "minValidCandidates": 0, "minEventGrowth": 1, "minMemoryGrowth": 1, "maxBlockedCandidates": 8 } },
+  "expectations": { "minValidCandidates": 1, "minEvidenceCoverage": 80, "maxEvidenceContamination": 75, "maxPublicOpinionHeat": 90, "benchmarkPreset": "quick-10" },
+  "assets": {},
+  "docs": {}
+}

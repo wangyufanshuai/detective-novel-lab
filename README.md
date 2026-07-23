@@ -22,7 +22,10 @@ DeepSeek is used only for NPC surface dialogue and optional solution prose. It d
 - Latest planned release: `v0.1.0`.
 - CI covers engine tests, build, emergence benchmark, Scenario API smoke, SDK smoke, and browser E2E.
 - Docker Smoke covers Server Runtime startup and static page loading.
-- Static Demo is public-demo ready; Persistent Agent Town, Scenario Runner, Time Machine, and Agent API require Server Runtime.
+- Static Demo is public-demo ready alongside the v6.2 Server Campaign instrumentation baseline: Playable Investigation Path -> one Server-only Case & World Consequence summary -> Guided Manual Run -> Guided Step Journal -> Static Playthrough Proof -> Source Review Unlock -> Solved Case Debrief -> Replay Practice Loop -> Replay Goal Coach -> Manual Evidence Drill -> Manual Theory Drill -> Replay Attempt Scorecard -> Reviewer Home -> Pack / Replay / Map / Agent -> Proof Strip -> Stable World Proof -> Case Quality Proof -> World-System Influence Proof -> Dataset Reader -> Public Case Explorer -> Audit Boundary, all without `/api/*`.
+- Core simulation now has a v5.6 public-safe Case Quality Proof: the three-seed 1000 tick gate still proves stability, and a non-blocking aggregate score now summarizes fair-play evidence, provenance, diversity, continuity, institution relevance, repeat control, and solution readiness.
+- Detective content now has a v6.2 public-safe world-system and playable path: v6.1 world consequences remain unchanged, while an optional Server-only `?study=1` recorder measures human campaign comprehension using browser-local aggregate summaries. Instrumentation is ready; the required eight official human sessions have not yet passed the human gate.
+- Project-level v3.6/v3.7 assessment and roadmap: [docs/project-level-report.md](docs/project-level-report.md).
 
 ## Try In 3 Modes
 
@@ -31,11 +34,155 @@ npm install
 npm run dev -- -p 3000
 ```
 
-- **Static Demo**: open `http://127.0.0.1:3000/?runtime=static` for the public, no-server Premium Showcase.
-- **Server Runtime**: open `http://127.0.0.1:3000/?runtime=server` for SQLite-backed worlds, Persistent Agent Town, Scenario Runner, Time Machine, and optional DeepSeek dialogue.
+- **Static Demo**: open `http://127.0.0.1:3000/?runtime=static` for the public, no-server Premium Showcase plus the Playable Investigation Path, Guided Manual Run, Guided Step Journal, Static Playthrough Proof, Source Review Unlock, Solved Case Debrief, Replay Practice Loop, Replay Goal Coach, Manual Evidence Drill, Manual Theory Drill, Replay Attempt Scorecard, Static Reviewer Home, Pack / Replay / Map / Agent main path, Proof Strip, Stable World Proof drilldown, non-blocking Case Quality Proof, World Systems overview, aggregate Public Dataset Explorer, and spoiler-safe Public Case Explorer.
+- **Server Runtime**: open `http://127.0.0.1:3000/?runtime=server` for SQLite-backed worlds, Persistent Agent Town, the optional World Lead Loop after Join, the Town Social Response cycle after real player-driven world results, Server Playthrough Proof for emerged cases, Scenario Runner, Time Machine, and optional DeepSeek dialogue.
+- **Campaign Study**: open `http://127.0.0.1:3000/?runtime=server&study=1` to show the default-collapsed browser-local recorder. Follow [the moderator protocol](docs/campaign-comprehension-study.md) and review the [aggregate gate status](docs/campaign-comprehension-results.md). Static Runtime never initializes this recorder, even when `study=1` is present.
 - **Agent API**: run `node examples/agent-client-node/index.mjs` or `node examples/scenario-runner/index.mjs` against a running server, or reuse the SDK starter in `examples/sdk`.
 
 In Static Demo, open **Authoring** and use **Save to Gallery** for a browser-local case library. Gallery data lives in `localStorage`, can be exported as JSON, and does not require server APIs.
+
+## 5-Minute Technical Review Path
+
+Use this path when evaluating the Persistent Agent Town runtime instead of the player-facing mystery route:
+
+1. Start Server Runtime and open `http://127.0.0.1:3000/?runtime=server`.
+2. Open **持续小镇** from the main workbench.
+3. In **Review Mode: 5-minute evaluator path**, inspect **Current Experiment** and choose a built-in **ScenarioPack** or a synced **World Package**.
+4. Use **New Run from Pack** to create an isolated branch world and queue a scenario RunJob from the selected ScenarioPack, MapPack, RuleCatalog, and optional Agent/Ecosystem package.
+5. Select the new row in **Scenario Run History** or **Run Catalog**.
+6. Use **Time Machine Diff** controls to compare baseline or branch snapshots.
+7. Export **Review Bundle** as JSON/Markdown or **Replay Bundle** as JSON. The bundles include the scenario report, selected snapshots, selected diff, branch comparison, run catalog data, pack metadata, and optionally the latest benchmark report.
+8. Audit local replay artifacts after runs:
+
+```powershell
+npm run replay:audit
+npm run replay:sync
+npm run package:sync
+npm run package:export -- --package=city-hall-merchant-debt-town
+npm run benchmark:catalog-expansion
+npm run benchmark:ecosystem-ablation
+npm run benchmark:stable-world
+npm run benchmark:campaign -- --ticks=1000
+npm run benchmark:campaign -- --ticks=5000
+npm run benchmark:experiment-matrix
+npm run dataset:export -- --run=campaign-campaign-validation-5000
+npm run dataset:validate -- --path=outputs/dataset-packages/detective-town-v3-5000-campaign
+npm run dataset:smoke -- --path=outputs/dataset-packages/detective-town-v3-5000-campaign
+npm run dataset:reader -- --path=outputs/dataset-packages/detective-town-v3-5000-campaign
+npm run dataset:static-reader -- --path=outputs/dataset-packages/detective-town-v3-5000-campaign
+npm run qa:static-reader
+npm run content:validate
+npm run public-catalog:build
+npm run public-catalog:validate
+npm run qa:release-local
+npm run replay:audit -- --json
+```
+
+Run history, snapshots, diffs, replay bundles, map packs, current experiment selection, package selection, benchmark summaries, and job records are stored in runtime JSON plus local artifacts in `data/replay-store/<runId>/` in this release. Scenario and Quick 10 / Full 20 benchmark work use cooperative RunJobs: `start` queues work, `tick` advances one time slice, and the UI polls progress/cancel state. `npm run replay:sync` mirrors the generated replay dataset index into the local SQLite catalog for filtering and Review Mode inspection; the replay-store files remain the artifact authority.
+`npm run replay:audit` builds `data/replay-store/index.json` from scenario, benchmark, campaign, simulation-quality, and experiment-matrix artifacts. The index stores relative artifact paths, bytes, sha256 hashes, normalized run metadata, inferred metrics, and audit findings. It must not contain API keys, absolute local paths, runtime point-in-time state dumps, or hidden-answer fields.
+`npm run package:sync` discovers `experiments/` and `world-packs/`, validates package integrity and safety, writes `data/package-catalog/index.json`, and mirrors package metadata into SQLite. The generated indexes and SQLite catalog rows are local data under the ignored `data/` directory; they are not committed by default.
+`npm run package:export -- --package=<id>` writes a local folder export under `outputs/world-package-exports/<id>/`. The export contains package source files plus hash and validation metadata only; it excludes replay artifacts, SQLite data, runtime point-in-time state dumps, agent snapshots, hidden-answer fields, absolute paths, and secret-looking content.
+`npm run dataset:export -- --run=campaign-campaign-validation-5000` writes a local dataset package under `outputs/dataset-packages/detective-town-v3-5000-campaign/`. It snapshots replay/package indexes, copies sanitized 5000 tick run metadata and local world package sources, and writes checksums plus a dataset card for offline review.
+`npm run dataset:reader -- --path=outputs/dataset-packages/detective-town-v3-5000-campaign` reads the exported package offline through `reader-index.json`, without using SQLite, the dev server, or the original replay-store directory.
+`npm run dataset:static-reader -- --path=outputs/dataset-packages/detective-town-v3-5000-campaign` writes a tracked public static reader snapshot under `public/dataset-reader/detective-town-v3-5000-campaign/` for `?runtime=static`. It contains aggregate reader metadata, a public-safe card, manifest metadata, and `case-summary-index.json` spoiler-safe case cards; it does not include full replay artifacts or package source bodies.
+`npm run qa:static-reader` runs the repeatable public-reader file QA: validate the full dataset package, refresh the static reader bundle, read the static bundle, and block forbidden fields or absolute paths under `public/dataset-reader`.
+`npm run content:validate` validates the detective content tables under `content/detective-v1/` and prints an aggregate public-safe summary. v5.27 extends the existing Server Runtime **Shared World Lead Outcome Cycle** with a one-time **Case Aftermath Handoff**: after an accepted player theory settles a followed outcome, the next candidate queue receives only a fixed `+2` preference for the matching low-spoiler case type. The first successful next extraction consumes it whether or not the player chose the preferred candidate. It adds no endpoint, SQLite schema, public artifact, dataset refresh, long gate, hidden truth, or raw-id UI; truth, candidate membership, route coverage, and legal NPC actions remain unchanged. Static Runtime shows only the safe server-loop boundary and remains zero `/api/*`. `npm run qa:release-local` verifies the public boundary, static browser path, Server Runtime flow, public-artifact stability, build, and replay audit.
+v3.2 keeps these catalog/export commands as Node-only local adapters with explicit workspace subtrees; generated indexes, SQLite rows, package exports, and dataset packages remain rebuildable local artifacts rather than source-controlled authority.
+v5.15 adds Server Playthrough Proof to the local gate: `npm run qa:release-local` verifies an emerged Persistent Agent Town case, runs the explicit server certified playthrough, and checks aggregate accepted-theory metrics without changing public artifacts or the 5000 tick dataset.
+v5.16 adds Unified Source Review Unlock: after Static or Server certified playthrough reaches accepted theory, the Investigation panel opens a solved-case source review workbench for Source Trail, Proof Obligations, Certified Route, and Conclusion Review using existing local data only.
+
+v5.17 adds Guided Manual Investigation Run: the Investigation panel can now advance one low-spoiler player step at a time through Join, Search, Question, Challenge, Select Evidence, Submit, and Review Source. Static stays browser-local with no `/api/*`; Server Runtime reuses existing local investigation APIs and does not add public schema, public artifacts, SQLite schema, dataset refreshes, or long gates.
+
+v5.18 adds Guided Step Journal: each guided run records session-only low-spoiler step entries for Join, Search, Question, Challenge, Select Evidence, Submit, and Review Source, including progress deltas, next action, certified fallback use, and source review unlock without writing repo JSON, SQLite schema, public catalog files, or dataset snapshots.
+
+v5.19 adds Solved Case Debrief: after an accepted Static or Server investigation, the UI summarizes the player route, evidence closure, source confidence, and next replay goal using only local aggregate state from the session, journal, proof coverage, and source review unlock. It does not add public schema, public artifacts, API endpoints, SQLite schema changes, dataset refreshes, or long gates.
+
+v5.20 adds Replay Goal Coach: after Debrief, a player can start a session-local replay attempt focused on reducing certified fallback, selecting evidence manually, using fewer guided clicks, and reviewing source after submit. Static stays browser-local with zero `/api/*`; Server Runtime reuses the existing local join flow.
+
+v5.21 adds Replay Attempt Scorecard: after a replay attempt starts, the UI shows pending and completed descriptive deltas for guided clicks, certified fallback, selected evidence, proof gaps, source review unlock, and completed replay goals. It is session-local UI explainability, not a score, gate, public catalog authority, dataset refresh, runtime scoring change, or long-run benchmark.
+
+v5.22 adds Manual Evidence Drill: during an active replay attempt, discovered proof clues appear as low-spoiler evidence cards with Add to Theory / Remove from Theory controls before submit. The drill updates the session journal and scorecard manual-pick signal while certified fallback remains explicit; it adds no public schema, artifact, endpoint, dataset refresh, SQLite schema change, runtime scoring change, or long gate.
+
+v5.23 adds Manual Theory Drill: after manual evidence picks are ready, replay submit becomes Manual First for suspect, motive, and method. The drill uses only discovered evidence labels and visible descriptions for free-text prompting, records field-level manual/fallback attribution in the Journal and Scorecard, and keeps certified fallback explicit without copying hidden answers into visible inputs.
+
+v5.24 adds Replay Practice Loop: a session-local status header above Replay Goal Coach shows Start, Discover, Pick Evidence, Fill Theory, Submit, Review Source, and Scorecard phases plus manual/fallback aggregate counts and the next low-spoiler action. It is information architecture polish, not a public catalog artifact, dataset refresh, long gate, runtime scoring change, or new API.
+
+v5.25 adds World Lead Loop: after Join in Server Runtime, one deterministic safe lead derived from existing world-system hints can be followed or skipped. Follow persists a per-session decision in existing runtime JSON and prioritizes only the next eligible certified Search, Question, or Challenge; Skip and Static Runtime preserve the original route. The loop never exposes raw ids or hidden truth and does not change candidate legality, proof coverage, public artifacts, SQLite schema, or long-run gates.
+
+v5.26 adds Shared World Lead Outcome Cycle: resolving a followed lead applies exactly one low-spoiler, reversible benefit/tradeoff for the current case. Search, Question, and Challenge use fixed bounded mappings across the existing location profile, mapped institution, and resource ledger. The outcome is shared across sessions, never changes the certified route or NPC legality, and settles after accepted theory or before another case opens. Static Runtime remains explanatory only and zero `/api/*`.
+
+v5.27 adds Case Aftermath Handoff: only an accepted player theory that settles a followed outcome prepares one Server Runtime-only next-case preference. Search, Question, and Challenge map to evidence-tampering, false-testimony, and court-intimidation respectively; the final candidate sort applies a fixed `+2` bonus without changing candidate membership, legality, truth, coverage, or the certified route. Any first successful next extraction consumes the preference, including a player-selected non-preferred candidate. The stored runtime record keeps raw case keys internal while UI and responses expose only ready/consumed safe summaries; Static remains explanatory and zero `/api/*`.
+
+v5.28 adds Case-Scoped World Arc: after route-integrity succeeds, Server Runtime rebinds resource, faction, event, progression, and action hints to the case type that was actually extracted. Each progression line keeps a resumable stage counter in existing Persistent Town JSON. Only a followed lead that reaches its certified step and ends in an accepted player theory advances one stage; wrong theories, Skip, autosolve, preview, failed extraction, and case-switch safety settlement do not. An advanced incomplete line adds only a fixed `+1` to its stable top NPC action and compatible final candidate ranking, while v5.27 handoff remains an independent `+2`. Location, institution, and resource effects still settle reversibly; no truth, candidate set, legal action set, route certificate, evidence coverage, endpoint, SQLite schema, public artifact, or Static API boundary changes.
+
+v5.29 adds Faction Directive Runtime Cycle: each real-player accepted Follow that advances a World Arc prepares one deduplicated, FIFO Server Runtime directive. Event-archetype content supplies safe Support and Contain mappings to existing institutions, strategies, and long actions; Defer remains open, while Support or Contain is a zero-tick schedule that opens a bounded 12-tick execution window and starts only on the next legal institution cadence. Completion keeps the existing resource, institution, public-opinion, and evidence-chain results as bounded town history. A blocked operation refunds only its recorded reservation once and permits an alternate response. Future unextracted cases may respond organically, but the active or extracted case truth, evidence coverage, route certificate, legal action set, and judgement remain frozen. Static stays explanatory and zero `/api/*`; no endpoint, SQLite schema, public artifact, background queue, or long gate is added.
+
+v5.30 adds World Pressure Cascade: completion of a Faction Directive derives a deterministic `rising` or `relief` pulse from the existing long action's clamp-aware applied evidence, public-opinion, institution, and reserved-resource result. Same-focus same-direction pulses merge to at most three layers; opposing directions coexist, while their independent final candidate-ordering contribution is clamped to `[-2,+2]`. Candidate previews and reads never consume pressure; each successful future extraction consumes exactly one oldest layer. The pulse changes only ordering and safe Situation Brief guidance—not candidate membership, validity, truth, evidence coverage, route certificate, NPC legal actions, or judgement. Internal source keys and deltas stay in existing runtime JSON and are stripped from public projection. Static remains explanatory and zero `/api/*`; no endpoint, SQLite schema, content schema, public artifact, background task, proof card, or long gate is added.
+
+v5.31 begins Player Main Path Consolidation and Runtime Modularization: World Lead, Arc, Directive, Pressure, Outcome, and Handoff now share one **Case & World Consequence** surface with a single **Current world action** that prioritizes the next player decision. Existing detailed states and test ids remain available inside the same surface, while Static shows one Server-only current-action boundary without controls or `/api/*`. The UI implementation is extracted into `WorldCampaignPanel`, and World Pressure derivation, merging, consumption, safe projection, and ranking logic move from the persistent runtime monolith into a dedicated engine module without changing persisted JSON, endpoints, route fairness, or ranking behavior.
+
+v5.32 adds Unified Influence Budget: the player-earned v5.27 Handoff, v5.28 World Arc, and v5.30 World Pressure contributions now enter one deterministic candidate-influence ledger before the final candidate sort. Their individual bounded weights remain auditable, while the combined signed effect is clamped to `[-3,+3]`; candidate membership, validity, truth, route certificate, evidence coverage, NPC legal actions, and judgement remain unchanged. Server UI and Situation Brief expose only safe source count, direction, strength, and the `±3` cap. Static shows a read-only Server-only boundary and makes no `/api/*` request. No endpoint, SQLite/content/public schema, public artifact, background task, dataset refresh, proof card, or long gate is added.
+
+v5.33 adds Player Resource Commitment: after Join, a real player may reserve two existing units of Police Time, Informant Trust, or Evidence Integrity for the certified Search, Question, or Challenge lane, or continue without a reserve. Selection is a zero-tick, zero-event write to existing Persistent Town JSON. The matching successful investigation endpoint spends the reservation exactly once and applies one clamp-aware bounded world benefit: lower local resource pressure, lower witness fear, or lower evidence contamination. Wrong theory does not settle the cycle; accepted theory or successful case switch returns any unused reservation exactly once, while spent resources remain spent. Public runtime, Situation Brief, and Case & World Consequence expose only safe labels and aggregate status; internal session, case, location, and resource keys are stripped. Static remains explanatory, non-interactive, and zero `/api/*`; no endpoint, SQLite/content/public schema, public artifact, background task, proof card, or long gate is added.
+
+v5.34 adds the Faction Relationship Ledger: completed player-selected directives, genuinely spent case resources, and accepted real-player theories update a bounded investigator-to-institution standing matrix in the existing Persistent Town JSON. Standing is internally clamped to `[-10,10]` and publicly reduced to `trusted`, `neutral`, `strained`, or `hostile`. Trusted partners lower the next matching case-resource reserve from two units to one, strained partners raise it to three, and hostile partners can withhold that option until explicit future recovery improves standing. Support and Contain create deterministic, different source/operating-faction results; source keys deduplicate repeated calls and internal history is capped at 64 entries. Autosolve, preview, wrong theory, failed extraction, and repeated calls award no standing. Relationships change only future resource terms and later offer prerequisites; they never modify current-case truth, evidence, route coverage, legal actions, or judgement. Static remains explanatory and zero `/api/*`; no endpoint, SQLite/content/public schema, public artifact, background service, or proof card is added.
+
+v5.35 adds the World Event Offer Lifecycle: a completed real-player faction directive can enqueue one bounded, content-configured opportunity with `offered -> accepted | declined -> running -> completed | failed | expired` states. Accept and Decline are zero-tick writes; the next legal institution cadence reuses the existing actor, resource reservation, long-action, event, and refund rules. The offer is resource-aware at creation without injecting resources: it prefers the alternate faction response and deterministically falls back to the completed response only when that configured operation is currently affordable. Completed offers apply one explicit relationship recovery; blocked or expired offers remain safe and explain a recovery path. Situation Brief, Journal, and Case & World Consequence expose only labels, progress, deadline bands, and terminal guidance; internal source, actor, action, institution, resource, and tick keys remain private. Static shows only a Server-only lifecycle boundary with no controls and zero `/api/*`; no endpoint, schema, public artifact, background service, proof card, or long gate is added.
+
+v5.36 adds Investigator Progression: real manual Search, Question, Challenge, evidence selection, and accepted-theory steps now accumulate a bounded, idempotent practice ledger in the existing Persistent Town JSON. Safe competency bands expose only practice marks, established unlock labels, and a low-spoiler next action. Established lane practice can reduce one future matching resource reservation to a minimum of one; established case-closure practice enables one retry for a failed or expired World Event Offer. Autosolve, previews, wrong theories without selected evidence, and counterfactual interventions never award progression. The ledger never changes the active or extracted case truth, route certificate, evidence coverage, legal actions, or judgement, and its internal source keys remain private. Static stays read-only and Server-only with zero `/api/*`; no endpoint, schema, public artifact, proof card, or long gate is added.
+
+v5.37 expands the authored detective ecology from 10 to 16 case types, from 6 to 10 event archetypes, and from 6 to 8 progression lines. Six new contrast-driven clusters cover civic records, medical timing, dock commerce, media distortion, family pressure, and civic commerce while reusing the existing evidence, role, motive, resource, faction, directive, and long-action systems. Optional `authoredCluster`, `contrastKey`, and `campaignTags` metadata remain backward compatible under `detective-content-pack.v1`; validation rejects unsafe slugs, duplicate in-cluster contrast keys, orphan clusters, invalid directive mappings, and broken references. A deterministic authored-sequence helper selects three distinct case types from three distinct clusters for short-campaign planning. No endpoint, SQLite/public schema, public artifact, background service, or proof card is added.
+
+v5.38 adds Failure and Recovery: rejected theories, blocked case resources, hostile institution terms, blocked faction operations, and failed or expired world opportunities now prepare one deduplicated, FIFO recovery action in existing Persistent Town JSON. Start/Defer is a zero-tick choice. Certified-route review and alternate-response guidance complete without changing world state; resource, trust, and opportunity recovery complete only on the next legal institution cadence, with bounded actual deltas and a one-time offer reopen. Recovery never rewrites current-case truth, required evidence, route certification, legal actions, or judgement, and public projection exposes only safe labels, aggregate progress, completed count, and next action. Static remains explanatory and zero `/api/*`; no endpoint, SQLite/content/public schema, public artifact, background service, event fabrication, or proof card is added.
+
+v5.39 adds Arc Convergence Finale: two accepted certified cases plus two World Arc stages can qualify through a trusted/completed-opportunity Coalition route, a completed Recovery route, or a completed-operation/consumed-pressure Pressure-balance route. Every approach converges on the same `court-intimidation` finale family with different safe context. Convergence changes only one future candidate's type preference and adds a fixed `+3` ranking signal before the normal validation boundary; the player may still extract any legal alternative, which leaves the finale ready. Only successful extraction of the finale-family candidate activates it, and only an accepted theory for that bound case completes it. Culprit, evidence, route certificate, candidate validity, legal actions, and judgement remain under the existing case engine. Internal signal keys, case bindings, and ticks stay out of public projection; Static shows only a Server-only boundary and remains zero `/api/*`.
+
+v6.0 packages these systems into one three-to-five-case Campaign Journey in existing Persistent Town JSON. A clean world moves through `opening -> case-active -> transition -> finale-ready -> finale-active -> completed`; successful extraction and real accepted theory remain the only case lifecycle authorities. The normal path targets three closed cases and bounds internal accepted-case history at five. The World Campaign surface shows one chapter label, `n/3` progress, one primary action, safe accumulated consequence labels, and a replay contrast. Completing the bound v5.39 finale unlocks a causal debrief assembled only from safe aggregates such as certified closures, convergence approach, relationship bands, completed operations/opportunities/recoveries, and carried pressure. The debrief is distinct from proof review: it explains world consequences, while the certified route still explains judgement. No endpoint, SQLite/content/public schema, public artifact, background service, synthetic event, or proof card is added.
+
+v6.1 adds Town Social Response Cycle. Accepted Follow outcome settlement, completed player-selected Faction Directives, completed accepted World Event Offers, and Campaign Recoveries with an actual resource, relationship, or opportunity restoration each prepare one deduplicated ambient cycle in existing Persistent Town JSON. One normal positive tick reveals at most one response; a cycle contains at most three distinct living NPCs and the queue/history is capped at 24. Direction reuses the World Pressure applied-delta priority, while target place, affected institution staff, current occupants, related residents, and fallback actors are selected deterministically. World Campaign displays safe name, public role, public place, and low-spoiler reaction text; Situation Brief shows only the latest reaction. The ambient partition never writes `WorldEvent`, memory, observation, rule state, location authority, evidence chain, candidate cache, action score, or decision trace, so current and future candidate membership/order/validity, truth, evidence coverage, route certificate, legal actions, and judgement remain identical. Static shows one Server-only boundary with no state, controls, or `/api/*`; no endpoint, SQLite/content/public schema, public artifact, background service, or proof card is added.
+
+v6.2 adds the Human Campaign Comprehension Gate instrumentation. Only local Server Runtime with `?study=1` renders a separate, default-collapsed Campaign Study Recorder. Its hook observes existing safe Campaign state and receives success signals from existing action handlers without changing API payloads, runtime, ticks, candidates, investigation state, or judgement. It stores at most 16 anonymous, timestamp-free aggregate runs under `detective-town-campaign-study-v1` and exports the same safe summaries as `detective-town-campaign-study-v1.json`; no identifiers, seed, selected choices, player prose, event log, raw body, or hidden truth are retained. Completed and abandoned official attempts share the fixed eight-attempt denominator, while technical interruptions require replacement. A deterministic aggregate analyzer enforces the 2 x 2 matrix, six exit thresholds, fixed confusion tie order, and report privacy without committing the per-run export. Static with `study=1` shows only a Server-only boundary and performs no study storage write or `/api/*` request. Automated instrumentation and privacy checks are ready, but v6.2 remains `instrumentation ready` until real participants complete the official matrix.
+
+v6.2.1 adds a Study Operations Guard before recruitment. The Recorder derives exactly one read-only next slot from the existing safe run summaries: P1 and P2 must complete in order, then O1–O8 follow the fixed official sequence. Pilot abandon/interruption repeats the slot; official abandonment consumes it; official interruption requires a same-cohort replacement. The hook revalidates the slot before localStorage mutation, and the analyzer rejects correct totals in the wrong order. No study field, API request, runtime state, public artifact, or Campaign surface changes.
+
+## Trusted Baseline Commands
+
+Use this sequence before treating a branch as a reproducible simulation baseline:
+
+```powershell
+npm run test:replay-audit
+npm run replay:audit
+npm run replay:sync
+npm run package:validate
+npm run package:sync
+npm run package:export -- --package=dock-court-market-town
+npm run package:export -- --package=hospital-family-press-town
+npm run package:export -- --package=city-hall-merchant-debt-town
+npm run build
+npm run test:persistent-town
+npm run test:long-run
+npm run test:simulation-quality
+npm run benchmark:catalog-expansion
+npm run benchmark:ecosystem-ablation
+npm run benchmark:stable-world
+npm run benchmark:campaign -- --ticks=1000
+npm run benchmark:campaign -- --ticks=5000
+npm run benchmark:experiment-matrix
+npm run dataset:export -- --run=campaign-campaign-validation-5000
+npm run dataset:validate -- --path=outputs/dataset-packages/detective-town-v3-5000-campaign
+npm run dataset:smoke -- --path=outputs/dataset-packages/detective-town-v3-5000-campaign
+npm run dataset:reader -- --path=outputs/dataset-packages/detective-town-v3-5000-campaign
+npm run dataset:static-reader -- --path=outputs/dataset-packages/detective-town-v3-5000-campaign
+npm run qa:static-reader
+npm run content:validate
+npm run public-catalog:build
+npm run public-catalog:validate
+npm run qa:static-browser
+npm run qa:release-local
+npm run replay:audit
+```
+
+The 1000 tick campaign is the v5.0 single-seed Stable Detective World gate. `benchmark:stable-world` is the v5.1 multi-seed gate, the v5.2 diagnostics surface, the v5.3 local regression dashboard, the v5.4 public-safe reviewer summary source, the v5.5 static drilldown data source, and the v5.6 non-blocking case-quality source: `campaign-validation`, `stable-town-a`, and `stable-town-b` must each produce at least 8 unique cases, at least 4 case types, repeat rate <= 20%, later-case influence >= 60%, evidence graph warnings == 0, selected action kinds >= 6, largest selected action share <= 55%, institution decisions >= 4, deterministic hash stability, and runtime under 90000 ms; the same run also writes local diagnostics, regression, and case-quality reports under `data/replay-store/<stable-world-runId>/`. The 5000 tick campaign is the v3.0 long-run gate: at least 30 unique cases, at least 10 case types, candidate repeat rate <= 15%, later-case influence >= 70%, evidence graph warnings == 0, and runtime under 300000 ms. The v3.1 dataset package is the local handoff artifact for that gate. The final replay audit should report zero errors, zero secret leaks, and zero hidden-answer leaks. Legacy manifest warnings are acceptable until older local artifacts are regenerated.
 
 ## 30-Second Experience
 
@@ -63,7 +210,9 @@ Current design focus: **Evidence Notebook + Playable Proof Tour**. The UI should
 
 Current Agent workbench focus: **Review Mode**. The Persistent Agent Town `Agent` panel should let a technical evaluator quickly scan runtime health, scenario checks, counterfactual branch comparison, Time Machine diffs, and benchmark status without leaving the existing investigative UI.
 
-Current emergence focus: **Truth Ledger-backed Case Intake + Investigation Coach**. Valid Persistent Agent Town candidates now get a low-spoiler intake before the player joins the investigation: playability score, Truth Ledger coverage, Route Certificate status, current progress, coach next step, six-stage chain readiness, source event and memory counts, evidence route, witness challenge plan, and spoiler-safe proof gaps. A deterministic local auto-player also dry-runs the certified route through search, witness questioning, challenge, evidence selection, and accepted theory submission. The culprit id, hidden event titles, and decisive evidence conclusions remain locked until the player solves the case.
+Current world-rule focus: **detective-native long simulation**. Runtime snapshots now carry organizations, professions, public opinion, evidence contamination, and long action state so case candidates can explain institutional pressure and evidence-chain risk instead of only NPC memory and relationship state.
+
+Current emergence focus: **Truth Ledger-backed Case Intake + Investigation Coach**. Valid Persistent Agent Town candidates now get a low-spoiler intake before the player joins the investigation: playability score, Truth Ledger coverage, Route Certificate status, current progress, coach next step, six-stage chain readiness, source event and memory counts, evidence route, witness challenge plan, and spoiler-safe proof gaps. A deterministic local auto-player dry-runs the certified route, and Server Runtime can explicitly persist a dedicated auto-player completion session for reviewer proof. The culprit id, hidden event titles, and decisive evidence conclusions remain locked until the player solves the case.
 
 ## Why Not Just Ask An LLM?
 
@@ -269,64 +418,15 @@ API keys are read only on the server. Do not expose them in client code.
 
 Stable Agent Control API:
 
-OpenAPI contract: [`public/openapi.v1.json`](public/openapi.v1.json), served as `/openapi.v1.json` in a local or Vercel build. See [docs/api-v1-openapi.md](docs/api-v1-openapi.md).
+OpenAPI contract: [`public/openapi.v1.json`](public/openapi.v1.json), served as `/openapi.v1.json` in a local or Vercel build. See [docs/api-v1-openapi.md](docs/api-v1-openapi.md) and [docs/agent-control-api.md](docs/agent-control-api.md) for the full route list.
 
-- `GET /api/v1/query/runtime/status`
-- `GET /api/v1/query/world/state?worldId=...`
-- `GET /api/v1/query/world/events?worldId=...`
-- `GET /api/v1/query/world/memories?worldId=...&npcId=...`
-- `GET /api/v1/query/world/map?worldId=...&caseId=...&sessionId=...&day=1&time=21:30`
-- `GET /api/v1/query/case?caseId=...`
-- `GET /api/v1/query/case/proof-ledger?caseId=...&sessionId=...&includeCertificate=true`
-- `GET /api/v1/query/case/deduction-graph?caseId=...`
-- `GET /api/v1/query/town/runtime?worldId=...`
-- `GET /api/v1/query/town/agents?worldId=...`
-- `GET /api/v1/query/town/agent?worldId=...&npcId=...`
-- `GET /api/v1/query/town/candidates?worldId=...`
-- `GET /api/v1/query/town/brief?worldId=...`
-- `GET /api/v1/query/town/emergence-proof?worldId=...&candidateId=...`
-- `GET /api/v1/query/town/scenario?worldId=...&scenarioId=...`
-- `GET /api/v1/query/town/scenario/report?worldId=...&scenarioId=...`
-- `GET /api/v1/query/town/snapshots?worldId=...`
-- `GET /api/v1/query/town/snapshot/diff?worldId=...&from=...&to=...`
-- `GET /api/v1/query/benchmark/emergence`
-- `GET /api/v1/query/novel/world-graph?projectId=...`
-- `GET /api/v1/query/novel/projects`
-- `GET /api/v1/query/novel/project?projectId=...`
-- `GET /api/v1/query/novel/audit?projectId=...`
-- `GET /api/v1/query/novel/corrections?projectId=...`
-- `GET /api/v1/query/novel/corrected-world-graph?projectId=...`
-- `GET /api/v1/query/novel/simulation?projectId=...&runId=...`
-- `GET /api/v1/query/novel/detail?type=entity|event|relationship|development|causal-claim|causal-edge&id=...`
-- `POST /api/v1/command/town/create`
-- `POST /api/v1/command/player/join`
-- `POST /api/v1/command/investigation/discover`
-- `POST /api/v1/command/investigation/interrogate`
-- `POST /api/v1/command/investigation/submit-theory`
-- `POST /api/v1/command/investigation/autosolve`
-- `POST /api/v1/command/town/runtime/start`
-- `POST /api/v1/command/town/runtime/pause`
-- `POST /api/v1/command/town/runtime/step`
-- `POST /api/v1/command/town/runtime/reset`
-- `POST /api/v1/command/town/agent/intervene`
-- `POST /api/v1/command/town/case/extract`
-- `POST /api/v1/command/town/scenario/run`
-- `POST /api/v1/command/town/snapshot/rollback`
-- `POST /api/v1/command/novel/import`
-- `POST /api/v1/command/novel/project/save`
-- `POST /api/v1/command/novel/analyze`
-- `POST /api/v1/command/novel/evidence-index`
-- `POST /api/v1/command/novel/ask`
-- `POST /api/v1/command/novel/blueprint`
-- `POST /api/v1/command/novel/correction/suggest`
-- `POST /api/v1/command/novel/correction/apply`
-- `POST /api/v1/command/novel/correction/dismiss`
-- `POST /api/v1/command/novel/correction/revert`
-- `POST /api/v1/command/novel/simulation/start`
-- `POST /api/v1/command/novel/simulation/advance`
-- `POST /api/v1/command/novel/simulation/intervene`
-- `POST /api/v1/command/novel/simulation/rewind`
-- `POST /api/v1/command/novel/simulation/explain`
+The current API surface is grouped around:
+
+- runtime status, world state, events, memories, and map queries.
+- fair-play case query, proof ledger, deduction graph, investigation commands, and local theory judgement.
+- Persistent Agent Town runtime, agents, candidates, scenario runs, snapshots, diffs, rollback, and case extraction.
+- ScenarioPack, TownMapPack, TownRuleCatalog, Experiment Folder selection, RunJob, RunCatalog, replay bundle, review export, and run artifacts.
+- Living World Lab import, audit, correction, identity, evidence index, ask, blueprint, and simulation controls.
 
 `/api/v1/*` responses use one shape:
 
@@ -396,6 +496,8 @@ Core exports are available from `packages/engine/src` and `lib/engine`:
 - Evaluation: `runEval`, `renderEvalMarkdown`.
 - Emergence proof: `buildEmergenceProofTrace`, `evaluateWorldEmergence`, `runEmergenceBenchmark`.
 - Persistent Agent Town: `createPersistentTownRuntime`, `advancePersistentTownTick`, `deriveNpcAgentState`, `scoreNpcActionCandidates`, `buildCaseCandidatesFromRuntime`, `validateCaseCandidate`, `extractPlayableCaseFromCandidate`, `buildCaseTruthLedger`, `evaluateCaseProofCoverage`, `certifyPlayableCase`, `buildInvestigationCoach`, `buildAgentDecisionTrace`, `buildTownEmergenceQueue`, `runTownScenario`, `createTownStateSnapshot`, `diffTownStateSnapshots`, `rollbackTownRuntimeToSnapshot`.
+- Detective world rules: `createTownRuleRuntimeState`, `createDefaultTownRuleCatalog`, `catalogToTownRuleRuntimeState`, `validateTownRuleCatalog`, `ensureTownRuleRuntimeState`, `getLongActionDefinitions`, `advanceTownLongActions`, `buildTownRuleSnapshotSummary`, `diffTownRuleSnapshots`.
+- ScenarioPack, MapPack, and Run Catalog: `createScenarioPackFromWorld`, `builtInScenarioPacks`, `validateScenarioPack`, `previewScenarioPackImport`, `scenarioPackToScenarioConfig`, `createTownMapPackFromWorld`, `builtInTownMapPacks`, `validateTownMapPack`, `previewTownMapPackImport`, `townMapPackToLocations`, `listRunCatalog`, `snapshotsForRun`, `diffsForRun`, `compareRuns`, `buildRunReplayBundle`, `createRunJob`.
 - Static runtime: `createStaticDemoRuntime`, `discoverDemoEvidence`, `interrogateDemoNpc`, `submitDemoTheory`, `revealDemoSolution`.
 - Visual logic: `buildWorldMapSnapshot`, `buildDeductionGraph`, `deriveSuspectBoard`, `buildCaseLogicReport`, `validateHardCaseLogic`.
 - Case library and emergence: `createCaseLibrary`, `createCaseTemplate`, `listCaseTemplates`, `buildWorldCausalTrace`, `validateCausalTrace`, `deriveNpcIntentTimeline`.
@@ -410,12 +512,23 @@ npm run build
 npm run test:rules
 npm run test:world
 npm run test:persistent-town
+npm run test:campaign-study
+npm run study:analyze -- --input <safe-export> --output docs/campaign-comprehension-results.md
 npm run test:ai
 npm run test:encoding
+npm run test:long-run
+npm run test:simulation-quality
+npm run test:replay-audit
 npm run test
 npm run eval
 npm run benchmark:emergence
+npm run benchmark:campaign -- --ticks=1000
+npm run benchmark:catalog-expansion
+npm run benchmark:experiment-matrix
+npm run replay:audit
+npm run replay:sync
 npm run test:e2e
+npm run qa:campaign-study -- --json
 node scripts/run-agent-api-smoke.mjs
 node scripts/run-novel-agent-api-smoke.mjs
 node scripts/run-persistent-town-api-smoke.mjs
@@ -423,7 +536,7 @@ node scripts/run-scenario-runner-api-smoke.mjs
 node scripts/run-sdk-client-smoke.mjs
 ```
 
-`npm run test:world` checks deterministic Showcase generation, all four premium templates, 8 NPC default mode, 24h timeline, event-backed evidence, memory-scoped testimony, unique culprit validation, non-culprit exclusions, causal traces, emergence proof traces, Route Certificate, deterministic auto-solve, reasoning traces, authoring regression, and advanced 30 NPC regression. `npm run test:persistent-town` checks deterministic ticks, complete decision traces, action scoring fields, candidate validation, playable extraction, auto-solve, counterfactual interventions, scenarios, snapshots, diffs, and rollback. `npm run test:novel-world` checks chapter import, evidence indexing, world graph validation, causal chains, theme/character arcs, grounded replay, intervention branches, and Phaser scene state. `npm run test:e2e` covers the Living World sample, queue summaries, audit flow, replay provenance, Phaser canvas visibility, and mobile overflow. `npm run benchmark:emergence` writes a 20-seed proof-of-emergence and auto-solve completion report under `outputs/`. `npm run test:encoding` fails on known mojibake markers in app, engine, and E2E source files.
+`npm run test:world` checks deterministic Showcase generation, all four premium templates, 8 NPC default mode, 24h timeline, event-backed evidence, memory-scoped testimony, unique culprit validation, non-culprit exclusions, causal traces, emergence proof traces, Route Certificate, deterministic auto-solve, reasoning traces, authoring regression, and advanced 30 NPC regression. `npm run test:persistent-town` checks deterministic ticks, complete decision traces, action scoring fields, candidate validation, playable extraction, auto-solve, counterfactual interventions, scenarios, snapshots, diffs, and rollback. `npm run test:campaign-study` checks the v6.2 local measurement lifecycle, integer timing, signal idempotence, bounded official-first retention, reload interruption, and safe export. `npm run qa:campaign-study -- --json` pairs the Server recorder flow with the Static zero-storage/zero-API/390px boundary. `npm run test:novel-world` checks chapter import, evidence indexing, world graph validation, causal chains, theme/character arcs, grounded replay, intervention branches, and Phaser scene state. `npm run test:e2e` covers the Living World sample, queue summaries, audit flow, replay provenance, Phaser canvas visibility, and mobile overflow. `npm run benchmark:emergence` writes a 20-seed proof-of-emergence and auto-solve completion report under `outputs/`. `npm run test:encoding` fails on known mojibake markers in app, engine, and E2E source files.
 
 ## Agent API Examples
 
@@ -446,6 +559,11 @@ The live eval is intentionally not part of the default test command. It uses loc
 
 - [Agent Control API](docs/agent-control-api.md)
 - [API v1 OpenAPI Contract](docs/api-v1-openapi.md)
+- [Simulation Architecture](docs/architecture-simulation.md)
+- [Scenario Pack And Review Bundle](docs/scenario-pack-review-bundle.md)
+- [Experiment Folder](docs/experiment-folder.md)
+- [Campaign Quality](docs/campaign-quality.md)
+- [Dataset Package](docs/dataset-package.md)
 - [World Model](docs/world-model.md)
 - [Living World Lab](docs/living-world-lab.md)
 - [Persistent Agent Town](docs/persistent-agent-town.md)

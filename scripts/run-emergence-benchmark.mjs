@@ -11,13 +11,24 @@ await fs.mkdir(outputDir, { recursive: true });
 
 async function compileEngine() {
   await fs.mkdir(runtimeDir, { recursive: true });
-  const entries = await fs.readdir(sourceDir);
-  for (const entry of entries.filter((name) => name.endsWith(".ts"))) {
-    const source = await fs.readFile(path.join(sourceDir, entry), "utf8");
+  async function collectTsFiles(dir) {
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+    const nested = await Promise.all(entries.map(async (entry) => {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) return collectTsFiles(fullPath);
+      return entry.isFile() && entry.name.endsWith(".ts") ? [fullPath] : [];
+    }));
+    return nested.flat();
+  }
+  for (const file of await collectTsFiles(sourceDir)) {
+    const source = await fs.readFile(file, "utf8");
     const compiled = ts.transpileModule(source, {
       compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true }
     }).outputText;
-    await fs.writeFile(path.join(runtimeDir, entry.replace(/\.ts$/, ".cjs")), compiled.replace(/require\("\.\/(.+?)"\)/g, 'require("./$1.cjs")'), "utf8");
+    const relative = path.relative(sourceDir, file).replace(/\.ts$/, ".cjs");
+    const target = path.join(runtimeDir, relative);
+    await fs.mkdir(path.dirname(target), { recursive: true });
+    await fs.writeFile(target, compiled.replace(/require\("(\.{1,2}\/.+?)"\)/g, 'require("$1.cjs")'), "utf8");
   }
   return import(pathToFileURL(path.join(runtimeDir, "index.cjs")).href);
 }

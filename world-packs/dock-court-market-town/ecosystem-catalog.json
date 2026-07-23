@@ -1,0 +1,37 @@
+{
+  "manifest": { "id": "dock-court-market-ecosystem", "name": "Dock Court Market Ecosystem", "version": "1.0.0", "schemaVersion": "ecosystem-catalog.v1", "createdAt": "2026-07-03T00:00:00.000Z", "description": "Table-driven cargo, court and informant pressures." },
+  "factions": [
+    { "id": "dock-economy", "name": "Dock Economy", "institutionKind": "dock_union", "pressureBias": 14, "resourceBias": { "dock_credit": -12, "merchant_credit": -6 }, "preferredCaseTypes": ["dock-smuggling", "merchant-extortion"] },
+    { "id": "court-docket", "name": "Court Docket", "institutionKind": "court", "pressureBias": 12, "resourceBias": { "court_docket": -10 }, "preferredCaseTypes": ["court-intimidation", "forged-will"] },
+    { "id": "market-informants", "name": "Market Informants", "institutionKind": "media", "pressureBias": 8, "resourceBias": { "informant_trust": -8 }, "preferredCaseTypes": ["blackmail", "witness-disappearance"] }
+  ],
+  "resources": [
+    { "kind": "dock_credit", "label": "Dock Credit", "valueDelta": -8, "pressureDelta": 10 },
+    { "kind": "court_docket", "label": "Court Docket", "valueDelta": -6, "pressureDelta": 8 },
+    { "kind": "informant_trust", "label": "Informant Trust", "valueDelta": -6, "pressureDelta": 8 },
+    { "kind": "evidence_integrity", "label": "Evidence Integrity", "valueDelta": -4, "pressureDelta": 4 }
+  ],
+  "markets": [
+    { "id": "cargo-favors", "label": "Cargo favors", "resource": "dock_credit", "volatility": 0.35, "tags": ["dock", "cargo"] },
+    { "id": "docket-favors", "label": "Docket favors", "resource": "court_docket", "volatility": 0.25, "tags": ["court", "record"] }
+  ],
+  "territories": [
+    { "id": "warehouse-territory", "locationId": "warehouse", "factionId": "dock-economy", "influence": 78, "tags": ["dock", "cargo"] },
+    { "id": "records-territory", "locationId": "records-room", "factionId": "court-docket", "influence": 74, "tags": ["court", "record"] }
+  ],
+  "taskTemplates": [
+    { "id": "trace-cargo-market", "label": "Trace cargo market", "institutionKind": "dock_union", "tags": ["dock", "cargo"], "pressureDelta": 10, "evidenceKinds": ["cargo-log", "receipt"] },
+    { "id": "review-docket-market", "label": "Review docket market", "institutionKind": "court", "tags": ["court", "record"], "pressureDelta": 8, "evidenceKinds": ["court-record"] },
+    { "id": "verify-market-tip", "label": "Verify market tip", "institutionKind": "media", "tags": ["informant", "tip"], "pressureDelta": 8, "evidenceKinds": ["anonymous-tip"] }
+  ],
+  "randomWorldEvents": [
+    { "id": "ecosystem-cargo-shortage", "label": "Cargo shortage", "weight": 22, "tags": ["dock", "cargo"], "pressureDelta": 10 },
+    { "id": "ecosystem-docket-leak", "label": "Docket leak", "weight": 20, "tags": ["court", "record"], "pressureDelta": 9 },
+    { "id": "ecosystem-tip-auction", "label": "Tip auction", "weight": 18, "tags": ["informant", "tip"], "pressureDelta": 8 }
+  ],
+  "pressureRules": [
+    { "id": "ecosystem-dock-credit", "resource": "dock_credit", "threshold": 55, "effect": "dock-linked cases and cargo evidence rise" },
+    { "id": "ecosystem-court-docket", "resource": "court_docket", "threshold": 55, "effect": "court records and intimidation links rise" },
+    { "id": "ecosystem-informant-trust", "resource": "informant_trust", "threshold": 50, "effect": "anonymous tips and witness fear shift" }
+  ]
+}

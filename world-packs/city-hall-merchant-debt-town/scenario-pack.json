@@ -1,0 +1,30 @@
+{
+  "manifest": { "id": "city-hall-merchant-debt-town", "name": "City Hall Merchant Debt Town", "version": "1.0.0", "schemaVersion": "scenario-pack.v1", "description": "Permits, merchant debt, clerk records and press pressure package.", "createdAt": "2026-07-03T00:00:00.000Z", "entrypoint": "scenario.json" },
+  "world": {
+    "seed": "city-hall-merchant-debt-town",
+    "mode": "advanced",
+    "timelineHours": 96,
+    "locations": [
+      { "id": "city-hall", "name": "City Hall", "kind": "work", "description": "Permit ledgers, council minutes and public notices are processed here.", "connectedLocationIds": ["merchant-bank", "gazette-office", "family-parlor"], "x": 0, "y": 0 },
+      { "id": "permit-archive", "name": "Permit Archive", "kind": "restricted", "description": "Stamped permits, clerk initials and missing application slips.", "connectedLocationIds": ["city-hall"], "x": -1, "y": 0 },
+      { "id": "merchant-bank", "name": "Merchant Bank", "kind": "work", "description": "Debt renewals, receipts and quiet pressure from the merchant sector.", "connectedLocationIds": ["city-hall", "market-lane"], "x": 1, "y": 0 },
+      { "id": "gazette-office", "name": "Gazette Office", "kind": "work", "description": "Proof sheets and editorials turn private debt into public heat.", "connectedLocationIds": ["city-hall", "market-lane"], "x": 0, "y": 1 },
+      { "id": "family-parlor", "name": "Hale Family Parlor", "kind": "private", "description": "Family obligations, inheritance pressure and private letters.", "connectedLocationIds": ["city-hall", "market-lane"], "x": -1, "y": 1 },
+      { "id": "market-lane", "name": "Market Lane", "kind": "public", "description": "Clerks, merchants and reporters trade rumor against debt.", "connectedLocationIds": ["merchant-bank", "gazette-office", "family-parlor"], "x": 1, "y": 1 }
+    ],
+    "npcs": [
+      { "id": "npc-chmd-1", "name": "Mira Voss", "role": "detective", "homeLocationId": "city-hall", "schedule": { "08:00": "city-hall", "12:00": "merchant-bank", "18:00": "gazette-office" }, "relationships": { "npc-chmd-2": "source" }, "secret": "Tracks public permit dates against market debt notices.", "motiveSeed": "protect civic procedure", "skills": ["detective", "records"], "memoryEventIds": [], "liePolicy": "protects sources", "alive": true },
+      { "id": "npc-chmd-2", "name": "Edwin Pike", "role": "clerk", "homeLocationId": "permit-archive", "schedule": { "08:00": "permit-archive", "12:00": "city-hall", "18:00": "market-lane" }, "relationships": { "npc-chmd-3": "debtor" }, "secret": "Signed a permit after the public notice deadline.", "motiveSeed": "hide a procedural favor", "skills": ["clerk", "filing"], "memoryEventIds": [], "liePolicy": "answers by rulebook", "alive": true },
+      { "id": "npc-chmd-3", "name": "Corin Bell", "role": "merchant", "homeLocationId": "merchant-bank", "schedule": { "08:00": "merchant-bank", "12:00": "market-lane", "18:00": "family-parlor" }, "relationships": { "npc-chmd-4": "creditor" }, "secret": "Rolled a family debt into a city permit guarantee.", "motiveSeed": "protect credit and leverage", "skills": ["merchant", "ledger"], "memoryEventIds": [], "liePolicy": "frames debt as civic duty", "alive": true },
+      { "id": "npc-chmd-4", "name": "Ruth Hale", "role": "servant", "homeLocationId": "family-parlor", "schedule": { "08:00": "family-parlor", "12:00": "market-lane", "18:00": "gazette-office" }, "relationships": { "npc-chmd-3": "family debt" }, "secret": "Carried a family letter to the Gazette proof desk.", "motiveSeed": "shield the household", "skills": ["servant", "observation"], "memoryEventIds": [], "liePolicy": "omits family names", "alive": true },
+      { "id": "npc-chmd-5", "name": "Iris Quill", "role": "reporter", "homeLocationId": "gazette-office", "schedule": { "08:00": "gazette-office", "12:00": "city-hall", "18:00": "market-lane" }, "relationships": { "npc-chmd-2": "source" }, "secret": "Held a newspaper proof until the permit vote passed.", "motiveSeed": "publish a clean scandal", "skills": ["reporter", "proof"], "memoryEventIds": [], "liePolicy": "separates rumor from print", "alive": true }
+    ],
+    "institutions": [],
+    "professions": []
+  },
+  "rules": { "enabledModules": ["institutions", "professions", "long-actions", "public-opinion", "evidence-contamination", "case-aftermath"], "phaseConfig": { "snapshotEveryTicks": 1, "maxRunningLongActions": 8 }, "thresholds": { "maxEvidenceContamination": 74, "maxPublicOpinionHeat": 86, "minInstitutionTrust": 34 }, "longActionKinds": ["review-court-record", "summon-family-council", "pressure-editor", "secure-evidence-locker"] },
+  "scenario": { "id": "city-hall-merchant-debt-town", "name": "City Hall Merchant Debt Town", "seed": "city-hall-merchant-debt-town", "worldOptions": { "mode": "advanced", "npcCount": 5, "timelineHours": 96 }, "baselineSteps": 8, "branches": [], "passCriteria": { "minValidCandidates": 0, "minEventGrowth": 1, "minMemoryGrowth": 1, "maxBlockedCandidates": 8 } },
+  "expectations": { "minValidCandidates": 1, "minEvidenceCoverage": 80, "maxEvidenceContamination": 74, "maxPublicOpinionHeat": 86, "benchmarkPreset": "quick-10" },
+  "assets": {},
+  "docs": {}
+}

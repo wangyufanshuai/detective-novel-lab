@@ -1,5 +1,6 @@
 import { errorResponse, fail, ok, readJson } from "@/app/api/v1/_utils";
 import { worldRepository } from "@/lib/world/repository";
+import { getRuntimeFactionRelationshipSummary, recordRuntimeInvestigatorProgressionStep, recordRuntimePlayerResourceCommitmentStep } from "@/app/api/v1/_town-runtime";
 
 export async function POST(request: Request) {
   try {
@@ -17,7 +18,12 @@ export async function POST(request: Request) {
       updatedAt: new Date().toISOString()
     };
     worldRepository.saveSession(next);
-    return ok({ session: next });
+    const investigatorProgression = session.playerId === "auto-player"
+      ? undefined
+      : recordRuntimeInvestigatorProgressionStep(session.worldId, { sourceKey: `${session.id}:${session.caseId}:search`, kind: "search" });
+    const playerResourceCommitment = recordRuntimePlayerResourceCommitmentStep(session.worldId, { sessionId: session.id, caseId: session.caseId, lane: "search" });
+    const factionRelationship = playerResourceCommitment ? getRuntimeFactionRelationshipSummary(session.worldId) : undefined;
+    return ok({ session: next, playerResourceCommitment, factionRelationship, investigatorProgression });
   } catch (error) {
     return errorResponse(error);
   }

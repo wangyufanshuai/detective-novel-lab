@@ -1,0 +1,8 @@
+{
+  "minValidCandidates": 1,
+  "minEvidenceCoverage": 80,
+  "maxEvidenceContamination": 74,
+  "maxPublicOpinionHeat": 86,
+  "expectedSignals": ["merchant debt", "permit record", "newspaper proof", "family letter"],
+  "benchmarkPreset": "quick-10"
+}

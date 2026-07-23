@@ -4,11 +4,12 @@ import { DetectiveTownClient } from "../examples/sdk/detective-town-client.mjs";
 
 const port = Number(process.env.SDK_CLIENT_SMOKE_PORT || 3104);
 let baseUrl = process.env.SDK_CLIENT_BASE_URL || process.env.DETECTIVE_TOWN_BASE_URL || `http://127.0.0.1:${port}`;
+const runBenchmarkSmoke = process.env.SDK_CLIENT_SMOKE_BENCHMARK === "1";
 const serverOutput = [];
 const smokeTimeout = setTimeout(() => {
   console.error(`SDK client smoke test timed out at ${baseUrl}.`);
   process.exit(1);
-}, 180_000);
+}, 420_000);
 
 async function sleep(ms) {
   await new Promise((resolve) => setTimeout(resolve, ms));
@@ -29,10 +30,6 @@ async function waitForServer() {
     await sleep(500);
   }
   throw new Error(`server did not start at ${baseUrl}\n${serverOutput.slice(-20).join("\n")}`);
-}
-
-if (!process.env.SDK_CLIENT_BASE_URL && !process.env.DETECTIVE_TOWN_BASE_URL && await isReady("http://127.0.0.1:3000")) {
-  baseUrl = "http://127.0.0.1:3000";
 }
 
 const server = process.env.SDK_CLIENT_BASE_URL || process.env.DETECTIVE_TOWN_BASE_URL || baseUrl === "http://127.0.0.1:3000"
@@ -107,6 +104,40 @@ try {
   const report = await client.getScenarioReport(worldId, "sdk-smoke-scenario");
   assert.equal(report.report.scenarioId, "sdk-smoke-scenario", "getScenarioReport returns report");
 
+  const scenarioArtifacts = await client.listScenarios(worldId);
+  assert.equal(scenarioArtifacts.presets.some((preset) => preset.id === "resource-counterfactual"), true, "listScenarios returns built-in presets");
+  assert.equal(scenarioArtifacts.runs.some((run) => run.id === "sdk-smoke-scenario"), true, "listScenarios returns run history summaries");
+
+  const scenarioPacks = await client.listScenarioPacks(worldId);
+  assert.equal(scenarioPacks.packs.some((pack) => pack.manifest.id === "small-town-review"), true, "listScenarioPacks returns built-in packs");
+  const mapPacks = await client.listMapPacks(worldId);
+  assert.equal(mapPacks.packs.some((pack) => pack.manifest.id === "fog-lamp-town"), true, "listMapPacks returns built-in map packs");
+  const exportedMapPack = await client.exportMapPack(worldId, { packId: "fog-lamp-town" });
+  assert.equal(exportedMapPack.fileName.endsWith(".town-map-pack.json"), true, "exportMapPack returns a portable file name");
+  const validatedMapPack = await client.validateMapPack(exportedMapPack.pack);
+  assert.equal(validatedMapPack.validation.ok, true, "validateMapPack accepts exported map pack");
+  const mapImportPreview = await client.importMapPack(worldId, exportedMapPack.pack, { previewOnly: true });
+  assert.equal(mapImportPreview.preview.installable, true, "importMapPack supports preview without mutation");
+  const ruleCatalogs = await client.listRuleCatalogs(worldId);
+  assert.equal(ruleCatalogs.catalogs.some((catalog) => catalog.id === "detective-default"), true, "listRuleCatalogs returns detective default");
+  const selectedExperiment = await client.selectExperiment(worldId, { scenarioPackId: "small-town-review", mapPackId: "fog-lamp-town", ruleCatalogId: "detective-default" });
+  assert.equal(selectedExperiment.currentExperiment.mapPackId, "fog-lamp-town-minimal", "selectExperiment normalizes experiment folder map pack");
+  assert.equal(selectedExperiment.currentExperiment.ruleCatalogId, "detective-default-minimal", "selectExperiment normalizes experiment folder rule catalog");
+  assert.equal(selectedExperiment.currentExperiment.experimentId, "small-town-review", "selectExperiment records experiment folder identity");
+  const experimentRun = await client.startExperimentRun(worldId);
+  assert.equal(experimentRun.job.status, "queued", "startExperimentRun starts a queued job");
+  assert.notEqual(experimentRun.worldId, worldId, "startExperimentRun returns a branch world id");
+  const tickedExperimentJob = await client.tickRunJob(experimentRun.worldId, experimentRun.job.id);
+  assert.equal(tickedExperimentJob.job.status, "completed", "SDK can tick branch experiment job");
+  const artifacts = await client.listRunArtifacts({ limit: 20 });
+  assert.equal(artifacts.artifacts.some((artifact) => artifact.runId === tickedExperimentJob.job.runId), true, "SDK lists run artifact manifests");
+  const artifact = await client.getRunArtifact(tickedExperimentJob.job.runId);
+  assert.equal(artifact.artifact.branchWorldId, experimentRun.worldId, "SDK reads run artifact manifest");
+  const artifactFiles = await client.listRunArtifactFiles(tickedExperimentJob.job.runId);
+  assert.equal(artifactFiles.files.some((file) => file.name === "replay-bundle.json"), true, "SDK reads run artifact files");
+  const artifactReplay = await client.exportReplayBundle(experimentRun.worldId, tickedExperimentJob.job.runId);
+  assert.equal(artifactReplay.bundle.manifest.runId, tickedExperimentJob.job.runId, "SDK exports replay bundle from artifact");
+
   const snapshots = await client.listSnapshots(worldId);
   assert.ok(snapshots.snapshots.length >= 2, "listSnapshots returns snapshots");
 
@@ -121,8 +152,49 @@ try {
   const rolledBack = await client.rollbackSnapshot(worldId, from);
   assert.equal(rolledBack.snapshot.id, from, "rollbackSnapshot returns selected snapshot");
 
+  const savedPreset = await client.saveScenarioPreset(worldId, {
+    id: "sdk-review-preset",
+    name: "SDK review preset",
+    description: "SDK smoke custom preset",
+    config: {
+      id: "sdk-review-preset",
+      name: "SDK review preset",
+      seed: "sdk-review-seed",
+      baselineSteps: 45,
+      branches: [{
+        id: "sdk-review-branch",
+        name: "SDK review branch",
+        steps: 12,
+        interventions: [{ atTickOffset: 1, intervention: { actorId, kind: "resource", value: "resource:sdk-review" } }]
+      }],
+      passCriteria: { minValidCandidates: 1, requireHardLogic: true, minEventGrowth: 1, minMemoryGrowth: 1, maxBlockedCandidates: 8 }
+    }
+  }, { overwrite: true });
+  assert.equal(savedPreset.preset.id, "sdk-review-preset", "saveScenarioPreset persists a custom preset");
+
+  const reviewBundle = await client.exportReviewBundle(worldId, {
+    scenarioId: "sdk-smoke-scenario",
+    from,
+    to,
+    format: "json",
+    includeBenchmark: true
+  });
+  assert.equal(reviewBundle.bundle.scenario.id, "sdk-smoke-scenario", "exportReviewBundle returns selected scenario bundle");
+  assert.equal(typeof reviewBundle.content, "string", "exportReviewBundle returns serialized content");
+
+  assert.equal(typeof client.runEmergenceBenchmark, "function", "SDK exposes benchmark rerun");
   const benchmark = await client.benchmarkEmergence();
   assert.equal(typeof benchmark.available, "boolean", "benchmarkEmergence returns availability");
+  if (runBenchmarkSmoke) {
+    const quickBenchmark = await client.runEmergenceBenchmark(10);
+    assert.equal(quickBenchmark.report.seedCount, 10, "runEmergenceBenchmark supports quick 10 seeds");
+    const latestBenchmark = await client.benchmarkEmergence();
+    assert.equal(latestBenchmark.available, true, "benchmark query reads the latest quick benchmark report");
+    assert.equal(latestBenchmark.report.seedCount, 10, "benchmark query returns the latest quick benchmark report");
+  }
+
+  const deletedPreset = await client.deleteScenarioPreset(worldId, "sdk-review-preset");
+  assert.equal(deletedPreset.presets.some((preset) => preset.id === "sdk-review-preset"), false, "deleteScenarioPreset removes the custom preset");
 
   const imported = await client.importNovel({
     title: "SDK Smoke Novel",

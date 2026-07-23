@@ -15,9 +15,47 @@ export async function POST(request: Request) {
       fallbackQueue.candidates[0] ||
       null;
     if (!candidate) return fail("BAD_REQUEST", "No case candidate is available", 404);
-    const result = extractCase(loaded.world, loaded.events, candidate);
+    const candidates = [candidate, ...fallbackQueue.candidates, ...loaded.runtime.candidates]
+      .filter((item, index, items) => items.findIndex((candidateItem) => candidateItem.id === item.id) === index)
+      .sort((left, right) => {
+        const leftScore = (left.validation.valid ? 1000 : 0) + (left.triggeredEventId ? 500 : 0) + (left.maturityScore || 0) + left.riskChainEventIds.length;
+        const rightScore = (right.validation.valid ? 1000 : 0) + (right.triggeredEventId ? 500 : 0) + (right.maturityScore || 0) + right.riskChainEventIds.length;
+        if (left.id === candidate.id) return -1;
+        if (right.id === candidate.id) return 1;
+        return rightScore - leftScore;
+      });
+    let result: ReturnType<typeof extractCase> | null = null;
+    let lastCaseError: Error | null = null;
+    for (const item of candidates) {
+      try {
+        result = extractCase(loaded.world, loaded.events, item);
+        break;
+      } catch (error) {
+        if (error instanceof Error && error.message.startsWith("CASE_NOT_PLAYABLE:")) {
+          lastCaseError = error;
+          continue;
+        }
+        throw error;
+      }
+    }
+    if (!result) throw lastCaseError || new Error("CASE_NOT_PLAYABLE: No case candidate passed route integrity.");
     const playableIntake = buildPlayableCaseIntake(result.activeCase, result.events, result.world);
-    return ok({ world: publicWorld(result.world), events: result.events, activeCase: result.activeCase, candidate: result.candidate, queue: result.queue, playableIntake });
+    return ok({
+      world: publicWorld(result.world),
+      events: result.events,
+      activeCase: result.activeCase,
+      candidate: result.candidate,
+      queue: result.queue,
+      playableIntake,
+      playerResourceCommitment: result.playerResourceCommitment,
+      worldLeadCaseHandoff: result.worldLeadCaseHandoff,
+      worldPressureCascade: result.worldPressureCascade,
+      worldArc: result.worldArc,
+      arcConvergence: result.arcConvergence,
+      campaignSession: result.campaignSession,
+      campaignFinaleDebrief: result.campaignFinaleDebrief,
+      worldInfluenceBudget: result.worldInfluenceBudget
+    });
   } catch (error) {
     if (error instanceof Error && error.message.startsWith("CASE_NOT_PLAYABLE:")) {
       return fail("CASE_NOT_PLAYABLE", error.message.replace("CASE_NOT_PLAYABLE: ", ""), 422);

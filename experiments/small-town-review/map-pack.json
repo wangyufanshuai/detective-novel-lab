@@ -1,0 +1,57 @@
+{
+  "manifest": {
+    "id": "fog-lamp-town-minimal",
+    "name": "Fog Lamp Town Minimal",
+    "version": "1.0.0",
+    "schemaVersion": "town-map-pack.v1",
+    "description": "Small semantic map for experiment-folder validation.",
+    "createdAt": "2026-07-01T00:00:00.000Z",
+    "entrypoint": "map.json"
+  },
+  "locations": [
+    {
+      "id": "town-square",
+      "name": "Town Square",
+      "kind": "public",
+      "description": "Public notice board, fountain, and common witness traffic.",
+      "connectedLocationIds": ["archive", "clinic"],
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "archive",
+      "name": "Archive",
+      "kind": "work",
+      "description": "Old records, debt contracts, and missing-person clippings.",
+      "connectedLocationIds": ["town-square", "clinic"],
+      "x": -1,
+      "y": 1
+    },
+    {
+      "id": "clinic",
+      "name": "Clinic",
+      "kind": "restricted",
+      "description": "Medical cabinet, coroner desk, and guarded autopsy notes.",
+      "connectedLocationIds": ["town-square", "archive"],
+      "x": 1,
+      "y": 1
+    }
+  ],
+  "connections": [
+    { "from": "town-square", "to": "archive", "kind": "street", "travelMinutes": 8 },
+    { "from": "town-square", "to": "clinic", "kind": "street", "travelMinutes": 10 },
+    { "from": "archive", "to": "clinic", "kind": "alley", "travelMinutes": 6 }
+  ],
+  "interactions": [
+    { "id": "observe-square", "locationId": "town-square", "kind": "observe", "label": "Watch public traffic", "risk": 10, "tags": ["public"] },
+    { "id": "search-archive", "locationId": "archive", "kind": "search", "label": "Audit records", "risk": 25, "tags": ["records", "commerce"] },
+    { "id": "inspect-clinic", "locationId": "clinic", "kind": "search", "label": "Inspect medical notes", "risk": 45, "tags": ["medical", "evidence"] }
+  ],
+  "spawnPoints": [
+    { "id": "spawn-detective", "locationId": "town-square", "roleHint": "detective", "weight": 80 },
+    { "id": "spawn-official", "locationId": "archive", "roleHint": "official", "weight": 50 },
+    { "id": "spawn-witness", "locationId": "clinic", "roleHint": "witness", "weight": 40 }
+  ],
+  "assets": {},
+  "docs": {}
+}

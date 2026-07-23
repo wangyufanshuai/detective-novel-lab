@@ -1,0 +1,38 @@
+{
+  "manifest": { "id": "hospital-family-press-ecosystem", "name": "Hospital Family Press Ecosystem", "version": "1.0.0", "schemaVersion": "ecosystem-catalog.v1", "createdAt": "2026-07-03T00:00:00.000Z", "description": "Table-driven medical, family and media pressure ecology." },
+  "factions": [
+    { "id": "medical-record-chain", "name": "Medical Record Chain", "institutionKind": "medical", "pressureBias": 12, "resourceBias": { "medical_capacity": -10, "evidence_integrity": -4 }, "preferredCaseTypes": ["medical-coverup", "murder"] },
+    { "id": "family-obligation", "name": "Family Obligation", "institutionKind": "family", "pressureBias": 14, "resourceBias": { "family_influence": 8 }, "preferredCaseTypes": ["forged-will", "false-testimony"] },
+    { "id": "press-proof-cycle", "name": "Press Proof Cycle", "institutionKind": "media", "pressureBias": 12, "resourceBias": { "media_attention": -8 }, "preferredCaseTypes": ["blackmail", "media-rumor"] }
+  ],
+  "resources": [
+    { "kind": "medical_capacity", "label": "Medical Capacity", "valueDelta": -8, "pressureDelta": 10 },
+    { "kind": "family_influence", "label": "Family Influence", "valueDelta": 6, "pressureDelta": 10 },
+    { "kind": "media_attention", "label": "Media Attention", "valueDelta": -8, "pressureDelta": 10 },
+    { "kind": "evidence_integrity", "label": "Evidence Integrity", "valueDelta": -6, "pressureDelta": 5 }
+  ],
+  "markets": [
+    { "id": "medical-favors", "label": "Medical favors", "resource": "medical_capacity", "volatility": 0.30, "tags": ["medical", "autopsy"] },
+    { "id": "headline-favors", "label": "Headline favors", "resource": "media_attention", "volatility": 0.35, "tags": ["press", "newspaper"] }
+  ],
+  "territories": [
+    { "id": "hospital-territory", "locationId": "hospital", "factionId": "medical-record-chain", "influence": 82, "tags": ["medical"] },
+    { "id": "family-territory", "locationId": "family-house", "factionId": "family-obligation", "influence": 80, "tags": ["family"] },
+    { "id": "press-territory", "locationId": "gazette-office", "factionId": "press-proof-cycle", "influence": 78, "tags": ["press"] }
+  ],
+  "taskTemplates": [
+    { "id": "audit-autopsy", "label": "Audit autopsy", "institutionKind": "medical", "tags": ["medical", "autopsy"], "pressureDelta": 10, "evidenceKinds": ["autopsy-note", "blood-pattern"] },
+    { "id": "summon-family", "label": "Summon family", "institutionKind": "family", "tags": ["family", "alibi"], "pressureDelta": 9, "evidenceKinds": ["family-letter", "alibi-note"] },
+    { "id": "check-proof", "label": "Check newspaper proof", "institutionKind": "media", "tags": ["press", "newspaper"], "pressureDelta": 9, "evidenceKinds": ["newspaper-proof"] }
+  ],
+  "randomWorldEvents": [
+    { "id": "ecosystem-autopsy-delay", "label": "Autopsy delay", "weight": 22, "tags": ["medical", "autopsy"], "pressureDelta": 10 },
+    { "id": "ecosystem-family-letter", "label": "Family letter", "weight": 20, "tags": ["family", "alibi"], "pressureDelta": 9 },
+    { "id": "ecosystem-proof-leak", "label": "Proof leak", "weight": 22, "tags": ["press", "newspaper"], "pressureDelta": 9 }
+  ],
+  "pressureRules": [
+    { "id": "ecosystem-medical-capacity", "resource": "medical_capacity", "threshold": 50, "effect": "medical evidence chain and autopsy disputes rise" },
+    { "id": "ecosystem-family-obligation", "resource": "family_influence", "threshold": 60, "effect": "family-backed alibis and letters rise" },
+    { "id": "ecosystem-media-attention", "resource": "media_attention", "threshold": 55, "effect": "newspaper proof and blackmail links rise" }
+  ]
+}

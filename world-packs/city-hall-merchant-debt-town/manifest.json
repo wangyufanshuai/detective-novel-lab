@@ -1,0 +1,16 @@
+{
+  "id": "city-hall-merchant-debt-town",
+  "name": "City Hall Merchant Debt Town",
+  "version": "1.0.0",
+  "schemaVersion": "world-package.v1",
+  "description": "Original detective town package for permits, merchant debt, clerk records, family obligation and press pressure.",
+  "author": "Detective Novel Lab",
+  "createdAt": "2026-07-03T00:00:00.000Z",
+  "license": "project-local-original",
+  "scenarioPackPath": "scenario-pack.json",
+  "mapPackPath": "map-pack.json",
+  "ruleCatalogPath": "rule-catalog.json",
+  "agentPackPath": "agent-pack.json",
+  "ecosystemCatalogPath": "ecosystem-catalog.json",
+  "expectationsPath": "expectations.json"
+}

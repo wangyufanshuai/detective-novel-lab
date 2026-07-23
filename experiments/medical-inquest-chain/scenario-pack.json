@@ -1,0 +1,57 @@
+{
+  "manifest": {
+    "id": "medical-inquest-chain",
+    "name": "Medical Inquest Chain",
+    "version": "1.0.0",
+    "schemaVersion": "scenario-pack.v1",
+    "description": "Scenario pack for medical evidence, inquest and custody pressure.",
+    "createdAt": "2026-07-02T00:00:00.000Z",
+    "entrypoint": "scenario.json"
+  },
+  "world": {
+    "seed": "medical-inquest-chain",
+    "mode": "advanced",
+    "timelineHours": 96,
+    "locations": [
+      { "id": "town-square", "name": "Town Square", "kind": "public", "description": "Public notices and witness movement near the clinic.", "connectedLocationIds": ["clinic", "court-house", "archive"], "x": 0, "y": 0 },
+      { "id": "clinic", "name": "Birch Clinic", "kind": "work", "description": "Medical records, patient ledgers and coroner desk.", "connectedLocationIds": ["town-square", "morgue"], "x": -1, "y": 1 },
+      { "id": "morgue", "name": "Coroner Room", "kind": "restricted", "description": "Autopsy notes, sealed samples and chain-of-custody tags.", "connectedLocationIds": ["clinic", "court-house"], "x": -2, "y": 2 },
+      { "id": "court-house", "name": "Inquest Court", "kind": "work", "description": "Inquest hearings and sworn medical testimony.", "connectedLocationIds": ["town-square", "morgue", "archive"], "x": 1, "y": 1 },
+      { "id": "archive", "name": "Records Annex", "kind": "restricted", "description": "Older death certificates and sealed correspondence.", "connectedLocationIds": ["town-square", "court-house"], "x": 2, "y": 2 }
+    ],
+    "npcs": [
+      { "id": "npc-00", "name": "Ada Vale", "role": "detective", "homeLocationId": "town-square", "schedule": { "08:00": "town-square", "12:00": "clinic", "18:00": "court-house" }, "relationships": { "npc-01": "friend", "npc-03": "rival" }, "secret": "Knows a custody tag was reattached.", "motiveSeed": "protect evidence integrity", "skills": ["detective", "interview"], "memoryEventIds": [], "liePolicy": "omits sources", "alive": true },
+      { "id": "npc-01", "name": "Dr. Rowan Pike", "role": "doctor", "homeLocationId": "clinic", "schedule": { "08:00": "clinic", "12:00": "morgue", "18:00": "archive" }, "relationships": { "npc-02": "debt", "npc-04": "secret" }, "secret": "Signed a rushed autopsy note.", "motiveSeed": "hide medical negligence", "skills": ["doctor", "autopsy"], "memoryEventIds": [], "liePolicy": "answers clinically", "alive": true },
+      { "id": "npc-02", "name": "Silas Wren", "role": "lawyer", "homeLocationId": "court-house", "schedule": { "08:00": "court-house", "12:00": "archive", "18:00": "clinic" }, "relationships": { "npc-01": "debt", "npc-05": "friend" }, "secret": "Pressed for a narrow inquest finding.", "motiveSeed": "protect client", "skills": ["law", "inquest"], "memoryEventIds": [], "liePolicy": "quotes procedure", "alive": true },
+      { "id": "npc-03", "name": "Milo Hart", "role": "police officer", "homeLocationId": "town-square", "schedule": { "08:00": "town-square", "12:00": "morgue", "18:00": "clinic" }, "relationships": { "npc-00": "friend", "npc-01": "secret" }, "secret": "Moved the evidence locker key.", "motiveSeed": "avoid discipline", "skills": ["officer", "custody"], "memoryEventIds": [], "liePolicy": "minimizes mistakes", "alive": true },
+      { "id": "npc-04", "name": "Iris Quill", "role": "reporter", "homeLocationId": "town-square", "schedule": { "08:00": "town-square", "12:00": "court-house", "18:00": "archive" }, "relationships": { "npc-01": "secret", "npc-05": "friend" }, "secret": "Heard of a sealed medical letter.", "motiveSeed": "break a medical scandal", "skills": ["reporter", "rumor"], "memoryEventIds": [], "liePolicy": "protects source", "alive": true },
+      { "id": "npc-05", "name": "Nell Tallow", "role": "clerk", "homeLocationId": "archive", "schedule": { "08:00": "archive", "12:00": "court-house", "18:00": "town-square" }, "relationships": { "npc-02": "friend", "npc-04": "friend" }, "secret": "Filed an inquest telegram late.", "motiveSeed": "avoid blame", "skills": ["clerk", "records"], "memoryEventIds": [], "liePolicy": "answers by document", "alive": true }
+    ],
+    "institutions": [],
+    "professions": []
+  },
+  "rules": {
+    "enabledModules": ["institutions", "professions", "long-actions", "public-opinion", "evidence-contamination", "case-aftermath"],
+    "phaseConfig": { "snapshotEveryTicks": 1, "maxRunningLongActions": 8 },
+    "thresholds": { "maxEvidenceContamination": 70, "maxPublicOpinionHeat": 80, "minInstitutionTrust": 35 },
+    "longActionKinds": ["conduct-autopsy", "second-medical-opinion", "seal-autopsy-record", "hold-inquest", "secure-evidence-locker", "protect-chain-of-custody"]
+  },
+  "scenario": {
+    "id": "medical-inquest-chain",
+    "name": "Medical Inquest Chain",
+    "seed": "medical-inquest-chain",
+    "worldOptions": { "mode": "advanced", "npcCount": 6, "timelineHours": 96 },
+    "baselineSteps": 8,
+    "branches": [],
+    "passCriteria": { "minValidCandidates": 0, "minEventGrowth": 1, "minMemoryGrowth": 1, "maxBlockedCandidates": 8 }
+  },
+  "expectations": {
+    "minValidCandidates": 1,
+    "minEvidenceCoverage": 80,
+    "maxEvidenceContamination": 70,
+    "maxPublicOpinionHeat": 80,
+    "benchmarkPreset": "quick-10"
+  },
+  "assets": {},
+  "docs": {}
+}
