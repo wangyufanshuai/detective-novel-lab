@@ -1,0 +1,608 @@
+.commandDeckShell {
+  --deck-bg: #060a0f;
+  --deck-surface: rgba(14, 22, 30, 0.96);
+  --deck-surface-raised: rgba(24, 36, 47, 0.98);
+  --deck-line: rgba(124, 157, 178, 0.28);
+  --deck-ink: #f2f7f6;
+  --deck-muted: #9fb0ba;
+  --deck-accent: #7fc5ff;
+  --deck-warning: #ffe06a;
+  --deck-success: #65ffc4;
+  --deck-danger: #ff8e94;
+}
+
+.commandDeckShell {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100vh;
+  max-height: 100vh;
+  min-height: 100vh;
+  overflow: hidden;
+  color: var(--deck-ink);
+  background:
+    radial-gradient(circle at 52% 14%, rgba(86, 166, 255, 0.11), transparent 34rem),
+    var(--deck-bg);
+}
+
+.commandDeckPulse {
+  display: flex;
+  min-width: 0;
+  min-height: 70px;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 16px;
+  background: rgba(7, 12, 18, 0.98);
+  border-bottom: 1px solid var(--deck-line);
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.24);
+  z-index: 20;
+}
+
+.commandDeckPulseBrand,
+.commandDeckPulseMetrics,
+.commandDeckSectionHeading {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+}
+
+.commandDeckPulseBrand {
+  gap: 10px;
+}
+
+.commandDeckPulseBrand > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.commandDeckPulseBrand strong {
+  max-width: 330px;
+  overflow: hidden;
+  color: var(--deck-ink);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.commandDeckMark {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  color: #061018;
+  background: var(--deck-accent);
+  border: 1px solid #c6e5ff;
+  border-radius: 4px;
+  box-shadow: 3px 3px 0 #000;
+  font-size: 11px;
+  font-weight: 1000;
+  letter-spacing: 0.08em;
+}
+
+.commandDeckEyebrow {
+  color: var(--deck-accent);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.commandDeckPulseMetrics {
+  justify-content: flex-end;
+  gap: 1px;
+  overflow: hidden;
+}
+
+.commandDeckPulseMetrics span {
+  display: grid;
+  min-width: 92px;
+  gap: 2px;
+  padding: 3px 11px;
+  border-left: 1px solid rgba(124, 157, 178, 0.2);
+}
+
+.commandDeckPulseMetrics small,
+.commandDeckNextAction small {
+  color: var(--deck-muted);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.commandDeckPulseMetrics b {
+  overflow: hidden;
+  color: var(--deck-ink);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.commandDeckGrid {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr) 320px;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.commandDeckAgendaRail,
+.commandDeckMapArea,
+.commandDeckContextRail {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.commandDeckAgendaRail {
+  overflow: auto;
+  background: linear-gradient(180deg, rgba(17, 26, 35, 0.98), rgba(9, 15, 21, 0.98));
+  border-right: 1px solid var(--deck-line);
+}
+
+.commandDeckAgendaSummary,
+.commandDeckContextSummary {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  background: linear-gradient(180deg, rgba(26, 40, 52, 0.98), rgba(13, 22, 30, 0.98));
+  border-bottom: 1px solid var(--deck-line);
+}
+
+.commandDeckAgendaSummary h2,
+.commandDeckContextSummary h2 {
+  margin: 0;
+  color: var(--deck-ink);
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.commandDeckAgendaSummary p,
+.commandDeckContextSummary p {
+  margin: 0;
+  color: var(--deck-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.commandDeckContextActions {
+  display: grid;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.commandDeckContextAction {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  padding: 8px 9px;
+  color: var(--deck-ink);
+  text-align: left;
+  background: rgba(10, 18, 27, 0.86);
+  border: 1px solid rgba(124, 157, 178, 0.34);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.commandDeckContextAction.primary {
+  color: #08121b;
+  background: var(--deck-accent);
+  border-color: #c6e5ff;
+}
+
+.commandDeckContextAction:hover:not(:disabled) {
+  filter: brightness(1.12);
+}
+
+.commandDeckContextAction:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.commandDeckContextAction strong {
+  font-size: 11px;
+}
+
+.commandDeckContextAction span {
+  color: var(--deck-muted);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.commandDeckContextAction.primary span {
+  color: rgba(8, 18, 27, 0.72);
+}
+
+.commandDeckCollapsible {
+  margin: 8px 10px;
+  background: rgba(8, 15, 22, 0.72);
+  border: 1px solid rgba(124, 157, 178, 0.24);
+  border-radius: 5px;
+}
+
+.commandDeckCollapsible > summary {
+  padding: 9px 11px;
+  color: var(--deck-ink);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  list-style-position: inside;
+}
+
+.commandDeckCollapsible > summary::marker {
+  color: var(--deck-accent);
+}
+
+.commandDeckCollapsibleBody {
+  display: grid;
+  gap: 8px;
+  padding: 0 6px 6px;
+}
+
+.commandDeckCollapsibleBody > * {
+  margin-inline: 0;
+}
+
+.commandDeckSectionHeading {
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.commandDeckObjectiveBadge {
+  padding: 3px 6px;
+  color: #091019;
+  background: var(--deck-warning);
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 1000;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.commandDeckNextAction {
+  display: grid;
+  gap: 3px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(124, 157, 178, 0.22);
+}
+
+.commandDeckAgendaMeta {
+  display: grid;
+  gap: 5px;
+  padding: 7px 0;
+  border-top: 1px solid rgba(124, 157, 178, 0.2);
+  border-bottom: 1px solid rgba(124, 157, 178, 0.2);
+}
+
+.commandDeckAgendaMeta span {
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr);
+  gap: 6px;
+  align-items: baseline;
+}
+
+.commandDeckAgendaMeta small {
+  color: var(--deck-muted);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+}
+
+.commandDeckAgendaMeta b {
+  overflow: hidden;
+  color: #dbe8ec;
+  font-size: 10px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.commandDeckNextAction span {
+  color: #d6e5ea;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.commandDeckLegacyControl {
+  min-width: 0;
+}
+
+.commandDeckLegacyControl > :global(.controlRail) {
+  width: auto;
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+  padding: 12px 14px 22px;
+  background: transparent;
+  border: 0;
+}
+
+.commandDeckLegacyControl > :global(.controlRail) > :global(.brandBlock),
+.commandDeckLegacyControl > :global(.controlRail) > :global(.currentCasePanel),
+.commandDeckLegacyControl > :global(.controlRail) > :global(.guidedTaskPanel),
+.commandDeckLegacyControl > :global(.controlRail) > :global(.progressPanel) {
+  display: none;
+}
+
+.commandDeckMapArea {
+  position: relative;
+  background: #05080d;
+}
+
+.commandDeckMapArea :global(.actorPin) {
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.commandDeckMapIntel {
+  position: absolute;
+  bottom: 198px;
+  left: 18px;
+  z-index: 11;
+  display: flex;
+  max-width: calc(100% - 36px);
+  gap: 1px;
+  overflow: hidden;
+  pointer-events: none;
+  border: 1px solid rgba(124, 157, 178, 0.3);
+  border-radius: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.commandDeckMapIntel span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  padding: 6px 9px;
+  background: rgba(7, 14, 20, 0.94);
+}
+
+.commandDeckMapIntel small {
+  color: var(--deck-muted);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+}
+
+.commandDeckMapIntel b {
+  overflow: hidden;
+  color: #e5f0f2;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.commandDeckMapArea > :global(.mapStage) {
+  height: 100%;
+  min-height: 0;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+}
+
+.commandDeckContextRail {
+  background: linear-gradient(180deg, rgba(17, 26, 35, 0.98), rgba(9, 15, 21, 0.98));
+  border-left: 1px solid var(--deck-line);
+}
+
+.commandDeckDrawerToggle {
+  display: none;
+}
+
+.commandDeckContextDrawerBody {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+}
+
+.commandDeckContextDrawerBody > :global(.inspectorRail) {
+  height: auto;
+  min-height: 0;
+  border-left: 0;
+}
+
+.commandDeckNotifications {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 80;
+  display: grid;
+  width: min(360px, calc(100vw - 36px));
+  gap: 6px;
+  pointer-events: none;
+}
+
+.commandDeckNotification {
+  display: grid;
+  gap: 2px;
+  padding: 9px 11px;
+  color: var(--deck-ink);
+  background: rgba(10, 17, 24, 0.96);
+  border: 1px solid var(--deck-line);
+  border-left: 3px solid var(--deck-accent);
+  border-radius: 4px;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.35);
+}
+
+.commandDeckNotification.warning { border-left-color: var(--deck-warning); }
+.commandDeckNotification.success { border-left-color: var(--deck-success); }
+.commandDeckNotification strong { font-size: 11px; }
+.commandDeckNotification span { color: var(--deck-muted); font-size: 10px; line-height: 1.4; }
+
+@media (prefers-reduced-motion: reduce) {
+  .commandDeckShell *,
+  .commandDeckShell *::before,
+  .commandDeckShell *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+@media (max-width: 1180px) {
+  .commandDeckGrid {
+    grid-template-columns: 250px minmax(0, 1fr);
+    grid-template-rows: minmax(560px, 1fr) auto;
+    overflow: visible;
+  }
+
+  .commandDeckContextRail {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    max-height: min(72vh, 680px);
+    border-top: 1px solid var(--deck-line);
+    border-left: 0;
+  }
+
+  .commandDeckMapArea > :global(.mapStage) {
+    min-height: 560px;
+  }
+
+  .commandDeckMapIntel {
+    display: none;
+  }
+
+  .commandDeckPulseMetrics span {
+    min-width: 76px;
+    padding-inline: 8px;
+  }
+}
+
+@media (max-width: 760px) {
+  .commandDeckShell {
+    display: block;
+    height: auto;
+    max-height: none;
+    overflow-x: hidden;
+    padding-bottom: 52px;
+  }
+
+  .commandDeckPulse {
+    position: sticky;
+    top: 0;
+    display: grid;
+    gap: 8px;
+    min-height: 0;
+    padding: 8px 10px;
+  }
+
+  .commandDeckPulseBrand strong {
+    max-width: calc(100vw - 76px);
+  }
+
+  .commandDeckPulseMetrics {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .commandDeckPulseMetrics span {
+    min-width: 0;
+    padding: 2px 5px;
+  }
+
+  .commandDeckPulseMetrics b,
+  .commandDeckPulseMetrics small {
+    overflow: hidden;
+    font-size: 8px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .commandDeckGrid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto auto;
+    flex-direction: column;
+    min-height: 0;
+    height: auto;
+    overflow: visible;
+  }
+
+  .commandDeckAgendaRail,
+  .commandDeckMapArea,
+  .commandDeckContextRail {
+    width: 100%;
+    overflow: visible;
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .commandDeckAgendaRail { display: contents; }
+  .commandDeckAgendaSummary { order: 1; }
+  .commandDeckMapArea { order: 2; }
+  .commandDeckLegacyControl { order: 3; }
+  .commandDeckContextRail {
+    position: fixed;
+    right: 0;
+    left: 0;
+    bottom: 0;
+    order: 4;
+    z-index: 88;
+    height: min(66vh, 560px);
+    max-height: none;
+    overflow: hidden;
+    border-top: 1px solid var(--deck-line);
+    border-left: 0;
+    box-shadow: 0 -16px 36px rgba(0, 0, 0, 0.36);
+    transform: translateY(calc(100% - 52px));
+    transition: transform 160ms ease-out;
+  }
+
+  .commandDeckContextRail.drawerOpen {
+    transform: translateY(0);
+  }
+
+  .commandDeckDrawerToggle {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+    width: 100%;
+    height: 52px;
+    padding: 8px 12px;
+    color: var(--deck-ink);
+    text-align: left;
+    background: rgba(9, 17, 24, 0.99);
+    border: 0;
+    border-bottom: 1px solid var(--deck-line);
+  }
+
+  .commandDeckDrawerToggle span,
+  .commandDeckDrawerToggle b {
+    color: var(--deck-accent);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .commandDeckDrawerToggle strong {
+    min-width: 0;
+    overflow: hidden;
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .commandDeckContextDrawerBody {
+    height: calc(100% - 52px);
+    overflow: hidden;
+  }
+
+  .commandDeckMapArea > :global(.mapStage) {
+    min-height: 560px;
+    height: auto;
+  }
+
+  .commandDeckLegacyControl > :global(.controlRail) {
+    padding: 8px 10px 16px;
+  }
+
+  .commandDeckNotifications {
+    right: 10px;
+    bottom: 62px;
+    z-index: 90;
+    width: calc(100vw - 20px);
+  }
+}

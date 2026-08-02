@@ -30,6 +30,8 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import DeductionGraphView from "@/app/components/DeductionGraphView";
 import { CampaignStudyRecorder } from "@/app/components/CampaignStudyRecorder";
+import { deriveCampaignCommandDeckViewModel } from "@/app/campaign/command-deck-model";
+import { deriveCommandDeckInstitutionName, useCommandDeckContext } from "@/app/hooks/useCommandDeckContext";
 import NovelGameCanvas from "@/app/components/NovelGameCanvas";
 import detectiveCaseTypes from "@/content/detective-v1/case-types.json";
 import detectiveEscalationRules from "@/content/detective-v1/escalation-rules.json";
@@ -7877,7 +7879,31 @@ export default function Home() {
       updateAssessment={campaignStudy.updateAssessment}
     />
   ) : null;
-
+  const selectedInstitutionName = deriveCommandDeckInstitutionName(world, townRuntime, selectedCharacterId);
+  const commandDeckContext = useCommandDeckContext({
+    inspectorTab, selectedInstitutionName, selectedCharacter, selectedSceneName: selectedScene?.name,
+    selectedSceneId, hasCase: Boolean(activeCase), hasSession: Boolean(session), progress,
+    searchableEvidenceIds: sceneEvidence.filter((item) => item.discoverable && !session?.discoveredEvidenceIds.includes(item.id)).map((item) => item.id),
+    discoveredEvidenceIds: discoveredEvidence.map((item) => item.id), judgementAccepted: Boolean(session?.judgement?.accepted),
+    revealAvailable: Boolean(revealText), onSearch: (sceneId) => void discoverFirstSceneEvidence(sceneId),
+    onPrepareQuestion: setQuestion, onSelectEvidence: setSelectedEvidenceId, onShowInspector: setInspectorTab, onJoin: () => void joinCase()
+  });
+  const commandDeck = deriveCampaignCommandDeckViewModel({
+    runtimeMode,
+    caseLabel: activeCase?.deductionCase.title || world?.name || "Detective Town",
+    currentTime: snapshot?.time || minutesToTime(timeValue), suggestedAction,
+    institutionLabel: selectedInstitutionName,
+    urgency: townBrief?.urgency, tickLabel: townBrief ? `T${townBrief.tick} / ${townBrief.currentPhase}` : undefined,
+    heat: townRuntime?.ruleState?.publicOpinion.heat ?? townBrief?.hotLocations[0]?.heat, publicTrust: townRuntime?.ruleState?.publicOpinion.trustInPolice,
+    resourcePressure: townBrief?.hotLocations.length ? townBrief.hotLocations.reduce((sum, item) => sum + item.resourcePressure, 0) / townBrief.hotLocations.length : undefined,
+    campaign: campaignSession || townRuntime?.campaignSessionSummary, worldLead: worldLead || townRuntime?.worldLeadPreview,
+    worldArc: worldArc || townRuntime?.worldArcSummary, directive: worldArcDirective || townRuntime?.worldArcDirectiveSummary,
+    pressure: worldPressureCascade || townRuntime?.worldPressureCascadeSummary, socialResponse: townSocialResponse || townRuntime?.townSocialResponseSummary,
+    recovery: campaignRecovery || townRuntime?.campaignRecoverySummary,
+    guidedJournal: guidedStepJournal[0] ? { status: guidedStepJournal[0].status, label: guidedStepJournal[0].label, headline: guidedStepJournal[0].result || guidedStepJournal[0].nextAction } : undefined,
+    worldEvent: visibleEvents[0] ? { status: "visible", label: "World Event", headline: visibleEvents[0].publicSummary } : undefined,
+    selectedContext: commandDeckContext.selectedContext, contextActions: commandDeckContext.actions
+  });
   if (appMode === "world-graph") {
     return <>{campaignStudyRecorder}<WorldGraphWorkbench runtimeMode={runtimeMode} onBack={() => setAppMode("play")} /></>;
   }
@@ -8614,6 +8640,7 @@ export default function Home() {
     <>
     {campaignStudyRecorder}
     <PlayShell
+      commandDeck={commandDeck}
       control={(
         <ControlRail
           runtimeMode={runtimeMode}
@@ -8688,11 +8715,11 @@ export default function Home() {
             excludedIds: excludedCharacterIds,
             currentCharacterId: selectedCharacterId
           }}
-          onTileClick={(locationId) => void discoverFirstSceneEvidence(locationId)}
+          onTileClick={(locationId) => { setSelectedCharacterId(""); void discoverFirstSceneEvidence(locationId); }}
           onTileHover={setHoveredLocationId}
           onMarkerClick={handleMarker}
           onActorClick={handleActor}
-          onLocationAction={(locationId) => void discoverFirstSceneEvidence(locationId)}
+          onLocationAction={(locationId) => { setSelectedCharacterId(""); void discoverFirstSceneEvidence(locationId); }}
           onNpcAction={(characterId) => {
             setSelectedCharacterId(characterId);
             setQuestion("Where were you during the crime window, and what unusual details do you remember?");
@@ -8819,6 +8846,7 @@ export default function Home() {
                   routeCertificate={caseRouteCertificate}
                   proofTourSteps={proofTourSteps}
                   busy={busy}
+                  commandDeckMode={Boolean(commandDeck)}
                 />
               )
             },
@@ -8962,6 +8990,7 @@ export default function Home() {
           onDismiss={onboarding.dismiss}
         />
       )}
+      onContextAction={commandDeckContext.onAction}
     />
     </>
   );

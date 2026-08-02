@@ -1,9 +1,27 @@
 import http from "node:http";
 import net from "node:net";
+import fs from "node:fs";
+import path from "node:path";
 import { execFileSync, spawn } from "node:child_process";
 import { chromium } from "@playwright/test";
 
 const DEFAULT_URL = "http://127.0.0.1:3000";
+
+function chromiumLaunchOptions() {
+  const expected = chromium.executablePath();
+  if (fs.existsSync(expected)) return { headless: true, executablePath: expected };
+  const browserRoot = process.env.PLAYWRIGHT_BROWSERS_PATH || path.join(process.env.LOCALAPPDATA || "", "ms-playwright");
+  const executableName = process.platform === "win32" ? "chrome.exe" : "chrome";
+  const platformDirectory = process.platform === "win32" ? "chrome-win64" : "chrome-linux";
+  if (!fs.existsSync(browserRoot)) return { headless: true };
+  const candidates = fs.readdirSync(browserRoot)
+    .filter((name) => name.startsWith("chromium-") && !name.includes("headless"))
+    .sort()
+    .reverse()
+    .map((name) => path.join(browserRoot, name, platformDirectory, executableName));
+  const executablePath = candidates.find((candidate) => fs.existsSync(candidate));
+  return executablePath ? { headless: true, executablePath } : { headless: true };
+}
 
 function findAvailableLocalPort() {
   return new Promise((resolve, reject) => {
@@ -174,6 +192,30 @@ async function completeManualTheoryReplay(page) {
   };
 }
 
+async function keepCommandDeckSectionsOpen(page) {
+  await page.getByTestId("command-deck-shell").waitFor({ state: "visible", timeout: 30000 });
+  await page.waitForTimeout(350);
+  await page.evaluate(() => {
+    const openSections = () => {
+      document.querySelectorAll("details[data-command-deck-collapsible]").forEach((element) => {
+        if (element instanceof HTMLDetailsElement) element.open = true;
+      });
+    };
+    openSections();
+    if (!window.__commandDeckQaObserver) {
+      const observer = new MutationObserver(openSections);
+      observer.observe(document.body, { childList: true, subtree: true });
+      window.__commandDeckQaObserver = observer;
+    }
+  });
+}
+
+async function dismissCommandDeckOnboarding(page) {
+  const dismiss = page.locator("[data-testid='onboarding-overlay'] .closeButton");
+  await page.locator("[data-testid='onboarding-overlay']").waitFor({ state: "visible", timeout: 4000 }).catch(() => undefined);
+  if (await dismiss.isVisible().catch(() => false)) await dismiss.click();
+}
+
 async function verifyStaticPage(page, baseUrl) {
   const requests = [];
   const consoleErrors = [];
@@ -185,6 +227,8 @@ async function verifyStaticPage(page, baseUrl) {
   page.on("pageerror", (error) => pageErrors.push(error.message));
 
   await page.goto(`${baseUrl}/?runtime=static`, { waitUntil: "load" });
+  await keepCommandDeckSectionsOpen(page);
+  await dismissCommandDeckOnboarding(page);
   await page.getByTestId("playable-investigation-path").waitFor({ state: "visible", timeout: 30000 });
   await page.getByText("Playable Investigation Path", { exact: true }).first().waitFor({ state: "visible", timeout: 30000 });
   await page.getByText("Join -> Search -> Question -> Challenge -> Select Evidence -> Submit -> Review Source", { exact: true }).first().waitFor({ state: "visible", timeout: 30000 });
@@ -537,6 +581,8 @@ async function verifyStaticPage(page, baseUrl) {
   if (summary.scrollWidth > summary.clientWidth + 1 || summary.bodyWidth > summary.clientWidth + 1) failures.push("Desktop viewport has page-level horizontal overflow.");
 
   await page.goto(`${baseUrl}/?runtime=static`, { waitUntil: "load" });
+  await keepCommandDeckSectionsOpen(page);
+  await dismissCommandDeckOnboarding(page);
   await page.getByTestId("open-authoring").click();
   await page.getByRole("heading", { name: "Case Authoring" }).waitFor({ state: "visible", timeout: 30000 });
   await page.getByTestId("authoring-workflow-coach").waitFor({ state: "visible", timeout: 30000 });
@@ -671,6 +717,8 @@ async function verifyStaticPage(page, baseUrl) {
 async function verifyMobile(page, baseUrl) {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${baseUrl}/?runtime=static`, { waitUntil: "load" });
+  await keepCommandDeckSectionsOpen(page);
+  await dismissCommandDeckOnboarding(page);
   await page.getByTestId("playable-investigation-path").waitFor({ state: "visible", timeout: 30000 });
   await page.getByText("Playable Investigation Path", { exact: true }).first().waitFor({ state: "visible", timeout: 30000 });
   await page.getByText("Join -> Search -> Question -> Challenge -> Select Evidence -> Submit -> Review Source", { exact: true }).first().waitFor({ state: "visible", timeout: 30000 });
@@ -853,6 +901,8 @@ async function verifyMobile(page, baseUrl) {
 async function verifyServerRuntime(page, baseUrl) {
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto(`${baseUrl}/?runtime=server`, { waitUntil: "load" });
+  await keepCommandDeckSectionsOpen(page);
+  await dismissCommandDeckOnboarding(page);
   await page.locator(".settingsDrawer").first().locator("summary").click();
   await page.locator(".settingsDrawer label").filter({ hasText: "Seed" }).locator("input").fill("directive-browser-6");
   await page.locator(".settingsDrawer label").filter({ hasText: "Case Mode" }).locator("select").selectOption("generated");
@@ -1297,7 +1347,7 @@ let server;
 let browser;
 try {
   server = await ensureServer(baseUrl);
-  browser = await chromium.launch({ headless: true });
+  browser = await chromium.launch(chromiumLaunchOptions());
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 
   const staticReport = await verifyStaticPage(page, baseUrl);

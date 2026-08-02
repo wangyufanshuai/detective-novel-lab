@@ -23,9 +23,12 @@ import {
   Users,
   X
 } from "lucide-react";
-import { useRef, useState, type PointerEvent, type ReactNode } from "react";
+import { memo, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { BenchmarkSeedTable, CurrentExperimentPanel, DatasetPackagePanel, PublicReviewCatalogPanel, ReplayDatasetCatalogPanel, ReviewExportActions, RunCatalogPanel, ScenarioPackPanel, ScenarioPresetEditor, ScenarioRunHistory, WorldPackageCatalogPanel } from "@/app/components/ReviewModePanels";
 import { TownRuleStatePanel } from "@/app/components/TownRuleStatePanel";
+import { CommandDeckCollapsible, CommandDeckShell } from "@/app/components/CommandDeckShell";
+import type { CampaignCommandDeckViewModel } from "@/app/campaign/command-deck-model";
+import type { SafeContextActionKind } from "@/app/campaign/context-action-resolver";
 import {
   WorldCampaignPanel,
   type WorldArcDirectiveSummary,
@@ -420,18 +423,25 @@ function locationIcon(tile: WorldMapTile) {
 }
 
 export function PlayShell({
+  commandDeck,
   control,
   map,
   inspector,
   overlay,
-  toasts
+  toasts,
+  onContextAction
 }: {
+  commandDeck?: CampaignCommandDeckViewModel;
   control: ReactNode;
   map: ReactNode;
   inspector: ReactNode;
   overlay?: ReactNode;
   toasts?: ReactNode;
+  onContextAction?: (kind: SafeContextActionKind) => void;
 }) {
+  if (commandDeck) {
+    return <CommandDeckShell viewModel={commandDeck} control={control} map={map} inspector={inspector} overlay={overlay} toasts={toasts} onContextAction={onContextAction} />;
+  }
   return (
     <main className="townShell">
       {control}
@@ -681,7 +691,7 @@ export function ControlRail({
   );
 }
 
-export function TownMapStage({
+function TownMapStageComponent({
   caseFile,
   currentTime,
   stages,
@@ -867,6 +877,30 @@ export function TownMapStage({
     </section>
   );
 }
+
+export const TownMapStage = memo(TownMapStageComponent, (previous, next) => (
+  previous.caseFile === next.caseFile
+  && previous.currentTime === next.currentTime
+  && previous.stages === next.stages
+  && previous.snapshot === next.snapshot
+  && previous.actorsByTile === next.actorsByTile
+  && previous.markersByTile === next.markersByTile
+  && previous.hoverInfo === next.hoverInfo
+  && previous.npcPopover === next.npcPopover
+  && previous.selectedSceneId === next.selectedSceneId
+  && previous.highlightedEventId === next.highlightedEventId
+  && previous.selectedCharacterId === next.selectedCharacterId
+  && previous.characterState.questionedIds === next.characterState.questionedIds
+  && previous.characterState.contradictionIds === next.characterState.contradictionIds
+  && previous.characterState.excludedIds === next.characterState.excludedIds
+  && previous.characterState.currentCharacterId === next.characterState.currentCharacterId
+  && previous.selectionHighlight === next.selectionHighlight
+  && previous.interactiveTargets === next.interactiveTargets
+  && previous.replaying === next.replaying
+  && previous.timeMin === next.timeMin
+  && previous.timeMax === next.timeMax
+  && previous.timeValue === next.timeValue
+));
 
 export function InspectorRail({
   activeTab,
@@ -2860,11 +2894,13 @@ function buildPlayableInvestigationPath(input: {
 function PlayableInvestigationPathPanel({
   steps,
   onStepAction,
-  joinCase
+  joinCase,
+  commandDeckMode = false
 }: {
   steps: PlayableInvestigationPathStep[];
   onStepAction: (action: PlayableCaseNextAction) => void;
   joinCase: () => void;
+  commandDeckMode?: boolean;
 }) {
   const currentStep = steps.find((step) => step.status === "current") || steps.find((step) => step.status === "ready") || steps[0];
   function handleStep(step: PlayableInvestigationPathStep) {
@@ -2878,7 +2914,7 @@ function PlayableInvestigationPathPanel({
           <span>Playable Investigation Path</span>
           <strong>Join -&gt; Search -&gt; Question -&gt; Challenge -&gt; Select Evidence -&gt; Submit -&gt; Review Source</strong>
         </div>
-        <button type="button" className="primaryButton" data-testid="playable-path-next-action" onClick={() => handleStep(currentStep)}>
+        <button type="button" className={commandDeckMode ? "secondaryButton" : "primaryButton"} data-testid="playable-path-next-action" onClick={() => handleStep(currentStep)}>
           {currentStep.action.buttonLabel}
         </button>
       </div>
@@ -3719,7 +3755,8 @@ export function InvestigationPanel({
   proofCoverage,
   routeCertificate,
   proofTourSteps,
-  busy
+  busy,
+  commandDeckMode = false
 }: {
   playableIntake?: PlayableCaseIntake | null;
   onIntakeNextAction: (action: PlayableCaseNextAction) => void;
@@ -3804,6 +3841,7 @@ export function InvestigationPanel({
   routeCertificate?: CaseRouteCertificate | null;
   proofTourSteps: ProofTourStep[];
   busy: boolean;
+  commandDeckMode?: boolean;
 }) {
   const playablePathSteps = buildPlayableInvestigationPath({
     playableIntake,
@@ -3816,36 +3854,42 @@ export function InvestigationPanel({
   });
   return (
     <div className="stackedInspector">
-      <PlayableInvestigationPathPanel steps={playablePathSteps} onStepAction={onIntakeNextAction} joinCase={joinCase} />
+      <PlayableInvestigationPathPanel steps={playablePathSteps} onStepAction={onIntakeNextAction} joinCase={joinCase} commandDeckMode={commandDeckMode} />
       <WorldCampaignPanel runtimeMode={runtimeMode} session={session} summary={worldLead} outcome={worldLeadOutcome} handoff={worldLeadCaseHandoff} arc={worldArc} directive={worldArcDirective} pressure={worldPressureCascade} influenceBudget={worldInfluenceBudget} playerResourceCommitment={playerResourceCommitment} factionRelationship={factionRelationship} worldEventOffer={worldEventOffer} investigatorProgression={investigatorProgression} campaignRecovery={campaignRecovery} arcConvergence={arcConvergence} campaignSession={campaignSession} campaignFinaleDebrief={campaignFinaleDebrief} townSocialResponse={townSocialResponse} onDecision={updateWorldLead} onDirectiveDecision={updateWorldArcDirective} onResourceCommitmentDecision={updatePlayerResourceCommitment} onWorldEventOfferDecision={updateWorldEventOffer} onCampaignRecoveryDecision={updateCampaignRecovery} busy={busy} />
-      {guidedManualRun && runGuidedManualStep && <GuidedManualRunPanel summary={guidedManualRun} onRunNext={runGuidedManualStep} />}
-      <GuidedStepJournalPanel entries={guidedStepJournal} />
-      {staticPlaythroughProof && runStaticPlaythroughProof && <CertifiedPlaythroughProofPanel proof={staticPlaythroughProof} onRun={runStaticPlaythroughProof} />}
-      {serverPlaythroughProof && runServerPlaythroughProof && <CertifiedPlaythroughProofPanel proof={serverPlaythroughProof} onRun={runServerPlaythroughProof} />}
-      {sourceReviewUnlock && (
-        <SourceReviewUnlockPanel
-          summary={sourceReviewUnlock}
-          intake={playableIntake}
-          proofLedger={proofLedger}
-          proofCoverage={proofCoverage}
-          routeCertificate={routeCertificate}
-          proofTourSteps={proofTourSteps}
-          revealText={revealText}
-          judgementExplanation={session?.judgement?.explanation}
-        />
-      )}
-      {solvedCaseDebrief && <SolvedCaseDebriefPanel summary={solvedCaseDebrief} />}
-      {replayPracticeLoop && <ReplayPracticeLoopPanel summary={replayPracticeLoop} />}
-      {replayGoalCoach && startReplayGoalAttempt && <ReplayGoalCoachPanel summary={replayGoalCoach} onStartReplay={startReplayGoalAttempt} />}
-      {manualEvidenceDrill && toggleManualEvidenceDrillEvidence && <ManualEvidenceDrillPanel summary={manualEvidenceDrill} onToggleEvidence={toggleManualEvidenceDrillEvidence} />}
-      {manualTheoryDrill && updateManualTheoryDrillField && approveManualTheoryFallback && (
-        <ManualTheoryDrillPanel
-          summary={manualTheoryDrill}
-          onFieldChange={updateManualTheoryDrillField}
-          onApproveFallback={approveManualTheoryFallback}
-        />
-      )}
-      {replayAttemptScorecard && <ReplayAttemptScorecardPanel summary={replayAttemptScorecard} />}
+      <CommandDeckCollapsible enabled={commandDeckMode} title="Guided run and journal">
+        {guidedManualRun && runGuidedManualStep && <GuidedManualRunPanel summary={guidedManualRun} onRunNext={runGuidedManualStep} />}
+        <GuidedStepJournalPanel entries={guidedStepJournal} />
+      </CommandDeckCollapsible>
+      <CommandDeckCollapsible enabled={commandDeckMode} title="Proof and source review">
+        {staticPlaythroughProof && runStaticPlaythroughProof && <CertifiedPlaythroughProofPanel proof={staticPlaythroughProof} onRun={runStaticPlaythroughProof} />}
+        {serverPlaythroughProof && runServerPlaythroughProof && <CertifiedPlaythroughProofPanel proof={serverPlaythroughProof} onRun={runServerPlaythroughProof} />}
+        {sourceReviewUnlock && (
+          <SourceReviewUnlockPanel
+            summary={sourceReviewUnlock}
+            intake={playableIntake}
+            proofLedger={proofLedger}
+            proofCoverage={proofCoverage}
+            routeCertificate={routeCertificate}
+            proofTourSteps={proofTourSteps}
+            revealText={revealText}
+            judgementExplanation={session?.judgement?.explanation}
+          />
+        )}
+      </CommandDeckCollapsible>
+      <CommandDeckCollapsible enabled={commandDeckMode} title="Debrief and replay">
+        {solvedCaseDebrief && <SolvedCaseDebriefPanel summary={solvedCaseDebrief} />}
+        {replayPracticeLoop && <ReplayPracticeLoopPanel summary={replayPracticeLoop} />}
+        {replayGoalCoach && startReplayGoalAttempt && <ReplayGoalCoachPanel summary={replayGoalCoach} onStartReplay={startReplayGoalAttempt} />}
+        {manualEvidenceDrill && toggleManualEvidenceDrillEvidence && <ManualEvidenceDrillPanel summary={manualEvidenceDrill} onToggleEvidence={toggleManualEvidenceDrillEvidence} />}
+        {manualTheoryDrill && updateManualTheoryDrillField && approveManualTheoryFallback && (
+          <ManualTheoryDrillPanel
+            summary={manualTheoryDrill}
+            onFieldChange={updateManualTheoryDrillField}
+            onApproveFallback={approveManualTheoryFallback}
+          />
+        )}
+        {replayAttemptScorecard && <ReplayAttemptScorecardPanel summary={replayAttemptScorecard} />}
+      </CommandDeckCollapsible>
       {playableIntake && <CaseIntakePanel intake={playableIntake} session={session} joinCase={joinCase} onNextAction={onIntakeNextAction} />}
       <EvidenceNotebookPanel items={notebookItems} onAction={onNotebookAction} />
       <section className="actionPanel">

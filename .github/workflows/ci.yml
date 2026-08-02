@@ -37,6 +37,9 @@ jobs:
       - name: Campaign study guard tests
         run: npm run test:campaign-study
 
+      - name: Command Deck authority invariants
+        run: npm run test:command-deck-invariants
+
       - name: Generated world invariants
         run: npm run test:world-invariants
 
@@ -69,6 +72,9 @@ jobs:
 
       - name: Static runtime boundary
         run: npm run qa:static-boundary -- --json
+
+      - name: Command Deck browser QA
+        run: npm run qa:command-deck -- --json
 
       - name: Browser E2E
         run: npm run test:e2e
