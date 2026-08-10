@@ -615,6 +615,7 @@ export default function Home() {
     <PlayShell
       commandDeck={commandDeck}
       commandBrief={campaignCommandBrief}
+      guidedJournal={guidedStepJournal}
       control={(
         <>
         <ControlRail

@@ -116,6 +116,7 @@ try {
       const initial = await page.evaluate(() => {
         const objective = document.querySelector("[data-testid='strategic-pacing']")?.getBoundingClientRect();
         const action = document.querySelector("[data-testid='strategic-action-bar']")?.getBoundingClientRect();
+        const latest = document.querySelector("[data-testid='command-deck-feedback']")?.getBoundingClientRect();
         const map = document.querySelector("[data-testid='command-deck-map-area']")?.getBoundingClientRect();
         const visibleResources = [...document.querySelectorAll("[data-testid='strategic-resource-ribbon'] summary")]
           .filter((node) => node.getBoundingClientRect().height > 0).length;
@@ -123,10 +124,12 @@ try {
           overflow: document.documentElement.scrollWidth - innerWidth,
           objectiveTop: objective?.top || 0,
           actionTop: action?.top || 0,
+          latestTop: latest?.top || 0,
           mapTop: map?.top || 0,
           mapBottom: map?.bottom || 0,
           objectiveBeforeAction: Boolean(objective && action && objective.top < action.top),
-          actionBeforeMap: Boolean(action && map && action.top < map.top),
+          actionBeforeLatest: Boolean(action && latest && action.top < latest.top),
+          latestBeforeMap: Boolean(latest && map && latest.top < map.top),
           visibleResources,
           phase: document.querySelector("[data-testid='strategic-pacing']")?.getAttribute("data-pacing-phase"),
           primaryCount: document.querySelectorAll("[data-command-deck-primary='true']:not([disabled])").length,
@@ -135,7 +138,7 @@ try {
       });
       observations.push({ width: 390, ...initial });
       check(initial.overflow <= 1, `390px overflowed horizontally by ${initial.overflow}px.`);
-      check(initial.objectiveBeforeAction && initial.actionBeforeMap && initial.mapTop < 650 && initial.mapBottom > 600, "390px order is not Current Objective -> Current Action -> Map.");
+      check(initial.objectiveBeforeAction && initial.actionBeforeLatest && initial.latestBeforeMap && initial.mapTop < 820 && initial.mapBottom > 760, "390px order is not Current Objective -> Current Action -> Latest Resolution -> Map.");
       check(initial.visibleResources === 0, `390px exposes ${initial.visibleResources} secondary resource summaries instead of the All Resources trigger only.`);
       check(initial.primaryCount === 1, "390px does not expose exactly one legal primary action.");
       check(initial.primaryHeight >= 44, "390px primary action is below 44px.");
@@ -271,7 +274,7 @@ try {
         overflow: document.documentElement.scrollWidth - innerWidth,
         phase: document.querySelector("[data-testid='strategic-pacing']")?.getAttribute("data-pacing-phase"),
         forecast: Boolean(document.querySelector("[data-testid='strategic-safe-forecast']")),
-        feedbackLayers: document.querySelector("[data-testid='command-deck-feedback']")?.children.length || 0,
+        feedbackLayers: document.querySelectorAll("[data-testid='command-deck-feedback'] > span").length,
         queueState: document.querySelector("[data-testid='strategic-decision-queue']")?.getAttribute("data-queue-state"),
         primaryCount: document.querySelectorAll("[data-command-deck-primary='true']:not([disabled])").length,
         storageLength: localStorage.length,
@@ -282,7 +285,7 @@ try {
       observations.push({ width: 390, runtime: "static", ...staticState, apiRequests: apiRequests.length, storageAfterLocalDisclosure });
       check(apiRequests.length === 0, `Static Pacing requested ${apiRequests.map((item) => item.pathname).join(", ")}.`);
       check(staticState.overflow <= 1, `Static 390px overflowed by ${staticState.overflow}px.`);
-      check(Boolean(staticState.phase) && staticState.forecast && staticState.feedbackLayers === 3, "Static Pacing omitted its local phase, forecast, or three-layer feedback.");
+      check(Boolean(staticState.phase) && staticState.forecast && staticState.feedbackLayers === 4, "Static Pacing omitted its local phase, forecast, or four-stage Resolution Ledger.");
       check(staticState.queueState === "readonly" && staticState.primaryCount === 0, "Static Pacing exposed a persistent decision or primary action.");
       check(staticState.storageLength === 0 && storageAfterLocalDisclosure === 0, "Static Pacing wrote localStorage.");
       check(!staticState.studyRecorder, "Static Pacing displayed the Server-only study recorder.");

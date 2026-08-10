@@ -19,7 +19,6 @@ export const StrategicPacingSurface = memo(function StrategicPacingSurface({ com
   brief: CampaignCommandBrief;
 }) {
   const publicChange = command.notifications[0]?.detail || brief.whatChanges;
-  const latestOutcome = pacing.recentSafeOutcomes[0];
   const caseRhythm = command.primaryAction?.kind === "certified-investigation" ? command.caseRhythm : undefined;
   return (
     <section
@@ -59,13 +58,6 @@ export const StrategicPacingSurface = memo(function StrategicPacingSurface({ com
             <small>PUBLIC CHANGE</small>
             <span>{publicChange}</span>
           </section>
-          {pacing.phase === "resolve" && latestOutcome ? (
-            <section className={styles.latestOutcome} data-testid="strategic-recent-outcome" data-outcome-state={latestOutcome.state}>
-              <small>LATEST SAFE OUTCOME</small>
-              <strong>{latestOutcome.immediateResult}</strong>
-              <span>{latestOutcome.nextObjective}</span>
-            </section>
-          ) : null}
         </div>
         <dl>
           <div><dt>Benefit</dt><dd>{pacing.safeForecast.immediateBenefit}</dd></div>

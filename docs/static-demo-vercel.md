@@ -264,3 +264,9 @@ Static still resolves its runtime mode before any Server bootstrap or read query
 ### v9.2 Campaign Command Clarity boundary
 
 The v9.2 Command Brief is shared presentation only. Static derives the same fixed Objective -> Action -> Map -> Context hierarchy from its deterministic in-memory command view, but it never enables a persistent action, reads Server-only World Lead/Directive/Recovery state, writes study or launch storage, or creates a request. District Strategic Fronts remain read-only map focus; the mobile sheet is bounded below its trigger and does not cover Current Action. `?runtime=static&study=1` still initializes no recorder, makes zero `/api/*` requests, and preserves the certified seven-step route and 390px no-overflow boundary.
+
+### v9.3 Command Resolution Ledger boundary
+
+The v9.3 Ledger is another shared presentation projection, not a Static simulation feature. Static renders the same `Result -> World Change -> Objective Progress -> Next Action` structure from its in-memory certified demo and session-local Journal, but its world-change field is fixed to `No persistent world change`. It never reads Server outcomes, handoffs, directives, pressure pulses, resource deltas, or private runtime records, and it creates no Ledger storage key, endpoint, tick, event, or public artifact.
+
+The compact order is Current Objective -> Current Action -> Latest Resolution -> Map -> Context. Transition Theatre remains Server-only, while the Static Latest Resolution and Journal are non-interactive explanations. `?runtime=static&study=1` continues to create zero `/api/*` requests, zero Study writes, no persistence control, and no horizontal overflow at 390px.

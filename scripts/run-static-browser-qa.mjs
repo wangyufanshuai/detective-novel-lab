@@ -485,10 +485,15 @@ async function verifyStaticPage(page, baseUrl) {
     const lowerText = text.toLowerCase();
     const proofStripText = document.querySelector("[data-testid='proof-strip']")?.textContent || "";
     const playablePathText = document.querySelector("[data-testid='playable-investigation-path']")?.textContent || "";
+    const resolutionText = document.querySelector("[data-testid='command-deck-feedback']")?.textContent || "";
+    const resolutionLabels = Array.from(document.querySelectorAll("[data-testid='command-deck-feedback'] > span > small")).map((node) => node.textContent || "");
     return {
       hasPlayableInvestigationPath: playablePathText.toLowerCase().includes("playable investigation path"),
       hasPlayableInvestigationSteps: ["Join", "Search", "Question", "Challenge", "Select Evidence", "Submit", "Review Source"].every((label) => playablePathText.includes(label)),
       hasPlayablePathBoundary: playablePathText.includes("Low-spoiler route guidance only"),
+      hasCampaignResolutionLedger: ["Result", "World Change", "Objective Progress", "Next Action"].every((label) => resolutionLabels.includes(label)),
+      hasStaticResolutionNoPersistence: document.querySelector("[data-testid='command-deck-feedback'] [data-resolution-field='worldChange'] b")?.textContent === "No persistent world change",
+      hasCampaignResolutionNoRawIds: !/\b(?:npc|case|event|source|location|institution|resource|evidence|scene|session|character)-[a-z0-9-]*\d[a-z0-9-]*\b|culpritId|victimId|hiddenTruth|rawBody|sourceId|[A-Za-z]:[\\/]/i.test(resolutionText),
       hasReviewerHome: /Reviewer\s+Home/.test(text),
       hasReviewerMainPath: text.includes("Reviewer Main Path"),
       hasTrustSnapshot: text.includes("Trust Snapshot"),
@@ -562,6 +567,10 @@ async function verifyStaticPage(page, baseUrl) {
   summary.hasPlayableInvestigationPath = summary.hasPlayableInvestigationPath || playablePathTextBeforeReview.toLowerCase().includes("playable investigation path");
   summary.hasPlayableInvestigationSteps = summary.hasPlayableInvestigationSteps || ["Join", "Search", "Question", "Challenge", "Select Evidence", "Submit", "Review Source"].every((label) => playablePathTextBeforeReview.includes(label));
   summary.hasPlayablePathBoundary = summary.hasPlayablePathBoundary || playablePathTextBeforeReview.includes("Low-spoiler route guidance only");
+  summary.hasCampaignResolutionLedger = /campaign resolution ledger/i.test(guidedStepJournalTextBeforeReview)
+    && ["result", "world change", "objective progress", "next action"].every((label) => guidedStepJournalTextBeforeReview.toLowerCase().includes(label));
+  summary.hasStaticResolutionNoPersistence = /no persistent world change/i.test(guidedStepJournalTextBeforeReview);
+  summary.hasCampaignResolutionNoRawIds = !/\b(?:npc|case|event|source|location|institution|resource|evidence|scene|session|character)-[a-z0-9-]*\d[a-z0-9-]*\b|culpritId|victimId|hiddenTruth|rawBody|sourceId|[A-Za-z]:[\\/]/i.test(guidedStepJournalTextBeforeReview);
   summary.hasStaticPlaythroughProof = staticPlaythroughTextBeforeReview.toLowerCase().includes("static playthrough proof");
   summary.hasStaticPlaythroughAccepted = staticPlaythroughTextBeforeReview.toLowerCase().includes("completed / accepted theory") && staticPlaythroughTextBeforeReview.toLowerCase().includes("accepted");
   summary.hasStaticPlaythroughMetrics = ["route certified", "auto route pass", "challenge hits", "selected evidence", "covered obligations"].every((label) => staticPlaythroughTextBeforeReview.toLowerCase().includes(label));

@@ -1,13 +1,19 @@
 import { memo, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from "react";
 import type { StrategicCommandAction, StrategicCommandViewModel } from "@/app/campaign/strategic-command-model";
 import { buildCampaignCommandBrief, type CampaignCommandBrief } from "@/app/campaign/campaign-command-brief-model";
+import type { GuidedStepJournalEntry } from "@/app/campaign/replay-practice-model";
 import type { SafeContextActionKind } from "@/app/campaign/context-action-resolver";
 import type { TownMapLensKind } from "@/app/campaign/town-map-lens-model";
 import { buildDistrictStrategicFrontsViewModel, type DistrictStrategicFront, type DistrictStrategicFrontKind } from "@/app/campaign/district-strategic-front-model";
 import { useCampaignTransitionTheatre } from "@/app/hooks/useCampaignTransitionTheatre";
+import { useCampaignResolutionLedger } from "@/app/hooks/useCampaignResolutionLedger";
 import { useCommandDeckOverlayArbiter } from "@/app/hooks/useCommandDeckOverlayArbiter";
 import { useStrategicPacing } from "@/app/hooks/useStrategicPacing";
 import { CampaignTransitionTheatre } from "./CampaignTransitionTheatre";
+import {
+  CampaignResolutionLatest,
+  CampaignResolutionLedgerProvider
+} from "./CampaignResolutionLedger";
 import { DistrictStrategicFronts } from "./DistrictStrategicFronts";
 import { StrategicPacingSurface } from "./StrategicPacingSurface";
 import { StrategicActionBar, StrategicDecisionQueue, StrategicResourceRibbon } from "./StrategicCommandSurfaces";
@@ -137,7 +143,7 @@ export function CommandDeckCollapsible({ enabled, title, children }: { enabled: 
   );
 }
 
-export function CommandDeckShell({ viewModel, commandBrief, control, map, inspector, overlay, toasts, blockingOverlayActive = false, toastVisible = false, onContextAction, onStrategicAction, onStrategicFrontFocus }: {
+export function CommandDeckShell({ viewModel, commandBrief, guidedJournal, control, map, inspector, overlay, toasts, blockingOverlayActive = false, toastVisible = false, onContextAction, onStrategicAction, onStrategicFrontFocus }: {
   viewModel: StrategicCommandViewModel;
   commandBrief?: CampaignCommandBrief;
   control: ReactNode;
@@ -147,6 +153,7 @@ export function CommandDeckShell({ viewModel, commandBrief, control, map, inspec
   toasts?: ReactNode;
   blockingOverlayActive?: boolean;
   toastVisible?: boolean;
+  guidedJournal?: readonly GuidedStepJournalEntry[];
   onContextAction?: (kind: SafeContextActionKind) => void | Promise<void>;
   onStrategicAction?: (action: StrategicCommandAction) => void | Promise<void>;
   onStrategicFrontFocus?: (locationName: string) => void;
@@ -154,6 +161,13 @@ export function CommandDeckShell({ viewModel, commandBrief, control, map, inspec
   const pacing = useStrategicPacing(viewModel);
   const brief = commandBrief || buildCampaignCommandBrief({ command: viewModel });
   const theatre = useCampaignTransitionTheatre(viewModel, pacing.actionLifecycle);
+  const resolutionLedger = useCampaignResolutionLedger({
+    command: viewModel,
+    commandBrief: brief,
+    transition: theatre.presentation,
+    guidedJournal,
+    recentSafeOutcomes: pacing.recentSafeOutcomes
+  });
   const districtFronts = useMemo(() => buildDistrictStrategicFrontsViewModel(viewModel), [viewModel]);
   const [activePanel, setActivePanel] = useState<CommandPanel | null>(null);
   const [inspectorDetailOpen, setInspectorDetailOpen] = useState(false);
@@ -236,8 +250,19 @@ export function CommandDeckShell({ viewModel, commandBrief, control, map, inspec
 
   useEffect(() => {
     if (!transitionVisible || blockingOverlayActive) return;
-    const frame = window.requestAnimationFrame(() => theatreHeadingRef.current?.focus());
-    return () => window.cancelAnimationFrame(frame);
+    const revealTheatre = () => {
+      const heading = theatreHeadingRef.current;
+      if (!heading) return;
+      const compact = window.matchMedia("(max-width: 520px)").matches;
+      if (compact) heading.closest<HTMLElement>("[data-testid='campaign-transition-theatre']")?.scrollIntoView({ block: "start" });
+      heading.focus({ preventScroll: compact });
+    };
+    const frame = window.requestAnimationFrame(revealTheatre);
+    window.addEventListener("resize", revealTheatre);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("resize", revealTheatre);
+    };
   }, [blockingOverlayActive, theatre.presentation.phase, transitionVisible]);
 
   function togglePanel(panel: CommandPanel, trigger: RefObject<HTMLButtonElement | null>) {
@@ -361,6 +386,7 @@ export function CommandDeckShell({ viewModel, commandBrief, control, map, inspec
   }
 
   return (
+    <CampaignResolutionLedgerProvider ledger={resolutionLedger}>
     <main
       ref={mainRef}
       className={`${styles.commandDeckShell} ${viewModel.runtimeMode === "static-demo" ? styles.static : styles.server}`}
@@ -372,6 +398,8 @@ export function CommandDeckShell({ viewModel, commandBrief, control, map, inspec
       data-focus-target={pacing.viewModel.focusTarget}
       data-command-brief-status={brief.status}
       data-command-brief-focus={brief.focus.target}
+      data-resolution-ledger-status={resolutionLedger.status}
+      data-resolution-ledger-count={resolutionLedger.entryCount}
       data-active-panel={activePanel || "none"}
       data-panel-open={activePanel ? "true" : "false"}
       data-active-front={activeFrontKey || "none"}
@@ -394,6 +422,7 @@ export function CommandDeckShell({ viewModel, commandBrief, control, map, inspec
         <aside className={styles.commandDeckAgendaRail} data-testid="command-deck-agenda-rail">
           <StrategicPacingSurface command={viewModel} pacing={pacing.viewModel} brief={brief} />
           <StrategicActionBar command={viewModel} pacing={pacing.viewModel} compact onAction={onStrategicAction ? handleStrategicAction : undefined} />
+          <CampaignResolutionLatest ledger={resolutionLedger} />
           <StrategicDecisionQueue
             command={viewModel}
             pacing={pacing.viewModel}
@@ -408,7 +437,7 @@ export function CommandDeckShell({ viewModel, commandBrief, control, map, inspec
         </aside>
         <section className={styles.commandDeckMapArea} data-testid="command-deck-map-area" tabIndex={-1}>
           {map}
-          {!blockingOverlayActive && transitionVisible && <CampaignTransitionTheatre presentation={theatre.presentation} commandBrief={brief} headingRef={theatreHeadingRef} onSkip={theatre.skip} onDismiss={() => {
+          {!blockingOverlayActive && transitionVisible && <CampaignTransitionTheatre presentation={theatre.presentation} ledger={resolutionLedger} headingRef={theatreHeadingRef} onSkip={theatre.skip} onDismiss={() => {
             theatre.dismiss();
             window.requestAnimationFrame(() => theatreTriggerRef.current?.focus());
           }} />}
@@ -458,5 +487,6 @@ export function CommandDeckShell({ viewModel, commandBrief, control, map, inspec
       {overlay}
       {toasts}
     </main>
+    </CampaignResolutionLedgerProvider>
   );
 }

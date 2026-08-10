@@ -75,6 +75,7 @@ try {
       const lifecycleStates = [];
       const transitionLayouts = [];
       const rhythmAutomation = [];
+      const resolutionConsistency = [];
       if (width === 1440) await page.route("**/api/players/join", async (route) => { await new Promise((resolve) => setTimeout(resolve, 500)); await route.continue(); });
       await page.goto(`${baseUrl}/?runtime=server`, { waitUntil: "networkidle" });
       const frontDoor = page.getByTestId("campaign-front-door");
@@ -204,6 +205,13 @@ try {
           lifecycleStates.push(await page.getByTestId("strategic-action-bar").getAttribute("data-action-lifecycle"));
           currentQaStep = "1440 transition theatre";
           await page.waitForFunction(() => document.querySelector("[data-testid='campaign-transition-theatre']")?.getAttribute("data-transition-phase") === "immediate-result", undefined, { timeout: 15_000 });
+          resolutionConsistency.push(await page.evaluate(() => {
+            const values = (selector) => Object.fromEntries(Array.from(document.querySelectorAll(`${selector} [data-resolution-field]`)).map((node) => [node.getAttribute("data-resolution-field"), node.querySelector("b")?.textContent || ""]));
+            const latest = values("[data-testid='command-deck-feedback']");
+            const theatre = values("[data-testid='campaign-transition-resolution']");
+            const liveOwners = Array.from(document.querySelectorAll("[aria-live]")).filter((node) => node.querySelector("[data-testid='campaign-transition-resolution']") || node.matches("[data-testid='campaign-transition-resolution']")).length;
+            return { latest, theatre, equal: JSON.stringify(latest) === JSON.stringify(theatre), liveOwners };
+          }));
           await page.waitForFunction(() => ["world-consequence", "next-objective"].includes(document.querySelector("[data-testid='campaign-transition-theatre']")?.getAttribute("data-transition-phase") || ""), undefined, { timeout: 15_000 });
           if (await page.getByTestId("campaign-transition-theatre").getAttribute("data-transition-phase") === "world-consequence") {
             await page.waitForFunction(() => document.querySelector("[data-testid='campaign-transition-theatre']")?.getAttribute("data-transition-phase") === "next-objective", undefined, { timeout: 15_000 });
@@ -324,9 +332,14 @@ try {
         const shell = document.querySelector("[data-testid='command-deck-shell']");
         const objective = document.querySelector("[data-testid='strategic-pacing']");
         const currentAction = document.querySelector("[data-testid='strategic-action-bar']");
+        const latestResolution = document.querySelector("[data-testid='command-deck-feedback']");
         const objectiveRect = objective?.getBoundingClientRect();
         const mapRect = map?.getBoundingClientRect();
         const currentActionRect = currentAction?.getBoundingClientRect();
+        const latestResolutionRect = latestResolution?.getBoundingClientRect();
+        const chainValues = (selector) => Object.fromEntries(Array.from(document.querySelectorAll(`${selector} [data-resolution-field]`)).map((node) => [node.getAttribute("data-resolution-field"), node.querySelector("b")?.textContent || ""]));
+        const latestChain = chainValues("[data-testid='command-deck-feedback']");
+        const journalChain = chainValues("[data-testid='campaign-resolution-entry']:first-of-type");
         return {
           viewport: window.innerWidth,
           overflow: document.documentElement.scrollWidth - window.innerWidth,
@@ -353,7 +366,8 @@ try {
           ,caseRhythmRouteOpen: document.querySelector("[data-testid='certified-case-rhythm'] details")?.hasAttribute("open") || false
           ,caseRhythmManualFirst: /manual first/i.test(document.querySelector("[data-testid='certified-case-rhythm']")?.textContent || "")
            ,objectiveBeforeAction: Boolean(objectiveRect && currentActionRect && objectiveRect.top < currentActionRect.top)
-           ,currentActionBeforeMap: Boolean(currentActionRect && mapRect && currentActionRect.top < mapRect.top)
+           ,currentActionBeforeLatest: Boolean(currentActionRect && latestResolutionRect && currentActionRect.top < latestResolutionRect.top)
+           ,latestBeforeMap: Boolean(latestResolutionRect && mapRect && latestResolutionRect.top < mapRect.top)
           ,pacingPhase: document.querySelector("[data-testid='strategic-pacing']")?.getAttribute("data-pacing-phase") || ""
           ,campaignPulseText: document.querySelector("[data-testid='command-deck-pulse']")?.textContent || ""
           ,strategicWhyNowText: document.querySelector("[data-testid='strategic-why-now']")?.textContent || ""
@@ -361,6 +375,7 @@ try {
           ,campaignPacingText: document.querySelector("[data-testid='campaign-pacing']")?.textContent || ""
           ,campaignPacingPrimaryCount: document.querySelectorAll("[data-testid='campaign-pacing'] button").length
           ,feedbackState: document.querySelector("[data-testid='command-deck-feedback']")?.getAttribute("data-feedback-state") || ""
+          ,feedbackAriaLive: document.querySelector("[data-testid='command-deck-feedback']")?.getAttribute("aria-live") || ""
           ,feedbackVisible: Boolean(document.querySelector("[data-testid='command-deck-feedback']"))
           ,encounterVisible: Boolean(document.querySelector("[data-testid='character-encounter']"))
           ,encounterPosture: document.querySelector("[data-testid='character-encounter']")?.getAttribute("data-posture") || ""
@@ -371,6 +386,10 @@ try {
           ,transitionSamples: window.__detectiveTransitionSamples || []
           ,feedbackLayerCount: document.querySelectorAll("[data-testid='command-deck-feedback'] > span").length
           ,feedbackLabels: Array.from(document.querySelectorAll("[data-testid='command-deck-feedback'] > span > small")).map((node) => node.textContent || "")
+          ,feedbackValues: latestChain
+          ,resolutionLedgerCount: document.querySelectorAll("[data-testid='campaign-resolution-entry']").length
+          ,resolutionLedgerMatchesLatest: !Object.keys(journalChain).length || JSON.stringify(latestChain) === JSON.stringify(journalChain)
+          ,resolutionRawLeak: /\b(?:npc|case|event|source|location|institution|resource|evidence|scene|session|character)-[a-z0-9-]*\d[a-z0-9-]*\b|culpritId|victimId|hiddenTruth|rawBody|sourceId|[A-Za-z]:[\\/]/i.test(document.querySelector("[data-testid='command-deck-feedback']")?.textContent || "")
           ,rawLeak: /\b(?:npc|case|event|source|location|institution|resource|evidence|scene|session|character)-[a-z0-9-]*\d[a-z0-9-]*\b/i.test(document.body.innerText)
           ,rawLeakSurfaces: Array.from(new Set(Array.from(document.querySelectorAll("[data-testid], section, article, aside, .notebookMeta, .notebookTags, h3, p")).filter((node) => /\b(?:npc|case|event|source|location|institution|resource|evidence|scene|session|character)-[a-z0-9-]*\d[a-z0-9-]*\b/i.test(node.textContent || "")).map((node) => node.getAttribute("data-testid") || node.className || node.tagName).filter((value) => typeof value === "string"))).slice(-10)
           ,tileSample: document.querySelector(".pixelMap .mapTile") ? {
@@ -388,6 +407,7 @@ try {
       metrics.lifecycleStates = lifecycleStates;
       metrics.transitionLayouts = transitionLayouts;
       metrics.rhythmAutomation = rhythmAutomation;
+      metrics.resolutionConsistency = resolutionConsistency;
       observations.push(metrics);
       if (metrics.overflow > 1) failures.push(`${width}px document overflowed by ${metrics.overflow}px.`);
       if (!metrics.agenda || !metrics.context) failures.push(`${width}px missing agenda/context surface.`);
@@ -395,8 +415,10 @@ try {
       if (metrics.currentObjectiveCount !== 1 || !/current objective/i.test(metrics.currentObjectiveText)) failures.push(`${width}px did not expose exactly one canonical Current Objective.`);
       if (metrics.caseRhythmCount !== 1 || metrics.caseRhythmBeatCount !== 4 || metrics.caseRhythmCurrentBeatCount !== 1) failures.push(`${width}px Certified Case Rhythm did not expose four beats with one current beat.`);
       if (metrics.caseRhythmRawLeak) failures.push(`${width}px Certified Case Rhythm exposed an internal identifier or hidden field.`);
-      if (metrics.feedbackLayerCount !== 3 || !["Immediate Result", "World Consequence", "Next Objective"].every((label) => metrics.feedbackLabels.includes(label))) failures.push(`${width}px three-layer Resolve feedback is missing or incomplete.`);
-      if (!metrics.feedbackVisible || !["idle", "available", "selected", "resolving", "updated", "blocked", "completed"].includes(metrics.feedbackState)) failures.push(`${width}px presentation feedback state is missing or invalid.`);
+      if (metrics.feedbackLayerCount !== 4 || !["Result", "World Change", "Objective Progress", "Next Action"].every((label) => metrics.feedbackLabels.includes(label))) failures.push(`${width}px four-stage Resolution Ledger is missing or incomplete.`);
+      if (!metrics.feedbackVisible || !["idle", "resolving", "recorded", "blocked", "completed"].includes(metrics.feedbackState)) failures.push(`${width}px Resolution Ledger state is missing or invalid.`);
+      if (metrics.feedbackAriaLive) failures.push(`${width}px Server Latest Resolution competed with Theatre live-region ownership.`);
+      if (metrics.resolutionRawLeak) failures.push(`${width}px Latest Resolution exposed an internal identifier, private field, or path.`);
       if (!metrics.campaignPulseText.includes("Town Reckoning")) failures.push(`${width}px Town Pulse does not expose the bound safe campaign label.`);
       if (metrics.campaignPanelText && !metrics.campaignPanelText.includes("Civic records, merchant debt, and institutional pressure")) failures.push(`${width}px Campaign Journey does not expose the safe authored theme.`);
       if (width >= 1200 && metrics.strategicWhyNowText.replace(/why now/i, "").trim().length < 12) failures.push(`${width}px Command Deck is missing its campaign-specific Why Now context.`);
@@ -425,10 +447,12 @@ try {
         if (sample.settleMs > settleBudget) failures.push(`${width}px ${sample.stage} exceeded the ${settleBudget}ms automated settle budget (${sample.settleMs}ms).`);
       }
       if (width >= 1200 && !["action-resolving", "immediate-result", "next-objective"].every((phase) => metrics.transitionPhases.includes(phase))) failures.push(`${width}px Campaign Transition Theatre did not expose Resolve, Result, and Next phases.`);
+      if (width >= 1200 && (!metrics.resolutionConsistency.length || metrics.resolutionConsistency.some((sample) => !sample.equal || sample.liveOwners !== 1))) failures.push(`${width}px Transition and Latest Resolution did not share one canonical four-stage chain and one aria-live owner.`);
+      if (width >= 1200 && metrics.resolutionLedgerCount && !metrics.resolutionLedgerMatchesLatest) failures.push(`${width}px Journal and Latest Resolution did not render identical canonical chain text.`);
       if (metrics.transitionSamples.some((sample) => ["action", "transition"].includes(sample.dominant) && (sample.encounterVisible || sample.frontsOpen || sample.contextInteractive || sample.notificationsVisible))) failures.push(`${width}px a lower-priority overlay competed with the Campaign Transition Theatre.`);
       if (width >= 1200 && !metrics.audioCues.some((cue) => cue?.cue === "resolve" || cue?.cue === "confirm")) failures.push(`${width}px did not emit a browser-local resolve/confirm audio cue hook.`);
       if (width === 390) {
-        if (!metrics.objectiveBeforeAction || !metrics.currentActionBeforeMap) failures.push("390px order is not Current Objective -> Current Action -> Map.");
+        if (!metrics.objectiveBeforeAction || !metrics.currentActionBeforeLatest || !metrics.latestBeforeMap) failures.push("390px order is not Current Objective -> Current Action -> Latest Resolution -> Map.");
         await page.emulateMedia({ reducedMotion: "reduce" });
         const reducedMotionDuration = await page.getByTestId("command-deck-feedback").evaluate((node) => getComputedStyle(node).animationDuration);
         if (Number.parseFloat(reducedMotionDuration) > 0.01) failures.push(`390px presentation feedback ignored prefers-reduced-motion.`);
@@ -474,12 +498,17 @@ try {
       overflow: document.documentElement.scrollWidth - window.innerWidth,
       studyRecorder: document.body.innerText.includes("Campaign Study Recorder"),
       theatreCount: document.querySelectorAll("[data-testid='campaign-transition-theatre']").length,
+      resolutionFieldCount: document.querySelectorAll("[data-testid='command-deck-feedback'] > span").length,
+      worldChange: document.querySelector("[data-testid='command-deck-feedback'] [data-resolution-field='worldChange'] b")?.textContent || "",
+      resolutionAriaLive: document.querySelector("[data-testid='command-deck-feedback']")?.getAttribute("aria-live") || "",
       storageLength: localStorage.length
     }));
     if (apiRequests.length) failures.push(`Static Command Deck requested ${apiRequests.join(", ")}.`);
     if (staticState.overflow > 1) failures.push(`Static 390px overflowed by ${staticState.overflow}px.`);
     if (staticState.studyRecorder) failures.push("Static runtime displayed Study Recorder.");
     if (staticState.theatreCount) failures.push("Static runtime rendered a persistent Campaign Transition Theatre.");
+    if (staticState.resolutionFieldCount !== 4 || staticState.worldChange !== "No persistent world change") failures.push("Static runtime did not expose the safe four-stage Ledger boundary.");
+    if (staticState.resolutionAriaLive !== "polite") failures.push("Static Latest Resolution did not own its single polite live region.");
     if (staticState.storageLength) failures.push("Static Command Deck wrote localStorage.");
     await staticPage.close();
   } finally {

@@ -63,7 +63,7 @@ const [panel, page, deckComponent, deckCss, deckResponsiveCss, pulseCss, pacingC
 const deckCssBundle = `${deckCss}\n${deckResponsiveCss}`;
 assert.match(deckComponent, /import responsiveStyles from "\.\/CommandDeckShell\.responsive\.module\.css"/);
 assert.match(deckComponent, /commandDeckShell:\s*`\$\{coreStyles\.commandDeckShell\}\s+\$\{responsiveStyles\.commandDeckShell\}`/);
-assert.match(deckComponent, /StrategicPacingSurface[\s\S]*StrategicActionBar[\s\S]*StrategicDecisionQueue/, "objective, action, then optional queue share the Agenda hierarchy");
+assert.match(deckComponent, /StrategicPacingSurface[\s\S]*StrategicActionBar[\s\S]*CampaignResolutionLatest[\s\S]*StrategicDecisionQueue/, "objective, action, latest resolution, then optional queue share the Agenda hierarchy");
 
 assert.equal((panel.match(/data-testid="world-campaign-current-action"/g) || []).length, 1, "World Campaign owns one Current Action marker");
 assert.match(panel, /data-testid="world-campaign-focus"/);
@@ -85,7 +85,8 @@ for (const [file, source] of [["world presentation", presentation], ["replay dri
 assert.match(pacingCss, /@media\s*\(max-width:\s*520px\)[\s\S]*?\.surface\s*\{[^}]*order:\s*0/s, "Current Objective is first on compact layout");
 assert.match(pacingCss, /forecastContext/);
 assert.match(deckCssBundle, /strategic-action-bar[^}]*order:\s*1/s, "Current Action follows Current Objective on compact layout");
-assert.match(deckCssBundle, /\.commandDeckMapArea\s*\{\s*(?:display:[^;]+;\s*)?order:\s*2/s, "Map follows Current Action on compact layout");
+assert.match(deckCssBundle, /command-deck-feedback[^}]*order:\s*2/s, "Latest Resolution follows Current Action on compact layout");
+assert.match(deckCssBundle, /\.commandDeckMapArea\s*\{\s*(?:display:[^;]+;\s*)?order:\s*3/s, "Map follows Latest Resolution on compact layout");
 assert.match(deckCssBundle, /data-testid="strategic-decision-queue"/);
 assert.match(page, /useManualReplayDrillActions/);
 assert.match(page, /useWorldCampaignPresentation/);

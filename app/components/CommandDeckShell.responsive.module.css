@@ -70,9 +70,10 @@
 
   .commandDeckAgendaRail { display: contents; }
   .commandDeckAgendaRail > :global([data-testid="strategic-action-bar"]) { order: 1; }
-  .commandDeckMapArea { order: 2; }
-  .commandDeckAgendaRail > :global([data-testid="strategic-decision-queue"]) { order: 3; }
-  .commandDeckLegacyControl { order: 4; }
+  .commandDeckAgendaRail > :global([data-testid="command-deck-feedback"]) { order: 2; }
+  .commandDeckMapArea { order: 3; }
+  .commandDeckAgendaRail > :global([data-testid="strategic-decision-queue"]) { order: 4; }
+  .commandDeckLegacyControl { order: 5; }
   .commandDeckContextRail {
     position: fixed;
     right: 0;
@@ -249,9 +250,10 @@
   .commandDeckContextRail { width: 100%; grid-column: auto; grid-row: auto; overflow: visible; }
   .commandDeckAgendaRail { display: contents; }
   .commandDeckAgendaRail > :global([data-testid="strategic-action-bar"]) { order: 1; }
-  .commandDeckMapArea { display: flex; order: 2; flex-direction: column; }
-  .commandDeckAgendaRail > :global([data-testid="strategic-decision-queue"]) { order: 3; }
-  .commandDeckLegacyControl { order: 4; }
+  .commandDeckAgendaRail > :global([data-testid="command-deck-feedback"]) { order: 2; }
+  .commandDeckMapArea { display: flex; order: 3; flex-direction: column; }
+  .commandDeckAgendaRail > :global([data-testid="strategic-decision-queue"]) { order: 4; }
+  .commandDeckLegacyControl { order: 5; }
   .commandDeckMapArea > :global(.mapStage) { height: auto; min-height: 520px; }
 
   .commandDeckContextRail {

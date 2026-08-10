@@ -400,6 +400,7 @@ type ManualTheoryDrillSummary = {
 export function PlayShell({
   commandDeck,
   commandBrief,
+  guidedJournal,
   control,
   map,
   inspector,
@@ -413,6 +414,7 @@ export function PlayShell({
 }: {
   commandDeck?: StrategicCommandViewModel;
   commandBrief?: CampaignCommandBrief;
+  guidedJournal?: GuidedStepJournalEntry[];
   control: ReactNode;
   map: ReactNode;
   inspector: ReactNode;
@@ -425,7 +427,7 @@ export function PlayShell({
   onStrategicFrontFocus?: (locationName: string) => void;
 }) {
   if (commandDeck) {
-    return <CommandDeckShell viewModel={commandDeck} commandBrief={commandBrief} control={control} map={map} inspector={inspector} overlay={overlay} toasts={toasts} blockingOverlayActive={blockingOverlayActive} toastVisible={toastVisible} onContextAction={onContextAction} onStrategicAction={onStrategicAction} onStrategicFrontFocus={onStrategicFrontFocus} />;
+    return <CommandDeckShell viewModel={commandDeck} commandBrief={commandBrief} guidedJournal={guidedJournal} control={control} map={map} inspector={inspector} overlay={overlay} toasts={toasts} blockingOverlayActive={blockingOverlayActive} toastVisible={toastVisible} onContextAction={onContextAction} onStrategicAction={onStrategicAction} onStrategicFrontFocus={onStrategicFrontFocus} />;
   }
   return (
     <main className="townShell">

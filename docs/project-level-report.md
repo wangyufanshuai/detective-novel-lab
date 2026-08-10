@@ -1245,6 +1245,16 @@ The responsive audit found that the 390px District Front failure was caused by t
 
 Comparative interpretation: v9.2 borrows Civilization VI's single current objective and compact map-context hierarchy, Endless Sky's distinction between selected and available mission context, and Wesnoth/Unciv's separation of objective presentation from authoritative resolution. It retains a stronger detective-specific certified route and public-safe audit boundary. The remaining product gap is not another world-state mechanism; it is authored breadth, transition/audio polish, localization, accessibility field validation, and human-tested pacing.
 
+### v9.3: Command Resolution & Consequence Ledger
+
+v9.3 closes the remaining explanation gap after an action resolves. A pure `Campaign Resolution Ledger` converts existing safe state into one fixed chain—Result, World Change, Objective Progress, and Next Action—and bounds the visible history to six deterministic, semantically deduplicated entries. It reuses the existing five-outcome Strategic Pacing memory and Guided Journal; resolving state is never archived, no timestamp or storage key is introduced, and the current Next Action is sourced from the same Campaign Command Brief that owns the rest of the interface hierarchy.
+
+One shared chain component now supplies Command Deck Latest Resolution, Campaign Transition Theatre, and the Guided Journal. The old Action Bar three-layer feedback and Objective-level recent-outcome duplicate were removed. Current Objective and Current Action remain first; Latest Resolution is inserted before Map on compact layouts. Browser QA verifies identical four-field text across Latest, Theatre, and Journal, exactly one live-region owner, stable keyboard/focus behavior, reduced motion, visible 44px Theatre controls, zero rectangle overlap with Current Action, and no horizontal overflow at 390/768/1440.
+
+The implementation is deliberately conservative about causality. Ordinary Join, Search, Question, and Challenge records state `No persistent world change`; existing player-driven world records may show their public delta; Static always uses the no-persistence fallback. Unit coverage includes five Ledger states, wrong and accepted theories, World Lead/Directive/Offer/Recovery, successful case transition, Campaign completion, six-entry bounds, deterministic de-duplication, input immutability, source budgets, and identifier/path/private-field stripping.
+
+Measured architecture is `app/page.tsx` 981 / 1,100 lines; Ledger model/hook/surface/CSS 244 / 350, 22 / 100, 108 / 180, and 186 / 260; Command Deck shell 493 / 500; runtime JSON 2,815,674 / 4,000,000 bytes; API routes fixed at 125; and sampled tick p95 9.55 / 250 ms. No endpoint, payload, runtime state, SQLite/content/public schema, event, tick, ranking modifier, world rule, public artifact, background queue, or proof card is added. The next product release should consolidate the final detective workspace rather than add another simulation consequence. v6.2 remains **instrumentation ready**, not Human Gate passed.
+
 Recommended future release scope for v6.0 or later:
 
 - Include this report and any small documentation link updates.

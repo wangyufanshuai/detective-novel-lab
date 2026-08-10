@@ -104,8 +104,10 @@ try {
         const queue = document.querySelector("[data-testid='strategic-decision-queue']");
         const feedback = document.querySelector("[data-testid='command-deck-feedback']");
         const actionBar = document.querySelector("[data-testid='strategic-action-bar']");
+        const latestResolution = document.querySelector("[data-testid='command-deck-feedback']");
         const mapRect = map?.getBoundingClientRect();
         const actionRect = actionBar?.getBoundingClientRect();
+        const latestResolutionRect = latestResolution?.getBoundingClientRect();
         const primaryRect = primary[0]?.getBoundingClientRect();
         const resourceTargets = Array.from(document.querySelectorAll("[data-testid='strategic-resource-ribbon'] summary"))
           .map((node) => node.getBoundingClientRect())
@@ -120,7 +122,8 @@ try {
           mapTop: mapRect?.top || 0,
           mapBottom: mapRect?.bottom || 0,
           objectiveBeforeAction: Boolean(objective && actionRect && objective.top < actionRect.top),
-          actionBeforeMap: Boolean(actionRect && mapRect && actionRect.top < mapRect.top),
+          actionBeforeLatest: Boolean(actionRect && latestResolutionRect && actionRect.top < latestResolutionRect.top),
+          latestBeforeMap: Boolean(latestResolutionRect && mapRect && latestResolutionRect.top < mapRect.top),
           primaryCount: primary.length,
           secondaryCount: secondary.length,
           primaryHeight: primaryRect?.height || 0,
@@ -146,11 +149,11 @@ try {
       if (width >= 1200 && metrics.visibleResourceCount !== 8) failures.push(`${width}px resource ribbon did not expose all eight desktop summaries.`);
       if (width < 1200 && metrics.allResourcesHeight < 44) failures.push(`${width}px All Resources control is below 44px or hidden.`);
       if (metrics.queueState !== "active" || metrics.decisionCount < 1 || metrics.currentDecisionCount !== 1) failures.push(`${width}px deterministic decision queue is missing its single current decision.`);
-      if (metrics.feedbackLayers !== 3) failures.push(`${width}px action feedback does not contain Immediate, World, and Next layers.`);
+      if (metrics.feedbackLayers !== 4) failures.push(`${width}px action feedback does not contain Result, World Change, Objective Progress, and Next Action layers.`);
       if (!/ready|blocked|unavailable/.test(metrics.advanceState)) failures.push(`${width}px Advance Town state is missing.`);
       if (metrics.rawLeak) failures.push(`${width}px strategic surfaces exposed a raw identifier or hidden authority token.`);
       if (width >= 1200 && metrics.mapWidth / Math.max(metrics.shellWidth, 1) < 0.55) failures.push(`${width}px map area is below the 55% desktop budget.`);
-      if (width === 390 && (!metrics.objectiveBeforeAction || !metrics.actionBeforeMap || metrics.mapTop >= 650 || metrics.mapBottom <= 600)) failures.push("390px hierarchy is not Current Objective -> Current Action -> Map.");
+      if (width === 390 && (!metrics.objectiveBeforeAction || !metrics.actionBeforeLatest || !metrics.latestBeforeMap || metrics.mapTop >= 820 || metrics.mapBottom <= 760)) failures.push("390px hierarchy is not Current Objective -> Current Action -> Latest Resolution -> Map.");
 
       await page.emulateMedia({ reducedMotion: "reduce" });
       const motion = await page.getByTestId("strategic-primary-action").evaluate((node) => ({

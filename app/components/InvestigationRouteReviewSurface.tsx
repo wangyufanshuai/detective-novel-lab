@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { CommandDeckCollapsible } from "@/app/components/CommandDeckShell";
+import { CampaignResolutionJournal } from "@/app/components/CampaignResolutionLedger";
 import { CertifiedCaseRhythmSurface } from "@/app/components/CertifiedCaseRhythmSurface";
 import type { CampaignPacingViewModel } from "@/app/campaign/campaign-pacing-model";
 import type { CertifiedCaseRhythmViewModel } from "@/app/campaign/certified-case-rhythm-model";
@@ -120,6 +121,7 @@ function GuidedStepJournalPanel({ entries, campaignPacing }: { entries: GuidedSt
         <div><span>Guided Step Journal</span><strong>{entries.length ? "Session route explanation" : "No guided steps run yet"}</strong></div>
         <b>{reviewUnlocked ? "review unlocked" : "session-only"}</b>
       </div>
+      <CampaignResolutionJournal />
       <div className="guidedStepJournalMetrics">
         <span><b>{completedCount}</b>completed entries</span>
         <span><b>{lastStatus}</b>last status</span>

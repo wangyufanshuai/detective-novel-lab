@@ -6,7 +6,7 @@
   display: grid;
   gap: 9px;
   width: min(620px, calc(100% - 24px));
-  max-height: min(46%, 360px);
+  max-height: min(68%, 520px);
   padding: 12px 14px;
   overflow: auto;
   overscroll-behavior: contain;
@@ -58,7 +58,7 @@
 .phaseRail li[data-active="true"] { color: var(--deck-warning); }
 .phaseRail li[data-active="true"] span { background: var(--deck-warning); box-shadow: 0 0 12px color-mix(in srgb, var(--deck-warning) 50%, transparent); }
 
-.content { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(190px, .75fr); gap: 14px; align-items: start; }
+.content { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; align-items: start; }
 .copy h2 { margin: 0; color: #f8fbff; font-size: clamp(15px, 1.45vw, 21px); line-height: 1.18; text-wrap: balance; }
 .copy h2:focus-visible { outline: 3px solid #fff0aa; outline-offset: 3px; }
 .copy p { margin: 0; color: #c5d4dc; font-size: 10px; line-height: 1.45; }
@@ -68,7 +68,17 @@
 .forecast dt { color: #7f9aa8; font-size: 7px; font-weight: 900; }
 .forecast dd { margin: 0; color: #d8e4e9; font-size: 8px; line-height: 1.35; }
 
-.actions { align-items: center; justify-content: flex-end; gap: 8px; min-height: 32px; }
+.actions {
+  position: sticky;
+  bottom: -12px;
+  z-index: 2;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-height: 52px;
+  padding: 8px 0;
+  background: linear-gradient(180deg, rgba(6, 12, 18, 0.72), rgba(6, 12, 18, 0.99) 28%);
+}
 .actions button { min-height: 44px; padding: 8px 12px; border: 1px solid #55717e; border-radius: 3px; color: #d6e4eb; background: #0d1a22; font: inherit; font-size: 8px; font-weight: 900; cursor: pointer; }
 .actions button:hover { border-color: var(--deck-accent); color: #fff; }
 .actions button:focus-visible { outline: 3px solid #fff0aa; outline-offset: 2px; }
@@ -84,7 +94,7 @@
 @keyframes theatre-spin { to { transform: rotate(360deg); } }
 
 @media (max-width: 900px) {
-  .theatre { top: 8px; width: calc(100% - 16px); max-height: 52%; padding: 10px 11px; }
+  .theatre { top: 8px; width: calc(100% - 16px); max-height: min(72vh, 520px); padding: 10px 11px; }
   .content { grid-template-columns: minmax(0, 1fr); gap: 8px; }
   .forecast { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

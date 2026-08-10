@@ -200,12 +200,6 @@ export const StrategicActionBar = memo(function StrategicActionBar({ command, pa
   const advanceAction = pacing.advanceState.action;
   const advanceAlreadyVisible = Boolean(advanceAction && (primary?.kind === advanceAction.kind || secondary.some((item) => item.kind === advanceAction.kind)));
   const resolving = pacing.actionLifecycle?.state === "resolving" || command.presentationFeedback.state === "resolving";
-  const latestOutcome = pacing.phase === "resolve" ? pacing.recentSafeOutcomes[0] : undefined;
-  const feedback = latestOutcome ? [
-    { label: "Immediate Result", detail: latestOutcome.immediateResult },
-    { label: "World Consequence", detail: latestOutcome.worldConsequence },
-    { label: "Next Objective", detail: latestOutcome.nextObjective }
-  ] : Object.values(command.outcomeFeedback);
   return (
     <footer
       className={`${styles.actionBar} ${compact ? styles.compact : ""}`}
@@ -216,16 +210,6 @@ export const StrategicActionBar = memo(function StrategicActionBar({ command, pa
       data-action-lifecycle={pacing.actionLifecycle?.state || "idle"}
       data-pacing-phase={pacing.phase}
     >
-      <section
-        className={styles.outcomeFeedback}
-        data-testid="command-deck-feedback"
-        data-feedback-state={pacing.actionLifecycle?.state || command.presentationFeedback.state}
-        data-feedback-tone={command.presentationFeedback.tone}
-        aria-label="Latest strategic feedback"
-        aria-live="polite"
-      >
-        {feedback.map((item) => <span key={item.label}><small>{item.label}</small><b>{item.detail}</b></span>)}
-      </section>
       <section className={styles.actionContext} aria-label="Current action forecast">
         <span><small>BENEFIT</small><b>{pacing.safeForecast.immediateBenefit}</b></span>
         <span><small>COST / BOUNDARY</small><b>{pacing.safeForecast.visibleCost}</b></span>

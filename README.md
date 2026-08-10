@@ -36,6 +36,8 @@ DeepSeek is used only for NPC surface dialogue and optional solution prose. It d
 - v8.9 adds a **Certified Case Rhythm** over the existing investigation route. Intake, Fieldwork, Deduction, and Review now share the one Current Objective and one Current Action; matching map context executes the established adapter directly, while mismatched context focuses the certified target without filling evidence or theory. Observe remains the legal pre-Search preparation, rejected theories show one minimum safe recovery gap, and the full seven-step route is default-closed. No endpoint, payload, runtime field, truth rule, proof card, or candidate influence changed.
 - v9.0 adds **Authored Campaign Route Variants** without adding another world mechanic. Town Reckoning, Harbor Testimony, and Clinic Headlines each offer an original and counter route, expanding the catalog from 9 to 18 authored treatments while every playthrough remains exactly three cases. The chosen route is locked before the first successful extraction, uses route-specific case-family preferences, Search/Question/Challenge rhythm, occupational pressure, causal bridges, and a distinct Finale, then continues through the same truth, Route Certificate, evidence coverage, judgement, and NPC legal-action authority.
 - v9.1 completes **Architecture Headroom Recovery** as a behavior-preserving ownership release. Request-free workspace presentation and certified-case audit models leave the root page below 1,100 lines, while Command Deck responsive rules and Campaign Front Door route/preview rules now have independent CSS budgets. Requests, action adapters, copy, DOM order, runtime authority, and Static zero-API behavior remain unchanged; v6.2 is still instrumentation ready rather than Human Gate passed.
+- v9.2 adds **Campaign Command Clarity** through one shared Current Objective -> Current Action -> Map Focus -> Context brief. Command Deck, Map Intel, World Campaign, and Transition Theatre now reuse its public-safe priority and copy; District Fronts remain selection-only, Static remains zero API/storage, and no world or case authority changes.
+- v9.3 adds the **Command Resolution & Consequence Ledger**: Result -> World Change -> Objective Progress -> Next Action is now one canonical four-stage chain shared by Latest Resolution, Transition Theatre, and Guided Journal. History reuses existing session-local safe outcomes, is deduplicated and capped at six entries, and adds no endpoint, runtime state, event, tick, storage key, ranking modifier, or proof card.
 - Project-level v3.6/v3.7 assessment and roadmap: [docs/project-level-report.md](docs/project-level-report.md).
 
 ## Try In 3 Modes
@@ -801,9 +803,24 @@ npm run qa:static-browser -- --json
 npm run quality:performance-budget -- --json
 ```
 
+## v9.3 Command Resolution & Consequence Ledger
+
+v9.3 unifies post-action explanation into one deterministic, public-safe causal chain: `Result -> World Change -> Objective Progress -> Next Action`. The canonical Ledger derives from the existing Strategic Command feedback, Campaign Command Brief, Transition Theatre presentation, five-item safe outcome memory, and session-local Guided Journal. It adds no second event log or persistence layer: resolving state is transient, completed history is deduplicated and capped at six entries, and the current Next Action always comes from the same Command Brief used by the rest of the Command Deck.
+
+Command Deck, Campaign Transition Theatre, and the Guided Journal now render the same `CampaignResolutionChain` rather than rewriting Immediate/World/Next copy independently. Current Objective and Current Action retain priority; Latest Resolution follows them before the map on 390px. The Theatre uses the same chain with exactly one `aria-live` owner, keeps its controls visible in a bounded sticky footer, and scrolls into view on compact screens. Static derives the same local four-stage explanation but always reports `No persistent world change`, exposes no Server persistence controls, writes no Study state, and makes zero `/api/*` requests.
+
+The implementation remains presentation-only. It does not change endpoint ownership, payloads, runtime JSON, tick/event behavior, candidate ranking, truth, evidence coverage, Route Certificate, judgement, NPC legal actions, or world consequence authority. Measured boundaries are `page.tsx` 981 / 1,100 lines; Ledger model/hook/surface/CSS 244 / 350, 22 / 100, 108 / 180, and 186 / 260; Command Deck shell 493 / 500; runtime JSON 2,815,674 / 4,000,000 bytes; API routes fixed at 125; and sampled tick p95 9.55 / 250 ms. v6.2 remains **instrumentation ready**, not Human Gate passed.
+
+```powershell
+npm.cmd run test:campaign-resolution-ledger
+npm.cmd run test:campaign-transition
+npm.cmd run qa:command-deck -- --json
+npm.cmd run quality:performance-budget -- --json
+```
+
 ## Roadmap
 
-- Public hosted Static Demo.
-- Additional Campaign families and authored routes beyond the current 18 treatments.
-- Optional solver integration for stricter travel and opportunity constraints.
-- Community case gallery.
+- v9.4 Final Detective Workspace: consolidate evidence, testimony, contradictions, theory, Recovery, and Source Review.
+- v9.5 Campaign Content Completion: reach four Campaign families, eight routes, and 24 authored treatments using existing authority.
+- v9.6 Accessibility, localization, save recovery, mobile, and performance hardening.
+- v9.7 Release Candidate freeze, followed by the automation-validated v10.0 release.

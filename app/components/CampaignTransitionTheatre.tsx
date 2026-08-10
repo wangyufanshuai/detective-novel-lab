@@ -1,11 +1,12 @@
 import type { RefObject } from "react";
 import type { CampaignBeatPresentation } from "@/app/campaign/campaign-transition-model";
-import type { CampaignCommandBrief } from "@/app/campaign/campaign-command-brief-model";
+import type { CampaignResolutionLedger } from "@/app/campaign/campaign-resolution-ledger-model";
+import { CampaignResolutionChain } from "./CampaignResolutionLedger";
 import styles from "./CampaignTransitionTheatre.module.css";
 
-export function CampaignTransitionTheatre({ presentation, commandBrief, headingRef, onSkip, onDismiss }: {
+export function CampaignTransitionTheatre({ presentation, ledger, headingRef, onSkip, onDismiss }: {
   presentation: CampaignBeatPresentation;
-  commandBrief?: CampaignCommandBrief;
+  ledger: CampaignResolutionLedger;
   headingRef: RefObject<HTMLHeadingElement | null>;
   onSkip: () => void;
   onDismiss: () => void;
@@ -18,7 +19,7 @@ export function CampaignTransitionTheatre({ presentation, commandBrief, headingR
       data-transition-phase={presentation.phase}
       data-transition-kind={presentation.kind}
       data-transition-tone={presentation.tone}
-      data-command-brief-transition={commandBrief?.transition.state || "idle"}
+      data-resolution-ledger-status={ledger.status}
       aria-live={presentation.phase === "action-resolving" ? "polite" : "assertive"}
       aria-label="Campaign result presentation"
     >
@@ -36,21 +37,19 @@ export function CampaignTransitionTheatre({ presentation, commandBrief, headingR
       <div className={styles.content}>
         <div className={styles.copy}>
           <h2 ref={headingRef} tabIndex={-1}>{presentation.title}</h2>
-          <p>{presentation.detail}</p>
-          <strong>{presentation.supportingDetail}</strong>
+          <p>{ledger.latest.actionLabel}</p>
+          <strong>{ledger.authorityNote}</strong>
         </div>
-        {presentation.phase === "immediate-result" && <dl className={styles.forecast}>
-          <div><dt>Visible benefit</dt><dd>{presentation.benefitLabel}</dd></div>
-          <div><dt>Recorded cost</dt><dd>{presentation.costLabel}</dd></div>
-        </dl>}
-        {presentation.phase === "world-consequence" && <dl className={styles.forecast}>
-          <div><dt>World surface</dt><dd>{presentation.costLabel}</dd></div>
-          <div><dt>Still fair</dt><dd>{presentation.fairnessLabel}</dd></div>
-        </dl>}
-        {presentation.phase === "next-objective" && <dl className={styles.forecast}>
-          <div><dt>Next objective</dt><dd>{commandBrief?.nextAction || presentation.nextObjective}</dd></div>
-          <div><dt>Authority boundary</dt><dd>{presentation.fairnessLabel}</dd></div>
-        </dl>}
+        <CampaignResolutionChain
+          entry={ledger.latest}
+          testId="campaign-transition-resolution"
+          mode="theatre"
+          activeField={presentation.phase === "world-consequence"
+            ? "worldChange"
+            : presentation.phase === "next-objective"
+              ? "nextAction"
+              : "result"}
+        />
       </div>
       <footer className={styles.actions}>
         {presentation.phase === "action-resolving" ? <span className={styles.resolving}><i aria-hidden="true" />Existing handler in progress</span> : null}
