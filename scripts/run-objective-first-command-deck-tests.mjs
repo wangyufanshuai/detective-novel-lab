@@ -45,10 +45,12 @@ for (const [input, surface] of cases) {
 assert.equal(actionModel.deriveCurrentWorldAction({ session: null }).surface, "overview", "empty world context stays presentation-only overview");
 
 const read = (file) => fs.readFile(path.join(root, file), "utf8");
-const [panel, page, deckCss, pulseCss, pacingCss, presentation, drill, authoring, navigation] = await Promise.all([
+const [panel, page, deckComponent, deckCss, deckResponsiveCss, pulseCss, pacingCss, presentation, drill, authoring, navigation] = await Promise.all([
   read("app/components/WorldCampaignPanel.tsx"),
   read("app/page.tsx"),
+  read("app/components/CommandDeckShell.tsx"),
   read("app/components/CommandDeckShell.module.css"),
+  read("app/components/CommandDeckShell.responsive.module.css"),
   read("app/components/TownPulseBar.module.css"),
   read("app/components/StrategicPacingSurface.module.css"),
   read("app/hooks/useWorldCampaignPresentation.ts"),
@@ -56,6 +58,9 @@ const [panel, page, deckCss, pulseCss, pacingCss, presentation, drill, authoring
   read("app/campaign/authoring-launch-adapter.ts"),
   read("app/hooks/useInvestigationNavigationActions.ts")
 ]);
+const deckCssBundle = `${deckCss}\n${deckResponsiveCss}`;
+assert.match(deckComponent, /import responsiveStyles from "\.\/CommandDeckShell\.responsive\.module\.css"/);
+assert.match(deckComponent, /commandDeckShell:\s*`\$\{coreStyles\.commandDeckShell\}\s+\$\{responsiveStyles\.commandDeckShell\}`/);
 
 assert.equal((panel.match(/data-testid="world-campaign-current-action"/g) || []).length, 1, "World Campaign owns one Current Action marker");
 assert.match(panel, /data-testid="world-campaign-focus"/);
@@ -69,8 +74,8 @@ for (const [file, source] of [["world presentation", presentation], ["replay dri
 }
 assert.match(pacingCss, /@media\s*\(max-width:\s*520px\)[\s\S]*?\.surface\s*\{[^}]*order:\s*0/s, "Current Objective is first on compact layout");
 assert.match(pacingCss, /forecastContext/);
-assert.match(deckCss, /\.commandDeckMapArea\s*\{\s*order:\s*1/s);
-assert.match(deckCss, /data-testid="strategic-decision-queue"/);
+assert.match(deckCssBundle, /\.commandDeckMapArea\s*\{\s*order:\s*1/s);
+assert.match(deckCssBundle, /data-testid="strategic-decision-queue"/);
 assert.match(page, /useManualReplayDrillActions/);
 assert.match(page, /useWorldCampaignPresentation/);
 assert.match(page, /InvestigationGraphSurface/);
@@ -78,8 +83,9 @@ assert.match(page, /buildAuthoringRuntimeState/);
 assert.doesNotMatch(page, /commandDeckPulse|commandDeckPulseBrand|commandDeckMark/);
 
 const budgets = [
-  ["page", page, 1350],
-  ["Command Deck CSS", deckCss, 720],
+  ["page", page, 1100],
+  ["Command Deck CSS", deckCss, 560],
+  ["Command Deck responsive CSS", deckResponsiveCss, 320],
   ["Town Pulse CSS", pulseCss, 120],
   ["World Campaign presentation", presentation, 350],
   ["Manual replay drill", drill, 200],

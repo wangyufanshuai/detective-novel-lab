@@ -75,6 +75,7 @@
 }
 
 .cards {
+  composes: cards from "./CampaignFrontDoor.routes.module.css";
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
@@ -145,30 +146,8 @@
 }
 
 .routeRail {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-  margin: 0 0 14px;
+  composes: routeRail from "./CampaignFrontDoor.routes.module.css";
 }
-
-.routeRail span {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-  padding: 7px 8px;
-  border: 1px solid rgba(151, 181, 196, 0.16);
-  border-radius: 4px;
-  color: #91a6af;
-}
-
-.routeRail span[data-active="true"] {
-  border-color: rgba(209, 173, 104, 0.58);
-  background: rgba(209, 173, 104, 0.08);
-  color: #ead8ac;
-}
-
-.routeRail b { overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
-.routeRail small { color: #718a97; font-size: 8px; letter-spacing: 0.06em; text-transform: uppercase; }
 
 .card dl {
   display: grid;
@@ -277,56 +256,11 @@
 }
 
 .routeChoice {
-  display: grid;
-  grid-template-columns: minmax(220px, 0.7fr) minmax(0, 1.3fr);
-  gap: 18px;
-  align-items: center;
-  margin-top: 18px;
-  padding: 14px;
-  border: 1px solid rgba(203, 173, 111, 0.28);
-  border-radius: 6px;
-  background: rgba(11, 25, 32, 0.78);
+  composes: routeChoice from "./CampaignFrontDoor.routes.module.css";
 }
-
-.routeChoice > div { display: grid; gap: 4px; min-width: 0; }
-.routeChoice > div:first-child > span { color: #cbae70; font-size: 9px; font-weight: 900; letter-spacing: 0.14em; text-transform: uppercase; }
-.routeChoice > div:first-child > b { color: #f2e7ce; font-family: Georgia, "Times New Roman", serif; font-size: 19px; font-weight: 500; }
-.routeChoice > div:first-child > small { color: #8fa5af; font-size: 10px; line-height: 1.45; }
-.routeChoice > div:last-child { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-
-.routeChoice button {
-  display: grid;
-  gap: 3px;
-  min-width: 0;
-  min-height: 48px;
-  padding: 8px 10px;
-  border: 1px solid rgba(161, 186, 198, 0.24);
-  border-radius: 4px;
-  background: rgba(19, 35, 43, 0.85);
-  color: #aebfc6;
-  text-align: left;
-}
-
-.routeChoice button[aria-pressed="true"] { border-color: #d2ad67; background: rgba(169, 126, 57, 0.24); color: #f0dfb8; }
-.routeChoice button b { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-.routeChoice button small { color: #78909b; font-size: 9px; }
 
 .selectionSummary {
-  display: grid;
-  gap: 4px;
-  max-width: 540px;
-}
-
-.selectionSummary b {
-  color: #f2e7ce;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 20px;
-  font-weight: 500;
-}
-
-.selectionSummary small {
-  color: #8fa5af;
-  line-height: 1.45;
+  composes: selectionSummary from "./CampaignFrontDoor.routes.module.css";
 }
 
 .actions {
@@ -361,41 +295,15 @@
 }
 
 .preview {
-  margin: 12px;
-  border: 1px solid rgba(180, 153, 94, 0.34);
-  border-radius: 7px;
-  padding: 12px;
-  background: rgba(10, 23, 30, 0.82);
-  color: #dce5e8;
-  pointer-events: none;
+  composes: preview from "./CampaignFrontDoor.routes.module.css";
 }
 
 .previewHeader {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  color: #e8d9b8;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 17px;
-}
-
-.previewHeader b {
-  color: #859da8;
-  font-family: inherit;
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  composes: previewHeader from "./CampaignFrontDoor.routes.module.css";
 }
 
 .previewBoundary {
-  margin-top: 10px;
-  color: #8399a4;
-  font-size: 11px;
-}
-
-.preview .cards {
-  margin-top: 12px;
-  grid-template-columns: 1fr;
+  composes: previewBoundary from "./CampaignFrontDoor.routes.module.css";
 }
 
 @media (max-width: 900px) {

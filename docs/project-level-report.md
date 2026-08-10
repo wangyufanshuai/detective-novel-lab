@@ -1219,6 +1219,21 @@ Measured architecture is `app/page.tsx` 1,348 lines, Campaign Pacing model 307, 
 
 Comparative interpretation: v9.0 adopts the explicit route-selection and replay-contrast strengths of mature mission games without allowing route content to become a second detective authority. Authored breadth is now materially better, but the project still needs additional Campaign families, richer bespoke visual/audio assets, localization, accessibility field validation, and human-tested pacing. v6.2 remains **instrumentation ready**, not Human Gate passed.
 
+### v9.1: Architecture Headroom Recovery
+
+Implemented scope: recover composition and stylesheet headroom without changing player behavior, simulation authority, or release surfaces.
+
+- `useInvestigationWorkspacePresentation` now owns the request-free Map, Inspector, and Investigation Workspace derivations that were still assembled inside `app/page.tsx`. Stable scene, character, evidence, memory, contradiction, gap, graph, and inspector projections remain sourced from the existing controllers.
+- `useCertifiedCaseAuditModels` now owns Route Certificate, evidence notebook, truth-ledger coverage, proof tour, certified playthrough, intake, emergence trace, and Source Review derivations. It executes no investigation action and contains no request boundary.
+- `app/page.tsx` remains the composition root and preserves the existing adapter identities, setter order, JSX order, visible copy, and authority handoff. Its measured size falls from 1,348 to 976 lines against a tightened 1,100-line budget.
+- Command Deck core and compact/responsive styles have separate ownership. The component explicitly loads responsive classes after core classes, preserving the 390px Agenda Rail, map hit target, Context suspension, Theatre arbitration, keyboard path, and 44px control gate.
+- Campaign Front Door route and preview styles move into a bounded route module through CSS Modules composition. Route choice, preview semantics, Static read-only presentation, and the existing responsive layout remain unchanged.
+- Contract gates assert that both new hooks are request-free, the root and stylesheet budgets remain enforced, and presentation/navigation ownership cannot acquire `/api/*`, `fetch`, `postJson`, or `postV1` calls.
+
+Measured architecture is `app/page.tsx` 976 / 1,100 lines; workspace presentation 280 / 400; certified case audit 180 / 250; Command Deck component/core/responsive 456 / 500, 442 / 560, and 278 / 320; Campaign Front Door core/routes 340 / 360 and 117 / 160; runtime JSON 2,815,674 / 4,000,000 bytes; 125 / 130 filesystem-counted API routes; and 12.45 / 250 ms sampled tick p95. TypeScript, production build, controller/workspace/world/Campaign gates, 24-seed invariants, 18-case Campaign, API smoke, Command Deck browser QA, Campaign Front Door browser QA, and Static browser QA remain green.
+
+This release adds no endpoint, payload, runtime field, SQLite/content/public schema, event, tick, ranking modifier, world rule, public artifact, background process, or proof card. It restores room for the next product iteration while keeping the v9.0 behavioral baseline frozen. The highest-value next work is a deliberately scoped player-facing release—additional Campaign families, stronger authored transition presentation, accessibility/localization, or evidence-backed pacing—not another ownership split by default. v6.2 remains **instrumentation ready**, not Human Gate passed.
+
 
 Recommended future release scope for v6.0 or later:
 

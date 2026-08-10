@@ -128,9 +128,11 @@ assert.match(theatreCss, /@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*an
 assert.match(theatreCss, /@media\s*\(max-width:\s*520px\)[\s\S]*?\.theatre\s*\{[\s\S]*?order:\s*-3/s, "Compact Theatre remains the first dominant Map Area surface");
 const commandDeckShellSource = await fs.readFile(path.join(root, "app/components/CommandDeckShell.tsx"), "utf8");
 const commandDeckShellCss = await fs.readFile(path.join(root, "app/components/CommandDeckShell.module.css"), "utf8");
+const commandDeckResponsiveCss = await fs.readFile(path.join(root, "app/components/CommandDeckShell.responsive.module.css"), "utf8");
 assert.match(commandDeckShellSource, /viewModel\.runtimeMode === "server" && theatre\.presentation\.visible/, "Static never activates the Server-only Theatre overlay");
 assert.match(commandDeckShellSource, /transitionVisible && <CampaignTransitionTheatre/, "Theatre rendering shares the same Server-only arbitration gate");
-assert.match(commandDeckShellCss, /@media\s*\(max-width:\s*900px\)[\s\S]*data-suspend-context="true"[\s\S]*visibility:\s*hidden/s, "Compact suspended Context cannot visually cover the Theatre");
+assert.match(commandDeckShellSource, /CommandDeckShell\.responsive\.module\.css/, "Command Deck loads its responsive ownership after core styles");
+assert.match(`${commandDeckShellCss}\n${commandDeckResponsiveCss}`, /@media\s*\(max-width:\s*900px\)[\s\S]*data-suspend-context="true"[\s\S]*visibility:\s*hidden/s, "Compact suspended Context cannot visually cover the Theatre");
 
 const authority = { truth: { culpritId: "hidden" }, evidenceCoverage: 34, routeCertificate: "certified", judgement: "pending", candidates: ["a", "b"], npcLegalActions: ["move", "work"] };
 const authorityBefore = structuredClone(authority);

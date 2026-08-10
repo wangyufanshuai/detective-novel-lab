@@ -66,7 +66,7 @@ assert.match(choices, /investigatorHeadquartersDecision/);
 assert.match(lifecycle, /appMode !== "persistent-town"/);
 
 const budgets = [
-  ["app/page.tsx", 1350],
+  ["app/page.tsx", 1100],
   ["app/hooks/useWorldSessionActions.ts", 500],
   ["app/hooks/useCampaignLaunchActions.ts", 300],
   ["app/hooks/useInvestigationReadQueries.ts", 250],

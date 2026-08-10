@@ -77,5 +77,10 @@ assert.deepEqual(engine.createStaticDemoRuntime("archive-blunt").activeCase.dedu
 const componentSource = await fs.readFile(path.join(root, "app", "components", "CampaignFrontDoor.tsx"), "utf8");
 assert.doesNotMatch(componentSource, /\bfetch\s*\(|\bpostV1\s*\(|\bpostJson\s*\(/, "Front Door presentation cannot issue requests");
 assert.match(componentSource, /Server-only route choice \/ start \/ continue/, "Static preview declares the Server-only route boundary");
+const frontDoorCss = await fs.readFile(path.join(root, "app", "components", "CampaignFrontDoor.module.css"), "utf8");
+const routeCss = await fs.readFile(path.join(root, "app", "components", "CampaignFrontDoor.routes.module.css"), "utf8");
+assert.match(frontDoorCss, /composes:\s*routeChoice\s+from\s+"\.\/CampaignFrontDoor\.routes\.module\.css"/, "route styles use the explicit composition boundary");
+assert.equal(frontDoorCss.split(/\r?\n/).length < 360, true, "Front Door shell CSS stays below 360 lines");
+assert.equal(routeCss.split(/\r?\n/).length < 160, true, "Front Door route CSS stays below 160 lines");
 
-console.log(JSON.stringify({ ok: true, campaigns: cards.map((card) => card.label), routeCount: cards.flatMap((card) => card.routes).length, tests: ["three-safe-cards", "six-safe-routes", "determinism", "selection", "public-safe", "pre-extraction-rebind", "route-freeze", "first-extraction-freeze", "truth-isolation", "static-boundary"] }));
+console.log(JSON.stringify({ ok: true, campaigns: cards.map((card) => card.label), routeCount: cards.flatMap((card) => card.routes).length, tests: ["three-safe-cards", "six-safe-routes", "determinism", "selection", "public-safe", "pre-extraction-rebind", "route-freeze", "first-extraction-freeze", "truth-isolation", "static-boundary", "css-ownership"] }));

@@ -72,7 +72,7 @@ for (const endpoint of expectedCoreRequests) {
 }
 
 const lineBudgets = [
-  ["app/page.tsx", 1350],
+  ["app/page.tsx", 1100],
   ["app/components/InvestigationSurface.tsx", 350],
   ["app/components/DetectiveTownUI.tsx", 3200],
   ["app/globals.css", 6500]
@@ -114,12 +114,18 @@ const workflowContracts = [
   ["app/hooks/useCommandDeckOverlayArbiter.ts", "useCommandDeckOverlayArbiter"],
   ["app/hooks/useManualReplayDrillActions.ts", "useManualReplayDrillActions"],
   ["app/hooks/useWorldCampaignPresentation.ts", "useWorldCampaignPresentation"],
+  ["app/hooks/useInvestigationWorkspacePresentation.ts", "useInvestigationWorkspacePresentation"],
+  ["app/hooks/useCertifiedCaseAuditModels.ts", "useCertifiedCaseAuditModels"],
   ["app/campaign/investigation-workspace-model.ts", "buildPlayableInvestigationPath"]
 ];
 for (const [file, exportName] of workflowContracts) {
   const source = await read(file);
   assert.match(source, new RegExp(`export function ${exportName}\\b`), `${exportName} has an independent workflow boundary`);
   assert.equal(source.split(/\r?\n/).length < 500, true, `${file} stays below 500 lines`);
+}
+for (const file of ["app/hooks/useInvestigationWorkspacePresentation.ts", "app/hooks/useCertifiedCaseAuditModels.ts"]) {
+  const source = await read(file);
+  assert.doesNotMatch(source, /\/api\/|\bfetch\s*\(|\bpostJson\s*\(|\bpostV1\s*\(/, `${file} remains request-free presentation ownership`);
 }
 
 const engine = await loadEngine();

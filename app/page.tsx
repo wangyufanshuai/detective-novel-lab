@@ -16,7 +16,8 @@ import { countManualTheoryFields } from "@/app/campaign/replay-practice-model";
 import { buildAuthoringRuntimeState } from "@/app/campaign/authoring-launch-adapter";
 import { useCommandDeckContext } from "@/app/hooks/useCommandDeckContext";
 import { useCertifiedCaseRhythm } from "@/app/hooks/useCertifiedCaseRhythm";
-import { hasContradictionHit, useInvestigationView } from "@/app/hooks/useInvestigationActions";
+import { useInvestigationWorkspacePresentation } from "@/app/hooks/useInvestigationWorkspacePresentation";
+import { useCertifiedCaseAuditModels } from "@/app/hooks/useCertifiedCaseAuditModels";
 import { useGuidedOnboarding } from "@/app/hooks/useGuidedOnboarding";
 import { useCampaignComprehensionStudy } from "@/app/hooks/useCampaignComprehensionStudy";
 import { useReplayPracticeViewModels } from "@/app/hooks/useReplayPracticeViewModels";
@@ -47,37 +48,23 @@ import { useAuthoringController } from "@/app/controllers/useAuthoringController
 import { downloadTextFile, resolveRuntimeMode } from "@/app/lib/client-runtime";
 import { CAMPAIGN_STUDY_EXPORT_FILE, type CampaignStudyStage, type CampaignStudyWorldChoice } from "@/lib/campaign-comprehension-study";
 import {
-  CaseLogicPanel, CausalTracePanel, DeveloperPanel, EmergenceProofPanel, EventLogPanel, InspectorRail, OnboardingOverlay, ProofTourPanel, SuspectBoardPanel,
-  type GapCard, type GraphNodeExplanation, type InvestigationStage, type SuspectExplanation
+  CaseLogicPanel, CausalTracePanel, DeveloperPanel, EmergenceProofPanel, EventLogPanel, InspectorRail, OnboardingOverlay, ProofTourPanel, SuspectBoardPanel
 } from "@/app/components/DetectiveTownUI";
 import {
-  autoSolvePlayableCase,
-  buildEvidenceNotebook,
-  buildEmergenceProofTrace,
-  buildCaseTruthLedger,
-  buildPlayableCaseIntake,
-  buildPlayerProofTour,
-  certifyPlayableCase,
   deriveMapInteractiveTargets,
-  evaluateCaseProofCoverage,
   listCaseTemplates
 } from "@/lib/engine";
 import type {
-  EmergenceProofTrace,
-  EvidenceNotebookItem,
   InvestigationProgress,
   MapInteractiveTarget,
   MurderArchetype,
-  PlayableCaseIntake,
   TownSocialResponsePublicSummary,
   PlayerTheory,
-  ProofTourStep,
   WorldLeadOutcomePublicSummary,
   WorldLeadCaseHandoffPublicSummary,
   WorldArcPublicSummary,
   WorldArcDirectivePublicSummary,
   WorldInfluenceBudgetPublicSummary,
-  WorldEvent,
   WorldMapActor,
   WorldMapMarker,
   WorldState
@@ -187,25 +174,15 @@ export default function Home() {
     snapshotDiff,
     benchmarkSummary
   } = review;
-  const deductionCase = activeCase?.deductionCase || null;
-  const scenes = deductionCase?.scenes || [];
-  const characters = deductionCase?.characters.filter((character) => character.role !== "\u6b7b\u8005") || [];
-  const discovered = new Set(session?.discoveredEvidenceIds || []);
-  const selectedScene = scenes.find((scene) => scene.id === selectedSceneId) || scenes[0];
-  const selectedCharacter = characters.find((character) => character.id === selectedCharacterId);
-  const allCaseEvidence = deductionCase?.evidence || [];
-  const sceneEvidenceRaw = selectedScene ? allCaseEvidence.filter((item) => selectedScene.evidenceIds.includes(item.id)) : [];
-  const sceneEvidence = sceneEvidenceRaw.some((item) => item.discoverable && !discovered.has(item.id))
-    ? sceneEvidenceRaw
-    : [
-      ...sceneEvidenceRaw,
-      ...allCaseEvidence.filter((item) => item.discoverable && !discovered.has(item.id) && !sceneEvidenceRaw.some((sceneItem) => sceneItem.id === item.id)).slice(0, 1)
-    ];
-  const discoveredEvidence = deductionCase?.evidence.filter((item) => discovered.has(item.id)) || [];
-  const playerTheoryEvidence = useMemo(() => new Set(theory.evidenceIds), [theory.evidenceIds]);
-  const selectedTestimony = activeCase?.testimonies?.find((item) => item.characterId === selectedCharacterId);
-  const quality = activeCase?.qualityReport;
-  const selectedNpcMemories = useMemo(() => (world?.memories || []).filter((memory) => memory.npcId === selectedCharacterId), [world?.memories, selectedCharacterId]);
+  const workspacePresentation = useInvestigationWorkspacePresentation({ investigation, town });
+  const {
+    deductionCase, scenes, characters, discovered, selectedScene, selectedCharacter, sceneEvidence, discoveredEvidence,
+    playerTheoryEvidence, selectedTestimony, quality, selectedNpcMemories, evidenceImpacts, judgementGaps,
+    questionedCharacterIds, contradictedCharacterIds, selectedNpcContradictionHit, investigationStages, visibleEvents,
+    selectedEvidence,
+    selectedAgent, hoveredLocationInfo, graphExplanation, suspectExplanations, gapCards, nextStepAdvice, solutionChain,
+    inspectorSummary
+  } = workspacePresentation;
   const investigationNavigation = useInvestigationNavigationActions({
     investigation,
     scenes,
@@ -229,362 +206,13 @@ export default function Home() {
     selectGraphEvent,
     selectGraphCharacter
   } = investigationNavigation;
-  const { evidenceImpacts, judgementGaps } = useInvestigationView({
-    deductionCase,
-    discoveredEvidence,
-    session
-  });
-  const questionedCharacterIds = useMemo(() => new Set(session?.interrogationLog.map((entry) => entry.characterId) || []), [session?.interrogationLog]);
-  const contradictedCharacterIds = useMemo(
-    () => new Set(session?.interrogationLog.filter((entry) => entry.challenge?.hit).map((entry) => entry.characterId) || []),
-    [session?.interrogationLog]
-  );
-  const selectedNpcContradictionHit = hasContradictionHit(session, selectedCharacterId);
-  const investigationStages: InvestigationStage[] = useMemo(() => {
-    const interrogationCount = session?.interrogationLog.length || 0;
-    const accepted = Boolean(session?.judgement?.accepted);
-    const wrongSubmitted = Boolean(session?.judgement && !accepted);
-    const completeMap = {
-      observe: progress.observedCrimeWindow,
-      search: progress.discoveredEvidence && discoveredEvidence.length > 0,
-      question: interrogationCount > 0,
-      challenge: progress.challengedTestimony,
-      organize: discoveredEvidence.length >= 3 || wrongSubmitted || accepted,
-      submit: Boolean(session?.judgement),
-      reveal: Boolean(revealText)
-    };
-    const defs = [
-      { id: "observe", label: "Observe scene", detail: "Review the crime window and event log." },
-      { id: "search", label: "Search evidence", detail: "Click locations or evidence markers." },
-      { id: "question", label: "Question witness", detail: "Choose an NPC and ask a focused question." },
-      { id: "challenge", label: "Challenge contradiction", detail: "Use discovered evidence to test testimony." },
-      { id: "organize", label: "Organize theory", detail: "Pick the key evidence chain." },
-      { id: "submit", label: "Submit conclusion", detail: "Name the culprit, motive, and method." },
-      { id: "reveal", label: "Review solution", detail: "Inspect the final plot nodes and answer." }
-    ];
-    const firstPending = defs.find((item) => !completeMap[item.id as keyof typeof completeMap])?.id;
-    return defs.map((item) => ({
-      ...item,
-      complete: completeMap[item.id as keyof typeof completeMap],
-      current: item.id === firstPending || (!firstPending && item.id === "reveal")
-    }));
-  }, [discoveredEvidence.length, progress, revealText, session?.interrogationLog.length, session?.judgement]);
   const onboarding = useGuidedOnboarding({ runtimeMode, progress, session, revealText });
-  const visibleEvents = snapshot?.visibleEvents || events.slice(-30).reverse();
-  const selectedEvent = events.find((event) => event.id === highlightedEventId);
-  const selectedEvidence = deductionCase?.evidence.find((item) => item.id === selectedEvidenceId);
-  const evidenceTitleById = useMemo(() => new Map((deductionCase?.evidence || []).map((item) => [item.id, item.title])), [deductionCase?.evidence]);
-  const eventById = useMemo(() => new Map(events.map((event) => [event.id, event])), [events]);
-  const characterById = useMemo(() => new Map((deductionCase?.characters || []).map((character) => [character.id, character])), [deductionCase?.characters]);
-  const hoveredLocationInfo = useMemo(() => {
-    const locationId = hoveredLocationId || selectedSceneId;
-    const tile = snapshot?.tiles.find((item) => item.locationId === locationId);
-    if (!locationId || !tile) return null;
-    const recent = visibleEvents.find((event) => event.locationId === locationId);
-    return {
-      locationId,
-      name: tile.locationName || locationId,
-      terrain: tile.terrain,
-      searchable: Boolean(tile.searchable),
-      discovered: tile.discoveredEvidenceCount || 0,
-      total: tile.evidenceCount || 0,
-      recentEvent: recent ? `${recent.time} ${recent.publicSummary}` : undefined
-    };
-  }, [hoveredLocationId, selectedSceneId, snapshot?.tiles, visibleEvents]);
-  const selectedAgent = useMemo(
-    () => townRuntime?.agentStates.find((agent) => agent.npcId === selectedCharacterId) || null,
-    [selectedCharacterId, townRuntime?.agentStates]
-  );
-  const graphExplanation: GraphNodeExplanation | null = useMemo(() => {
-    if (!selectedGraphNode || !deductionCase) return null;
-    const node = selectedGraphNode;
-    const discoveredTitles = node.evidenceIds.filter((id) => discovered.has(id)).map((id) => evidenceTitleById.get(id) || id);
-    const hiddenCount = node.evidenceIds.filter((id) => !discovered.has(id)).length;
-    const sourceEvents = node.eventIds.map((id) => eventById.get(id)).filter((event): event is WorldEvent => Boolean(event));
-    const names = node.characterIds.map((id) => characterById.get(id)?.name || id);
-    const source = sourceEvents.length
-      ? `Source events: ${sourceEvents.map((event) => `${event.time} ${event.publicSummary}`).join(" / ")}`
-      : "Source: current case structure and local rule validation.";
-    if (hiddenCount > 0 && node.type !== "conclusion") {
-      return {
-        node,
-        title: "Undiscovered deduction node",
-        status: "LOCKED / strict no-spoiler",
-        body: "This node requires the player to find the matching evidence first. The system will not reveal evidence titles, meanings, or final conclusions early.",
-        source,
-        references: discoveredTitles,
-        spoilerSafe: false
-      };
-    }
-    const typeLabel: Record<string, string> = {
-      evidence: "Evidence established",
-      event: "World event source",
-      testimony: "Testimony contradiction",
-      elimination: "Suspect excluded",
-      conclusion: "Unique conclusion"
-    };
-    return {
-      node,
-      title: node.label,
-      status: typeLabel[node.type] || node.type,
-      body: node.detail || "This node is supported by discovered evidence and local rule chains.",
-      source,
-      references: [...discoveredTitles, ...names].slice(0, 6),
-      spoilerSafe: true
-    };
-  }, [characterById, deductionCase, discovered, eventById, evidenceTitleById, selectedGraphNode]);
-  const suspectExplanations = useMemo(() => {
-    const result = new Map<string, SuspectExplanation>();
-    for (const row of suspectBoard) {
-      const visibleEvidence = row.exclusionEvidenceIds.filter((id) => discovered.has(id)).map((id) => evidenceTitleById.get(id) || id);
-      const lockedEvidenceCount = row.exclusionEvidenceIds.filter((id) => !discovered.has(id)).length;
-      const sourceEventLabels = row.sourceEventIds
-        .map((id) => eventById.get(id))
-        .filter((event): event is WorldEvent => Boolean(event))
-        .filter((event) => row.exclusionEvidenceIds.some((evidenceId) => discovered.has(evidenceId)) || session?.judgement?.accepted)
-        .map((event) => `${event.time} ${event.publicSummary}`);
-      const solved = Boolean(session?.judgement?.accepted);
-      const isCulprit = row.status === "culprit";
-      const statusLabel = isCulprit ? (solved ? "Final culprit" : "Hidden until solved") : row.status === "red_herring" ? "Strong red herring" : "Excluded candidate";
-      const exclusionStatus = isCulprit
-        ? (solved ? "Motive, means, opportunity, and key evidence chain remain intact." : "Requires the full evidence chain. The true culprit stays hidden until the case is solved.")
-        : visibleEvidence.length
-          ? `Excluded by ${visibleEvidence.join(", ")}.`
-          : "Still needs exclusion evidence; hidden evidence titles are not leaked.";
-      result.set(row.characterId, {
-        characterId: row.characterId,
-        name: row.name,
-        role: row.role,
-        statusLabel,
-        motive: row.motive,
-        means: row.means,
-        opportunity: row.opportunity,
-        surfaceSuspicion: row.surfaceSuspicion,
-        exclusionStatus,
-        visibleEvidenceTitles: visibleEvidence,
-        lockedEvidenceCount: isCulprit ? 0 : lockedEvidenceCount,
-        sourceEventLabels
-      });
-    }
-    return result;
-  }, [discovered, eventById, evidenceTitleById, session?.judgement?.accepted, suspectBoard]);
-  const gapCards: GapCard[] = useMemo(() => {
-    const mapTarget = (label: string): GapCard["target"] => {
-      if (/culprit|suspect/i.test(label)) return "suspects";
-      if (/motive/i.test(label)) return "motive";
-      if (/method|means|opportunity/i.test(label)) return "method";
-      if (/evidence/i.test(label)) return "evidence";
-      if (/exclude/i.test(label)) return "exclusion";
-      return "logic";
-    };
-    const proofCards = session?.judgement?.proofCoverage?.gaps.map((gap) => ({
-      id: `proof-gap:${gap.obligationId}`,
-      label: `${gap.kind}: ${gap.label}`,
-      detail: gap.detail,
-      target: gap.target === "suspects" ? "suspects" : gap.target
-    } satisfies GapCard)) || [];
-    if (proofCards.length) return proofCards;
-    return judgementGaps.map((label) => {
-      const target = mapTarget(label);
-      const detail: Record<GapCard["target"], string> = {
-        suspects: "Review the suspect matrix and confirm who still has motive, means, and opportunity.",
-        motive: "Return to the theory form and add a motive supported by discovered evidence.",
-        method: "Return to the theory form and describe the tool, action, and disguise.",
-        evidence: "Review discovered evidence and pick the key clues that form a chain.",
-        exclusion: "Check the Suspect Board and confirm excluded suspects have exclusion evidence.",
-        logic: "Open the deduction graph and close the gap from evidence to conclusion."
-      };
-      return { id: `gap:${label}`, label, detail: detail[target], target };
-    });
-  }, [judgementGaps, session?.judgement?.proofCoverage?.gaps]);
-  const nextStepAdvice = useMemo(() => {
-    if (!session?.judgement || session.judgement.accepted) return "";
-    if (discoveredEvidence.length > 0 && !progress.challengedTestimony) {
-      return `First present "${discoveredEvidence[0].title}" to a relevant NPC and check whether testimony conflicts.`;
-    }
-    if (discoveredEvidence.length > 0) {
-      return `Choose from the ${discoveredEvidence.length} discovered clues and connect motive, method, and opportunity.`;
-    }
-    return selectedScene ? `Keep searching ${selectedScene.name} and build the first evidence chain.` : "Click a searchable map location and find the first clue.";
-  }, [discoveredEvidence, progress.challengedTestimony, selectedScene, session?.judgement]);
-  const solutionChain = useMemo(() => {
-    if (!session?.judgement?.accepted || !deductionCase) return [];
-    const selectedTitles = theory.evidenceIds.filter((id) => discovered.has(id)).map((id) => evidenceTitleById.get(id) || id);
-    const eliminatedCount = suspectBoard.filter((row) => row.status !== "culprit").length;
-    return [
-      selectedTitles.length ? `Player submitted ${selectedTitles.length} discovered clues: ${selectedTitles.slice(0, 4).join(", ")}${selectedTitles.length > 4 ? " etc." : ""}.` : "The submitted evidence chain passed local rule validation.",
-      "The evidence supports motive, method, opportunity, or a testimony contradiction and forms a reviewable reasoning chain.",
-      `Suspect Board excludes ${eliminatedCount} non-culprit candidates through discovered or validated exclusion chains.`,
-      "Only the remaining candidate with intact motive, means, opportunity, and no counter-evidence appears in the final conclusion node."
-    ];
-  }, [deductionCase, discovered, evidenceTitleById, session?.judgement?.accepted, suspectBoard, theory.evidenceIds]);
-  const inspectorSummary = useMemo(() => {
-    if (inspectorTab === "events") {
-      return selectedEvent
-        ? { title: `${selectedEvent.time} / ${selectedEvent.locationId}`, detail: selectedEvent.publicSummary, tone: "event" }
-        : { title: "Event log", detail: "Select an event to highlight map location and time.", tone: "event" };
-    }
-    if (inspectorTab === "investigation") {
-      if (selectedEvidence) return { title: `Evidence: ${selectedEvidence.title}`, detail: "Review use hints and present it to NPCs when needed.", tone: "evidence" };
-      if (selectedCharacter) return { title: `NPC: ${selectedCharacter.name}`, detail: selectedCharacter.role, tone: "person" };
-      return { title: `Location: ${selectedScene?.name || "None selected"}`, detail: "Search locations, question NPCs, and submit theory.", tone: "investigation" };
-    }
-    if (inspectorTab === "logic") return { title: "Case logic", detail: "Deduction graph, causal chain, and answer review unlock after correct reasoning.", tone: "logic" };
-    if (inspectorTab === "agent") return { title: "Persistent Agent Town", detail: selectedAgent ? `${selectedAgent.currentGoal} / ${selectedAgent.locationId}` : "Inspect NPC goals, action scores, and case candidates.", tone: "logic" };
-    if (inspectorTab === "people") return { title: "Suspect matrix", detail: "Review motive, means, opportunity, and exclusion evidence.", tone: "people" };
-    return { title: "Developer API", detail: "Inspect Agent API, worldId, caseId, and sessionId.", tone: "developer" };
-  }, [inspectorTab, selectedAgent, selectedCharacter, selectedEvent, selectedEvidence, selectedScene?.name]);
-  const causalTrace = activeCase?.causalTrace;
-  const causalTraceEvents = useMemo(
-    () => (causalTrace?.orderedEventIds || []).map((id) => events.find((event) => event.id === id)).filter((event): event is WorldEvent => Boolean(event)),
-    [causalTrace?.orderedEventIds, events]
-  );
-  const emergenceProofTrace: EmergenceProofTrace | null = useMemo(() => {
-    if (!world || !activeCase) return null;
-    return buildEmergenceProofTrace(world, events, activeCase, {
-      solved: Boolean(session?.judgement?.accepted),
-      discoveredEvidenceIds: session?.discoveredEvidenceIds || []
-    });
-  }, [activeCase, events, session?.discoveredEvidenceIds, session?.judgement?.accepted, world]);
-  const evidenceNotebook: EvidenceNotebookItem[] = useMemo(
-    () => (activeCase ? buildEvidenceNotebook(activeCase, events, session) : []),
-    [activeCase, events, session]
-  );
-  const proofTourSteps: ProofTourStep[] = useMemo(
-    () => (activeCase ? buildPlayerProofTour(activeCase, events, emergenceProofTrace, session) : []),
-    [activeCase, emergenceProofTrace, events, session]
-  );
-  const playableIntake: PlayableCaseIntake | null = useMemo(
-    () => (activeCase && ((activeCase.sourceEventIds || []).length > 0 || Boolean(activeCase.sourceCandidateId) || Boolean(activeCase.triggeredEventId))
-      ? buildPlayableCaseIntake(activeCase, events, world, session)
-      : null),
-    [activeCase, events, session, world]
-  );
-  const caseTruthLedger = useMemo(
-    () => (activeCase ? buildCaseTruthLedger(activeCase, events) : null),
-    [activeCase, events]
-  );
-  const caseProofCoverage = useMemo(
-    () => caseTruthLedger ? evaluateCaseProofCoverage(caseTruthLedger, {
-      discoveredEvidenceIds: session?.discoveredEvidenceIds || [],
-      selectedEvidenceIds: session?.submittedTheory?.evidenceIds,
-      challengedCharacterIds: session?.interrogationLog.filter((entry) => entry.challenge?.hit).map((entry) => entry.characterId) || [],
-      solved: Boolean(session?.judgement?.accepted)
-    }) : null,
-    [caseTruthLedger, session]
-  );
-  const caseRouteCertificate = useMemo(
-    () => (activeCase ? certifyPlayableCase(activeCase, events, session) : null),
-    [activeCase, events, session]
-  );
-  const staticPlaythroughProof = useMemo(() => {
-    if (runtimeMode !== "static-demo" || !activeCase) return null;
-    const autoSolve = autoSolvePlayableCase(activeCase, events, { dryRun: true });
-    const acceptedTheory = Boolean(session?.judgement?.accepted);
-    const questionedWitnessCount = acceptedTheory
-      ? new Set((session?.interrogationLog || []).map((entry) => entry.characterId)).size
-      : autoSolve.summary.questionedWitnessCount;
-    const challengeHitCount = acceptedTheory
-      ? (session?.interrogationLog || []).filter((entry) => entry.challenge?.hit).length
-      : autoSolve.summary.challengeHitCount;
-    const selectedEvidenceCount = acceptedTheory
-      ? session?.submittedTheory?.evidenceIds.length || 0
-      : autoSolve.summary.selectedEvidenceCount;
-    return {
-      title: "Static Playthrough Proof",
-      actionLabel: "Run Certified Playthrough",
-      acceptedLabel: "completed / accepted theory",
-      readyLabel: "ready / certified route",
-      blockedLabel: "blocked / inspect route",
-      boundaryText: "Browser-local aggregate proof only: no hidden truth, raw bodies, internal ids, source ids, SQLite writes, or public artifact changes.",
-      testId: "static-playthrough-proof",
-      runTestId: "run-certified-playthrough",
-      status: acceptedTheory ? "accepted" as const : autoSolve.passed ? "ready" as const : "blocked" as const,
-      routeCertified: Boolean(caseRouteCertificate?.routeCertified || autoSolve.summary.routeCertified),
-      autoRoutePassed: autoSolve.passed,
-      acceptedTheory: Boolean(acceptedTheory || autoSolve.summary.autoTheoryAccepted),
-      searchStepCount: autoSolve.steps.filter((step) => step.kind === "search").length,
-      questionedWitnessCount,
-      challengeHitCount,
-      selectedEvidenceCount,
-      coveredRequiredObligations: acceptedTheory
-        ? caseProofCoverage?.coveredRequired || autoSolve.summary.coveredRequiredObligations
-        : autoSolve.summary.coveredRequiredObligations,
-      totalRequiredObligations: acceptedTheory
-        ? caseProofCoverage?.totalRequired || autoSolve.summary.totalRequiredObligations
-        : autoSolve.summary.totalRequiredObligations,
-      blockerCount: autoSolve.failures.length
-    };
-  }, [activeCase, caseProofCoverage, caseRouteCertificate, events, runtimeMode, session]);
-  const serverPlaythroughProof = useMemo(() => {
-    if (runtimeMode === "static-demo" || !activeCase || !playableIntake) return null;
-    const sourceBackedRoute = Boolean(
-      (activeCase.sourceEventIds || []).length > 0
-        || activeCase.sourceCandidateId
-        || activeCase.sourceMap?.sourceCandidateId
-        || activeCase.triggeredEventId
-    );
-    const acceptedTheory = Boolean(session?.judgement?.accepted);
-    const summary = serverPlaythroughSummary?.caseId === activeCase.id ? serverPlaythroughSummary : null;
-    const coverage = playableIntake.coach?.coverage;
-    const routeCertified = Boolean(caseRouteCertificate?.routeCertified || coverage?.routeCertified || summary?.routeCertified);
-    const autoRoutePassed = Boolean(summary?.passed || coverage?.autoSolvePassed);
-    const questionedWitnessCount = acceptedTheory
-      ? new Set((session?.interrogationLog || []).map((entry) => entry.characterId)).size
-      : summary?.questionedWitnessCount ?? coverage?.questionedWitnesses ?? 0;
-    const challengeHitCount = acceptedTheory
-      ? (session?.interrogationLog || []).filter((entry) => entry.challenge?.hit).length
-      : summary?.challengeHitCount ?? coverage?.challengeHitCount ?? 0;
-    const selectedEvidenceCount = acceptedTheory
-      ? session?.submittedTheory?.evidenceIds.length || 0
-      : summary?.selectedEvidenceCount ?? coverage?.selectedTheoryEvidence ?? 0;
-    return {
-      title: "Server Playthrough Proof",
-      actionLabel: "Run Server Certified Playthrough",
-      acceptedLabel: "completed / accepted theory",
-      readyLabel: "ready / source-backed route",
-      blockedLabel: "blocked / inspect emerged route",
-      boundaryText: "Server Runtime aggregate proof: persists only an explicit auto-player session; no public catalog, dataset reader, raw bodies, or SQLite schema changes.",
-      testId: "server-playthrough-proof",
-      runTestId: "run-server-certified-playthrough",
-      status: acceptedTheory ? "accepted" as const : autoRoutePassed && routeCertified ? "ready" as const : "blocked" as const,
-      routeCertified,
-      sourceBackedRoute,
-      autoRoutePassed,
-      acceptedTheory: Boolean(acceptedTheory || summary?.autoTheoryAccepted),
-      searchStepCount: (playableIntake.routeCertificate?.steps || caseRouteCertificate?.steps || []).filter((step) => step.kind === "search").length,
-      questionedWitnessCount,
-      challengeHitCount,
-      selectedEvidenceCount,
-      coveredRequiredObligations: acceptedTheory
-        ? caseProofCoverage?.coveredRequired || summary?.coveredRequiredObligations || coverage?.coveredRequired || 0
-        : summary?.coveredRequiredObligations ?? coverage?.coveredRequired ?? 0,
-      totalRequiredObligations: acceptedTheory
-        ? caseProofCoverage?.totalRequired || summary?.totalRequiredObligations || coverage?.totalRequired || 0
-        : summary?.totalRequiredObligations ?? coverage?.totalRequired ?? 0,
-      blockerCount: summary?.failureKinds.length || playableIntake.coach?.blockers.length || 0
-    };
-  }, [activeCase, caseProofCoverage, caseRouteCertificate, playableIntake, runtimeMode, serverPlaythroughSummary, session]);
-  const sourceReviewUnlock = useMemo(() => {
-    if (!activeCase) return null;
-    const unlocked = Boolean(session?.judgement?.accepted);
-    const memoryCount = playableIntake?.sourceCounts.memories
-      ?? activeCase.sourceMap?.memorySourceIds?.length
-      ?? activeCase.testimonies.reduce((sum, testimony) => sum + (testimony.memoryIds?.length || 0), 0)
-      ?? 0;
-    return {
-      unlocked,
-      statusLabel: unlocked ? "unlocked / source-backed audit ready" : "locked / accepted theory required",
-      sourceEventCount: playableIntake?.sourceCounts.events ?? activeCase.sourceEventIds.length,
-      memoryCount,
-      coveredObligations: caseProofCoverage?.coveredRequired || 0,
-      totalObligations: caseProofCoverage?.totalRequired || caseRouteCertificate?.totalRequiredObligations || 0,
-      routeStepCount: caseRouteCertificate?.routeStepCount || caseRouteCertificate?.steps.length || 0,
-      challengeHitCount: (session?.interrogationLog || []).filter((entry) => entry.challenge?.hit).length,
-      selectedEvidenceCount: session?.submittedTheory?.evidenceIds.length || 0,
-      proofGapCount: caseProofCoverage?.gaps.length || 0
-    };
-  }, [activeCase, caseProofCoverage, caseRouteCertificate, playableIntake, session]);
+  const certifiedCaseAudit = useCertifiedCaseAuditModels({ investigation, serverPlaythroughSummary });
+  const {
+    causalTrace, causalTraceEvents, emergenceProofTrace, evidenceNotebook, proofTourSteps, playableIntake,
+    caseTruthLedger, caseProofCoverage, caseRouteCertificate, staticPlaythroughProof, serverPlaythroughProof,
+    sourceReviewUnlock
+  } = certifiedCaseAudit;
   const guidedManual = useGuidedManualViewModel({
     session,
     theory,

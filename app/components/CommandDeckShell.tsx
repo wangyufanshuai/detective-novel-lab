@@ -10,8 +10,26 @@ import { CampaignTransitionTheatre } from "./CampaignTransitionTheatre";
 import { DistrictStrategicFronts } from "./DistrictStrategicFronts";
 import { StrategicPacingSurface } from "./StrategicPacingSurface";
 import { StrategicActionBar, StrategicDecisionQueue, StrategicResourceRibbon } from "./StrategicCommandSurfaces";
-import styles from "./CommandDeckShell.module.css";
+import coreStyles from "./CommandDeckShell.module.css";
+import responsiveStyles from "./CommandDeckShell.responsive.module.css";
 import pulseStyles from "./TownPulseBar.module.css";
+
+const styles = {
+  ...coreStyles,
+  commandDeckShell: `${coreStyles.commandDeckShell} ${responsiveStyles.commandDeckShell}`,
+  commandDeckGrid: `${coreStyles.commandDeckGrid} ${responsiveStyles.commandDeckGrid}`,
+  commandDeckAgendaRail: `${coreStyles.commandDeckAgendaRail} ${responsiveStyles.commandDeckAgendaRail}`,
+  commandDeckContextSummary: `${coreStyles.commandDeckContextSummary} ${responsiveStyles.commandDeckContextSummary}`,
+  commandDeckLegacyControl: `${coreStyles.commandDeckLegacyControl} ${responsiveStyles.commandDeckLegacyControl}`,
+  commandDeckMapArea: `${coreStyles.commandDeckMapArea} ${responsiveStyles.commandDeckMapArea}`,
+  commandDeckMapIntel: `${coreStyles.commandDeckMapIntel} ${responsiveStyles.commandDeckMapIntel}`,
+  commandDeckContextRail: `${coreStyles.commandDeckContextRail} ${responsiveStyles.commandDeckContextRail}`,
+  commandDeckDrawerToggle: `${coreStyles.commandDeckDrawerToggle} ${responsiveStyles.commandDeckDrawerToggle}`,
+  commandDeckContextDrawerBody: `${coreStyles.commandDeckContextDrawerBody} ${responsiveStyles.commandDeckContextDrawerBody}`,
+  commandDeckInspectorDisclosure: `${coreStyles.commandDeckInspectorDisclosure} ${responsiveStyles.commandDeckInspectorDisclosure}`,
+  commandDeckNotifications: `${coreStyles.commandDeckNotifications} ${responsiveStyles.commandDeckNotifications}`,
+  drawerOpen: responsiveStyles.drawerOpen
+} as typeof coreStyles & typeof responsiveStyles;
 
 type CommandPanel = "context" | "queue" | "resources" | "fronts";
 

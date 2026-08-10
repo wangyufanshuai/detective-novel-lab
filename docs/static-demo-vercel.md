@@ -254,3 +254,9 @@ Manual First remains authoritative for evidence and theory entry. The rhythm nev
 Static shows the original and counter route names for each of the three Campaign families while keeping the original route's safe three-chapter, evidence-style, world-surface, and Finale preview visible. It renders no route-choice buttons, does not send the internal route key, does not persist a Campaign route, and continues to request zero `/api/*`. The Front Door explicitly labels route choice, start, and continue as Server-only.
 
 Server Runtime may select one of the six authored routes through the existing WorldPackage-select command. The internal route key remains inside the existing Persistent Town JSON and is removed with the rest of the internal Campaign session by the public projection. Static receives no persisted route summary, case body, raw identifier, hidden truth, or server consequence. The 390px gate covers both route labels without horizontal overflow, and protected public catalogs remain read-only.
+
+### v9.1 Architecture Headroom boundary
+
+v9.1 moves existing browser presentation derivations into two request-free hooks and divides Command Deck responsive CSS and Campaign Front Door route/preview CSS into independently budgeted files. It does not introduce a new Static or Server capability. The same action adapters, endpoints, payloads, response order, copy, DOM order, ARIA, and runtime authority remain in place.
+
+Static still resolves its runtime mode before any Server bootstrap or read query, builds its Map, Inspector, certified audit, route preview, and Source Review from the existing in-memory demo, and makes zero `/api/*` requests. It does not persist Campaign route choice, world state, Theatre state, or Study data. The 390/768/1440 browser gates retain map interaction, keyboard focus, and no-horizontal-overflow coverage, and protected public catalogs remain read-only. v6.2 remains **instrumentation ready**, not Human Gate passed.

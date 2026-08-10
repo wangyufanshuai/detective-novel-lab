@@ -35,6 +35,7 @@ DeepSeek is used only for NPC surface dialogue and optional solution prose. It d
 - v8.8 adds an **Objective-First Command Deck** presentation boundary. Strategic Pacing is the single canonical Current Objective; World Campaign shows one focused subsystem and places all other safe history/context in a default-closed archive. At 390px the objective precedes Theatre/map and the existing Current Action, while Public Change and the latest safe outcome move behind the existing forecast disclosure. Town Pulse styles and replay/authoring presentation actions now have independent budgets; no endpoint, runtime field, schema, storage key, world rule, or proof card changed.
 - v8.9 adds a **Certified Case Rhythm** over the existing investigation route. Intake, Fieldwork, Deduction, and Review now share the one Current Objective and one Current Action; matching map context executes the established adapter directly, while mismatched context focuses the certified target without filling evidence or theory. Observe remains the legal pre-Search preparation, rejected theories show one minimum safe recovery gap, and the full seven-step route is default-closed. No endpoint, payload, runtime field, truth rule, proof card, or candidate influence changed.
 - v9.0 adds **Authored Campaign Route Variants** without adding another world mechanic. Town Reckoning, Harbor Testimony, and Clinic Headlines each offer an original and counter route, expanding the catalog from 9 to 18 authored treatments while every playthrough remains exactly three cases. The chosen route is locked before the first successful extraction, uses route-specific case-family preferences, Search/Question/Challenge rhythm, occupational pressure, causal bridges, and a distinct Finale, then continues through the same truth, Route Certificate, evidence coverage, judgement, and NPC legal-action authority.
+- v9.1 completes **Architecture Headroom Recovery** as a behavior-preserving ownership release. Request-free workspace presentation and certified-case audit models leave the root page below 1,100 lines, while Command Deck responsive rules and Campaign Front Door route/preview rules now have independent CSS budgets. Requests, action adapters, copy, DOM order, runtime authority, and Static zero-API behavior remain unchanged; v6.2 is still instrumentation ready rather than Human Gate passed.
 - Project-level v3.6/v3.7 assessment and roadmap: [docs/project-level-report.md](docs/project-level-report.md).
 
 ## Try In 3 Modes
@@ -770,6 +771,16 @@ npm run test:campaign-front-door
 npm run test:eighteen-case-campaign
 npm run qa:campaign-front-door -- --json
 ```
+
+## v9.1 Architecture Headroom Recovery
+
+v9.1 is a behavior-preserving architecture release. `useInvestigationWorkspacePresentation` now owns the request-free Map, Inspector, and Investigation Workspace projections, while `useCertifiedCaseAuditModels` owns Route Certificate, proof, certified playthrough, and Source Review derivations. `app/page.tsx` remains the composition root and no longer rebuilds those models inline.
+
+Command Deck core and responsive rules now have separate CSS ownership, with responsive classes loaded after core classes so compact overrides remain effective. Campaign Front Door route selection and preview rules likewise live in a bounded route stylesheet while retaining the existing class names, visible copy, DOM order, and responsive behavior.
+
+The measured ownership budgets are `app/page.tsx` 976 / 1,100 lines; workspace presentation 280 / 400 and certified audit 180 / 250; Command Deck component/core/responsive 456 / 500, 442 / 560, and 278 / 320; Front Door core/routes 340 / 360 and 117 / 160. The global ceilings remain healthy at 2,815,674 / 4,000,000 runtime JSON bytes, 125 / 130 filesystem-counted API routes, and 12.45 / 250 ms sampled tick p95.
+
+No endpoint, payload, runtime field, SQLite/content/public schema, event, tick, ranking modifier, world rule, public artifact, or proof card changed. Static still resolves before any request and remains zero `/api/*`; investigation truth, evidence coverage, Route Certificate, judgement, candidate ordering, and NPC legal actions retain their existing authority. v6.2 remains **instrumentation ready**, not Human Gate passed.
 
 ## Roadmap
 
