@@ -40,6 +40,7 @@
   width: 100%;
   max-height: min(56vh, 520px);
   overflow: auto;
+  overscroll-behavior: contain;
   background:
     linear-gradient(150deg, rgba(24, 32, 35, 0.99), rgba(7, 13, 18, 0.99)),
     repeating-linear-gradient(135deg, transparent 0 18px, rgba(255, 255, 255, 0.018) 18px 19px);
@@ -130,6 +131,15 @@
 .options button:focus-visible,
 .action:focus-visible { outline: 3px solid #fff0aa; outline-offset: 2px; }
 
+.trigger,
+.options button,
+.action { touch-action: manipulation; }
+
+.trigger:hover { border-color: rgba(255, 225, 164, 0.72); }
+.options button:hover { background: rgba(24, 37, 46, 0.98); }
+.options button[aria-pressed="true"]:hover { background: rgba(55, 52, 38, 0.98); }
+.action:hover { background: #ebc97f; }
+
 @media (min-width: 521px) and (max-width: 900px) {
   .surface { left: 12px; bottom: 84px; width: min(300px, calc(65% - 18px)); }
   .panel { position: fixed; top: 86px; right: 0; bottom: 68px; left: auto; z-index: 109; width: min(320px, 35vw); max-height: none; border-radius: 0; }
@@ -139,7 +149,7 @@
 @media (max-width: 520px) {
   .surface { position: relative; right: auto; bottom: auto; left: auto; z-index: 34; order: -2; width: 100%; }
   .trigger { width: 100%; min-height: 48px; border-inline: 0; border-radius: 0; }
-  .panel { position: fixed; right: 0; bottom: 124px; left: 0; z-index: 109; width: 100%; max-height: min(64vh, 560px); border-inline: 0; border-radius: 0; }
+  .panel { position: absolute; top: calc(100% + 7px); right: 0; bottom: auto; left: 0; z-index: 109; width: 100%; max-height: min(64vh, 560px); border-inline: 0; border-radius: 0; }
   .options { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .options button { grid-template-columns: 1fr; place-items: center; text-align: center; }
   .options button > svg { display: none; }

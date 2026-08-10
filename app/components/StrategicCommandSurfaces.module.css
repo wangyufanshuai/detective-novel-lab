@@ -202,6 +202,7 @@
   padding: 7px 9px;
   text-align: left;
   border: 0;
+  touch-action: manipulation;
 }
 
 .primaryAction {
@@ -237,6 +238,51 @@
 .secondaryAction small,
 .readonlyAction small { display: -webkit-box; overflow: hidden; line-height: 1.25; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .readonlyAction { color: var(--deck-ink); background: rgba(14, 23, 31, 0.98); }
+
+.actionBar.compact {
+  position: relative;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  z-index: 1;
+  grid-template-columns: minmax(0, 1fr);
+  width: auto;
+  gap: 1px;
+  padding: 0;
+  background: rgba(177, 151, 101, 0.28);
+  border-top: 0;
+  border-bottom: 1px solid var(--deck-line);
+  box-shadow: none;
+}
+
+.compact .outcomeFeedback,
+.compact .secondaryActions { display: none; }
+
+.compact .actionContext {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  order: 2;
+}
+
+.compact .actionButtons {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  order: 1;
+}
+
+.compact .primaryAction,
+.compact .readonlyAction {
+  min-height: 72px;
+  padding: 10px 14px;
+  border-left: 4px solid #f7e3b8;
+}
+
+.compact .primaryAction strong,
+.compact .readonlyAction strong {
+  font-size: 12px;
+  text-wrap: balance;
+}
 
 @media (max-width: 1180px) {
   .resourceRibbon { grid-template-columns: repeat(4, minmax(76px, 1fr)); }

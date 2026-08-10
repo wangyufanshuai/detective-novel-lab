@@ -45,7 +45,7 @@ for (const [input, surface] of cases) {
 assert.equal(actionModel.deriveCurrentWorldAction({ session: null }).surface, "overview", "empty world context stays presentation-only overview");
 
 const read = (file) => fs.readFile(path.join(root, file), "utf8");
-const [panel, page, deckComponent, deckCss, deckResponsiveCss, pulseCss, pacingCss, presentation, drill, authoring, navigation] = await Promise.all([
+const [panel, page, deckComponent, deckCss, deckResponsiveCss, pulseCss, pacingCss, briefModel, briefHook, presentation, drill, authoring, navigation] = await Promise.all([
   read("app/components/WorldCampaignPanel.tsx"),
   read("app/page.tsx"),
   read("app/components/CommandDeckShell.tsx"),
@@ -53,6 +53,8 @@ const [panel, page, deckComponent, deckCss, deckResponsiveCss, pulseCss, pacingC
   read("app/components/CommandDeckShell.responsive.module.css"),
   read("app/components/TownPulseBar.module.css"),
   read("app/components/StrategicPacingSurface.module.css"),
+  read("app/campaign/campaign-command-brief-model.ts"),
+  read("app/hooks/useCampaignCommandBrief.ts"),
   read("app/hooks/useWorldCampaignPresentation.ts"),
   read("app/hooks/useManualReplayDrillActions.ts"),
   read("app/campaign/authoring-launch-adapter.ts"),
@@ -61,6 +63,7 @@ const [panel, page, deckComponent, deckCss, deckResponsiveCss, pulseCss, pacingC
 const deckCssBundle = `${deckCss}\n${deckResponsiveCss}`;
 assert.match(deckComponent, /import responsiveStyles from "\.\/CommandDeckShell\.responsive\.module\.css"/);
 assert.match(deckComponent, /commandDeckShell:\s*`\$\{coreStyles\.commandDeckShell\}\s+\$\{responsiveStyles\.commandDeckShell\}`/);
+assert.match(deckComponent, /StrategicPacingSurface[\s\S]*StrategicActionBar[\s\S]*StrategicDecisionQueue/, "objective, action, then optional queue share the Agenda hierarchy");
 
 assert.equal((panel.match(/data-testid="world-campaign-current-action"/g) || []).length, 1, "World Campaign owns one Current Action marker");
 assert.match(panel, /data-testid="world-campaign-focus"/);
@@ -69,12 +72,20 @@ assert.match(panel, /<details className="worldCampaignArchive"/);
 assert.match(panel, /Focused world context/);
 assert.doesNotMatch(panel, /\b(fetch|postJson|postV1|getV1)\s*\(|\/api\//, "World Campaign presentation remains request-free");
 assert.doesNotMatch(panel, /localStorage|sessionStorage|indexedDB/, "World Campaign focus/archive remains storage-free");
+assert.match(panel, /commandBrief\?\.primaryAction\?\.label/, "World Campaign reuses the canonical brief action");
+assert.match(briefModel, /export function buildCampaignCommandBrief/);
+assert.match(briefHook, /export function useCampaignCommandBrief/);
+assert.match(page, /useCampaignCommandBrief\(commandDeck\)/);
+for (const [file, source] of [["brief model", briefModel], ["brief hook", briefHook]]) {
+  assert.doesNotMatch(source, /\/api\/|\bfetch\s*\(|\bpostJson\s*\(|\bpostV1\s*\(|localStorage|sessionStorage|indexedDB/, `${file} remains request and storage free`);
+}
 for (const [file, source] of [["world presentation", presentation], ["replay drill", drill], ["authoring adapter", authoring], ["navigation", navigation]]) {
   assert.doesNotMatch(source, /\/api\/|\bfetch\s*\(|\bpostJson\s*\(|\bpostV1\s*\(/, `${file} does not own requests`);
 }
 assert.match(pacingCss, /@media\s*\(max-width:\s*520px\)[\s\S]*?\.surface\s*\{[^}]*order:\s*0/s, "Current Objective is first on compact layout");
 assert.match(pacingCss, /forecastContext/);
-assert.match(deckCssBundle, /\.commandDeckMapArea\s*\{\s*order:\s*1/s);
+assert.match(deckCssBundle, /strategic-action-bar[^}]*order:\s*1/s, "Current Action follows Current Objective on compact layout");
+assert.match(deckCssBundle, /\.commandDeckMapArea\s*\{\s*(?:display:[^;]+;\s*)?order:\s*2/s, "Map follows Current Action on compact layout");
 assert.match(deckCssBundle, /data-testid="strategic-decision-queue"/);
 assert.match(page, /useManualReplayDrillActions/);
 assert.match(page, /useWorldCampaignPresentation/);
@@ -87,6 +98,8 @@ const budgets = [
   ["Command Deck CSS", deckCss, 560],
   ["Command Deck responsive CSS", deckResponsiveCss, 320],
   ["Town Pulse CSS", pulseCss, 120],
+  ["Campaign Command Brief model", briefModel, 300],
+  ["Campaign Command Brief hook", briefHook, 80],
   ["World Campaign presentation", presentation, 350],
   ["Manual replay drill", drill, 200],
   ["World Campaign panel", panel, 300]
@@ -96,5 +109,5 @@ for (const [label, source, maximum] of budgets) assert.equal(source.split(/\r?\n
 console.log(JSON.stringify({
   ok: true,
   suite: "objective-first-command-deck",
-  checks: ["surface-priority", "determinism", "single-current-action", "focus-archive", "request-free-presentation", "mobile-objective-order", "css-split", "page-budget", "authority-boundary"]
+  checks: ["surface-priority", "determinism", "single-current-action", "canonical-command-brief", "focus-archive", "request-free-presentation", "mobile-objective-action-map-order", "css-split", "page-budget", "authority-boundary"]
 }));

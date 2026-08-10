@@ -116,6 +116,7 @@ const workflowContracts = [
   ["app/hooks/useWorldCampaignPresentation.ts", "useWorldCampaignPresentation"],
   ["app/hooks/useInvestigationWorkspacePresentation.ts", "useInvestigationWorkspacePresentation"],
   ["app/hooks/useCertifiedCaseAuditModels.ts", "useCertifiedCaseAuditModels"],
+  ["app/hooks/useCampaignCommandBrief.ts", "useCampaignCommandBrief"],
   ["app/campaign/investigation-workspace-model.ts", "buildPlayableInvestigationPath"]
 ];
 for (const [file, exportName] of workflowContracts) {
@@ -123,10 +124,12 @@ for (const [file, exportName] of workflowContracts) {
   assert.match(source, new RegExp(`export function ${exportName}\\b`), `${exportName} has an independent workflow boundary`);
   assert.equal(source.split(/\r?\n/).length < 500, true, `${file} stays below 500 lines`);
 }
-for (const file of ["app/hooks/useInvestigationWorkspacePresentation.ts", "app/hooks/useCertifiedCaseAuditModels.ts"]) {
+for (const file of ["app/hooks/useInvestigationWorkspacePresentation.ts", "app/hooks/useCertifiedCaseAuditModels.ts", "app/hooks/useCampaignCommandBrief.ts"]) {
   const source = await read(file);
   assert.doesNotMatch(source, /\/api\/|\bfetch\s*\(|\bpostJson\s*\(|\bpostV1\s*\(/, `${file} remains request-free presentation ownership`);
 }
+assert.doesNotMatch(await read("app/campaign/campaign-command-brief-model.ts"), /\/api\/|\bfetch\s*\(|\bpostJson\s*\(|\bpostV1\s*\(|localStorage|sessionStorage|indexedDB|advancePersistentTown|stepPersistentTown/, "campaign command brief model remains pure and request-free");
+assert.equal((await read("app/hooks/useCampaignCommandBrief.ts")).split(/\r?\n/).length < 80, true, "Campaign command brief hook stays below 80 lines");
 
 const engine = await loadEngine();
 const baseline = engine.createStaticDemoRuntime("archive-blunt");

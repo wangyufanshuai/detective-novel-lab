@@ -1,5 +1,6 @@
 import { memo, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from "react";
 import type { StrategicCommandAction, StrategicCommandViewModel } from "@/app/campaign/strategic-command-model";
+import { buildCampaignCommandBrief, type CampaignCommandBrief } from "@/app/campaign/campaign-command-brief-model";
 import type { SafeContextActionKind } from "@/app/campaign/context-action-resolver";
 import type { TownMapLensKind } from "@/app/campaign/town-map-lens-model";
 import { buildDistrictStrategicFrontsViewModel, type DistrictStrategicFront, type DistrictStrategicFrontKind } from "@/app/campaign/district-strategic-front-model";
@@ -54,15 +55,16 @@ const TownPulseBar = memo(function TownPulseBar({ viewModel, resourcePanelOpen, 
   );
 });
 
-const ContextSummary = memo(function ContextSummary({ viewModel, onAction, headingRef }: {
+const ContextSummary = memo(function ContextSummary({ viewModel, commandBrief, onAction, headingRef }: {
   viewModel: StrategicCommandViewModel;
+  commandBrief: CampaignCommandBrief;
   onAction?: (kind: SafeContextActionKind) => void | Promise<void>;
   headingRef: RefObject<HTMLHeadingElement | null>;
 }) {
   const context = viewModel.selectedContext;
   return (
-    <section className={styles.commandDeckContextSummary} data-testid="command-deck-context" data-context-kind={context?.kind || "none"}>
-      <span className={styles.commandDeckEyebrow}>Essential Inspector</span>
+    <section className={styles.commandDeckContextSummary} data-testid="command-deck-context" data-context-kind={context?.kind || "none"} data-command-brief-layer="context">
+      <span className={styles.commandDeckEyebrow}>04 / Context Rail</span>
       {context ? <>
         <h2 ref={headingRef} tabIndex={-1}>{context.label}</h2>
         <p>{context.detail}</p>
@@ -86,7 +88,7 @@ const ContextSummary = memo(function ContextSummary({ viewModel, onAction, headi
             ))}
           </div>
         ) : null}
-      </> : <p>Select a public location or character on the map to inspect the next legal action.</p>}
+      </> : <p>{commandBrief.context.detail}</p>}
     </section>
   );
 });
@@ -104,14 +106,15 @@ const NotificationStack = memo(function NotificationStack({ viewModel }: { viewM
   );
 });
 
-const MapIntel = memo(function MapIntel({ viewModel, activeLens, onLensChange }: {
+const MapIntel = memo(function MapIntel({ viewModel, commandBrief, activeLens, onLensChange }: {
   viewModel: StrategicCommandViewModel;
+  commandBrief: CampaignCommandBrief;
   activeLens: TownMapLensKind;
   onLensChange: (lens: TownMapLensKind) => void;
 }) {
   const active = viewModel.mapLenses.controls.find((control) => control.kind === activeLens) || viewModel.mapLenses.controls[0];
   return (
-    <aside className={styles.commandDeckMapIntel} data-testid="command-deck-map-intel" aria-label="Map world signals">
+    <aside className={styles.commandDeckMapIntel} data-testid="command-deck-map-intel" aria-label="Map world signals" data-command-brief-layer="map">
       <div className={styles.commandDeckLensControls} role="group" aria-label="Town map lens">
         {viewModel.mapLenses.controls.map((control) => (
           <button key={control.kind} type="button" aria-pressed={control.kind === activeLens} data-testid="command-deck-map-lens" data-map-lens-kind={control.kind} onClick={() => onLensChange(control.kind)}>
@@ -119,7 +122,7 @@ const MapIntel = memo(function MapIntel({ viewModel, activeLens, onLensChange }:
           </button>
         ))}
       </div>
-      <span className={styles.commandDeckLensSummary}><small>ACTIVE LENS</small><b>{active?.summary || "No public signal"}</b></span>
+      <span className={styles.commandDeckLensSummary}><small>03 / MAP FOCUS · {active?.label || "EVIDENCE"}</small><b>{commandBrief.focus.label}</b><em>{commandBrief.focus.detail}</em></span>
     </aside>
   );
 });
@@ -134,8 +137,9 @@ export function CommandDeckCollapsible({ enabled, title, children }: { enabled: 
   );
 }
 
-export function CommandDeckShell({ viewModel, control, map, inspector, overlay, toasts, blockingOverlayActive = false, toastVisible = false, onContextAction, onStrategicAction, onStrategicFrontFocus }: {
+export function CommandDeckShell({ viewModel, commandBrief, control, map, inspector, overlay, toasts, blockingOverlayActive = false, toastVisible = false, onContextAction, onStrategicAction, onStrategicFrontFocus }: {
   viewModel: StrategicCommandViewModel;
+  commandBrief?: CampaignCommandBrief;
   control: ReactNode;
   map: ReactNode;
   inspector: ReactNode;
@@ -148,6 +152,7 @@ export function CommandDeckShell({ viewModel, control, map, inspector, overlay, 
   onStrategicFrontFocus?: (locationName: string) => void;
 }) {
   const pacing = useStrategicPacing(viewModel);
+  const brief = commandBrief || buildCampaignCommandBrief({ command: viewModel });
   const theatre = useCampaignTransitionTheatre(viewModel, pacing.actionLifecycle);
   const districtFronts = useMemo(() => buildDistrictStrategicFrontsViewModel(viewModel), [viewModel]);
   const [activePanel, setActivePanel] = useState<CommandPanel | null>(null);
@@ -365,6 +370,8 @@ export function CommandDeckShell({ viewModel, control, map, inspector, overlay, 
       data-presentation-tone={viewModel.presentationFeedback.tone}
       data-pacing-phase={pacing.viewModel.phase}
       data-focus-target={pacing.viewModel.focusTarget}
+      data-command-brief-status={brief.status}
+      data-command-brief-focus={brief.focus.target}
       data-active-panel={activePanel || "none"}
       data-panel-open={activePanel ? "true" : "false"}
       data-active-front={activeFrontKey || "none"}
@@ -385,7 +392,8 @@ export function CommandDeckShell({ viewModel, control, map, inspector, overlay, 
       />
       <div className={styles.commandDeckGrid} data-testid="command-deck-grid">
         <aside className={styles.commandDeckAgendaRail} data-testid="command-deck-agenda-rail">
-          <StrategicPacingSurface command={viewModel} pacing={pacing.viewModel} />
+          <StrategicPacingSurface command={viewModel} pacing={pacing.viewModel} brief={brief} />
+          <StrategicActionBar command={viewModel} pacing={pacing.viewModel} compact onAction={onStrategicAction ? handleStrategicAction : undefined} />
           <StrategicDecisionQueue
             command={viewModel}
             pacing={pacing.viewModel}
@@ -400,7 +408,7 @@ export function CommandDeckShell({ viewModel, control, map, inspector, overlay, 
         </aside>
         <section className={styles.commandDeckMapArea} data-testid="command-deck-map-area" tabIndex={-1}>
           {map}
-          {!blockingOverlayActive && transitionVisible && <CampaignTransitionTheatre presentation={theatre.presentation} headingRef={theatreHeadingRef} onSkip={theatre.skip} onDismiss={() => {
+          {!blockingOverlayActive && transitionVisible && <CampaignTransitionTheatre presentation={theatre.presentation} commandBrief={brief} headingRef={theatreHeadingRef} onSkip={theatre.skip} onDismiss={() => {
             theatre.dismiss();
             window.requestAnimationFrame(() => theatreTriggerRef.current?.focus());
           }} />}
@@ -413,7 +421,7 @@ export function CommandDeckShell({ viewModel, control, map, inspector, overlay, 
             onSelect={selectDistrictFront}
             onAction={onStrategicAction ? handleDistrictFrontAction : undefined}
           />
-          <MapIntel viewModel={viewModel} activeLens={activeMapLens} onLensChange={setActiveMapLens} />
+          <MapIntel viewModel={viewModel} commandBrief={brief} activeLens={activeMapLens} onLensChange={setActiveMapLens} />
         </section>
         <aside className={`${styles.commandDeckContextRail} ${activePanel === "context" ? styles.drawerOpen : ""}`} data-testid="command-deck-context-rail">
           <button
@@ -429,7 +437,7 @@ export function CommandDeckShell({ viewModel, control, map, inspector, overlay, 
             <span>Context</span><strong>{viewModel.selectedContext?.label || "Select a map object"}</strong><b aria-hidden="true">{activePanel === "context" ? "Close" : "Open"}</b>
           </button>
           <div id="command-deck-context-drawer" className={styles.commandDeckContextDrawerBody}>
-            <ContextSummary viewModel={viewModel} onAction={handleContextAction} headingRef={contextHeadingRef} />
+            <ContextSummary viewModel={viewModel} commandBrief={brief} onAction={handleContextAction} headingRef={contextHeadingRef} />
             <section className={styles.commandDeckInspectorDisclosure} data-inspector-open={inspectorDetailOpen ? "true" : "false"}>
               <button
                 ref={inspectorDetailTriggerRef}
@@ -446,7 +454,6 @@ export function CommandDeckShell({ viewModel, control, map, inspector, overlay, 
           </div>
         </aside>
       </div>
-      <StrategicActionBar command={viewModel} pacing={pacing.viewModel} onAction={onStrategicAction ? handleStrategicAction : undefined} />
       <NotificationStack viewModel={viewModel} />
       {overlay}
       {toasts}

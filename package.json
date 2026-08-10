@@ -17,6 +17,7 @@
     "test:case-rhythm": "node scripts/run-certified-case-rhythm-tests.mjs",
     "test:strategic-command": "node scripts/run-strategic-command-model-tests.mjs",
     "test:strategic-pacing": "node scripts/run-strategic-pacing-model-tests.mjs",
+    "test:campaign-command-brief": "node scripts/run-campaign-command-brief-tests.mjs",
     "test:district-fronts": "node scripts/run-district-strategic-front-tests.mjs",
     "test:guided-workflow": "node scripts/run-guided-workflow-model-tests.mjs",
     "test:investigation-workspace": "node scripts/run-certified-investigation-adapter-tests.mjs",

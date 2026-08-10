@@ -1323,6 +1323,12 @@ async function verifyServerRuntime(page, baseUrl) {
   summary.serverReplayGoalCoachText = `${serverReplayGoalCoachTextBeforeAttempt}\n---\n${serverReplayGoalCoachTextAfterAttempt}`;
   summary.serverReplayAttemptScorecardText = `${serverReplayAttemptScorecardTextBeforeAttempt}\n---\n${serverReplayAttemptScorecardTextPending}\n---\n${serverReplayAttemptScorecardTextCompleted}`;
   summary.serverManualEvidenceDrillText = `${serverManualEvidenceDrillTextBeforeAdd}\n---\n${serverManualEvidenceDrillTextAfterAdd}`;
+  summary.serverWorldCurrentActionSamples = {
+    choice: serverWorldCurrentActionChoice,
+    directiveReady: serverWorldCurrentActionDirectiveReady,
+    scheduled: serverWorldCurrentActionScheduled,
+    nextCase: serverWorldCurrentActionNextCase
+  };
   summary.hasDatasetPackage = summary.hasDatasetPackage || serverCatalogText.includes("Dataset Package");
   summary.hasReplayDataset = summary.hasReplayDataset || serverCatalogText.includes("Replay Dataset");
   summary.hasWorldPackages = summary.hasWorldPackages || serverCatalogText.includes("World Packages");
@@ -1332,10 +1338,18 @@ async function verifyServerRuntime(page, baseUrl) {
   summary.hasServerPlaythroughAccepted = summary.hasServerPlaythroughAccepted || /completed \/ accepted theory/i.test(serverPlaythroughText);
   summary.hasServerPlaythroughMetrics = summary.hasServerPlaythroughMetrics || (/source-backed route/i.test(serverPlaythroughText) && /challenge hits/i.test(serverPlaythroughText) && /selected evidence/i.test(serverPlaythroughText) && /covered obligations/i.test(serverPlaythroughText));
   summary.hasServerWorldLead = /world lead/i.test(serverWorldLeadTextFollowed) && /followed/i.test(serverWorldLeadTextFollowed);
-  summary.hasServerWorldCurrentAction = /campaign priority/i.test(serverWorldCurrentActionChoice) && /choose how to approach this case/i.test(serverWorldCurrentActionChoice) && /follow the safe world lead/i.test(serverWorldCurrentActionChoice);
-  summary.hasServerWorldCurrentActionDirectiveReady = /choose one faction response|extract the next case with preparation active/i.test(serverWorldCurrentActionDirectiveReady);
-  summary.hasServerWorldCurrentActionScheduled = /advance the existing town operation|extract the next case with preparation active/i.test(serverWorldCurrentActionScheduled);
-  summary.hasServerWorldCurrentActionNextCase = /choose how to approach this case/i.test(serverWorldCurrentActionNextCase) && /follow the safe world lead/i.test(serverWorldCurrentActionNextCase);
+  summary.hasServerWorldCurrentAction = /campaign priority/i.test(serverWorldCurrentActionChoice)
+    && /observe case window|choose how to approach this case/i.test(serverWorldCurrentActionChoice)
+    && /review the public event window|follow the safe world lead|certified route/i.test(serverWorldCurrentActionChoice);
+  summary.hasServerWorldCurrentActionDirectiveReady = /campaign priority/i.test(serverWorldCurrentActionDirectiveReady)
+    && /choose one faction response|extract the next case with preparation active|review conclusion/i.test(serverWorldCurrentActionDirectiveReady)
+    && /faction directive|next extraction|open the certified conclusion/i.test(serverWorldCurrentActionDirectiveReady);
+  summary.hasServerWorldCurrentActionScheduled = /campaign priority/i.test(serverWorldCurrentActionScheduled)
+    && /advance the existing town operation|extract the next case with preparation active|review conclusion/i.test(serverWorldCurrentActionScheduled)
+    && /faction directive|next extraction|open the certified conclusion/i.test(serverWorldCurrentActionScheduled);
+  summary.hasServerWorldCurrentActionNextCase = /campaign priority/i.test(serverWorldCurrentActionNextCase)
+    && /join investigation|observe case window|choose how to approach this case/i.test(serverWorldCurrentActionNextCase)
+    && /create the player session|review the public event window|certified investigation route/i.test(serverWorldCurrentActionNextCase);
   summary.hasServerWorldCampaignConsolidated = /case & world consequence/i.test(serverWorldLeadTextFollowed) && /campaign priority/i.test(serverWorldLeadTextFollowed);
   summary.hasServerWorldLeadResolved = /resolved/i.test(serverWorldLeadTextResolved);
   summary.hasServerWorldLeadOutcomeActive = /world effect/i.test(serverWorldLeadTextActive) && /active/i.test(serverWorldLeadTextActive);

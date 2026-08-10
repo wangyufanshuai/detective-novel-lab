@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import type { CampaignPacingViewModel } from "@/app/campaign/campaign-pacing-model";
+import type { CampaignCommandBrief } from "@/app/campaign/campaign-command-brief-model";
 import { deriveCurrentWorldAction } from "@/app/campaign/world-campaign-action-model";
 import type {
   ArcConvergenceSummary,
@@ -83,6 +84,7 @@ type WorldCampaignPanelProps = {
   campaignFinaleDebrief?: CampaignFinaleDebriefSummary | null;
   townSocialResponse?: TownSocialResponseSummary | null;
   campaignPacing?: CampaignPacingViewModel | null;
+  commandBrief?: CampaignCommandBrief | null;
   onDecision?: (action: "follow" | "skip") => void;
   onDirectiveDecision?: (choice: "support" | "contain" | "defer") => void;
   onResourceCommitmentDecision?: (allocations: WorldLeadFocus[]) => void;
@@ -96,7 +98,7 @@ export function WorldCampaignPanel({
   runtimeMode, session, summary, outcome, handoff, arc, directive, pressure, influenceBudget,
   playerResourceCommitment, factionRelationship, worldEventOffer, investigatorProgression,
   campaignRecovery, investigatorHeadquarters, arcConvergence, campaignSession,
-  campaignFinaleDebrief, townSocialResponse, campaignPacing, onDecision,
+  campaignFinaleDebrief, townSocialResponse, campaignPacing, commandBrief, onDecision,
   onDirectiveDecision, onResourceCommitmentDecision, onWorldEventOfferDecision,
   onCampaignRecoveryDecision, onInvestigatorHeadquartersDecision, busy
 }: WorldCampaignPanelProps) {
@@ -165,8 +167,8 @@ export function WorldCampaignPanel({
         <div><span>World Lead</span><strong>{session ? "Case & World Consequence" : "Next Case World Context"}</strong></div>
         <b>{summary?.status || handoff?.status || arc?.status || action.status}</b>
       </div>
-      <div className={`worldCampaignCurrentAction ${action.status}`} data-testid="world-campaign-current-action">
-        <span>Campaign priority</span><b>{action.label}</b><small>{action.detail}</small>
+      <div className={`worldCampaignCurrentAction ${action.status}`} data-testid="world-campaign-current-action" data-command-brief-layer="context">
+        <span>Campaign priority</span><b>{commandBrief?.primaryAction?.label || action.label}</b><small>{commandBrief?.whyNow || action.detail}</small>
       </div>
       <div className="worldCampaignFocus" data-testid="world-campaign-focus" data-focus-surface={focusedEntry?.key || "overview"}>
         <span className="worldCampaignFocusLabel">Focused world context</span>

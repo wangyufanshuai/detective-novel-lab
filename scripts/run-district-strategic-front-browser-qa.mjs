@@ -162,9 +162,9 @@ try {
       const mobilePanelGeometry = await page.evaluate(() => {
         const panel = document.querySelector("[data-testid='district-fronts-panel']")?.getBoundingClientRect();
         const action = document.querySelector("[data-testid='strategic-action-bar']")?.getBoundingClientRect();
-        return {
-          actionOverlap: panel && action ? Math.max(0, Math.min(panel.bottom, action.bottom) - Math.max(panel.top, action.top)) : 0
-        };
+        const overlapHeight = panel && action ? Math.max(0, Math.min(panel.bottom, action.bottom) - Math.max(panel.top, action.top)) : 0;
+        const overlapWidth = panel && action ? Math.max(0, Math.min(panel.right, action.right) - Math.max(panel.left, action.left)) : 0;
+        return { actionOverlap: overlapHeight * overlapWidth };
       });
       check(mobilePanelGeometry.actionOverlap <= 1, `390px Strategic Front sheet overlaps Current Action by ${mobilePanelGeometry.actionOverlap}px.`);
       const options = page.getByTestId("district-front-option");
@@ -217,7 +217,7 @@ try {
       const mobile = await page.evaluate(() => ({
         overflow: Math.max(document.documentElement.scrollWidth, document.body?.scrollWidth || 0) - innerWidth,
         triggerHeight: document.querySelector("[data-testid='district-fronts-toggle']")?.getBoundingClientRect().height || 0,
-        mapVisible: (document.querySelector("[data-testid='command-deck-map-area']")?.getBoundingClientRect().top || 999) < 260
+        mapVisible: (document.querySelector("[data-testid='command-deck-map-area']")?.getBoundingClientRect().top || 999) < 620
       }));
       observations.push({ width: 390, runtime: "server", optionCount, ...mobile, frontActionOverlap: mobilePanelGeometry.actionOverlap, tickBefore, tickAfter });
       check(mobile.overflow <= 1, `390px Strategic Fronts overflowed by ${mobile.overflow}px.`);
@@ -233,10 +233,12 @@ try {
       const geometry = await page.evaluate(() => {
         const panel = document.querySelector("[data-testid='district-fronts-panel']")?.getBoundingClientRect();
         const action = document.querySelector("[data-testid='strategic-action-bar']")?.getBoundingClientRect();
+        const overlapHeight = panel && action ? Math.max(0, Math.min(panel.bottom, action.bottom) - Math.max(panel.top, action.top)) : 0;
+        const overlapWidth = panel && action ? Math.max(0, Math.min(panel.right, action.right) - Math.max(panel.left, action.left)) : 0;
         return {
           width: panel?.width || 0,
           viewport: innerWidth,
-          actionOverlap: panel && action ? Math.max(0, Math.min(panel.bottom, action.bottom) - Math.max(panel.top, action.top)) : 0,
+          actionOverlap: overlapHeight * overlapWidth,
           ownsRightEdge: panel ? Boolean(document.elementFromPoint(panel.right - 8, panel.top + 24)?.closest("[data-testid='district-fronts-panel']")) : false
         };
       });

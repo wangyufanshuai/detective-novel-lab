@@ -9,6 +9,7 @@
   max-height: min(46%, 360px);
   padding: 12px 14px;
   overflow: auto;
+  overscroll-behavior: contain;
   border: 1px solid color-mix(in srgb, var(--deck-accent) 62%, transparent);
   border-left: 4px solid var(--deck-accent);
   border-radius: 5px;
@@ -58,8 +59,8 @@
 .phaseRail li[data-active="true"] span { background: var(--deck-warning); box-shadow: 0 0 12px color-mix(in srgb, var(--deck-warning) 50%, transparent); }
 
 .content { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(190px, .75fr); gap: 14px; align-items: start; }
-.copy h2 { margin: 0; color: #f8fbff; font-size: clamp(15px, 1.45vw, 21px); line-height: 1.18; }
-.copy h2:focus { outline: 0; }
+.copy h2 { margin: 0; color: #f8fbff; font-size: clamp(15px, 1.45vw, 21px); line-height: 1.18; text-wrap: balance; }
+.copy h2:focus-visible { outline: 3px solid #fff0aa; outline-offset: 3px; }
 .copy p { margin: 0; color: #c5d4dc; font-size: 10px; line-height: 1.45; }
 .copy strong { color: #8dc9e3; font-size: 9px; line-height: 1.4; }
 .forecast { display: grid; gap: 5px; margin: 0; }

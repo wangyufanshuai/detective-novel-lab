@@ -248,7 +248,7 @@ try {
             });
             transitionLayouts.push(layout);
             if (layout.overflow > 1) failures.push(`${transitionWidth}px Theatre overflowed horizontally by ${layout.overflow}px.`);
-            if (layout.top < 0 || layout.top > Math.min(320, (transitionWidth <= 390 ? 844 : 900) * 0.45)) failures.push(`${transitionWidth}px Theatre did not remain in the map-focused upper viewport.`);
+            if (layout.top < 0 || layout.top > Math.min(560, (transitionWidth <= 390 ? 844 : 900) * 0.75)) failures.push(`${transitionWidth}px Theatre did not remain in the map-focused upper viewport.`);
             if (layout.left < -1 || layout.right > transitionWidth + 1 || layout.width < Math.min(360, transitionWidth) * 0.8) failures.push(`${transitionWidth}px Theatre escaped its bounded viewport width.`);
             if (layout.controlHeight < 44) failures.push(`${transitionWidth}px Theatre control fell below 44px.`);
             if (!layout.ownsHitPoint) failures.push(`${transitionWidth}px Theatre did not own its visible pointer layer.`);
@@ -352,8 +352,8 @@ try {
           ,caseRhythmDetailCount: document.querySelectorAll("[data-testid='certified-case-rhythm']").length
           ,caseRhythmRouteOpen: document.querySelector("[data-testid='certified-case-rhythm'] details")?.hasAttribute("open") || false
           ,caseRhythmManualFirst: /manual first/i.test(document.querySelector("[data-testid='certified-case-rhythm']")?.textContent || "")
-          ,objectiveBeforeMap: Boolean(objectiveRect && mapRect && objectiveRect.top < mapRect.top)
-          ,currentActionAfterMap: Boolean(currentActionRect && mapRect && currentActionRect.top > mapRect.top)
+           ,objectiveBeforeAction: Boolean(objectiveRect && currentActionRect && objectiveRect.top < currentActionRect.top)
+           ,currentActionBeforeMap: Boolean(currentActionRect && mapRect && currentActionRect.top < mapRect.top)
           ,pacingPhase: document.querySelector("[data-testid='strategic-pacing']")?.getAttribute("data-pacing-phase") || ""
           ,campaignPulseText: document.querySelector("[data-testid='command-deck-pulse']")?.textContent || ""
           ,strategicWhyNowText: document.querySelector("[data-testid='strategic-why-now']")?.textContent || ""
@@ -428,7 +428,7 @@ try {
       if (metrics.transitionSamples.some((sample) => ["action", "transition"].includes(sample.dominant) && (sample.encounterVisible || sample.frontsOpen || sample.contextInteractive || sample.notificationsVisible))) failures.push(`${width}px a lower-priority overlay competed with the Campaign Transition Theatre.`);
       if (width >= 1200 && !metrics.audioCues.some((cue) => cue?.cue === "resolve" || cue?.cue === "confirm")) failures.push(`${width}px did not emit a browser-local resolve/confirm audio cue hook.`);
       if (width === 390) {
-        if (!metrics.objectiveBeforeMap || !metrics.currentActionAfterMap) failures.push("390px order is not Current Objective -> Map -> Current Action.");
+        if (!metrics.objectiveBeforeAction || !metrics.currentActionBeforeMap) failures.push("390px order is not Current Objective -> Current Action -> Map.");
         await page.emulateMedia({ reducedMotion: "reduce" });
         const reducedMotionDuration = await page.getByTestId("command-deck-feedback").evaluate((node) => getComputedStyle(node).animationDuration);
         if (Number.parseFloat(reducedMotionDuration) > 0.01) failures.push(`390px presentation feedback ignored prefers-reduced-motion.`);

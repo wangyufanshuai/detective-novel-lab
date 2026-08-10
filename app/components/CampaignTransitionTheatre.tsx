@@ -1,9 +1,11 @@
 import type { RefObject } from "react";
 import type { CampaignBeatPresentation } from "@/app/campaign/campaign-transition-model";
+import type { CampaignCommandBrief } from "@/app/campaign/campaign-command-brief-model";
 import styles from "./CampaignTransitionTheatre.module.css";
 
-export function CampaignTransitionTheatre({ presentation, headingRef, onSkip, onDismiss }: {
+export function CampaignTransitionTheatre({ presentation, commandBrief, headingRef, onSkip, onDismiss }: {
   presentation: CampaignBeatPresentation;
+  commandBrief?: CampaignCommandBrief;
   headingRef: RefObject<HTMLHeadingElement | null>;
   onSkip: () => void;
   onDismiss: () => void;
@@ -16,6 +18,7 @@ export function CampaignTransitionTheatre({ presentation, headingRef, onSkip, on
       data-transition-phase={presentation.phase}
       data-transition-kind={presentation.kind}
       data-transition-tone={presentation.tone}
+      data-command-brief-transition={commandBrief?.transition.state || "idle"}
       aria-live={presentation.phase === "action-resolving" ? "polite" : "assertive"}
       aria-label="Campaign result presentation"
     >
@@ -45,7 +48,7 @@ export function CampaignTransitionTheatre({ presentation, headingRef, onSkip, on
           <div><dt>Still fair</dt><dd>{presentation.fairnessLabel}</dd></div>
         </dl>}
         {presentation.phase === "next-objective" && <dl className={styles.forecast}>
-          <div><dt>Next objective</dt><dd>{presentation.nextObjective}</dd></div>
+          <div><dt>Next objective</dt><dd>{commandBrief?.nextAction || presentation.nextObjective}</dd></div>
           <div><dt>Authority boundary</dt><dd>{presentation.fairnessLabel}</dd></div>
         </dl>}
       </div>

@@ -39,6 +39,7 @@ import { useCampaignLaunchActions } from "@/app/hooks/useCampaignLaunchActions";
 import { useWorkspaceLifecycleEffects } from "@/app/hooks/useWorkspaceLifecycleEffects";
 import { useManualReplayDrillActions } from "@/app/hooks/useManualReplayDrillActions";
 import { useWorldCampaignPresentation } from "@/app/hooks/useWorldCampaignPresentation";
+import { useCampaignCommandBrief } from "@/app/hooks/useCampaignCommandBrief";
 import { useCampaignController } from "@/app/controllers/useCampaignController";
 import { useInvestigationController } from "@/app/controllers/useInvestigationController";
 import { useReplayController } from "@/app/controllers/useReplayController";
@@ -521,6 +522,7 @@ export default function Home() {
     worldEvent: visibleEvents[0] ? { status: "visible", label: "World Event", headline: visibleEvents[0].publicSummary } : undefined,
     selectedContext: commandDeckContext.selectedContext, contextActions: commandDeckContext.actions, mapLenses: townMapLenses, investigationTurn: commandDeckContext.turnState, worldConsequenceTimeline, campaignPacing, caseRhythm
   });
+  const campaignCommandBrief = useCampaignCommandBrief(commandDeck);
   async function handleStrategicCommand(action: StrategicCommandAction) {
     if (action.kind === "certified-investigation" && action.target === "show-investigation") await runCertifiedCaseRhythmStep();
     await executeStrategicActionDispatchAsync(action, {
@@ -612,6 +614,7 @@ export default function Home() {
     {campaignStudyRecorder}
     <PlayShell
       commandDeck={commandDeck}
+      commandBrief={campaignCommandBrief}
       control={(
         <>
         <ControlRail
@@ -782,6 +785,7 @@ export default function Home() {
                   worldPressureCascade={runtimeMode === "static-demo" ? null : worldPressureCascade || townRuntime?.worldPressureCascadeSummary}
                   worldInfluenceBudget={runtimeMode === "static-demo" ? null : worldInfluenceBudget || townRuntime?.worldInfluenceBudgetSummary}
                   campaignPacing={campaignPacing}
+                  campaignCommandBrief={campaignCommandBrief}
                   playerResourceCommitment={runtimeMode === "static-demo" ? null : playerResourceCommitment || townRuntime?.playerResourceCommitmentSummary}
                   factionRelationship={runtimeMode === "static-demo" ? null : factionRelationship || townRuntime?.factionRelationshipSummary}
                   worldEventOffer={runtimeMode === "static-demo" ? null : worldEventOffer || townRuntime?.worldEventOfferSummary}

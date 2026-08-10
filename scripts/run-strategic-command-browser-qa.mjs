@@ -20,6 +20,9 @@ const baseUrl = `http://${host}:${port}`;
 const widths = [390, 768, 1440];
 const failures = [];
 const observations = [];
+const dbName = `v92-strategic-command-browser-${process.pid}.db`;
+const dbPath = path.join(process.cwd(), "data", dbName);
+const databaseUrl = `file:./data/${dbName}`;
 let server;
 let currentStep = "startup";
 
@@ -36,8 +39,23 @@ function stopServer() {
   }
 }
 
+function cleanDatabase() {
+  for (const suffix of ["", "-wal", "-shm", "-journal"]) {
+    try { fs.rmSync(`${dbPath}${suffix}`, { force: true }); } catch {}
+  }
+}
+
+async function cleanDatabaseAfterStop() {
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    cleanDatabase();
+    if (!["", "-wal", "-shm", "-journal"].some((suffix) => fs.existsSync(`${dbPath}${suffix}`))) return;
+    await new Promise((resolve) => setTimeout(resolve, 125));
+  }
+  cleanDatabase();
+}
+
 async function waitForServer() {
-  const deadline = Date.now() + 30_000;
+  const deadline = Date.now() + 45_000;
   while (Date.now() < deadline) {
     try {
       const response = await fetch(`${baseUrl}/?runtime=server`);
@@ -48,12 +66,13 @@ async function waitForServer() {
   throw new Error("Strategic Command production server did not become ready.");
 }
 
+cleanDatabase();
 try {
   const command = process.platform === "win32" ? "cmd.exe" : "npm";
   const args = process.platform === "win32"
     ? ["/d", "/s", "/c", `npm.cmd run start -- -H ${host} -p ${port}`]
     : ["run", "start", "--", "-H", host, "-p", String(port)];
-  server = spawn(command, args, { cwd: process.cwd(), detached: process.platform !== "win32", env: process.env, stdio: "ignore" });
+  server = spawn(command, args, { cwd: process.cwd(), detached: process.platform !== "win32", env: { ...process.env, DATABASE_URL: databaseUrl }, stdio: "ignore" });
   await waitForServer();
   const browser = await chromium.launch(launchOptions());
   try {
@@ -78,6 +97,7 @@ try {
 
       const metrics = await page.evaluate(() => {
         const shell = document.querySelector("[data-testid='command-deck-shell']");
+        const objective = document.querySelector("[data-testid='strategic-pacing']")?.getBoundingClientRect();
         const map = document.querySelector("[data-testid='command-deck-map-area']");
         const primary = document.querySelectorAll("[data-command-deck-primary='true']:not([disabled])");
         const secondary = document.querySelectorAll("[data-testid='strategic-secondary-action']:not([disabled])");
@@ -85,6 +105,7 @@ try {
         const feedback = document.querySelector("[data-testid='command-deck-feedback']");
         const actionBar = document.querySelector("[data-testid='strategic-action-bar']");
         const mapRect = map?.getBoundingClientRect();
+        const actionRect = actionBar?.getBoundingClientRect();
         const primaryRect = primary[0]?.getBoundingClientRect();
         const resourceTargets = Array.from(document.querySelectorAll("[data-testid='strategic-resource-ribbon'] summary"))
           .map((node) => node.getBoundingClientRect())
@@ -98,6 +119,8 @@ try {
           mapWidth: mapRect?.width || 0,
           mapTop: mapRect?.top || 0,
           mapBottom: mapRect?.bottom || 0,
+          objectiveBeforeAction: Boolean(objective && actionRect && objective.top < actionRect.top),
+          actionBeforeMap: Boolean(actionRect && mapRect && actionRect.top < mapRect.top),
           primaryCount: primary.length,
           secondaryCount: secondary.length,
           primaryHeight: primaryRect?.height || 0,
@@ -127,7 +150,7 @@ try {
       if (!/ready|blocked|unavailable/.test(metrics.advanceState)) failures.push(`${width}px Advance Town state is missing.`);
       if (metrics.rawLeak) failures.push(`${width}px strategic surfaces exposed a raw identifier or hidden authority token.`);
       if (width >= 1200 && metrics.mapWidth / Math.max(metrics.shellWidth, 1) < 0.55) failures.push(`${width}px map area is below the 55% desktop budget.`);
-      if (width === 390 && (metrics.mapTop >= 340 || metrics.mapBottom <= 500)) failures.push("390px map is not visible as the first playable surface.");
+      if (width === 390 && (!metrics.objectiveBeforeAction || !metrics.actionBeforeMap || metrics.mapTop >= 650 || metrics.mapBottom <= 600)) failures.push("390px hierarchy is not Current Objective -> Current Action -> Map.");
 
       await page.emulateMedia({ reducedMotion: "reduce" });
       const motion = await page.getByTestId("strategic-primary-action").evaluate((node) => ({
@@ -176,6 +199,7 @@ try {
   failures.push(`${currentStep}: ${error instanceof Error ? error.message : String(error)}`);
 } finally {
   stopServer();
+  await cleanDatabaseAfterStop();
 }
 
 const result = { ok: failures.length === 0, widths, observations, failures };

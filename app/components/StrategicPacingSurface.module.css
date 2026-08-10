@@ -37,6 +37,7 @@
   font-size: 18px;
   font-weight: 600;
   line-height: 1.2;
+  text-wrap: balance;
 }
 
 .objectiveDetail {
@@ -47,6 +48,7 @@
 }
 
 .whyNow,
+.whatChanges,
 .publicChange,
 .latestOutcome {
   display: grid;
@@ -57,6 +59,7 @@
 }
 
 .whyNow small,
+.whatChanges small,
 .publicChange small,
 .latestOutcome small {
   color: var(--deck-accent);
@@ -66,11 +69,40 @@
 }
 
 .whyNow strong,
+.whatChanges strong,
 .latestOutcome strong {
   color: #e9eef0;
   font-size: 10px;
   line-height: 1.4;
 }
+
+.briefSignals {
+  display: grid;
+  gap: 1px;
+  background: rgba(131, 157, 168, 0.14);
+}
+
+.whatChanges { border-left-color: var(--deck-warning); }
+.whatChanges small { color: var(--deck-warning); }
+
+.briefFocus {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1px;
+  background: rgba(131, 157, 168, 0.14);
+  border: 1px solid rgba(131, 157, 168, 0.18);
+}
+
+.briefFocus span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  padding: 6px 8px;
+  background: rgba(8, 14, 19, 0.82);
+}
+
+.briefFocus small { color: var(--deck-muted); font-size: 7px; font-weight: 900; letter-spacing: 0.07em; }
+.briefFocus b { overflow: hidden; color: #dce8eb; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 
 .publicChange {
   border-left-color: #bd9a61;
@@ -175,7 +207,8 @@
   .surface h1 { font-size: 16px; }
   .objectiveDetail { display: -webkit-box; overflow: hidden; font-size: 9px; line-height: 1.35; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
   .whyNow { gap: 2px; padding: 6px 7px; }
-  .whyNow strong { display: -webkit-box; overflow: hidden; font-size: 9px; line-height: 1.25; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+  .whyNow strong,
+  .whatChanges strong { display: -webkit-box; overflow: hidden; font-size: 9px; line-height: 1.25; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
   .phaseRail li { gap: 1px; font-size: 0; }
   .caseRhythm li { font-size: 6px; }
   .forecast summary { padding-block: 8px; font-size: 8px; }

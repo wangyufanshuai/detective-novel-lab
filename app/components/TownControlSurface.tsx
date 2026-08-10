@@ -29,6 +29,7 @@ import { TownRuleStatePanel } from "@/app/components/TownRuleStatePanel";
 import { CommandDeckCollapsible, CommandDeckShell } from "@/app/components/CommandDeckShell";
 import { CandidatePlayabilityPreview } from "@/app/components/CandidatePlayabilityPreview";
 import type { StrategicCommandAction, StrategicCommandViewModel } from "@/app/campaign/strategic-command-model";
+import type { CampaignCommandBrief } from "@/app/campaign/campaign-command-brief-model";
 import type { SafeContextActionKind } from "@/app/campaign/context-action-resolver";
 import { getInvestigationActionDefinition, type InvestigationActionKind } from "@/app/campaign/investigation-action-registry";
 import type { TownMapLensViewModel } from "@/app/campaign/town-map-lens-model";
@@ -398,6 +399,7 @@ type ManualTheoryDrillSummary = {
 };
 export function PlayShell({
   commandDeck,
+  commandBrief,
   control,
   map,
   inspector,
@@ -410,6 +412,7 @@ export function PlayShell({
   onStrategicFrontFocus
 }: {
   commandDeck?: StrategicCommandViewModel;
+  commandBrief?: CampaignCommandBrief;
   control: ReactNode;
   map: ReactNode;
   inspector: ReactNode;
@@ -422,7 +425,7 @@ export function PlayShell({
   onStrategicFrontFocus?: (locationName: string) => void;
 }) {
   if (commandDeck) {
-    return <CommandDeckShell viewModel={commandDeck} control={control} map={map} inspector={inspector} overlay={overlay} toasts={toasts} blockingOverlayActive={blockingOverlayActive} toastVisible={toastVisible} onContextAction={onContextAction} onStrategicAction={onStrategicAction} onStrategicFrontFocus={onStrategicFrontFocus} />;
+    return <CommandDeckShell viewModel={commandDeck} commandBrief={commandBrief} control={control} map={map} inspector={inspector} overlay={overlay} toasts={toasts} blockingOverlayActive={blockingOverlayActive} toastVisible={toastVisible} onContextAction={onContextAction} onStrategicAction={onStrategicAction} onStrategicFrontFocus={onStrategicFrontFocus} />;
   }
   return (
     <main className="townShell">

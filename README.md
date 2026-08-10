@@ -782,6 +782,25 @@ The measured ownership budgets are `app/page.tsx` 976 / 1,100 lines; workspace p
 
 No endpoint, payload, runtime field, SQLite/content/public schema, event, tick, ranking modifier, world rule, public artifact, or proof card changed. Static still resolves before any request and remains zero `/api/*`; investigation truth, evidence coverage, Route Certificate, judgement, candidate ordering, and NPC legal actions retain their existing authority. v6.2 remains **instrumentation ready**, not Human Gate passed.
 
+## v9.2 Campaign Command Clarity & Progressive Disclosure
+
+v9.2 adds one deterministic, public-safe `Campaign Command Brief` over the existing Strategic Command state. It fixes the presentation hierarchy to `Current Objective -> Current Action -> Map Focus -> Context`, so the map remains the play space while optional World Lead, Directive, Recovery, Journal, Replay, and source-review material stays available through progressive disclosure. Command Deck, Map Intel, World Campaign, and Campaign Transition Theatre consume the same brief rather than inventing parallel wording or priority.
+
+The brief and hook are request-free and never read hidden truth, raw case bodies, private identifiers, player prose, or internal resource keys. Front selection and overlay changes remain presentation/navigation state only. Existing handlers, endpoints, payloads, setter order, route certificate, evidence coverage, judgement, candidate ordering, NPC legal actions, and world consequences are unchanged. Static keeps the Server-only explanation, exposes no persistent controls, writes no study state, and makes zero `/api/*` requests.
+
+The release also hardens the responsive District Strategic Front sheet: at 390px it opens below the map trigger and remains geometrically separate from Current Action, while 768px and 1440px retain a bounded edge panel and map-first share. Focus-visible, 44px controls, reduced-motion, and overlay arbitration remain enforced. This is a presentation-only release, not a new world mechanism or proof card; v6.2 remains **instrumentation ready**, not Human Gate passed.
+
+```powershell
+npm run test:campaign-command-brief
+npm run test:objective-first
+npm run test:controller-contracts
+npm run qa:command-deck -- --json
+npm run qa:strategic-command -- --json
+npm run qa:district-fronts -- --json
+npm run qa:static-browser -- --json
+npm run quality:performance-budget -- --json
+```
+
 ## Roadmap
 
 - Public hosted Static Demo.

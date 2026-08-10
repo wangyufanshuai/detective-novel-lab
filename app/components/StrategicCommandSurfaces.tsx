@@ -182,16 +182,17 @@ function ActionButton({ action, primary, resolving, onAction }: {
       title={action.disabledReason || action.detail}
       onClick={() => void onAction?.(action)}
     >
-      <span>{primary ? resolving ? "RESOLVING" : "CURRENT ACTION" : `P${action.priority}`}</span>
+      <span>{primary ? resolving ? "RESOLVING" : "02 / CURRENT ACTION" : `P${action.priority}`}</span>
       <strong>{action.label}</strong>
       <small>{action.disabledReason || action.detail}</small>
     </button>
   );
 }
 
-export const StrategicActionBar = memo(function StrategicActionBar({ command, pacing, onAction }: {
+export const StrategicActionBar = memo(function StrategicActionBar({ command, pacing, compact = false, onAction }: {
   command: StrategicCommandViewModel;
   pacing: StrategicPacingViewModel;
+  compact?: boolean;
   onAction?: (action: StrategicCommandAction) => void | Promise<void>;
 }) {
   const primary = pacing.primaryAction;
@@ -207,8 +208,10 @@ export const StrategicActionBar = memo(function StrategicActionBar({ command, pa
   ] : Object.values(command.outcomeFeedback);
   return (
     <footer
-      className={styles.actionBar}
+      className={`${styles.actionBar} ${compact ? styles.compact : ""}`}
       data-testid="strategic-action-bar"
+      data-command-brief-layer="action"
+      data-command-placement={compact ? "agenda" : "footer"}
       data-advance-state={pacing.advanceState.state}
       data-action-lifecycle={pacing.actionLifecycle?.state || "idle"}
       data-pacing-phase={pacing.phase}
@@ -234,7 +237,7 @@ export const StrategicActionBar = memo(function StrategicActionBar({ command, pa
         </div>
         {primary
           ? <ActionButton action={primary} primary resolving={resolving} onAction={onAction} />
-          : <div className={styles.readonlyAction}><span>STRATEGIC COMMAND</span><strong>{pacing.advanceState.label}</strong><small>{pacing.advanceState.detail}</small></div>}
+          : <div className={styles.readonlyAction}><span>02 / CURRENT ACTION</span><strong>{pacing.advanceState.label}</strong><small>{pacing.advanceState.detail}</small></div>}
       </div>
     </footer>
   );

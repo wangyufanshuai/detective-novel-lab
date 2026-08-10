@@ -114,13 +114,19 @@ try {
     {
       const { context, page } = await openPage(browser, 390);
       const initial = await page.evaluate(() => {
+        const objective = document.querySelector("[data-testid='strategic-pacing']")?.getBoundingClientRect();
+        const action = document.querySelector("[data-testid='strategic-action-bar']")?.getBoundingClientRect();
         const map = document.querySelector("[data-testid='command-deck-map-area']")?.getBoundingClientRect();
         const visibleResources = [...document.querySelectorAll("[data-testid='strategic-resource-ribbon'] summary")]
           .filter((node) => node.getBoundingClientRect().height > 0).length;
         return {
           overflow: document.documentElement.scrollWidth - innerWidth,
+          objectiveTop: objective?.top || 0,
+          actionTop: action?.top || 0,
           mapTop: map?.top || 0,
           mapBottom: map?.bottom || 0,
+          objectiveBeforeAction: Boolean(objective && action && objective.top < action.top),
+          actionBeforeMap: Boolean(action && map && action.top < map.top),
           visibleResources,
           phase: document.querySelector("[data-testid='strategic-pacing']")?.getAttribute("data-pacing-phase"),
           primaryCount: document.querySelectorAll("[data-command-deck-primary='true']:not([disabled])").length,
@@ -129,7 +135,7 @@ try {
       });
       observations.push({ width: 390, ...initial });
       check(initial.overflow <= 1, `390px overflowed horizontally by ${initial.overflow}px.`);
-      check(initial.mapTop < 340 && initial.mapBottom > 500, "390px map is not visible after the canonical objective.");
+      check(initial.objectiveBeforeAction && initial.actionBeforeMap && initial.mapTop < 650 && initial.mapBottom > 600, "390px order is not Current Objective -> Current Action -> Map.");
       check(initial.visibleResources === 0, `390px exposes ${initial.visibleResources} secondary resource summaries instead of the All Resources trigger only.`);
       check(initial.primaryCount === 1, "390px does not expose exactly one legal primary action.");
       check(initial.primaryHeight >= 44, "390px primary action is below 44px.");

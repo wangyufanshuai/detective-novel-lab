@@ -1235,6 +1235,16 @@ Measured architecture is `app/page.tsx` 976 / 1,100 lines; workspace presentatio
 This release adds no endpoint, payload, runtime field, SQLite/content/public schema, event, tick, ranking modifier, world rule, public artifact, background process, or proof card. It restores room for the next product iteration while keeping the v9.0 behavioral baseline frozen. The highest-value next work is a deliberately scoped player-facing release—additional Campaign families, stronger authored transition presentation, accessibility/localization, or evidence-backed pacing—not another ownership split by default. v6.2 remains **instrumentation ready**, not Human Gate passed.
 
 
+### v9.2: Campaign Command Clarity & Progressive Disclosure
+
+v9.2 is the first release after the architecture recovery that changes the player's information hierarchy rather than adding another simulation consequence. A pure `Campaign Command Brief` normalizes existing safe state into four fixed layers: Current Objective, Current Action, Map Focus, and Context. The same object is consumed by Command Deck, Map Intel, World Campaign, and Campaign Transition Theatre, reducing competing instructions and keeping optional world systems discoverable without competing with the map.
+
+The implementation is deliberately behavior-preserving. The brief model and hook are request-free, deterministic, bounded, and identifier-safe; they do not read hidden truth, raw bodies, player text, internal keys, or private runtime records. District Strategic Front selection only changes map lens/focus state. Existing endpoint ownership, request payloads, response application order, certified route, truth, evidence coverage, judgement, candidate membership/order, NPC legal actions, and world consequences remain unchanged. Static continues to resolve before Server reads, exposes only Server-only boundaries, writes no study state, and makes zero `/api/*` requests.
+
+The responsive audit found that the 390px District Front failure was caused by testing a stale production bundle. After rebuilding, the real rectangle-area overlap is zero; 768px retains a <=35% edge panel and 1440px retains a map share above 55%. Measured boundaries are `app/page.tsx` 980 / 1,100 lines, brief model 212 / 300, brief hook 14 / 80, runtime JSON 2,815,674 / 4,000,000 bytes, API routes 125 / 130, and sampled tick p95 11.07 / 250 ms. Automated browser and invariant checks are evidence of implementation quality, not evidence of human comprehension: v6.2 remains **instrumentation ready**, not Human Gate passed.
+
+Comparative interpretation: v9.2 borrows Civilization VI's single current objective and compact map-context hierarchy, Endless Sky's distinction between selected and available mission context, and Wesnoth/Unciv's separation of objective presentation from authoritative resolution. It retains a stronger detective-specific certified route and public-safe audit boundary. The remaining product gap is not another world-state mechanism; it is authored breadth, transition/audio polish, localization, accessibility field validation, and human-tested pacing.
+
 Recommended future release scope for v6.0 or later:
 
 - Include this report and any small documentation link updates.

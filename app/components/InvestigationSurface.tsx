@@ -40,6 +40,7 @@ import {
   type SourceReviewUnlockSummary
 } from "@/app/campaign/investigation-workspace-model";
 import type { CampaignPacingViewModel } from "@/app/campaign/campaign-pacing-model";
+import type { CampaignCommandBrief } from "@/app/campaign/campaign-command-brief-model";
 import type { CertifiedCaseRhythmViewModel } from "@/app/campaign/certified-case-rhythm-model";
 import type { CertifiedInvestigationActionAdapter } from "@/app/hooks/useCertifiedInvestigationActions";
 import type { EvidenceImpact } from "@/app/hooks/useInvestigationActions";
@@ -69,7 +70,7 @@ export function InvestigationPanel({
   worldLead, worldLeadOutcome, worldLeadCaseHandoff, worldArc, worldArcDirective,
   worldPressureCascade, worldInfluenceBudget, playerResourceCommitment, factionRelationship,
   worldEventOffer, investigatorProgression, campaignRecovery, investigatorHeadquarters,
-  arcConvergence, campaignSession, campaignFinaleDebrief, townSocialResponse, campaignPacing, updateWorldLead,
+  arcConvergence, campaignSession, campaignFinaleDebrief, townSocialResponse, campaignPacing, campaignCommandBrief, updateWorldLead,
   updateWorldArcDirective, updatePlayerResourceCommitment, updateWorldEventOffer,
   updateCampaignRecovery, updateInvestigatorHeadquarters, guidedManualRun, runGuidedManualStep,
   guidedStepJournal, sourceReviewUnlock, solvedCaseDebrief, replayPracticeLoop, replayGoalCoach,
@@ -126,6 +127,7 @@ export function InvestigationPanel({
   worldPressureCascade?: WorldPressureCascadeSummary | null;
   worldInfluenceBudget?: WorldInfluenceBudgetSummary | null;
   campaignPacing?: CampaignPacingViewModel | null;
+  campaignCommandBrief?: CampaignCommandBrief | null;
   playerResourceCommitment?: PlayerResourceCommitmentSummary | null;
   factionRelationship?: FactionRelationshipSummary | null;
   worldEventOffer?: WorldEventOfferSummary | null;
@@ -165,7 +167,7 @@ export function InvestigationPanel({
 }) {
   const playablePathSteps = buildPlayableInvestigationPath({ playableIntake, session, notebookItems, discoveredEvidence, dialogueLog, playerTheoryEvidence, characters });
   const serverCampaignPacing = runtimeMode === "server" ? campaignPacing : null;
-  const worldCampaign = <WorldCampaignPanel runtimeMode={runtimeMode} session={session} summary={worldLead} outcome={worldLeadOutcome} handoff={worldLeadCaseHandoff} arc={worldArc} directive={worldArcDirective} pressure={worldPressureCascade} influenceBudget={worldInfluenceBudget} playerResourceCommitment={playerResourceCommitment} factionRelationship={factionRelationship} worldEventOffer={worldEventOffer} investigatorProgression={investigatorProgression} campaignRecovery={campaignRecovery} investigatorHeadquarters={investigatorHeadquarters} arcConvergence={arcConvergence} campaignSession={campaignSession} campaignFinaleDebrief={campaignFinaleDebrief} townSocialResponse={townSocialResponse} campaignPacing={serverCampaignPacing} onDecision={updateWorldLead} onDirectiveDecision={updateWorldArcDirective} onResourceCommitmentDecision={updatePlayerResourceCommitment} onWorldEventOfferDecision={updateWorldEventOffer} onCampaignRecoveryDecision={updateCampaignRecovery} onInvestigatorHeadquartersDecision={updateInvestigatorHeadquarters} busy={busy} />;
+  const worldCampaign = <WorldCampaignPanel runtimeMode={runtimeMode} session={session} summary={worldLead} outcome={worldLeadOutcome} handoff={worldLeadCaseHandoff} arc={worldArc} directive={worldArcDirective} pressure={worldPressureCascade} influenceBudget={worldInfluenceBudget} playerResourceCommitment={playerResourceCommitment} factionRelationship={factionRelationship} worldEventOffer={worldEventOffer} investigatorProgression={investigatorProgression} campaignRecovery={campaignRecovery} investigatorHeadquarters={investigatorHeadquarters} arcConvergence={arcConvergence} campaignSession={campaignSession} campaignFinaleDebrief={campaignFinaleDebrief} townSocialResponse={townSocialResponse} campaignPacing={serverCampaignPacing} commandBrief={campaignCommandBrief} onDecision={updateWorldLead} onDirectiveDecision={updateWorldArcDirective} onResourceCommitmentDecision={updatePlayerResourceCommitment} onWorldEventOfferDecision={updateWorldEventOffer} onCampaignRecoveryDecision={updateCampaignRecovery} onInvestigatorHeadquartersDecision={updateInvestigatorHeadquarters} busy={busy} />;
   return (
     <div className="stackedInspector">
       <InvestigationRouteReviewSurface steps={playablePathSteps} onStepAction={onIntakeNextAction} joinCase={actionAdapter.joinCase} rhythm={caseRhythm} commandDeckMode={commandDeckMode} worldCampaign={worldCampaign} campaignPacing={serverCampaignPacing} guidedManualRun={guidedManualRun} runGuidedManualStep={runGuidedManualStep} guidedStepJournal={guidedStepJournal} staticPlaythroughProof={staticPlaythroughProof} runStaticPlaythroughProof={runStaticPlaythroughProof} serverPlaythroughProof={serverPlaythroughProof} runServerPlaythroughProof={runServerPlaythroughProof} sourceReviewUnlock={sourceReviewUnlock} playableIntake={playableIntake} proofLedger={proofLedger} proofCoverage={proofCoverage} routeCertificate={routeCertificate} proofTourSteps={proofTourSteps} revealText={revealText} judgementExplanation={session?.judgement?.explanation} />

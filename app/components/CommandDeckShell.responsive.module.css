@@ -41,7 +41,7 @@
     height: auto;
     max-height: none;
     overflow-x: hidden;
-    padding-bottom: 122px;
+    padding-bottom: 72px;
   }
 
   .commandDeckGrid {
@@ -69,7 +69,8 @@
   }
 
   .commandDeckAgendaRail { display: contents; }
-  .commandDeckMapArea { order: 1; }
+  .commandDeckAgendaRail > :global([data-testid="strategic-action-bar"]) { order: 1; }
+  .commandDeckMapArea { order: 2; }
   .commandDeckAgendaRail > :global([data-testid="strategic-decision-queue"]) { order: 3; }
   .commandDeckLegacyControl { order: 4; }
   .commandDeckContextRail {
@@ -231,7 +232,7 @@
     max-height: none;
     min-height: 100vh;
     overflow-x: hidden;
-    padding-bottom: 122px;
+    padding-bottom: 72px;
   }
 
   .commandDeckGrid {
@@ -247,7 +248,8 @@
   .commandDeckMapArea,
   .commandDeckContextRail { width: 100%; grid-column: auto; grid-row: auto; overflow: visible; }
   .commandDeckAgendaRail { display: contents; }
-  .commandDeckMapArea { display: flex; order: 1; flex-direction: column; }
+  .commandDeckAgendaRail > :global([data-testid="strategic-action-bar"]) { order: 1; }
+  .commandDeckMapArea { display: flex; order: 2; flex-direction: column; }
   .commandDeckAgendaRail > :global([data-testid="strategic-decision-queue"]) { order: 3; }
   .commandDeckLegacyControl { order: 4; }
   .commandDeckMapArea > :global(.mapStage) { height: auto; min-height: 520px; }
