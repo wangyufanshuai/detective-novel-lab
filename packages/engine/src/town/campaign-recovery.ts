@@ -3,6 +3,10 @@ import type { TownInstitutionKind, TownResourceKind } from "./rules";
 import { invalidateTownCandidateCache } from "./cases";
 import { applyFactionRelationshipDelta, factionResourceCommitmentTerms } from "./faction-relationship";
 import { reopenWorldEventOfferAfterCampaignRecovery } from "./world-event-offer";
+import {
+  consumeInvestigatorHeadquartersRecovery,
+  investigatorHeadquartersCanRecover
+} from "./investigator-headquarters";
 
 export type CampaignRecoveryFailureKind =
   | "resource-shortage"
@@ -16,10 +20,11 @@ export type CampaignRecoveryActionKind =
   | "rebuild-trust"
   | "reopen-opportunity"
   | "review-certified-route"
-  | "choose-alternate-response";
+  | "choose-alternate-response"
+  | "headquarters-route-assist";
 
 export type CampaignRecoveryStatus = "ready" | "scheduled" | "completed";
-export type CampaignRecoveryDecisionChoice = "start" | "defer";
+export type CampaignRecoveryDecisionChoice = "start" | "defer" | "use-headquarters";
 
 export type CampaignRecovery = {
   id: string;
@@ -55,6 +60,8 @@ export type CampaignRecoveryPublicSummary = {
   progressLabel: string;
   completedCount: number;
   queuedCount: number;
+  headquartersAvailable: boolean;
+  headquartersActionLabel: string;
   nextAction: string;
 };
 
@@ -76,7 +83,8 @@ const ACTION_LABELS: Record<CampaignRecoveryActionKind, string> = {
   "rebuild-trust": "Complete one trust-rebuilding interval",
   "reopen-opportunity": "Prepare one lower-risk opportunity retry",
   "review-certified-route": "Return to the existing certified clue route",
-  "choose-alternate-response": "Choose the other legal faction response"
+  "choose-alternate-response": "Choose the other legal faction response",
+  "headquarters-route-assist": "Use one Headquarters evidence-handling interval"
 };
 
 function actionFor(kind: CampaignRecoveryFailureKind): CampaignRecoveryActionKind {
@@ -111,6 +119,7 @@ function nextCadence(tick: number) {
 }
 
 function costLabel(item: CampaignRecovery) {
+  if (item.actionKind === "headquarters-route-assist") return "Uses one Headquarters Recovery assist; no answer, evidence, or truth is filled automatically.";
   if (item.actionKind === "review-certified-route") return "No resource cost; this only restores low-spoiler route guidance.";
   if (item.actionKind === "choose-alternate-response") return "No resource cost; the existing alternate response keeps its original prerequisites.";
   return "Costs one visible town institution interval; no event or case truth is rewritten.";
@@ -129,6 +138,8 @@ export function toCampaignRecoveryPublicSummary(runtime: PersistentTownRuntime):
       progressLabel: "Campaign path available",
       completedCount,
       queuedCount: 0,
+      headquartersAvailable: false,
+      headquartersActionLabel: "No Headquarters Recovery assist",
       nextAction: "Continue the current certified investigation or world opportunity."
     };
   }
@@ -145,8 +156,12 @@ export function toCampaignRecoveryPublicSummary(runtime: PersistentTownRuntime):
         : "Recovery completed once",
     completedCount,
     queuedCount,
+    headquartersAvailable: item.failureKind === "rejected-theory" && item.status === "ready" && investigatorHeadquartersCanRecover(runtime),
+    headquartersActionLabel: "Use Headquarters Recovery assist",
     nextAction: item.status === "ready"
-      ? "Start this recovery or defer it; the current certified truth path remains available."
+      ? investigatorHeadquartersCanRecover(runtime) && item.failureKind === "rejected-theory"
+        ? "Start the existing recovery, use the one Headquarters assist, or defer; the certified truth path remains available."
+        : "Start this recovery or defer it; the current certified truth path remains available."
       : item.status === "scheduled"
         ? "Advance Persistent Town until the next institution cycle completes the recovery."
         : "Continue through the reopened world option or the unchanged certified investigation route."
@@ -205,6 +220,13 @@ export function applyCampaignRecoveryDecision(runtime: PersistentTownRuntime, in
   const item = currentRecovery(runtime);
   if (!item || item.status !== "ready") return undefined;
   if (input.choice === "defer") return refresh(runtime);
+  if (input.choice === "use-headquarters") {
+    if (item.failureKind !== "rejected-theory" || !investigatorHeadquartersCanRecover(runtime)) return undefined;
+    const completesAtTick = nextCadence(runtime.tick);
+    runtime.maxTicks = Math.max(runtime.maxTicks, completesAtTick + 1);
+    if (runtime.status === "completed") runtime.status = "paused";
+    return store(runtime, { ...item, actionKind: "headquarters-route-assist", status: "scheduled", selectedAtTick: runtime.tick, completesAtTick });
+  }
   if (item.actionKind === "review-certified-route" || item.actionKind === "choose-alternate-response") {
     return store(runtime, { ...item, status: "completed", selectedAtTick: runtime.tick, completedAtTick: runtime.tick });
   }
@@ -273,6 +295,8 @@ export function reconcileCampaignRecovery(runtime: PersistentTownRuntime) {
     reopenWorldEventOfferAfterCampaignRecovery(runtime, item.offerId);
     const afterOffer = runtime.worldEventOffers?.items.find((entry) => entry.id === item.offerId);
     opportunityDelta = beforeOffer && afterOffer && beforeOffer.status !== "offered" && afterOffer.status === "offered" ? 1 : 0;
+  } else if (item.actionKind === "headquarters-route-assist") {
+    if (!consumeInvestigatorHeadquartersRecovery(runtime)) return undefined;
   }
   return store(runtime, {
     ...item,

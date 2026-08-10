@@ -1,4 +1,15 @@
 import type { PersistentTownRuntime } from "../persistent-town";
+import {
+  DEFAULT_DETECTIVE_CAMPAIGN_ROUTE_ID,
+  detectiveCampaignChapter,
+  detectiveCampaignForRuntime,
+  detectiveCampaignRouteForRuntime,
+  isDetectiveCampaignRouteId,
+  selectedDetectiveCampaignForRuntime,
+  type DetectiveCampaignId,
+  type DetectiveCampaignRouteId
+} from "./campaign-catalog";
+import { authoredCampaignCaseForRuntime, listAuthoredCampaignCaseDefinitions } from "./authored-campaign-cases";
 
 export type CampaignSessionStatus = "opening" | "case-active" | "transition" | "finale-ready" | "finale-active" | "completed";
 
@@ -8,9 +19,12 @@ export type CampaignSessionHistoryEntry = {
   ordinal: number;
   acceptedAtTick: number;
   consequenceLabels: string[];
+  authoredAftermathLabel?: string;
 };
 
 export type CampaignSessionRuntimeState = {
+  campaignId?: DetectiveCampaignId;
+  routeId?: DetectiveCampaignRouteId;
   status: CampaignSessionStatus;
   targetCaseCount: number;
   maximumCaseCount: number;
@@ -27,7 +41,14 @@ export type CampaignSessionRuntimeState = {
 
 export type CampaignSessionPublicSummary = {
   status: CampaignSessionStatus;
+  campaignLabel: string;
+  routeLabel?: string;
+  routeStrategyLabel?: string;
+  themeLabel: string;
   chapterLabel: string;
+  chapterObjective: string;
+  evidenceThemeLabel: string;
+  worldSurfaceLabel: string;
   progressLabel: string;
   primaryActionLabel: string;
   consequenceLabels: string[];
@@ -46,9 +67,13 @@ export type CampaignFinaleDebriefPublicSummary = {
 
 const TARGET_CASE_COUNT = 3;
 const MAXIMUM_CASE_COUNT = 5;
+const AUTHORED_AFTERMATH_LABELS = new Set(listAuthoredCampaignCaseDefinitions().map((item) => item.aftermathLabel));
 
 export function ensureCampaignSession(runtime: PersistentTownRuntime) {
+  const selectedCampaign = selectedDetectiveCampaignForRuntime(runtime);
   runtime.campaignSession ||= {
+    campaignId: selectedCampaign.id,
+    routeId: DEFAULT_DETECTIVE_CAMPAIGN_ROUTE_ID,
     status: "opening",
     targetCaseCount: TARGET_CASE_COUNT,
     maximumCaseCount: MAXIMUM_CASE_COUNT,
@@ -58,6 +83,13 @@ export function ensureCampaignSession(runtime: PersistentTownRuntime) {
     completedCycleKeys: [],
     history: []
   };
+  const canRebind = !runtime.campaignSession.activeCaseId && runtime.campaignSession.completedCycleKeys.length === 0;
+  const campaignChanged = canRebind && runtime.campaignSession.campaignId !== selectedCampaign.id;
+  if (!runtime.campaignSession.campaignId || campaignChanged) {
+    runtime.campaignSession.campaignId = selectedCampaign.id;
+    runtime.campaignSession.routeId = DEFAULT_DETECTIVE_CAMPAIGN_ROUTE_ID;
+  }
+  if (!isDetectiveCampaignRouteId(runtime.campaignSession.routeId)) runtime.campaignSession.routeId = DEFAULT_DETECTIVE_CAMPAIGN_ROUTE_ID;
   runtime.campaignSession.cycleSequence = Math.max(
     runtime.campaignSession.cycleSequence || 0,
     runtime.campaignSession.completedCycleKeys?.length || 0
@@ -68,6 +100,15 @@ export function ensureCampaignSession(runtime: PersistentTownRuntime) {
   return runtime.campaignSession;
 }
 
+/** Binds one authored route before the first successful extraction. */
+export function bindCampaignRoute(runtime: PersistentTownRuntime, routeId: DetectiveCampaignRouteId) {
+  const state = ensureCampaignSession(runtime);
+  const locked = Boolean(state.activeCaseId || state.completedCycleKeys.length);
+  if (locked && state.routeId !== routeId) return false;
+  state.routeId = routeId;
+  return true;
+}
+
 function approachLabel(runtime: PersistentTownRuntime) {
   if (runtime.arcConvergenceSummary?.approachLabel) return runtime.arcConvergenceSummary.approachLabel;
   return "Multiple campaign routes remain open";
@@ -75,6 +116,11 @@ function approachLabel(runtime: PersistentTownRuntime) {
 
 function safeConsequences(runtime: PersistentTownRuntime) {
   const labels: string[] = [];
+  const authoredAftermath = (runtime.campaignSession?.history || [])
+    .map((entry) => entry.authoredAftermathLabel)
+    .filter((label): label is string => Boolean(label && AUTHORED_AFTERMATH_LABELS.has(label)))
+    .slice(-3);
+  labels.push(...authoredAftermath);
   const relationship = runtime.factionRelationshipSummary;
   if (relationship?.trustedCount) labels.push(`${relationship.trustedCount} trusted town partnership${relationship.trustedCount === 1 ? "" : "s"}`);
   if (relationship?.strainedCount) labels.push(`${relationship.strainedCount} guarded town relationship${relationship.strainedCount === 1 ? "" : "s"}`);
@@ -91,10 +137,18 @@ function safeConsequences(runtime: PersistentTownRuntime) {
 
 export function toCampaignSessionPublicSummary(runtime: PersistentTownRuntime): CampaignSessionPublicSummary {
   const state = ensureCampaignSession(runtime);
+  const campaign = detectiveCampaignForRuntime(runtime);
+  const route = detectiveCampaignRouteForRuntime(runtime);
+  const chapter = detectiveCampaignChapter(runtime);
   const completed = state.completedCycleKeys.length;
   const status = state.status;
+  const headquartersStatus = runtime.investigatorHeadquartersSummary?.status;
   return {
     status,
+    campaignLabel: campaign.label,
+    routeLabel: route.label,
+    routeStrategyLabel: route.strategyLabel,
+    themeLabel: campaign.themeLabel,
     chapterLabel: status === "opening"
       ? "Opening case"
       : status === "finale-ready"
@@ -106,13 +160,20 @@ export function toCampaignSessionPublicSummary(runtime: PersistentTownRuntime): 
             : status === "transition"
               ? "Between cases"
               : `Case ${Math.min(state.maximumCaseCount, state.activeCaseOrdinal || completed + 1)}`,
+    chapterObjective: chapter.objectiveLabel,
+    evidenceThemeLabel: chapter.evidenceThemeLabel,
+    worldSurfaceLabel: chapter.worldSurfaceLabel,
     progressLabel: `${completed}/${state.targetCaseCount} campaign cases closed`,
     primaryActionLabel: status === "opening"
       ? "Extract the first legal case"
       : status === "case-active"
         ? "Continue the certified investigation"
         : status === "transition"
-          ? "Resolve the current world choice, then choose a legal next case"
+          ? headquartersStatus === "ready"
+            ? "Choose one Headquarters preparation"
+            : headquartersStatus === "prepared"
+              ? "Extract any legal next case"
+              : "Resolve the current world choice, then choose a legal next case"
           : status === "finale-ready"
             ? "Choose the finale-family candidate or any legal alternative"
             : status === "finale-active"
@@ -120,14 +181,20 @@ export function toCampaignSessionPublicSummary(runtime: PersistentTownRuntime): 
               : "Review how the campaign changed the town",
     consequenceLabels: safeConsequences(runtime),
     replayLabel: status === "completed"
-      ? `Replay through a different route than ${approachLabel(runtime)}.`
-      : "Different faction, opportunity, recovery, and pressure choices can reach the same fair finale.",
+      ? `${route.replayContrast} Previous approach: ${approachLabel(runtime)}.`
+      : `${route.replayContrast} The alternate authored route retains the same investigation fairness.`,
     nextAction: status === "completed"
       ? "Read the campaign debrief, then start a clean world to compare another strategy."
       : status === "finale-ready"
-        ? "The normal candidate queue now includes one finale-family option without removing alternatives."
+        ? headquartersStatus === "ready"
+          ? "Choose one bounded Headquarters preparation before extracting the finale-family case or any legal alternative."
+          : "The normal candidate queue now includes one finale-family option without removing alternatives."
         : status === "transition"
-          ? "Complete at most one visible world action, then extract the next legal case."
+          ? headquartersStatus === "ready"
+            ? "Choose one available Headquarters direction; this no-clock choice does not change candidate legality or order."
+            : headquartersStatus === "prepared"
+              ? "Extract any legal next case; the locked preparation will activate once after route integrity passes."
+              : "Complete at most one visible world action, then extract the next legal case."
           : status === "opening"
             ? "Advance Persistent Town until a valid candidate appears, then extract it through the normal route."
             : "Follow the single Current world action; case truth and route certification remain unchanged."
@@ -136,6 +203,8 @@ export function toCampaignSessionPublicSummary(runtime: PersistentTownRuntime): 
 
 export function toCampaignFinaleDebriefPublicSummary(runtime: PersistentTownRuntime): CampaignFinaleDebriefPublicSummary {
   const state = ensureCampaignSession(runtime);
+  const campaign = detectiveCampaignForRuntime(runtime);
+  const route = detectiveCampaignRouteForRuntime(runtime);
   if (state.status !== "completed") {
     return {
       status: "locked",
@@ -155,11 +224,11 @@ export function toCampaignFinaleDebriefPublicSummary(runtime: PersistentTownRunt
   ].slice(0, 8);
   return {
     status: "ready",
-    title: "Town Reckoning: Campaign Debrief",
+    title: `${route.finaleLabel}: Campaign Debrief`,
     approachLabel: approachLabel(runtime),
     causalBeats,
-    replayContrast: `A replay can replace ${approachLabel(runtime)} with another valid convergence route while keeping the finale fair.`,
-    nextAction: "Start a clean world and choose a different relationship, recovery, opportunity, or pressure strategy."
+    replayContrast: `${route.replayContrast} A replay can choose the other authored route and replace ${approachLabel(runtime)} with another valid convergence route while keeping the finale fair.`,
+    nextAction: `Start a clean world and choose the other ${campaign.label} route or a different world strategy.`
   };
 }
 
@@ -199,6 +268,7 @@ export function activateCampaignCase(runtime: PersistentTownRuntime, caseId: str
 export function completeCampaignCase(runtime: PersistentTownRuntime, caseId: string) {
   const state = ensureCampaignSession(runtime);
   if (!state.activeCaseId || state.activeCaseId !== caseId || !state.activeCycleKey) return refresh(runtime);
+  const authoredCampaignCase = authoredCampaignCaseForRuntime(runtime);
   const cycleKey = state.activeCycleKey;
   if (state.completedCycleKeys.includes(cycleKey)) return refresh(runtime);
   const completedCaseIds = [...state.completedCaseIds, caseId].slice(-state.maximumCaseCount);
@@ -210,7 +280,8 @@ export function completeCampaignCase(runtime: PersistentTownRuntime, caseId: str
     cycleKey,
     ordinal: completedCycleKeys.length,
     acceptedAtTick: runtime.tick,
-    consequenceLabels: safeConsequences(runtime)
+    consequenceLabels: safeConsequences(runtime),
+    ...(authoredCampaignCase ? { authoredAftermathLabel: authoredCampaignCase.aftermathLabel } : {})
   }].slice(-state.maximumCaseCount);
   state.activeCaseId = undefined;
   state.activeCycleKey = undefined;

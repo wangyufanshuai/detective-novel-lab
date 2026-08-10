@@ -47,13 +47,20 @@ import {
 } from "./town/faction-relationship";
 export {
   PLAYER_RESOURCE_COMMITMENT_COST,
+  activeInvestigationOperationsAuthority,
   applyPlayerResourceCommitmentDecision,
+  bindInvestigationOperationsAuthority,
   consumePlayerResourceCommitment,
+  investigationOperationsAuthorityForSession,
+  isInvestigationOperationsAuthoritativeSession,
   preparePlayerResourceCommitment,
   releaseUnusedPlayerResourceCommitments,
+  settleInvestigationOperationsAuthority,
   toPlayerResourceCommitmentPublicSummary
 } from "./town/player-resource-commitment";
 export type {
+  InvestigationOperationScope,
+  InvestigationOperationsAuthority,
   PlayerResourceCommitment,
   PlayerResourceCommitmentChoice,
   PlayerResourceCommitmentDecisionInput,
@@ -62,6 +69,12 @@ export type {
   PlayerResourceCommitmentRuntimeState,
   PlayerResourceCommitmentStatus
 } from "./town/player-resource-commitment";
+export {
+  applyInvestigationOperationsDecision,
+  recordInvestigationOperationStep,
+  settleInvestigationOperations
+} from "./town/investigation-operations";
+export type { InvestigationOperationsDecisionInput } from "./town/investigation-operations";
 export {
   applyFactionRelationshipDelta,
   ensureFactionRelationshipState,
@@ -107,6 +120,15 @@ import {
   type CampaignRecoveryRuntimeState
 } from "./town/campaign-recovery";
 import {
+  activateInvestigatorHeadquarters,
+  completeInvestigatorHeadquarters,
+  ensureInvestigatorHeadquarters,
+  prepareInvestigatorHeadquarters,
+  toInvestigatorHeadquartersPublicSummary,
+  type InvestigatorHeadquartersPublicSummary,
+  type InvestigatorHeadquartersRuntimeState
+} from "./town/investigator-headquarters";
+import {
   deriveArcConvergenceCandidateBonus,
   refreshArcConvergence,
   selectArcConvergenceCaseType,
@@ -123,6 +145,47 @@ import {
   type CampaignSessionPublicSummary,
   type CampaignSessionRuntimeState
 } from "./town/campaign-session";
+import {
+  deriveDetectiveCampaignCaseTypeBonus,
+  selectedDetectiveCampaignForRuntime
+} from "./town/campaign-catalog";
+export {
+  deriveDetectiveCampaignCaseTypeBonus,
+  detectiveCampaignChapter,
+  detectiveCampaignForRuntime,
+  detectiveCampaignRouteForRuntime,
+  getDetectiveCampaignDefinition,
+  getDetectiveCampaignRoute,
+  isDetectiveCampaignRouteId,
+  listDetectiveCampaignDefinitions,
+  selectDetectiveCampaignDefinition,
+  selectedDetectiveCampaignForRuntime,
+  toDetectiveCampaignPublicPreview
+} from "./town/campaign-catalog";
+export type {
+  DetectiveCampaignChapter,
+  DetectiveCampaignDefinition,
+  DetectiveCampaignId,
+  DetectiveCampaignRouteDefinition,
+  DetectiveCampaignRouteId
+} from "./town/campaign-catalog";
+import {
+  applyAuthoredCampaignCaseTreatment,
+  authoredCampaignCaseForRuntime,
+  withAuthoredCampaignLeadFocus,
+  type AuthoredCampaignCaseDefinition
+} from "./town/authored-campaign-cases";
+export {
+  applyAuthoredCampaignCaseTreatment,
+  authoredCampaignCaseForRuntime,
+  getAuthoredCampaignCaseDefinition,
+  listAuthoredCampaignCaseDefinitions,
+  withAuthoredCampaignLeadFocus
+} from "./town/authored-campaign-cases";
+export type {
+  AuthoredCampaignCaseDefinition,
+  AuthoredCampaignLeadFocus
+} from "./town/authored-campaign-cases";
 export {
   ensureInvestigatorProgression,
   investigatorProgressionCanRecoverOffer,
@@ -146,6 +209,29 @@ export {
   toCampaignRecoveryPublicSummary
 } from "./town/campaign-recovery";
 export {
+  activateInvestigatorHeadquarters,
+  applyInvestigatorHeadquartersDecision,
+  completeInvestigatorHeadquarters,
+  consumeInvestigatorHeadquartersRecovery,
+  consumeInvestigatorHeadquartersReserveBenefit,
+  ensureInvestigatorHeadquarters,
+  investigatorHeadquartersCanRecover,
+  investigatorHeadquartersDecisionAvailable,
+  investigatorHeadquartersExtractionRequired,
+  investigatorHeadquartersReserveDiscount,
+  prepareInvestigatorHeadquarters,
+  toInvestigatorHeadquartersPublicSummary
+} from "./town/investigator-headquarters";
+export type {
+  InvestigatorHeadquartersChoice,
+  InvestigatorHeadquartersDecisionInput,
+  InvestigatorHeadquartersPreparation,
+  InvestigatorHeadquartersPublicDirection,
+  InvestigatorHeadquartersPublicSummary,
+  InvestigatorHeadquartersRuntimeState,
+  InvestigatorHeadquartersStatus
+} from "./town/investigator-headquarters";
+export {
   activateArcConvergence,
   completeArcConvergence,
   deriveArcConvergenceCandidateBonus,
@@ -155,6 +241,7 @@ export {
 } from "./town/arc-convergence";
 export {
   activateCampaignCase,
+  bindCampaignRoute,
   completeCampaignCase,
   ensureCampaignSession,
   refreshCampaignSession,
@@ -1064,6 +1151,8 @@ export type PersistentTownRuntime = {
   worldEventOfferSummary?: WorldEventOfferPublicSummary;
   investigatorProgression?: InvestigatorProgressionRuntimeState;
   investigatorProgressionSummary?: InvestigatorProgressionPublicSummary;
+  investigatorHeadquarters?: InvestigatorHeadquartersRuntimeState;
+  investigatorHeadquartersSummary?: InvestigatorHeadquartersPublicSummary;
   campaignRecoveries?: CampaignRecoveryRuntimeState;
   campaignRecoverySummary?: CampaignRecoveryPublicSummary;
   arcConvergence?: ArcConvergenceRuntimeState;
@@ -1103,6 +1192,7 @@ export type TownSituationBrief = {
   factionRelationship?: FactionRelationshipPublicSummary;
   worldEventOffer?: WorldEventOfferPublicSummary;
   investigatorProgression?: InvestigatorProgressionPublicSummary;
+  investigatorHeadquarters?: InvestigatorHeadquartersPublicSummary;
   campaignRecovery?: CampaignRecoveryPublicSummary;
   arcConvergence?: ArcConvergencePublicSummary;
   campaignSession?: CampaignSessionPublicSummary;
@@ -2614,6 +2704,19 @@ export function deriveWorldLeadPreview(hints?: WorldSystemRuntimeHints | null): 
   };
 }
 
+export function applyAuthoredCampaignLeadFocus(
+  runtime: PersistentTownRuntime,
+  definition: AuthoredCampaignCaseDefinition | null = authoredCampaignCaseForRuntime(runtime)
+) {
+  if (!definition || !runtime.worldSystemHints?.summary.active) return undefined;
+  const hints = withAuthoredCampaignLeadFocus(runtime.worldSystemHints, definition.leadFocus);
+  runtime.worldSystemHints = hints;
+  runtime.worldSystemHintSummary = { ...hints.summary };
+  runtime.worldLeadPreview = deriveWorldLeadPreview(hints);
+  runtime.updatedAt = new Date().toISOString();
+  return runtime.worldLeadPreview;
+}
+
 export function applyWorldLeadDecision(runtime: PersistentTownRuntime, input: WorldLeadDecisionInput) {
   const preview = deriveWorldLeadPreview(runtime.worldSystemHints);
   if (!preview) throw new Error("WORLD_LEAD_UNAVAILABLE");
@@ -3031,7 +3134,7 @@ function directiveNextAction(directive: WorldArcDirective) {
     ? "The response remains open. Support or contain it when you are ready."
     : "Choose Support, Contain, or Defer without advancing the town clock.";
   if (directive.status === "scheduled") return "Advance Persistent Town; the operation starts on the next legal institution cycle.";
-  if (directive.status === "running") return "Advance Persistent Town to let the existing multi-tick operation resolve.";
+  if (directive.status === "running") return "Advance Persistent Town to let the existing multi-step operation resolve.";
   if (directive.status === "blocked") return "Choose the alternate response or retry after the world state changes.";
   return "The result now persists as town history and may shape future, unextracted cases.";
 }
@@ -3048,7 +3151,7 @@ export function toWorldArcDirectivePublicSummary(runtime: PersistentTownRuntime)
     factionLabel: directive.factionLabel,
     operationLabel: selected?.label || "Faction response pending",
     benefitLabel: selected?.benefitLabel || "Support and Contain produce different bounded world results.",
-    costLabel: selected?.costLabel || "Each response commits existing institution resources for multiple ticks.",
+    costLabel: selected?.costLabel || "Each response commits existing institution resources across several normal steps.",
     progressLabel: directiveProgressLabel(runtime, directive),
     queuedCount,
     nextAction: directiveNextAction(directive),
@@ -3345,7 +3448,7 @@ function startScheduledWorldArcDirective(world: WorldState, events: WorldEvent[]
     actorIds: [],
     locationId: targetLocationId,
     summary: "A faction directive operation begins through an existing town institution.",
-    publicSummary: "A bounded faction operation has started and will take multiple town ticks.",
+    publicSummary: "A bounded faction operation has started and will take several normal town steps.",
     hidden: false,
     relatedCharacterIds: [],
     tags: ["world_arc_directive", "directive_start", response.strategy],
@@ -3458,6 +3561,7 @@ export function createPersistentTownRuntime(
     factionRelationships: { standings: {}, ledger: [] },
     worldEventOffers: { items: [] },
     campaignRecoveries: { items: [] },
+    investigatorHeadquarters: { items: [] },
     townSocialResponses: { items: [] },
     createdAt: now,
     updatedAt: now
@@ -3472,6 +3576,8 @@ export function createPersistentTownRuntime(
   runtime.worldEventOfferSummary = toWorldEventOfferPublicSummary(runtime);
   ensureInvestigatorProgression(runtime);
   runtime.investigatorProgressionSummary = toInvestigatorProgressionPublicSummary(runtime);
+  ensureInvestigatorHeadquarters(runtime);
+  runtime.investigatorHeadquartersSummary = toInvestigatorHeadquartersPublicSummary(runtime);
   runtime.campaignRecoverySummary = toCampaignRecoveryPublicSummary(runtime);
   refreshArcConvergence(runtime);
   ensureCampaignSession(runtime);
@@ -3795,7 +3901,9 @@ function inferCaseTypeFromSignals(input: {
 function chooseCampaignCaseType(baseType: TownCaseType, lifecycle: TownCaseLifecycleState, runtime: PersistentTownRuntime, candidateIndex: number): TownCaseType {
   const history = lifecycle.caseTypeHistory || [];
   const historyCount = history.length;
-  if (historyCount < 1) return baseType;
+  const selectedCampaign = selectedDetectiveCampaignForRuntime(runtime);
+  const hasAuthoredCampaignSelection = selectedCampaign.id !== "town-reckoning" || Boolean(runtime.currentExperiment?.worldPackageId);
+  if (historyCount < 1 && !hasAuthoredCampaignSelection) return baseType;
   const counts = new Map<TownCaseType, number>();
   for (const type of history) counts.set(type, (counts.get(type) || 0) + 1);
   const targetDistinct = historyCount >= 4 ? 4 : historyCount >= 2 ? 3 : 2;
@@ -3807,8 +3915,9 @@ function chooseCampaignCaseType(baseType: TownCaseType, lifecycle: TownCaseLifec
     const novelty = counts.has(type) ? 0 : distinct < targetDistinct ? 40 : 5;
     const repeatPenalty = (counts.get(type) || 0) * 12 + (cooldownActive ? 16 : 0);
     const baseBonus = type === baseType ? 4 : 0;
+    const campaignBonus = deriveDetectiveCampaignCaseTypeBonus(runtime, type) * 6;
     const rotation = ((candidateIndex + historyCount + index) % TOWN_CASE_TYPES.length) / 10;
-    return { type, score: weight * 10 + novelty + baseBonus + rotation - repeatPenalty };
+    return { type, score: weight * 10 + novelty + baseBonus + campaignBonus + rotation - repeatPenalty };
   }).sort((left, right) => right.score - left.score);
   if (distinct < targetDistinct) {
     const unseen = typeScores.find((item) => !counts.has(item.type) && (((lifecycle.caseTypeCooldown || {})[item.type] || 0) <= tick));
@@ -4153,6 +4262,7 @@ function buildCaseCandidatesFromRuntimeIndexed(
       }) ? 3 : 0;
       const influenceBonus = deriveCandidateInfluenceBudget(activeRuntime, candidate.caseType);
       const convergenceBonus = deriveArcConvergenceCandidateBonus(activeRuntime, candidate.caseType);
+      const campaignBonus = deriveDetectiveCampaignCaseTypeBonus(activeRuntime, candidate.caseType);
       return (candidate.validation.valid ? 100 : 0) +
         (candidate.triggeredEventId ? 18 : 0) +
         completeStages * 8 +
@@ -4166,7 +4276,8 @@ function buildCaseCandidatesFromRuntimeIndexed(
         pairCooldownPenalty -
         locationPenalty +
         influenceBonus +
-        convergenceBonus;
+        convergenceBonus +
+        campaignBonus;
     };
     return chainScore(right) - chainScore(left) || right.pressureScore - left.pressureScore || left.id.localeCompare(right.id);
   });
@@ -4478,7 +4589,11 @@ export function extractPlayableCaseFromCandidate(
       observationSourceIds: extractionView.sourceMap.observationSourceIds
     };
   }
+  const runtime = (caseWorld as RuntimeWorld).persistentRuntime || (world as RuntimeWorld).persistentRuntime;
+  const authoredCampaignCase = runtime ? authoredCampaignCaseForRuntime(runtime) : null;
+  if (authoredCampaignCase) applyAuthoredCampaignCaseTreatment(activeCase, authoredCampaignCase);
   const validation = validateWorldCase(caseWorld, allEvents, activeCase.deductionCase);
+  activeCase.validation = validation;
   const nextCandidate: CaseCandidate = {
     ...candidate,
     status: validation.valid ? "extracted" : "invalid",
@@ -4496,7 +4611,6 @@ export function extractPlayableCaseFromCandidate(
       warnings: validation.warnings
     }
   };
-  const runtime = (caseWorld as RuntimeWorld).persistentRuntime || (world as RuntimeWorld).persistentRuntime;
   if (runtime?.worldLeadOutcome && runtime.worldLeadOutcome.caseId !== activeCase.id) {
     settleWorldLeadOutcome(caseWorld, runtime, runtime.worldLeadOutcome.caseId);
   }
@@ -4669,6 +4783,7 @@ export function buildTownSituationBrief(
     factionRelationship: activeRuntime.factionRelationshipSummary || toFactionRelationshipPublicSummary(activeRuntime),
     worldEventOffer: activeRuntime.worldEventOfferSummary || toWorldEventOfferPublicSummary(activeRuntime),
     investigatorProgression: activeRuntime.investigatorProgressionSummary || toInvestigatorProgressionPublicSummary(activeRuntime),
+    investigatorHeadquarters: activeRuntime.investigatorHeadquartersSummary || toInvestigatorHeadquartersPublicSummary(activeRuntime),
     campaignRecovery: activeRuntime.campaignRecoverySummary || toCampaignRecoveryPublicSummary(activeRuntime),
     arcConvergence: activeRuntime.arcConvergenceSummary || toArcConvergencePublicSummary(activeRuntime),
     campaignSession: activeRuntime.campaignSessionSummary || toCampaignSessionPublicSummary(activeRuntime),

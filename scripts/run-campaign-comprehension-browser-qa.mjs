@@ -1,5 +1,6 @@
 import http from "node:http";
 import net from "node:net";
+import fs from "node:fs";
 import { execFileSync, spawn } from "node:child_process";
 import { chromium } from "@playwright/test";
 
@@ -13,6 +14,16 @@ function hasFlag(name) {
 function argValue(name) {
   const prefix = `--${name}=`;
   return process.argv.find((value) => value.startsWith(prefix))?.slice(prefix.length);
+}
+
+function launchOptions() {
+  const executablePath = chromium.executablePath();
+  const fallback = process.platform === "win32" ? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" : "";
+  return fs.existsSync(executablePath)
+    ? { headless: true, executablePath }
+    : fs.existsSync(fallback)
+      ? { headless: true, executablePath: fallback }
+      : { headless: true };
 }
 
 function findAvailableLocalPort() {
@@ -73,6 +84,24 @@ async function streamText(stream) {
   const chunks = [];
   for await (const chunk of stream) chunks.push(Buffer.from(chunk));
   return Buffer.concat(chunks).toString("utf8");
+}
+
+async function dismissCampaignFrontDoor(page) {
+  const frontDoor = page.getByTestId("campaign-front-door");
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    if (await frontDoor.isVisible().catch(() => false)) {
+      const dismiss = frontDoor.getByTestId("campaign-front-door-dismiss");
+      await dismiss.waitFor({ state: "visible", timeout: 30000 });
+      await page.waitForFunction((element) => element instanceof HTMLButtonElement && !element.disabled, await dismiss.elementHandle(), { timeout: 30000 });
+      await dismiss.click({ force: true });
+    }
+    await page.waitForTimeout(250);
+    if (!(await frontDoor.isVisible().catch(() => false))) {
+      await page.waitForTimeout(250);
+      if (!(await frontDoor.isVisible().catch(() => false))) return;
+    }
+  }
+  throw new Error("Campaign Front Door remained open while entering Campaign Study.");
 }
 
 function awaitingAssessmentCollection() {
@@ -170,10 +199,13 @@ async function verifyServer(context, baseUrl) {
   });
   await page.goto(`${baseUrl}/?runtime=server&study=1`, { waitUntil: "load" });
   await page.getByTestId("campaign-study-recorder").waitFor({ state: "visible", timeout: 30000 });
+  await dismissCampaignFrontDoor(page);
   await page.getByTestId("open-persistent-town").waitFor({ state: "visible", timeout: 60000 });
   await page.getByTestId("open-persistent-town").click();
+  await dismissCampaignFrontDoor(page);
   await page.getByTestId("town-situation-brief").waitFor({ state: "visible", timeout: 30000 });
   const recorder = page.getByTestId("campaign-study-recorder");
+  await dismissCampaignFrontDoor(page);
   if (!(await recorder.getAttribute("open"))) await recorder.locator("summary").click();
   await page.getByTestId("campaign-study-next-slot").waitFor({ state: "visible", timeout: 10000 });
   const initialSlot = (await page.getByTestId("campaign-study-next-slot").innerText()).includes("P1");
@@ -197,6 +229,7 @@ async function verifyServer(context, baseUrl) {
   await page.evaluate(({ key, value }) => window.localStorage.setItem(key, JSON.stringify(value)), { key: STORAGE_KEY, value: completedPilotsCollection() });
   await page.reload({ waitUntil: "load" });
   await page.getByTestId("campaign-study-recorder").waitFor({ state: "visible", timeout: 30000 });
+  await dismissCampaignFrontDoor(page);
   const pilotReadyRecorder = page.getByTestId("campaign-study-recorder");
   if (!(await pilotReadyRecorder.getAttribute("open"))) await pilotReadyRecorder.locator("summary").click();
   await page.waitForFunction(() => document.querySelector("[data-testid='campaign-study-next-slot']")?.textContent?.includes("O1"), undefined, { timeout: 10000 });
@@ -204,6 +237,7 @@ async function verifyServer(context, baseUrl) {
   await page.evaluate(({ key, value }) => window.localStorage.setItem(key, JSON.stringify(value)), { key: STORAGE_KEY, value: awaitingAssessmentCollection() });
   await page.reload({ waitUntil: "load" });
   await page.getByTestId("campaign-study-recorder").waitFor({ state: "visible", timeout: 30000 });
+  await dismissCampaignFrontDoor(page);
   const reloadedRecorder = page.getByTestId("campaign-study-recorder");
   if (!(await reloadedRecorder.getAttribute("open"))) await reloadedRecorder.locator("summary").click();
   await page.getByTestId("campaign-study-finale-rating").selectOption("correct");
@@ -221,6 +255,7 @@ async function verifyServer(context, baseUrl) {
   await page.evaluate(({ key, value }) => window.localStorage.setItem(key, JSON.stringify(value)), { key: STORAGE_KEY, value: invalidOfficialCollection() });
   await page.reload({ waitUntil: "load" });
   await page.getByTestId("campaign-study-recorder").waitFor({ state: "visible", timeout: 30000 });
+  await dismissCampaignFrontDoor(page);
   const invalidRecorder = page.getByTestId("campaign-study-recorder");
   if (!(await invalidRecorder.getAttribute("open"))) await invalidRecorder.locator("summary").click();
   const invalidStart = page.getByTestId("campaign-study-start");
@@ -256,7 +291,16 @@ async function verifyStatic(context, baseUrl) {
   page.on("request", (request) => requests.push(request.url()));
   page.on("pageerror", (error) => pageErrors.push(error.message));
   await page.goto(`${baseUrl}/?runtime=static&study=1`, { waitUntil: "load" });
-  await page.getByTestId("campaign-study-boundary").waitFor({ state: "visible", timeout: 30000 });
+  await page.locator('[data-testid="district-strategic-fronts"][data-front-status="readonly"]').waitFor({ state: "attached", timeout: 30000 });
+  const onboarding = page.getByTestId("onboarding-overlay");
+  if (await onboarding.isVisible().catch(() => false)) await onboarding.locator("button").last().click();
+  const studyBoundary = page.getByTestId("campaign-study-boundary");
+  if (await studyBoundary.count() === 0) {
+    const inspectorToggle = page.locator('button[aria-controls="command-deck-full-inspector"]');
+    await inspectorToggle.waitFor({ state: "attached", timeout: 30000 });
+    await inspectorToggle.click({ force: true });
+  }
+  await studyBoundary.waitFor({ state: "visible", timeout: 30000 });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(500);
   const summary = await page.evaluate((key) => ({
@@ -285,7 +329,7 @@ let server;
 let browser;
 try {
   server = await ensureServer(baseUrl, !requestedUrl);
-  browser = await chromium.launch({ headless: true });
+  browser = await chromium.launch(launchOptions());
   const serverContext = await browser.newContext({ viewport: { width: 1280, height: 800 }, acceptDownloads: true });
   await serverContext.addInitScript((key) => {
     if (window.sessionStorage.getItem("campaign-study-qa-initialized") === "1") return;

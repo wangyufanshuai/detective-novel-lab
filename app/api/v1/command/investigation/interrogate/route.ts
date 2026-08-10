@@ -2,7 +2,7 @@ import { errorResponse, fail, ok, readJson } from "@/app/api/v1/_utils";
 import { makeRuleBoundInterrogation, updateTestimonyWithContradiction } from "@/lib/engine";
 import { generateGuardedNpcReplyWithAudit } from "@/lib/world/ai";
 import { worldRepository } from "@/lib/world/repository";
-import { getRuntimeFactionRelationshipSummary, recordRuntimeInvestigatorProgressionStep, recordRuntimePlayerResourceCommitmentStep } from "@/app/api/v1/_town-runtime";
+import { getRuntimeFactionRelationshipSummary, isRuntimeInvestigationAuthority, recordRuntimeInvestigatorProgressionStep, recordRuntimePlayerResourceCommitmentStep } from "@/app/api/v1/_town-runtime";
 
 export async function POST(request: Request) {
   try {
@@ -27,7 +27,8 @@ export async function POST(request: Request) {
       evidenceId: body.evidenceId
     });
     const testimonyUpdate = updateTestimonyWithContradiction(activeCase.testimonies || [], body.characterId, body.evidenceId);
-    if (testimonyUpdate.updated) {
+    const authoritative = session.playerId !== "auto-player" && isRuntimeInvestigationAuthority(session.worldId, { sessionId: session.id, caseId: session.caseId });
+    if (testimonyUpdate.updated && authoritative) {
       activeCase.testimonies = testimonyUpdate.testimonies;
       worldRepository.saveCase(activeCase);
     }
@@ -44,14 +45,19 @@ export async function POST(request: Request) {
     );
     const next = worldRepository.appendInterrogation(session, entry);
     const commitmentLane = testimonyUpdate.contradictionHit.hit ? "challenge" : body.evidenceId ? undefined : "question";
-    const investigatorProgression = session.playerId === "auto-player" || !commitmentLane
+    const investigatorProgression = !authoritative || !commitmentLane
       ? undefined
       : recordRuntimeInvestigatorProgressionStep(session.worldId, {
           sourceKey: `${session.id}:${session.caseId}:${commitmentLane}`,
           kind: commitmentLane
         });
-    const playerResourceCommitment = commitmentLane
-      ? recordRuntimePlayerResourceCommitmentStep(session.worldId, { sessionId: session.id, caseId: session.caseId, lane: commitmentLane })
+    const playerResourceCommitment = commitmentLane && authoritative
+      ? recordRuntimePlayerResourceCommitmentStep(session.worldId, {
+          sessionId: session.id,
+          caseId: session.caseId,
+          lane: commitmentLane,
+          caseSceneLocationId: activeCase.generationProfile.sceneLocationId || activeCase.deductionCase.scenes[0]?.id
+        })
       : undefined;
     const factionRelationship = playerResourceCommitment ? getRuntimeFactionRelationshipSummary(session.worldId) : undefined;
     return ok({

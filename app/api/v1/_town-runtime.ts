@@ -15,6 +15,8 @@ import {
   advancePersistentTownTick,
   activateArcConvergence,
   activateCampaignCase,
+  applyAuthoredCampaignLeadFocus,
+  applyInvestigationOperationsDecision,
   activateWorldArcForHints,
   advanceWorldArc,
   applyPlayerResourceCommitmentDecision,
@@ -24,7 +26,11 @@ import {
   applyTownRuntimeIntervention,
   applyWorldLeadDecision,
   applyWorldLeadOutcome,
+  applyInvestigatorHeadquartersDecision,
+  activateInvestigatorHeadquarters,
+  completeInvestigatorHeadquarters,
   buildTownEmergenceQueue,
+  bindCampaignRoute,
   builtInScenarioPacks,
   builtInTownMapPacks,
   buildRunReplayBundle,
@@ -57,20 +63,25 @@ import {
   rollbackTownRuntimeToSnapshot,
   resolveCaseInWorld,
   prepareWorldLeadCaseHandoff,
+  prepareInvestigatorHeadquarters,
   preparePlayerResourceCommitment,
+  isInvestigationOperationsAuthoritativeSession,
   prepareCampaignRecovery,
   consumeWorldLeadCaseHandoff,
-  consumePlayerResourceCommitment,
+  investigatorHeadquartersDecisionAvailable,
+  investigatorHeadquartersExtractionRequired,
   consumeWorldPressurePulseOnExtraction,
-  releaseUnusedPlayerResourceCommitments,
+  recordInvestigationOperationStep,
   recordAcceptedCaseFactionRelationship,
   settleWorldLeadOutcome,
+  settleInvestigationOperations,
   toFactionRelationshipPublicSummary,
   toWorldEventOfferPublicSummary,
   recordInvestigatorProgression,
   refreshArcConvergence,
   refreshCampaignSession,
   toInvestigatorProgressionPublicSummary,
+  toInvestigatorHeadquartersPublicSummary,
   syncCampaignRecoveryFromRuntime,
   toCampaignRecoveryPublicSummary,
   toArcConvergencePublicSummary,
@@ -90,6 +101,7 @@ import {
   validatePlayableCaseRoute,
   type CaseCandidate,
   type DetectiveContentPack,
+  type DetectiveCampaignRouteId,
   type EmergenceBenchmarkReport,
   type PersistentTownRuntime,
   type ReviewExportBundle,
@@ -105,8 +117,10 @@ import {
   type WorldLeadDecisionInput,
   type WorldArcDirectiveDecisionInput,
   type PlayerResourceCommitmentDecisionInput,
+  type InvestigationOperationsDecisionInput,
   type CampaignRecoveryDecisionInput,
   type CampaignRecoveryFailureKind,
+  type InvestigatorHeadquartersChoice,
   type WorldEventOfferDecisionInput,
   type WorldLeadFocus,
   type WorldEvent,
@@ -166,11 +180,17 @@ export function ensureRuntimeWorldSystemHints(runtime: PersistentTownRuntime, ca
   if (shouldBindCase) runtime.worldSystemHintSummary = { ...runtime.worldSystemHints.summary };
   if (!runtime.worldLeadPreview) runtime.worldLeadPreview = deriveWorldLeadPreview(runtime.worldSystemHints);
   if (shouldBindCase) runtime.worldLeadPreview = deriveWorldLeadPreview(runtime.worldSystemHints);
+  if (caseId && runtime.campaignSession?.activeCaseId === caseId) applyAuthoredCampaignLeadFocus(runtime);
   if (!runtime.factionRelationshipSummary) runtime.factionRelationshipSummary = toFactionRelationshipPublicSummary(runtime);
   if (runtime.worldEventOffers?.items.length && !runtime.worldEventOfferSummary) runtime.worldEventOfferSummary = toWorldEventOfferPublicSummary(runtime);
   if (!runtime.investigatorProgressionSummary) runtime.investigatorProgressionSummary = toInvestigatorProgressionPublicSummary(runtime);
+  if (!runtime.investigatorHeadquartersSummary) runtime.investigatorHeadquartersSummary = toInvestigatorHeadquartersPublicSummary(runtime);
   if (!runtime.campaignRecoverySummary) runtime.campaignRecoverySummary = toCampaignRecoveryPublicSummary(runtime);
-  if (caseId && runtime.worldSystemHints) activateWorldArcForHints(runtime, runtime.worldSystemHints, caseId);
+  const campaignCycleKey = caseId && runtime.campaignSession?.activeCaseId === caseId
+    ? runtime.campaignSession.activeCycleKey || caseId
+    : caseId;
+  if (campaignCycleKey && runtime.worldSystemHints) activateWorldArcForHints(runtime, runtime.worldSystemHints, campaignCycleKey);
+  refreshCampaignSession(runtime);
   refreshArcConvergence(runtime);
   refreshCampaignSession(runtime);
   return runtime;
@@ -247,6 +267,24 @@ export function recordRuntimeCampaignRecoveryDecision(world: RuntimeWorld, event
   };
 }
 
+export function recordRuntimeInvestigatorHeadquartersDecision(
+  world: RuntimeWorld,
+  events: WorldEvent[],
+  input: { choice: InvestigatorHeadquartersChoice }
+) {
+  const runtime = ensureRuntimeWorldSystemHints(world.persistentRuntime || createRuntimeForWorld(world, events));
+  world.persistentRuntime = runtime;
+  const investigatorHeadquarters = applyInvestigatorHeadquartersDecision(runtime, input);
+  if (!investigatorHeadquarters) return undefined;
+  persistRuntimeWorld(world);
+  return {
+    world,
+    runtime,
+    queue: buildTownEmergenceQueue(world, events, runtime),
+    investigatorHeadquarters
+  };
+}
+
 export function recordRuntimeCampaignFailure(worldId: string, input: {
   sourceKey: string;
   failureKind: CampaignRecoveryFailureKind;
@@ -299,7 +337,25 @@ export function recordRuntimeWorldEventOfferDecision(world: RuntimeWorld, events
 export function recordRuntimePlayerResourceCommitmentDecision(world: RuntimeWorld, events: WorldEvent[], input: PlayerResourceCommitmentDecisionInput) {
   const runtime = ensureRuntimeWorldSystemHints(world.persistentRuntime || createRuntimeForWorld(world, events));
   world.persistentRuntime = runtime;
+  if (!isInvestigationOperationsAuthoritativeSession(runtime, input)) return undefined;
   const playerResourceCommitment = applyPlayerResourceCommitmentDecision(runtime, input);
+  if (!playerResourceCommitment) return undefined;
+  syncCampaignRecoveryFromRuntime(runtime);
+  persistRuntimeWorld(world);
+  return {
+    world,
+    runtime,
+    queue: buildTownEmergenceQueue(world, events, runtime),
+    playerResourceCommitment,
+    factionRelationship: toFactionRelationshipPublicSummary(runtime),
+    worldInfluenceBudget: toWorldInfluenceBudgetPublicSummary(runtime)
+  };
+}
+
+export function recordRuntimeInvestigationOperationsDecision(world: RuntimeWorld, events: WorldEvent[], input: InvestigationOperationsDecisionInput) {
+  const runtime = ensureRuntimeWorldSystemHints(world.persistentRuntime || createRuntimeForWorld(world, events));
+  world.persistentRuntime = runtime;
+  const playerResourceCommitment = applyInvestigationOperationsDecision(runtime, input);
   if (!playerResourceCommitment) return undefined;
   syncCampaignRecoveryFromRuntime(runtime);
   persistRuntimeWorld(world);
@@ -317,8 +373,13 @@ export function prepareRuntimePlayerResourceCommitment(worldId: string, input: P
   const loaded = loadRuntimeWorld(worldId);
   if (!loaded) return undefined;
   const playerResourceCommitment = preparePlayerResourceCommitment(loaded.runtime, input);
-  persistRuntimeWorld(loaded.world);
+  if (playerResourceCommitment.scope === "authoritative") persistRuntimeWorld(loaded.world);
   return playerResourceCommitment;
+}
+
+export function isRuntimeInvestigationAuthority(worldId: string, input: { sessionId: string; caseId: string }) {
+  const loaded = loadRuntimeWorld(worldId);
+  return Boolean(loaded && isInvestigationOperationsAuthoritativeSession(loaded.runtime, input));
 }
 
 export function getRuntimeFactionRelationshipSummary(worldId: string) {
@@ -342,10 +403,10 @@ export function getRuntimeInvestigatorProgressionSummary(worldId: string) {
   return loaded ? toInvestigatorProgressionPublicSummary(loaded.runtime) : undefined;
 }
 
-export function recordRuntimePlayerResourceCommitmentStep(worldId: string, input: { sessionId: string; caseId: string; lane: WorldLeadFocus }) {
+export function recordRuntimePlayerResourceCommitmentStep(worldId: string, input: { sessionId: string; caseId: string; lane: WorldLeadFocus; caseSceneLocationId?: string }) {
   const loaded = loadRuntimeWorld(worldId);
   if (!loaded) return undefined;
-  const playerResourceCommitment = consumePlayerResourceCommitment(loaded.runtime, input);
+  const playerResourceCommitment = recordInvestigationOperationStep(loaded.runtime, input);
   if (playerResourceCommitment) persistRuntimeWorld(loaded.world);
   return playerResourceCommitment;
 }
@@ -358,10 +419,11 @@ export function settleRuntimeWorldLeadOutcome(world: RuntimeWorld, caseId: strin
   return worldLeadOutcome;
 }
 
-export function settleRuntimeWorldLeadOutcomeAndPrepareHandoff(world: RuntimeWorld, caseId: string) {
+export function settleRuntimeWorldLeadOutcomeAndPrepareHandoff(world: RuntimeWorld, caseId: string, sessionId: string) {
   const runtime = world.persistentRuntime;
+  if (!runtime || !isInvestigationOperationsAuthoritativeSession(runtime, { sessionId, caseId })) return undefined;
   const playerResourceCommitment = runtime
-    ? releaseUnusedPlayerResourceCommitments(runtime, { caseId }) || runtime.playerResourceCommitmentSummary
+    ? settleInvestigationOperations(runtime, { sessionId, caseId, accepted: true }) || runtime.playerResourceCommitmentSummary
     : undefined;
   const activeOutcome = runtime?.worldLeadOutcome?.caseId === caseId ? runtime.worldLeadOutcome : undefined;
   const worldLeadOutcome = runtime ? settleWorldLeadOutcome(world, runtime, caseId) : undefined;
@@ -382,8 +444,11 @@ export function settleRuntimeWorldLeadOutcomeAndPrepareHandoff(world: RuntimeWor
     : runtime
       ? toTownSocialResponsePublicSummary(world, runtime)
       : undefined;
+  const campaignCycleKey = runtime?.campaignSession?.activeCaseId === caseId
+    ? runtime.campaignSession.activeCycleKey || caseId
+    : caseId;
   const worldArc = runtime && worldLeadOutcome && activeOutcome
-    ? advanceWorldArc(runtime, { caseId, focus: activeOutcome.focus })
+    ? advanceWorldArc(runtime, { caseId: campaignCycleKey, focus: activeOutcome.focus })
     : undefined;
   const eventArchetype = runtime?.worldSystemHints?.source.eventArchetypeId
     ? detectiveEventArchetypes.find((item) => item.id === runtime.worldSystemHints?.source.eventArchetypeId)
@@ -424,13 +489,21 @@ export function settleRuntimeWorldLeadOutcomeAndPrepareHandoff(world: RuntimeWor
     : undefined;
   const completedConvergence = runtime ? completeArcConvergence(runtime, caseId) : undefined;
   const arcConvergence = runtime ? (completedConvergence || refreshArcConvergence(runtime)) : undefined;
+  const completedInvestigatorHeadquarters = runtime ? completeInvestigatorHeadquarters(runtime, caseId) : undefined;
   const campaignSession = runtime ? completeCampaignCase(runtime, caseId) : undefined;
+  const completedCycleKey = runtime?.campaignSession?.completedCycleKeys.at(-1);
+  const investigatorHeadquarters = runtime && campaignSession && campaignSession.status !== "completed" && completedCycleKey
+    ? prepareInvestigatorHeadquarters(runtime, { cycleKey: completedCycleKey, sourceCaseId: caseId })
+    : runtime
+      ? toInvestigatorHeadquartersPublicSummary(runtime)
+      : undefined;
+  if (runtime && campaignSession) refreshCampaignSession(runtime);
   const campaignFinaleDebrief = runtime ? toCampaignFinaleDebriefPublicSummary(runtime) : undefined;
   const worldLeadCaseHandoff = runtime && worldLeadOutcome && activeOutcome
     ? prepareWorldLeadCaseHandoff(runtime, { settledCaseId: caseId, focus: activeOutcome.focus })
     : undefined;
-  if (playerResourceCommitment || worldLeadOutcome || worldLeadCaseHandoff || worldArc || worldArcDirective || factionRelationship || completedConvergence || townSocialResponse) persistRuntimeWorld(world);
-  return { playerResourceCommitment, factionRelationship, worldLeadOutcome, worldLeadCaseHandoff, worldArc, worldArcDirective, arcConvergence, campaignSession, campaignFinaleDebrief, townSocialResponse, worldInfluenceBudget: runtime ? toWorldInfluenceBudgetPublicSummary(runtime) : undefined };
+  if (playerResourceCommitment || worldLeadOutcome || worldLeadCaseHandoff || worldArc || worldArcDirective || factionRelationship || completedConvergence || campaignSession || completedInvestigatorHeadquarters || investigatorHeadquarters || townSocialResponse) persistRuntimeWorld(world);
+  return { playerResourceCommitment, factionRelationship, worldLeadOutcome, worldLeadCaseHandoff, worldArc, worldArcDirective, arcConvergence, campaignSession, campaignFinaleDebrief, investigatorHeadquarters, townSocialResponse, worldInfluenceBudget: runtime ? toWorldInfluenceBudgetPublicSummary(runtime) : undefined };
 }
 
 export function applyRuntimeIntervention(world: RuntimeWorld, intervention: Omit<TownRuntimeIntervention, "id" | "tick" | "createdAt" | "branch" | "impact">) {
@@ -442,6 +515,9 @@ export function applyRuntimeIntervention(world: RuntimeWorld, intervention: Omit
 }
 
 export function extractCase(world: RuntimeWorld, events: WorldEvent[], candidate: CaseCandidate) {
+  if (world.persistentRuntime && investigatorHeadquartersExtractionRequired(world.persistentRuntime)) {
+    throw new Error("INVESTIGATOR_HEADQUARTERS_REQUIRED: Choose one Headquarters preparation before extracting the next case.");
+  }
   const result = extractPlayableCaseFromCandidate(world, events, candidate);
   const routeIntegrity = validatePlayableCaseRoute(result.activeCase, result.events);
   if (!routeIntegrity.playable) {
@@ -450,7 +526,7 @@ export function extractCase(world: RuntimeWorld, events: WorldEvent[], candidate
   const nextWorld = result.world as RuntimeWorld;
   nextWorld.persistentRuntime = world.persistentRuntime;
   const playerResourceCommitment = nextWorld.persistentRuntime && world.activeCaseId
-    ? releaseUnusedPlayerResourceCommitments(nextWorld.persistentRuntime, { caseId: world.activeCaseId }) || nextWorld.persistentRuntime.playerResourceCommitmentSummary
+    ? settleInvestigationOperations(nextWorld.persistentRuntime, { caseId: world.activeCaseId, accepted: false }) || nextWorld.persistentRuntime.playerResourceCommitmentSummary
     : undefined;
   const worldPressureCascade = nextWorld.persistentRuntime
     ? consumeWorldPressurePulseOnExtraction(nextWorld.persistentRuntime, result.activeCase.id)
@@ -464,6 +540,8 @@ export function extractCase(world: RuntimeWorld, events: WorldEvent[], candidate
       caseId: result.activeCase.id,
       caseType: result.candidate.caseType
     });
+    activateCampaignCase(nextWorld.persistentRuntime, result.activeCase.id, result.candidate.id);
+    activateInvestigatorHeadquarters(nextWorld.persistentRuntime, result.activeCase.id);
     ensureRuntimeWorldSystemHints(nextWorld.persistentRuntime, result.candidate.caseType, result.activeCase.id);
     const resolution = resolveCaseInWorld(nextWorld, nextWorld.persistentRuntime, {
       caseId: result.activeCase.id,
@@ -474,7 +552,6 @@ export function extractCase(world: RuntimeWorld, events: WorldEvent[], candidate
     });
     nextCandidate = { ...result.candidate, influenceTrace: resolution.influenceTrace };
     nextWorld.persistentRuntime.arcConvergenceSummary = arcConvergence;
-    activateCampaignCase(nextWorld.persistentRuntime, result.activeCase.id, result.candidate.id);
     nextWorld.persistentRuntime.candidates = [
       nextCandidate,
       ...nextWorld.persistentRuntime.candidates.filter((item) => item.id !== nextCandidate.id)
@@ -491,6 +568,7 @@ export function extractCase(world: RuntimeWorld, events: WorldEvent[], candidate
     worldLeadCaseHandoff,
     worldPressureCascade,
     worldArc: nextWorld.persistentRuntime?.worldArcSummary,
+    investigatorHeadquarters: nextWorld.persistentRuntime?.investigatorHeadquartersSummary,
     arcConvergence: nextWorld.persistentRuntime?.arcConvergenceSummary,
     campaignSession: nextWorld.persistentRuntime?.campaignSessionSummary,
     campaignFinaleDebrief: nextWorld.persistentRuntime?.campaignFinaleDebrief,
@@ -518,18 +596,19 @@ export function findSnapshot(runtime: PersistentTownRuntime, snapshotId?: string
 }
 
 export function publicSnapshot(snapshot: TownStateSnapshot) {
-  const { checkpoint: _checkpoint, investigatorProgression: _investigatorProgression, ...visible } = snapshot as TownStateSnapshot & { investigatorProgression?: unknown };
+  const { checkpoint: _checkpoint, investigatorProgression: _investigatorProgression, investigatorHeadquarters: _investigatorHeadquarters, ...visible } = snapshot as TownStateSnapshot & { investigatorProgression?: unknown; investigatorHeadquarters?: unknown };
   return visible;
 }
 
 export function publicRuntime(runtime: PersistentTownRuntime) {
-  const { worldSystemHints: _worldSystemHints, worldLeadDecisions: _worldLeadDecisions, worldLeadOutcome: _worldLeadOutcome, worldLeadCaseHandoff: _worldLeadCaseHandoff, worldArcProgress: _worldArcProgress, worldArcDirectives: _worldArcDirectives, worldPressurePulses: _worldPressurePulses, playerResourceCommitments: _playerResourceCommitments, factionRelationships: _factionRelationships, worldEventOffers: _worldEventOffers, investigatorProgression: _investigatorProgression, campaignRecoveries: _campaignRecoveries, arcConvergence: _arcConvergence, campaignSession: _campaignSession, townSocialResponses: _townSocialResponses, ...visibleRuntime } = runtime;
+  const { worldSystemHints: _worldSystemHints, worldLeadDecisions: _worldLeadDecisions, worldLeadOutcome: _worldLeadOutcome, worldLeadCaseHandoff: _worldLeadCaseHandoff, worldArcProgress: _worldArcProgress, worldArcDirectives: _worldArcDirectives, worldPressurePulses: _worldPressurePulses, playerResourceCommitments: _playerResourceCommitments, factionRelationships: _factionRelationships, worldEventOffers: _worldEventOffers, investigatorProgression: _investigatorProgression, investigatorHeadquarters: _investigatorHeadquarters, campaignRecoveries: _campaignRecoveries, arcConvergence: _arcConvergence, campaignSession: _campaignSession, townSocialResponses: _townSocialResponses, ...visibleRuntime } = runtime;
   return {
     ...visibleRuntime,
     worldSystemHintSummary: runtime.worldSystemHintSummary || runtime.worldSystemHints?.summary,
     worldPressureCascadeSummary: runtime.worldPressureCascadeSummary || toWorldPressureCascadePublicSummary(runtime),
     worldInfluenceBudgetSummary: toWorldInfluenceBudgetPublicSummary(runtime),
     investigatorProgressionSummary: runtime.investigatorProgressionSummary || toInvestigatorProgressionPublicSummary(runtime),
+    investigatorHeadquartersSummary: runtime.investigatorHeadquartersSummary || toInvestigatorHeadquartersPublicSummary(runtime),
     campaignRecoverySummary: runtime.campaignRecoverySummary || toCampaignRecoveryPublicSummary(runtime),
     arcConvergenceSummary: runtime.arcConvergenceSummary || toArcConvergencePublicSummary(runtime),
     campaignSessionSummary: runtime.campaignSessionSummary || toCampaignSessionPublicSummary(runtime),
@@ -931,8 +1010,14 @@ function getTownRuleCatalog(world: RuntimeWorld, runtime: PersistentTownRuntime,
 export function selectCurrentExperiment(
   world: RuntimeWorld,
   runtime: PersistentTownRuntime,
-  input: { scenarioPackId?: string; mapPackId?: string; ruleCatalogId?: string }
+  input: { scenarioPackId?: string; mapPackId?: string; ruleCatalogId?: string; campaignRouteId?: DetectiveCampaignRouteId }
 ) {
+  const routeLocked = Boolean(runtime.campaignSession?.activeCaseId || runtime.campaignSession?.completedCycleKeys?.length);
+  if (input.campaignRouteId && routeLocked && runtime.campaignSession?.routeId !== input.campaignRouteId) {
+    const error = new Error("The authored Campaign route is frozen after the first successful extraction.");
+    error.name = "CAMPAIGN_ROUTE_LOCKED";
+    throw error;
+  }
   const requestedScenarioPackId = input.scenarioPackId || runtime.currentScenarioPackId || "small-town-review";
   const worldPackage = findWorldPackageRegistryEntryById(requestedScenarioPackId);
   const useWorldPackageContract = worldPackage?.validationOk
@@ -993,10 +1078,25 @@ export function selectCurrentExperiment(
     agentPackId: selectedWorldPackage?.agentPackId,
     ecosystemCatalogId: selectedWorldPackage?.ecosystemCatalogId
   };
+  if (input.campaignRouteId && !bindCampaignRoute(runtime, input.campaignRouteId)) {
+    const error = new Error("The authored Campaign route is frozen after the first successful extraction.");
+    error.name = "CAMPAIGN_ROUTE_LOCKED";
+    throw error;
+  }
+  refreshCampaignSession(runtime);
+  refreshArcConvergence(runtime);
+  refreshCampaignSession(runtime);
   runtime.updatedAt = now;
   world.persistentRuntime = runtime;
   persistRuntimeWorld(world);
-  return { currentExperiment: runtime.currentExperiment, scenarioPacks: listScenarioPacks(world, runtime), mapPacks: listTownMapPacks(world, runtime), ruleCatalogs: listTownRuleCatalogs(world, runtime).catalogs };
+  return {
+    currentExperiment: runtime.currentExperiment,
+    campaignSession: runtime.campaignSessionSummary,
+    arcConvergence: runtime.arcConvergenceSummary,
+    scenarioPacks: listScenarioPacks(world, runtime),
+    mapPacks: listTownMapPacks(world, runtime),
+    ruleCatalogs: listTownRuleCatalogs(world, runtime).catalogs
+  };
 }
 
 export function startNewRunFromCurrentExperiment(world: RuntimeWorld, runtime: PersistentTownRuntime) {

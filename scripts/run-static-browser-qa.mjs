@@ -5,8 +5,6 @@ import path from "node:path";
 import { execFileSync, spawn } from "node:child_process";
 import { chromium } from "@playwright/test";
 
-const DEFAULT_URL = "http://127.0.0.1:3000";
-
 function chromiumLaunchOptions() {
   const expected = chromium.executablePath();
   if (fs.existsSync(expected)) return { headless: true, executablePath: expected };
@@ -39,8 +37,9 @@ function findAvailableLocalPort() {
 async function resolveBaseUrl() {
   const requested = argValue("url");
   if (requested) return requested.replace(/\/$/, "");
-  const existing = await get(`${DEFAULT_URL}/?runtime=static`);
-  if (existing.ok && existing.status >= 200 && existing.status < 500) return DEFAULT_URL;
+  // A generic response on :3000 may belong to another local Next.js project
+  // or to a stale build. An isolated ephemeral port makes the default QA run
+  // project-owned; callers can still opt into a known server with --url.
   return `http://127.0.0.1:${await findAvailableLocalPort()}`;
 }
 
@@ -78,26 +77,64 @@ async function waitForServer(baseUrl, timeoutMs = 120000) {
   return false;
 }
 
+function stopServerChild(child) {
+  if (!child) return;
+  if (process.platform === "win32" && child.pid) {
+    try {
+      execFileSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], { stdio: "ignore" });
+      return;
+    } catch {}
+  }
+  child.kill();
+}
+
+function latestInputMtime(target) {
+  if (!fs.existsSync(target)) return 0;
+  const stat = fs.statSync(target);
+  if (stat.isFile()) return stat.mtimeMs;
+  return fs.readdirSync(target, { withFileTypes: true }).reduce((latest, entry) => {
+    if (entry.name === "node_modules" || entry.name === ".next") return latest;
+    return Math.max(latest, latestInputMtime(path.join(target, entry.name)));
+  }, stat.mtimeMs);
+}
+
+function hasFreshProductionBuild() {
+  const buildIdPath = path.join(process.cwd(), ".next", "BUILD_ID");
+  if (!fs.existsSync(buildIdPath)) return false;
+  const buildMtime = fs.statSync(buildIdPath).mtimeMs;
+  const inputs = ["app", "packages", "content", "package.json", "next.config.ts", "tsconfig.json"]
+    .map((entry) => path.join(process.cwd(), entry));
+  return inputs.every((entry) => latestInputMtime(entry) <= buildMtime);
+}
+
 async function ensureServer(baseUrl) {
   const existing = await get(`${baseUrl}/?runtime=static`);
   if (existing.ok && existing.status >= 200 && existing.status < 500) return { started: false, child: null };
   const command = process.platform === "win32" ? "cmd.exe" : "npm";
   const parsedUrl = new URL(baseUrl);
   const port = parsedUrl.port || (parsedUrl.protocol === "https:" ? "443" : "80");
+  const serverScript = hasFlag("dev") ? "dev" : hasFlag("production") || hasFreshProductionBuild() ? "start" : "dev";
   const args = process.platform === "win32"
-    ? ["/d", "/s", "/c", `npm.cmd run dev -- -p ${port}`]
-    : ["run", "dev", "--", "-p", port];
+    ? ["/d", "/s", "/c", `npm.cmd run ${serverScript} -- -H 127.0.0.1 -p ${port}`]
+    : ["run", serverScript, "--", "-H", "127.0.0.1", "-p", port];
   const child = spawn(command, args, {
     cwd: process.cwd(),
     env: { ...process.env, NEXT_PUBLIC_DEMO_MODE: "static" },
-    stdio: "ignore"
+    stdio: ["ignore", "pipe", "pipe"]
   });
+  let startupOutput = "";
+  const collectStartupOutput = (chunk) => {
+    startupOutput = `${startupOutput}${String(chunk)}`.slice(-8000);
+  };
+  child.stdout?.on("data", collectStartupOutput);
+  child.stderr?.on("data", collectStartupOutput);
   const ready = await waitForServer(baseUrl);
   if (!ready) {
-    child.kill();
-    throw new Error(`Timed out waiting for local dev server on port ${port}.`);
+    stopServerChild(child);
+    const detail = startupOutput.trim().replace(/\s+/g, " ").slice(-1600);
+    throw new Error(`Timed out waiting for local ${serverScript} server on port ${port}.${detail ? ` Startup output: ${detail}` : ""}`);
   }
-  return { started: true, child };
+  return { started: true, child, serverScript };
 }
 
 async function waitForGuidedStepIdle(page, timeout = 18000) {
@@ -106,6 +143,43 @@ async function waitForGuidedStepIdle(page, timeout = 18000) {
     undefined,
     { timeout }
   ).catch(() => undefined);
+  return settleCampaignTransitionTheatre(page);
+}
+
+async function settleCampaignTransitionTheatre(page, waitMs = 1800) {
+  if (new URL(page.url()).searchParams.get("runtime") !== "server") return { seen: false, text: "", controlHeight: 0 };
+  const theatre = page.getByTestId("campaign-transition-theatre");
+  if (!await theatre.isVisible().catch(() => false)) {
+    await theatre.waitFor({ state: "visible", timeout: waitMs }).catch(() => undefined);
+  }
+  if (!await theatre.isVisible().catch(() => false)) return { seen: false, text: "", controlHeight: 0 };
+  const text = await theatre.innerText();
+  const controlHeight = await theatre.locator("button").first().evaluate((node) => node.getBoundingClientRect().height).catch(() => 0);
+  await page.waitForFunction(() => {
+    const phase = document.querySelector("[data-testid='campaign-transition-theatre']")?.getAttribute("data-transition-phase");
+    return !phase || phase !== "action-resolving";
+  }, undefined, { timeout: 30_000 }).catch(() => undefined);
+  if (await theatre.isVisible().catch(() => false)) {
+    const skip = theatre.getByRole("button", { name: "Skip to next" });
+    if (await skip.isVisible().catch(() => false)) await skip.click();
+  }
+  if (await theatre.isVisible().catch(() => false)) {
+    await page.waitForFunction(() => document.querySelector("[data-testid='campaign-transition-theatre']")?.getAttribute("data-transition-phase") === "next-objective", undefined, { timeout: 10_000 }).catch(() => undefined);
+    const continueButton = theatre.getByRole("button", { name: "Continue" });
+    if (await continueButton.isVisible().catch(() => false)) await continueButton.click();
+  }
+  await theatre.waitFor({ state: "detached", timeout: 10_000 }).catch(() => undefined);
+  await openCommandDeckInspectorDetail(page);
+  return { seen: true, text, controlHeight };
+}
+
+async function openWorldCampaignArchive(page) {
+  const archive = page.getByTestId("world-campaign-archive");
+  if (!await archive.count()) return false;
+  if (!await archive.evaluate((node) => node instanceof HTMLDetailsElement && node.open)) {
+    await archive.locator(":scope > summary").click();
+  }
+  return archive.evaluate((node) => node instanceof HTMLDetailsElement && node.open);
 }
 
 async function waitForCommandButtonReady(button, timeout = 30000) {
@@ -160,6 +234,8 @@ async function completeManualTheoryReplay(page) {
   if (await campaignRecoveryStart.isVisible().catch(() => false)) {
     campaignRecoveryTextReady = await page.getByTestId("campaign-recovery").innerText();
     await campaignRecoveryStart.click();
+    await settleCampaignTransitionTheatre(page);
+    await openWorldCampaignArchive(page);
     await page.getByTestId("campaign-recovery").getByText("completed", { exact: true }).first().waitFor({ state: "visible", timeout: 30000 });
     campaignRecoveryTextCompleted = await page.getByTestId("campaign-recovery").innerText();
   }
@@ -210,10 +286,19 @@ async function keepCommandDeckSectionsOpen(page) {
   });
 }
 
+async function openCommandDeckInspectorDetail(page) {
+  const detailToggle = page.getByRole("button", { name: /Case files & detail/i });
+  const contextToggle = page.getByTestId("command-deck-drawer-toggle");
+  if (await contextToggle.isVisible().catch(() => false) && await contextToggle.getAttribute("aria-expanded") !== "true") await contextToggle.click();
+  await detailToggle.waitFor({ state: "visible", timeout: 30_000 });
+  if (await detailToggle.getAttribute("aria-expanded") !== "true") await detailToggle.click();
+}
+
 async function dismissCommandDeckOnboarding(page) {
   const dismiss = page.locator("[data-testid='onboarding-overlay'] .closeButton");
   await page.locator("[data-testid='onboarding-overlay']").waitFor({ state: "visible", timeout: 4000 }).catch(() => undefined);
   if (await dismiss.isVisible().catch(() => false)) await dismiss.click();
+  await openCommandDeckInspectorDetail(page);
 }
 
 async function verifyStaticPage(page, baseUrl) {
@@ -247,10 +332,17 @@ async function verifyStaticPage(page, baseUrl) {
   const staticInvestigatorProgressionButtons = await page.getByTestId("investigator-progression").locator("button").count();
   const staticCampaignRecoveryText = await page.getByTestId("campaign-recovery").innerText();
   const staticCampaignRecoveryButtons = await page.getByTestId("campaign-recovery").locator("button").count();
+  const staticInvestigatorHeadquartersText = await page.getByTestId("investigator-headquarters").innerText();
+  const staticInvestigatorHeadquartersButtons = await page.getByTestId("investigator-headquarters").locator("button").count();
   const staticArcConvergenceText = await page.getByTestId("arc-convergence").innerText();
   const staticArcConvergenceButtons = await page.getByTestId("arc-convergence").locator("button").count();
   const staticCampaignSessionText = await page.getByTestId("campaign-session").innerText();
   const staticCampaignSessionButtons = await page.getByTestId("campaign-session").locator("button").count();
+  const staticCampaignPacingText = await page.getByTestId("campaign-pacing").innerText();
+  const staticCampaignPacingButtons = await page.getByTestId("campaign-pacing").locator("button").count();
+  const staticCampaignTransitionText = await page.getByTestId("campaign-transition-boundary").innerText();
+  const staticCampaignTransitionButtons = await page.getByTestId("campaign-transition-boundary").locator("button").count();
+  const staticCampaignTransitionTheatreCount = await page.getByTestId("campaign-transition-theatre").count();
   const staticTownSocialResponseText = await page.getByTestId("town-social-response").innerText();
   const staticTownSocialResponseButtons = await page.getByTestId("town-social-response").locator("button").count();
   await page.getByText("Guided Manual Run", { exact: true }).first().waitFor({ state: "visible", timeout: 30000 });
@@ -474,15 +566,18 @@ async function verifyStaticPage(page, baseUrl) {
   summary.hasStaticPlaythroughAccepted = staticPlaythroughTextBeforeReview.toLowerCase().includes("completed / accepted theory") && staticPlaythroughTextBeforeReview.toLowerCase().includes("accepted");
   summary.hasStaticPlaythroughMetrics = ["route certified", "auto route pass", "challenge hits", "selected evidence", "covered obligations"].every((label) => staticPlaythroughTextBeforeReview.toLowerCase().includes(label));
   summary.hasStaticWorldLeadBoundary = /world lead/i.test(staticWorldLeadText) && /server runtime loop/i.test(staticWorldLeadText) && /case-scoped world arc/i.test(staticWorldLeadText) && /support \/ contain faction directive/i.test(staticWorldLeadText) && /server-only pressure cascade/i.test(staticWorldLeadText) && !/follow world lead|keep certified route/i.test(staticWorldLeadText);
-  summary.hasStaticWorldCurrentAction = /current world action/i.test(staticWorldCurrentActionText) && /continue the certified investigation path/i.test(staticWorldCurrentActionText) && /server-only/i.test(staticWorldCurrentActionText);
+  summary.hasStaticWorldCurrentAction = /campaign priority/i.test(staticWorldCurrentActionText) && /continue the certified investigation path/i.test(staticWorldCurrentActionText) && /server-only/i.test(staticWorldCurrentActionText);
   summary.hasStaticInfluenceBudgetBoundary = /server-only/i.test(staticInfluenceBudgetText) && /unified influence budget/i.test(staticInfluenceBudgetText) && /read-only/i.test(staticInfluenceBudgetText);
-  summary.hasStaticResourceCommitmentBoundary = /server-only/i.test(staticResourceCommitmentText) && /player resource commitment/i.test(staticResourceCommitmentText) && /read-only/i.test(staticResourceCommitmentText) && !/reserve|continue without reserve/i.test(staticResourceCommitmentText);
+  summary.hasStaticResourceCommitmentBoundary = /server-only/i.test(staticResourceCommitmentText) && /investigation operations economy/i.test(staticResourceCommitmentText) && /read-only/i.test(staticResourceCommitmentText) && !/confirm operations|use support/i.test(staticResourceCommitmentText);
   summary.hasStaticFactionRelationshipBoundary = /server-only/i.test(staticFactionRelationshipText) && /faction relationship ledger/i.test(staticFactionRelationshipText) && !/trusted|strained|hostile|relationship-priced resource controls/i.test(staticFactionRelationshipText.replace(/relationship-priced resource controls/i, ""));
   summary.hasStaticWorldEventOfferBoundary = /server-only/i.test(staticWorldEventOfferText) && /world event offer lifecycle/i.test(staticWorldEventOfferText) && /no persistent offer/i.test(staticWorldEventOfferText) && staticWorldEventOfferButtons === 0;
   summary.hasStaticInvestigatorProgressionBoundary = /server-only/i.test(staticInvestigatorProgressionText) && /investigator progression|practice profile/i.test(staticInvestigatorProgressionText) && /does not persist|read-only|no persistent/i.test(staticInvestigatorProgressionText) && staticInvestigatorProgressionButtons === 0;
   summary.hasStaticCampaignRecoveryBoundary = /server-only/i.test(staticCampaignRecoveryText) && /failure and recovery/i.test(staticCampaignRecoveryText) && /does not persist/i.test(staticCampaignRecoveryText) && staticCampaignRecoveryButtons === 0;
+  summary.hasStaticInvestigatorHeadquartersBoundary = /server-only/i.test(staticInvestigatorHeadquartersText) && /investigator headquarters/i.test(staticInvestigatorHeadquartersText) && /does not persist|no preparation state/i.test(staticInvestigatorHeadquartersText) && staticInvestigatorHeadquartersButtons === 0;
   summary.hasStaticArcConvergenceBoundary = /server-only/i.test(staticArcConvergenceText) && /arc convergence finale/i.test(staticArcConvergenceText) && /does not read campaign history/i.test(staticArcConvergenceText) && staticArcConvergenceButtons === 0;
   summary.hasStaticCampaignSessionBoundary = /server-only/i.test(staticCampaignSessionText) && /three-case campaign journey/i.test(staticCampaignSessionText) && /does not persist campaign chapters/i.test(staticCampaignSessionText) && staticCampaignSessionButtons === 0;
+  summary.hasStaticCampaignPacingBoundary = /server-only/i.test(staticCampaignPacingText) && /campaign pacing and content value/i.test(staticCampaignPacingText) && /no persistent chapter context/i.test(staticCampaignPacingText) && staticCampaignPacingButtons === 0;
+  summary.hasStaticCampaignTransitionBoundary = /server-only/i.test(staticCampaignTransitionText) && /focused resolution and campaign transition theatre/i.test(staticCampaignTransitionText) && /no transition state/i.test(staticCampaignTransitionText) && staticCampaignTransitionButtons === 0 && staticCampaignTransitionTheatreCount === 0;
   summary.hasStaticTownSocialResponseBoundary = /server-only/i.test(staticTownSocialResponseText) && /town social response/i.test(staticTownSocialResponseText) && /does not read public npc reactions/i.test(staticTownSocialResponseText) && staticTownSocialResponseButtons === 0;
   summary.hasGuidedManualRun = /guided manual run/i.test(guidedManualTextBeforeReview);
   summary.hasGuidedManualProgression = ["search complete", "question complete", "challenge complete", "evidence selected", "accepted"].every((label) => guidedManualTextBeforeReview.toLowerCase().includes(label));
@@ -901,6 +996,11 @@ async function verifyMobile(page, baseUrl) {
 async function verifyServerRuntime(page, baseUrl) {
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto(`${baseUrl}/?runtime=server`, { waitUntil: "load" });
+  const campaignFrontDoor = page.getByTestId("campaign-front-door");
+  if (await campaignFrontDoor.getByTestId("campaign-front-door-dismiss").count()) {
+    await campaignFrontDoor.getByTestId("campaign-front-door-dismiss").click();
+    await campaignFrontDoor.waitFor({ state: "hidden", timeout: 10_000 });
+  }
   await keepCommandDeckSectionsOpen(page);
   await dismissCommandDeckOnboarding(page);
   await page.locator(".settingsDrawer").first().locator("summary").click();
@@ -938,6 +1038,7 @@ async function verifyServerRuntime(page, baseUrl) {
     throw new Error(`No valid generated-world candidate after bounded fast steps.\n${commandHud}\n${candidateBoard}`);
   }
   await extractButton.click();
+  await openCommandDeckInspectorDetail(page);
   await page.getByTestId("playable-investigation-path").waitFor({ state: "visible", timeout: 30000 });
   await page.getByTestId("server-playthrough-proof").waitFor({ state: "visible", timeout: 30000 });
   await page.getByText("Server Playthrough Proof", { exact: true }).first().waitFor({ state: "visible", timeout: 30000 });
@@ -945,25 +1046,34 @@ async function verifyServerRuntime(page, baseUrl) {
   await page.getByText(/covered obligations/i).first().waitFor({ state: "visible", timeout: 30000 });
   await page.getByTestId("guided-manual-run").waitFor({ state: "visible", timeout: 30000 });
   await page.getByTestId("run-next-guided-step").click();
-  await page.waitForFunction(() => !/running guided step/i.test(document.querySelector("[data-testid='run-next-guided-step']")?.textContent || ""), undefined, { timeout: 18000 }).catch(() => undefined);
+  const serverTransitionPresentation = await waitForGuidedStepIdle(page);
   await page.getByTestId("world-lead-panel").waitFor({ state: "visible", timeout: 30000 });
   await page.getByTestId("world-campaign-current-action").waitFor({ state: "visible", timeout: 30000 });
+  const serverWorldCampaignArchiveDefaultClosed = await page.getByTestId("world-campaign-archive").evaluate((node) => node instanceof HTMLDetailsElement && !node.open);
+  const serverWorldCampaignFocusSurface = await page.getByTestId("world-campaign-focus").getAttribute("data-focus-surface");
+  const serverWorldCampaignPriorityText = await page.getByTestId("world-campaign-current-action").innerText();
+  await openWorldCampaignArchive(page);
   await page.getByTestId("world-arc-progress").waitFor({ state: "visible", timeout: 30000 });
   const serverWorldArcTextInitial = await page.getByTestId("world-arc-progress").innerText();
   const serverInvestigatorProgressionTextInitial = await page.getByTestId("investigator-progression").innerText();
   const serverArcConvergenceTextInitial = await page.getByTestId("arc-convergence").innerText();
   const serverCampaignSessionTextInitial = await page.getByTestId("campaign-session").innerText();
+  const serverCampaignPacingTextInitial = await page.getByTestId("campaign-pacing").innerText();
   await page.getByTestId("player-resource-commitment").waitFor({ state: "visible", timeout: 30000 });
   const serverResourceCommitmentTextReady = await page.getByTestId("player-resource-commitment").innerText();
   const serverFactionRelationshipTextInitial = await page.getByTestId("faction-relationship-summary").innerText();
-  const resourceReserveButton = page.locator(".playerResourceCommitmentOptions button:not([disabled])").first();
-  if (!await resourceReserveButton.count()) throw new Error("No available player resource commitment option in Server Runtime QA.");
-  await resourceReserveButton.click();
-  await page.getByTestId("player-resource-commitment").getByText("reserved", { exact: true }).first().waitFor({ state: "visible", timeout: 30000 });
+  const operationSupportButtons = page.locator("[data-testid^='investigation-operations-']:not([data-testid='investigation-operations-confirm']):not([disabled])");
+  const operationSupportCount = Math.min(2, await operationSupportButtons.count());
+  if (operationSupportCount < 1) throw new Error("No Investigation Operations support lane is available in Server Runtime QA.");
+  for (let index = 0; index < operationSupportCount; index += 1) await operationSupportButtons.nth(index).click();
+  await page.getByTestId("investigation-operations-confirm").click();
+  await settleCampaignTransitionTheatre(page);
+  await page.getByTestId("player-resource-commitment").getByText("planned", { exact: true }).first().waitFor({ state: "visible", timeout: 30000 });
   const serverResourceCommitmentTextReserved = await page.getByTestId("player-resource-commitment").innerText();
   const serverResourceCommitmentJournalReservedText = await page.getByTestId("guided-step-journal").innerText();
   const serverWorldCurrentActionChoice = await page.getByTestId("world-campaign-current-action").innerText();
   await page.getByTestId("world-lead-follow").click();
+  await settleCampaignTransitionTheatre(page);
   await page.getByText("followed", { exact: true }).waitFor({ state: "visible", timeout: 30000 });
   const serverWorldLeadTextFollowed = await page.getByTestId("world-lead-panel").innerText();
   let serverWorldLeadTextActive = "";
@@ -973,8 +1083,9 @@ async function verifyServerRuntime(page, baseUrl) {
     serverGuidedManualTexts.push(guidedText);
     if (/review source audit/i.test(guidedText) || /source review ready/i.test(guidedText) || /\baccepted\b/i.test(guidedText)) break;
     await page.getByTestId("run-next-guided-step").click();
-    await page.waitForFunction(() => !/running guided step/i.test(document.querySelector("[data-testid='run-next-guided-step']")?.textContent || ""), undefined, { timeout: 18000 }).catch(() => undefined);
+    await waitForGuidedStepIdle(page);
     await page.waitForTimeout(900);
+    await openWorldCampaignArchive(page);
     if (!serverWorldLeadTextActive && await page.getByTestId("world-lead-outcome").isVisible().catch(() => false)) {
       serverWorldLeadTextActive = await page.getByTestId("world-lead-panel").innerText();
     }
@@ -993,25 +1104,42 @@ async function verifyServerRuntime(page, baseUrl) {
   await page.getByTestId("replay-goal-coach").waitFor({ state: "visible", timeout: 30000 });
   await page.getByTestId("replay-attempt-scorecard").waitFor({ state: "visible", timeout: 30000 });
   const serverPlaythroughText = await page.getByTestId("server-playthrough-proof").innerText();
+  await openWorldCampaignArchive(page);
   const serverWorldLeadTextResolved = await page.getByTestId("world-lead-panel").innerText();
+  const serverCampaignPacingTextResolved = await page.getByTestId("campaign-pacing").innerText();
+  const serverGuidedCampaignPacingText = await page.getByTestId("guided-campaign-pacing").innerText();
+  await openWorldCampaignArchive(page);
   const serverTownSocialResponseTextReady = await page.getByTestId("town-social-response").innerText();
   const serverResourceCommitmentTextUsed = await page.getByTestId("player-resource-commitment").innerText();
   const serverFactionRelationshipTextAfterCase = await page.getByTestId("faction-relationship-summary").innerText();
   const serverWorldArcTextAdvanced = await page.getByTestId("world-arc-progress").innerText();
   const serverInvestigatorProgressionTextAfterCase = await page.getByTestId("investigator-progression").innerText();
+  await openWorldCampaignArchive(page);
+  await page.getByTestId("investigator-headquarters").waitFor({ state: "visible", timeout: 30000 });
+  const serverInvestigatorHeadquartersTextReady = await page.getByTestId("investigator-headquarters").innerText();
+  const headquartersPrepareButton = page.getByTestId("investigator-headquarters").locator("article.available button").first();
+  await headquartersPrepareButton.waitFor({ state: "visible", timeout: 30000 });
+  await headquartersPrepareButton.click();
+  await settleCampaignTransitionTheatre(page);
+  await page.getByTestId("investigator-headquarters").getByText("prepared", { exact: true }).waitFor({ state: "visible", timeout: 30000 });
+  const serverInvestigatorHeadquartersTextPrepared = await page.getByTestId("investigator-headquarters").innerText();
+  await openWorldCampaignArchive(page);
   await page.getByTestId("world-arc-directive").waitFor({ state: "visible", timeout: 30000 });
   const serverWorldArcDirectiveTextReady = await page.getByTestId("world-arc-directive").innerText();
   const serverInfluenceBudgetTextReady = await page.getByTestId("world-influence-budget").innerText();
   const serverWorldCurrentActionDirectiveReady = await page.getByTestId("world-campaign-current-action").innerText();
   await page.getByTestId("world-arc-directive-defer").click();
+  await settleCampaignTransitionTheatre(page);
   await page.getByTestId("world-arc-directive").getByText("defer", { exact: true }).first().waitFor({ state: "visible", timeout: 30000 });
   const serverWorldArcDirectiveTextDeferred = await page.getByTestId("world-arc-directive").innerText();
   await page.getByTestId("world-arc-directive-support").click();
+  await settleCampaignTransitionTheatre(page);
   await page.getByTestId("world-arc-directive").getByText("scheduled", { exact: true }).first().waitFor({ state: "visible", timeout: 30000 });
   const serverWorldArcDirectiveTextScheduled = await page.getByTestId("world-arc-directive").innerText();
   const serverWorldCurrentActionScheduled = await page.getByTestId("world-campaign-current-action").innerText();
   const serverGuidedManualText = serverGuidedManualTexts.join("\n---\n") + "\n---\n" + await page.getByTestId("guided-manual-run").innerText();
   const serverGuidedStepJournalText = await page.getByTestId("guided-step-journal").innerText();
+  const serverGuidedStepJournalCompletedSteps = (await page.getByTestId("guided-step-journal").getAttribute("data-completed-steps") || "").split(/\s+/).filter(Boolean);
   const serverSourceReviewText = await page.getByTestId("source-review-unlock").innerText();
   const serverSolvedCaseDebriefText = await page.getByTestId("solved-case-debrief").innerText();
   const serverReplayPracticeLoopTextBeforeAttempt = await page.getByTestId("replay-practice-loop").innerText();
@@ -1019,6 +1147,8 @@ async function verifyServerRuntime(page, baseUrl) {
   const serverReplayAttemptScorecardTextBeforeAttempt = await page.getByTestId("replay-attempt-scorecard").innerText();
   await page.getByTestId("start-replay-attempt").click();
   await page.getByText(/replay attempt active/i).first().waitFor({ state: "visible", timeout: 30000 });
+  const serverReplayOperationsScope = await page.getByTestId("player-resource-commitment").getAttribute("data-operation-scope");
+  const serverReplayOperationsText = await page.getByTestId("player-resource-commitment").innerText();
   const serverReplayPracticeLoopTextAfterAttempt = await page.getByTestId("replay-practice-loop").innerText();
   const serverReplayGoalCoachTextAfterAttempt = await page.getByTestId("replay-goal-coach").innerText();
   await page.getByText(/pending replay delta/i).first().waitFor({ state: "visible", timeout: 30000 });
@@ -1029,7 +1159,7 @@ async function verifyServerRuntime(page, baseUrl) {
     if (/select-evidence/i.test(guidedText) && await page.getByTestId("manual-evidence-drill").isVisible().catch(() => false)) break;
     if (/review source audit/i.test(guidedText) || /source review ready/i.test(guidedText) || /\baccepted\b/i.test(guidedText)) break;
     await page.getByTestId("run-next-guided-step").click();
-    await page.waitForFunction(() => !/running guided step/i.test(document.querySelector("[data-testid='run-next-guided-step']")?.textContent || ""), undefined, { timeout: 18000 }).catch(() => undefined);
+    await waitForGuidedStepIdle(page);
     await page.waitForTimeout(900);
   }
   await page.getByTestId("manual-evidence-drill").waitFor({ state: "visible", timeout: 30000 });
@@ -1054,6 +1184,8 @@ async function verifyServerRuntime(page, baseUrl) {
   const serverReplayAttemptScorecardTextCompleted = await page.getByTestId("replay-attempt-scorecard").innerText();
   await page.getByRole("button", { name: "持续小镇" }).click();
   await page.getByTestId("persistent-command-center").waitFor({ state: "visible", timeout: 30000 });
+  await page.getByTestId("situation-campaign-pacing").waitFor({ state: "visible", timeout: 30000 });
+  const serverSituationCampaignPacingText = await page.getByTestId("situation-campaign-pacing").innerText();
   const directiveStepButton = page.locator(".commandControls").first().locator("button").nth(2);
   let serverSituationDirectiveText = await page.getByTestId("situation-faction-directive").innerText().catch(() => "");
   const serverTownSocialSituationTexts = [];
@@ -1111,6 +1243,12 @@ async function verifyServerRuntime(page, baseUrl) {
   const handoffExtractButton = page.locator("[data-testid='command-candidate-board'] article.valid button").first();
   await handoffExtractButton.waitFor({ state: "visible", timeout: 30000 });
   await handoffExtractButton.click();
+  // A successful next-case extraction creates the chapter-transition beat.
+  // Let the Theatre own that layer before reopening Case Files; otherwise it
+  // correctly closes an Inspector that the test opened too early.
+  const serverChapterTransitionPresentation = await settleCampaignTransitionTheatre(page, 30_000);
+  await openCommandDeckInspectorDetail(page);
+  await openWorldCampaignArchive(page);
   await page.getByTestId("world-lead-handoff").getByText("consumed", { exact: true }).waitFor({ state: "visible", timeout: 30000 });
   const serverWorldLeadTextConsumed = await page.getByTestId("world-lead-panel").innerText();
   const serverWorldArcTextNextCase = await page.getByTestId("world-arc-progress").innerText();
@@ -1118,6 +1256,7 @@ async function verifyServerRuntime(page, baseUrl) {
   const serverWorldArcDirectiveTextCompleted = await page.getByTestId("world-arc-directive").innerText();
   await page.getByTestId("world-pressure-cascade").waitFor({ state: "visible", timeout: 30000 });
   const serverWorldPressureTextConsumed = await page.getByTestId("world-pressure-cascade").innerText();
+  const serverInvestigatorHeadquartersTextActive = await page.getByTestId("investigator-headquarters").innerText();
   const serverInfluenceBudgetTextNextCase = await page.getByTestId("world-influence-budget").innerText();
   const serverWorldCurrentActionNextCase = await page.getByTestId("world-campaign-current-action").innerText();
   const serverTownSocialResponseTextAfterHandoff = await page.getByTestId("town-social-response").innerText();
@@ -1168,9 +1307,11 @@ async function verifyServerRuntime(page, baseUrl) {
   summary.serverWorldPressureText = `${serverSituationPressureTextActive}\n---\n${serverWorldPressureTextConsumed}`;
   summary.serverArcConvergenceText = serverArcConvergenceTextInitial;
   summary.serverCampaignSessionText = serverCampaignSessionTextInitial;
+  summary.serverCampaignPacingText = `${serverCampaignPacingTextInitial}\n---\n${serverCampaignPacingTextResolved}\n---\n${serverGuidedCampaignPacingText}\n---\n${serverSituationCampaignPacingText}`;
   summary.serverWorldEventOfferText = `${serverWorldEventOfferTextOffered}\n---\n${serverWorldEventOfferTextAccepted}\n---\n${serverWorldEventOfferTextTerminal}`;
   summary.serverInfluenceBudgetText = `${serverInfluenceBudgetTextReady}\n---\n${serverSituationInfluenceBudgetTextActive}\n---\n${serverInfluenceBudgetTextNextCase}`;
   summary.serverResourceCommitmentText = `${serverResourceCommitmentTextReady}\n---\n${serverResourceCommitmentTextReserved}\n---\n${serverResourceCommitmentTextUsed}`;
+  summary.serverInvestigatorHeadquartersText = `${serverInvestigatorHeadquartersTextReady}\n---\n${serverInvestigatorHeadquartersTextPrepared}\n---\n${serverInvestigatorHeadquartersTextActive}`;
   summary.serverSituationResourceCommitmentText = serverSituationResourceCommitmentText;
   summary.serverFactionRelationshipText = `${serverFactionRelationshipTextInitial}\n---\n${serverFactionRelationshipTextAfterCase}\n---\n${serverSituationFactionRelationshipText}`;
   summary.serverResourceCommitmentJournalText = `${serverResourceCommitmentJournalReservedText}\n---\n${serverGuidedStepJournalText}`;
@@ -1191,11 +1332,11 @@ async function verifyServerRuntime(page, baseUrl) {
   summary.hasServerPlaythroughAccepted = summary.hasServerPlaythroughAccepted || /completed \/ accepted theory/i.test(serverPlaythroughText);
   summary.hasServerPlaythroughMetrics = summary.hasServerPlaythroughMetrics || (/source-backed route/i.test(serverPlaythroughText) && /challenge hits/i.test(serverPlaythroughText) && /selected evidence/i.test(serverPlaythroughText) && /covered obligations/i.test(serverPlaythroughText));
   summary.hasServerWorldLead = /world lead/i.test(serverWorldLeadTextFollowed) && /followed/i.test(serverWorldLeadTextFollowed);
-  summary.hasServerWorldCurrentAction = /current world action/i.test(serverWorldCurrentActionChoice) && /choose how to approach this case/i.test(serverWorldCurrentActionChoice) && /follow the safe world lead/i.test(serverWorldCurrentActionChoice);
-  summary.hasServerWorldCurrentActionDirectiveReady = /choose one faction response/i.test(serverWorldCurrentActionDirectiveReady);
-  summary.hasServerWorldCurrentActionScheduled = /advance the existing town operation/i.test(serverWorldCurrentActionScheduled);
+  summary.hasServerWorldCurrentAction = /campaign priority/i.test(serverWorldCurrentActionChoice) && /choose how to approach this case/i.test(serverWorldCurrentActionChoice) && /follow the safe world lead/i.test(serverWorldCurrentActionChoice);
+  summary.hasServerWorldCurrentActionDirectiveReady = /choose one faction response|extract the next case with preparation active/i.test(serverWorldCurrentActionDirectiveReady);
+  summary.hasServerWorldCurrentActionScheduled = /advance the existing town operation|extract the next case with preparation active/i.test(serverWorldCurrentActionScheduled);
   summary.hasServerWorldCurrentActionNextCase = /choose how to approach this case/i.test(serverWorldCurrentActionNextCase) && /follow the safe world lead/i.test(serverWorldCurrentActionNextCase);
-  summary.hasServerWorldCampaignConsolidated = /case & world consequence/i.test(serverWorldLeadTextFollowed) && /current world action/i.test(serverWorldLeadTextFollowed);
+  summary.hasServerWorldCampaignConsolidated = /case & world consequence/i.test(serverWorldLeadTextFollowed) && /campaign priority/i.test(serverWorldLeadTextFollowed);
   summary.hasServerWorldLeadResolved = /resolved/i.test(serverWorldLeadTextResolved);
   summary.hasServerWorldLeadOutcomeActive = /world effect/i.test(serverWorldLeadTextActive) && /active/i.test(serverWorldLeadTextActive);
   summary.hasServerWorldLeadOutcomeSettled = /world effect/i.test(serverWorldLeadTextResolved) && /settled/i.test(serverWorldLeadTextResolved);
@@ -1234,14 +1375,32 @@ async function verifyServerRuntime(page, baseUrl) {
   summary.hasServerInvestigatorProgressionAfterCase = /practice marks|competency|bounded unlock/i.test(serverInvestigatorProgressionTextAfterCase);
   summary.hasServerInvestigatorProgressionJournal = /investigator practice recorded|evidence practice recorded/i.test(serverGuidedStepJournalText);
   summary.hasServerInvestigatorProgressionNoRawIds = !/\bnpc-\d+\b|\bev-[a-z0-9-]+\b|\b(?:case|evidence|event|source)-[a-z0-9-]*\d[a-z0-9-]*\b|sourceKey|session-|caseId|ledger/i.test(`${serverInvestigatorProgressionTextInitial}\n${serverInvestigatorProgressionTextAfterCase}`);
+  summary.hasServerInvestigatorHeadquartersReady = /investigator headquarters/i.test(serverInvestigatorHeadquartersTextReady) && /ready/i.test(serverInvestigatorHeadquartersTextReady) && /field search|witness work|contradiction analysis|evidence handling|institutional access/i.test(serverInvestigatorHeadquartersTextReady);
+  summary.hasServerInvestigatorHeadquartersPrepared = /prepared/i.test(serverInvestigatorHeadquartersTextPrepared) && /selected/i.test(serverInvestigatorHeadquartersTextPrepared);
+  summary.hasServerInvestigatorHeadquartersActive = /active/i.test(serverInvestigatorHeadquartersTextActive) && /next case|current case/i.test(serverInvestigatorHeadquartersTextActive);
+  summary.hasServerInvestigatorHeadquartersNoRawIds = !/cycleKey|targetCaseId|sourceCaseId|createdAtTick|preparedAtTick|activatedAtTick|resourceKind|institutionId|caseId|tick|raw/i.test(summary.serverInvestigatorHeadquartersText);
   summary.hasServerCampaignRecoveryReady = /failure & recovery/i.test(serverManualTheoryReplay.campaignRecoveryTextReady) && /ready/i.test(serverManualTheoryReplay.campaignRecoveryTextReady) && /certified clue route/i.test(serverManualTheoryReplay.campaignRecoveryTextReady);
   summary.hasServerCampaignRecoveryCompleted = /completed/i.test(serverManualTheoryReplay.campaignRecoveryTextCompleted) && /continue through|certified investigation route/i.test(serverManualTheoryReplay.campaignRecoveryTextCompleted);
   summary.hasServerCampaignRecoveryJournal = /theory recovery path prepared/i.test(serverManualTheoryReplay.guidedStepJournalTextAfterManualTheoryFallback) && /campaign recovery started/i.test(serverManualTheoryReplay.guidedStepJournalTextAfterManualTheoryFallback);
   summary.hasServerCampaignRecoveryNoRawIds = !/sourceKey|sessionId|caseId|resourceKind|factionKind|offerId|createdAtTick|completedAtTick|applied.*Delta|\bnpc-\d+\b|\bev-[a-z0-9-]+\b/i.test(`${serverManualTheoryReplay.campaignRecoveryTextReady}\n${serverManualTheoryReplay.campaignRecoveryTextCompleted}`);
-  summary.hasServerArcConvergenceVisible = /arc convergence/i.test(serverArcConvergenceTextInitial) && /town reckoning/i.test(serverArcConvergenceTextInitial) && /locked|forming|ready/i.test(serverArcConvergenceTextInitial);
+  summary.hasServerArcConvergenceVisible = /arc convergence/i.test(serverArcConvergenceTextInitial) && /civic reckoning|harbor inquest|public trust review/i.test(serverArcConvergenceTextInitial) && /locked|forming|ready/i.test(serverArcConvergenceTextInitial);
   summary.hasServerArcConvergenceNoRawIds = !/caseId|tick|signalKey|sourceKey|culprit|evidenceId|internal-|\bnpc-\d+\b|\bev-[a-z0-9-]+\b/i.test(serverArcConvergenceTextInitial);
-  summary.hasServerCampaignSessionVisible = /campaign journey/i.test(serverCampaignSessionTextInitial) && /case 1/i.test(serverCampaignSessionTextInitial) && /0\/3 campaign cases closed/i.test(serverCampaignSessionTextInitial);
+  summary.hasServerCampaignSessionVisible = /town reckoning|harbor testimony|clinic headlines/i.test(serverCampaignSessionTextInitial) && /case 1/i.test(serverCampaignSessionTextInitial) && /0\/3 campaign cases closed/i.test(serverCampaignSessionTextInitial) && /records and custody|cargo logs and movement|medical timing and inventory/i.test(serverCampaignSessionTextInitial);
   summary.hasServerCampaignSessionNoRawIds = !/caseId|tick|sourceKey|signalKey|culprit|evidenceId|internal-|\bnpc-\d+\b|\bev-[a-z0-9-]+\b/i.test(serverCampaignSessionTextInitial);
+  summary.hasServerCampaignPacingVisible = /campaign pacing/i.test(serverCampaignPacingTextInitial) && /why now/i.test(serverCampaignPacingTextInitial) && /what changes \/ what stays fair/i.test(serverCampaignPacingTextInitial);
+  summary.hasServerCampaignPacingTransition = /campaign pacing/i.test(serverCampaignPacingTextResolved) && /active|waiting-choice|advancing|settled/i.test(serverCampaignPacingTextResolved);
+  summary.hasServerCampaignPacingJournal = /campaign context/i.test(serverGuidedCampaignPacingText) && /why|continue|route|chapter|case/i.test(serverGuidedCampaignPacingText);
+  summary.hasServerCampaignPacingSituationBrief = /why now \/ what changes/i.test(serverSituationCampaignPacingText);
+  summary.hasServerCampaignPacingAggregates = /campaign pacing/i.test(serverSolvedCaseDebriefText) && /campaign pacing/i.test(serverReplayPracticeLoopTextBeforeAttempt);
+  summary.hasServerCampaignPacingNoRawIds = !/caseId|sessionId|sourceId|eventId|npcId|locationId|institutionId|resourceId|culprit|victim|hiddenTruth|rawBody|\b(?:case|npc|event|source|location|institution|resource|evidence|session|world)-[a-z0-9-]*\d[a-z0-9-]*\b/i.test(summary.serverCampaignPacingText);
+  summary.hasServerObjectiveFirstWorldCampaign = serverWorldCampaignArchiveDefaultClosed
+    && Boolean(serverWorldCampaignFocusSurface && serverWorldCampaignFocusSurface !== "overview")
+    && /campaign priority/i.test(serverWorldCampaignPriorityText);
+  const serverTransitionEvidence = [serverTransitionPresentation, serverChapterTransitionPresentation];
+  summary.hasServerCampaignTransitionTheatre = serverTransitionEvidence.some((item) => item.seen
+    && ["resolve", "result", "consequence", "next"].every((label) => item.text.toLowerCase().includes(label))
+    && item.controlHeight >= 44);
+  summary.hasServerCampaignTransitionNoRawIds = !/caseId|sessionId|sourceId|eventId|npcId|locationId|institutionId|resourceId|culprit|victim|hiddenTruth|rawBody|\b(?:case|npc|event|source|location|institution|resource|evidence|session|world)-[a-z0-9-]*\d[a-z0-9-]*\b/i.test(serverTransitionEvidence.map((item) => item.text).join("\n"));
   summary.hasServerWorldEventOfferOffered = /world opportunity/i.test(serverWorldEventOfferTextOffered) && /offered/i.test(serverWorldEventOfferTextOffered);
   summary.hasServerWorldEventOfferAccepted = /accepted/i.test(serverWorldEventOfferTextAccepted) && /zero|next legal institution cycle/i.test(serverWorldEventOfferTextAccepted);
   summary.hasServerWorldEventOfferTerminal = /completed|failed|expired/i.test(serverWorldEventOfferTextTerminal);
@@ -1250,15 +1409,19 @@ async function verifyServerRuntime(page, baseUrl) {
   summary.hasServerInfluenceBudgetActive = /influence budget/i.test(serverSituationInfluenceBudgetTextActive) && /3 source/i.test(serverSituationInfluenceBudgetTextActive) && /3 cap/i.test(serverSituationInfluenceBudgetTextActive);
   summary.hasServerInfluenceBudgetConsumed = /unified influence budget/i.test(serverInfluenceBudgetTextNextCase) && !/next-case follow-up|world pressure/i.test(serverInfluenceBudgetTextNextCase);
   summary.hasServerInfluenceBudgetNoRawIds = !/\bnpc-\d+\b|\bev-[a-z0-9-]+\b|\b(?:case|evidence|event|source|pulse)-[a-z0-9-]*\d[a-z0-9-]*\b|progressionLineId|institutionId|resourceKind|longActionKind/i.test(summary.serverInfluenceBudgetText);
-  summary.hasServerResourceCommitmentReady = /case resource/i.test(serverResourceCommitmentTextReady) && /ready/i.test(serverResourceCommitmentTextReady) && /police time/i.test(serverResourceCommitmentTextReady) && /informant trust/i.test(serverResourceCommitmentTextReady) && /evidence integrity/i.test(serverResourceCommitmentTextReady);
-  summary.hasServerResourceCommitmentReserved = /reserved/i.test(serverResourceCommitmentTextReserved) && /complete the next legal certified/i.test(serverResourceCommitmentTextReserved);
-  summary.hasServerResourceCommitmentUsed = /used/i.test(serverResourceCommitmentTextUsed) && /consumed once/i.test(serverResourceCommitmentTextUsed);
-  summary.hasServerResourceCommitmentJournal = /case resource reserved/i.test(summary.serverResourceCommitmentJournalText) && /case resource used/i.test(summary.serverResourceCommitmentJournalText);
-  summary.hasServerResourceCommitmentSituationBrief = /case resource/i.test(serverSituationResourceCommitmentText) && /used/i.test(serverSituationResourceCommitmentText);
+  summary.hasServerResourceCommitmentReady = /investigation operations|case operations board/i.test(serverResourceCommitmentTextReady) && /ready/i.test(serverResourceCommitmentTextReady) && /police time/i.test(serverResourceCommitmentTextReady) && /informant trust/i.test(serverResourceCommitmentTextReady) && /evidence integrity/i.test(serverResourceCommitmentTextReady);
+  summary.hasServerResourceCommitmentReserved = /planned/i.test(serverResourceCommitmentTextReserved) && /[12]\/2/i.test(serverResourceCommitmentTextReserved) && /advance town/i.test(serverResourceCommitmentTextReserved);
+  summary.hasServerResourceCommitmentUsed = /settled/i.test(serverResourceCommitmentTextUsed) && /after action/i.test(serverResourceCommitmentTextUsed) && /3\/3/i.test(serverResourceCommitmentTextUsed);
+  summary.hasServerResourceCommitmentJournal = /investigation support planned|manual first operations planned/i.test(summary.serverResourceCommitmentJournalText) && /operation resolved/i.test(summary.serverResourceCommitmentJournalText);
+  summary.hasServerResourceCommitmentSituationBrief = /investigation operations/i.test(serverSituationResourceCommitmentText) && /3\/3 resolved/i.test(serverSituationResourceCommitmentText);
   summary.hasServerResourceCommitmentNoRawIds = !/\bnpc-\d+\b|\bev-[a-z0-9-]+\b|\b(?:case|evidence|event|source)-[a-z0-9-]*\d[a-z0-9-]*\b|police_time|informant_trust|evidence_integrity|sessionId|caseId|locationId|resourceKind/i.test(summary.serverResourceCommitmentText);
+  summary.hasServerReplayOperationsPractice = serverReplayOperationsScope === "practice"
+    && /replay practice|frozen operations summary/i.test(serverReplayOperationsText)
+    && /3\/3/i.test(serverReplayOperationsText)
+    && /150 min/i.test(serverReplayOperationsText);
   summary.hasServerFactionRelationshipInitial = /faction standing/i.test(serverFactionRelationshipTextInitial) && /neutral/i.test(serverFactionRelationshipTextInitial);
   summary.hasServerFactionRelationshipChanged = /changed/i.test(serverFactionRelationshipTextAfterCase) && /standing (?:improved|declined)/i.test(serverFactionRelationshipTextAfterCase);
-  summary.hasServerFactionRelationshipPricing = /cost\s+[123]/i.test(serverResourceCommitmentTextReady) && /neutral|trusted|strained/i.test(serverResourceCommitmentTextReady);
+  summary.hasServerFactionRelationshipPricing = /reserve\s+[123]/i.test(serverResourceCommitmentTextReady) && /neutral|trusted|strained|ample|limited/i.test(serverResourceCommitmentTextReady);
   summary.hasServerFactionRelationshipSituationBrief = /faction standing/i.test(serverSituationFactionRelationshipText) && /trusted|guarded/i.test(serverSituationFactionRelationshipText);
   summary.hasServerFactionRelationshipJournal = /faction standing changed|case standing recorded/i.test(`${serverGuidedStepJournalText}\n${serverGuidedStepJournalTextAfterHandoff}`);
   summary.hasServerFactionRelationshipNoRawIds = !/factionKind|sourceKey|requestedDelta|appliedDelta|directive-|session-|case-|institutionId|resourceKind|updatedAtTick/i.test(summary.serverFactionRelationshipText);
@@ -1267,7 +1430,8 @@ async function verifyServerRuntime(page, baseUrl) {
   summary.hasServerGuidedManualProgression = ["search complete", "question complete", "challenge complete", "evidence selected", "accepted"].every((label) => serverGuidedManualText.toLowerCase().includes(label));
   summary.hasServerGuidedManualReadyToReview = /review source audit/i.test(serverGuidedManualText) || /source review ready/i.test(serverGuidedManualText) || /\baccepted\b/i.test(serverGuidedManualText);
   summary.hasServerGuidedStepJournal = /guided step journal/i.test(serverGuidedStepJournalText);
-  summary.hasServerGuidedStepJournalEntries = ["join investigation", "search certified clue", "question certified witness", "challenge certified testimony", "select certified evidence", "submit certified theory", "review source audit"].every((label) => serverGuidedStepJournalText.toLowerCase().includes(label));
+  summary.hasServerGuidedStepJournalEntries = ["join", "search", "question", "challenge", "select-evidence", "submit", "review-source"]
+    .every((step) => serverGuidedStepJournalCompletedSteps.includes(step));
   summary.hasServerGuidedStepJournalFallback = /certified fallback/i.test(serverGuidedStepJournalText) && /used/i.test(serverGuidedStepJournalText);
   summary.hasServerGuidedStepJournalReviewUnlock = /review unlocked/i.test(serverGuidedStepJournalText) || /source review workbench unlocked/i.test(serverGuidedStepJournalText);
   summary.hasServerGuidedStepJournalHandoff = /world lead handoff prepared/i.test(serverGuidedStepJournalText) && /world lead handoff carried/i.test(serverGuidedStepJournalTextAfterHandoff);
@@ -1333,6 +1497,17 @@ async function verifyServerRuntime(page, baseUrl) {
     && /fallback picks/i.test(serverReplayAttemptScorecardTextCompleted)
     && /\b(?:improved|unchanged|regressed|completed)\b/i.test(serverReplayAttemptScorecardTextCompleted);
   summary.hasServerReplayAttemptScorecardNoRawIds = !/\bnpc-\d+\b|\bev-[a-z0-9-]+\b|\b(?:evidence|event|source)-[a-z0-9-]*\d[a-z0-9-]*\b/i.test(`${serverReplayAttemptScorecardTextBeforeAttempt}\n${serverReplayAttemptScorecardTextPending}\n${serverReplayAttemptScorecardTextCompleted}`);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(250);
+  const serverOperationsMobile = await page.evaluate(() => ({
+    overflow: Math.max(document.documentElement.scrollWidth, document.body?.scrollWidth || 0) - window.innerWidth,
+    boardVisible: Boolean(document.querySelector("[data-testid='player-resource-commitment']")),
+    boardWidth: document.querySelector("[data-testid='player-resource-commitment']")?.getBoundingClientRect().width || 0,
+    viewport: window.innerWidth
+  }));
+  summary.hasServerOperationsMobileBoard = serverOperationsMobile.boardVisible
+    && serverOperationsMobile.overflow <= 1
+    && serverOperationsMobile.boardWidth <= serverOperationsMobile.viewport + 1;
   const failures = [];
   for (const [key, value] of Object.entries(summary)) {
     if (!value) failures.push(`${key} was false.`);
@@ -1345,13 +1520,17 @@ const baseUrl = await resolveBaseUrl();
 
 let server;
 let browser;
+let currentQaStep = "startup";
 try {
   server = await ensureServer(baseUrl);
   browser = await chromium.launch(chromiumLaunchOptions());
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 
+  currentQaStep = "desktop Static Runtime";
   const staticReport = await verifyStaticPage(page, baseUrl);
+  currentQaStep = "390px Static Runtime";
   const mobileReport = await verifyMobile(page, baseUrl);
+  currentQaStep = "Server Runtime playthrough";
   const serverReport = await verifyServerRuntime(page, baseUrl);
   const failures = [...staticReport.failures, ...mobileReport.failures, ...serverReport.failures];
   const report = {
@@ -1376,21 +1555,14 @@ try {
   }
   if (!report.ok) process.exitCode = 1;
 } catch (error) {
-  const message = error instanceof Error ? error.message : "Unknown error";
+  const detail = error instanceof Error ? error.message : "Unknown error";
+  const message = `${currentQaStep}: ${detail}`;
   if (json) console.log(JSON.stringify({ ok: false, error: message }, null, 2));
   else console.error(message);
   process.exitCode = 1;
 } finally {
   if (browser) await browser.close();
   if (server?.started && server.child) {
-    if (process.platform === "win32" && server.child.pid) {
-      try {
-        execFileSync("taskkill", ["/PID", String(server.child.pid), "/T", "/F"], { stdio: "ignore" });
-      } catch {
-        server.child.kill();
-      }
-    } else {
-      server.child.kill();
-    }
+    stopServerChild(server.child);
   }
 }

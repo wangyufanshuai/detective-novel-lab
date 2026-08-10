@@ -51,12 +51,16 @@ export async function POST(request: Request) {
       worldLeadCaseHandoff: result.worldLeadCaseHandoff,
       worldPressureCascade: result.worldPressureCascade,
       worldArc: result.worldArc,
+      investigatorHeadquarters: result.investigatorHeadquarters,
       arcConvergence: result.arcConvergence,
       campaignSession: result.campaignSession,
       campaignFinaleDebrief: result.campaignFinaleDebrief,
       worldInfluenceBudget: result.worldInfluenceBudget
     });
   } catch (error) {
+    if (error instanceof Error && error.message.startsWith("INVESTIGATOR_HEADQUARTERS_REQUIRED:")) {
+      return fail("INVESTIGATOR_HEADQUARTERS_REQUIRED", error.message.replace("INVESTIGATOR_HEADQUARTERS_REQUIRED: ", ""), 409);
+    }
     if (error instanceof Error && error.message.startsWith("CASE_NOT_PLAYABLE:")) {
       return fail("CASE_NOT_PLAYABLE", error.message.replace("CASE_NOT_PLAYABLE: ", ""), 422);
     }

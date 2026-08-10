@@ -1,0 +1,135 @@
+:root {
+  --dt-space-1: 4px;
+  --dt-space-2: 8px;
+  --dt-space-3: 12px;
+  --dt-space-4: 16px;
+  --dt-radius-control: 4px;
+  --dt-radius-panel: 6px;
+  --dt-shadow-panel: 0 12px 30px rgba(0, 0, 0, 0.34);
+  --dt-motion-fast: 120ms;
+  --dt-motion-medium: 220ms;
+  --dt-ease-command: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dt-state-available: #7fc5ff;
+  --dt-state-selected: #ffe06a;
+  --dt-state-current: #f6c35b;
+  --dt-state-pending: #8da9ba;
+  --dt-state-blocked: #ff8e94;
+  --dt-state-completed: #65ffc4;
+}
+
+[data-testid="command-deck-shell"] {
+  --deck-bg: #05090e;
+  --deck-surface: rgba(12, 20, 28, 0.97);
+  --deck-surface-raised: rgba(22, 35, 46, 0.98);
+  --deck-line: rgba(139, 174, 194, 0.28);
+  --deck-accent: var(--dt-state-available);
+  --deck-warning: var(--dt-state-selected);
+  --deck-success: var(--dt-state-completed);
+  --deck-danger: var(--dt-state-blocked);
+}
+
+[data-testid="command-deck-shell"] [data-testid="command-deck-pulse"],
+[data-testid="command-deck-shell"] [data-testid="command-deck-agenda"],
+[data-testid="command-deck-shell"] [data-testid="command-deck-context"] {
+  transition: border-color var(--dt-motion-medium) var(--dt-ease-command), box-shadow var(--dt-motion-medium) var(--dt-ease-command), background-color var(--dt-motion-medium) var(--dt-ease-command);
+}
+
+[data-testid="command-deck-shell"][data-presentation-state="selected"] [data-testid="command-deck-context"] {
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--dt-state-selected) 82%, transparent);
+}
+
+[data-testid="command-deck-shell"][data-presentation-state="resolving"] [data-testid="command-deck-agenda"] {
+  border-color: color-mix(in srgb, var(--dt-state-current) 70%, transparent);
+  box-shadow: inset 3px 0 0 var(--dt-state-current);
+}
+
+[data-testid="command-deck-shell"][data-presentation-state="blocked"] [data-testid="command-deck-agenda"] {
+  box-shadow: inset 3px 0 0 var(--dt-state-blocked);
+}
+
+[data-testid="command-deck-shell"][data-presentation-state="completed"] [data-testid="command-deck-pulse"] {
+  border-bottom-color: color-mix(in srgb, var(--dt-state-completed) 60%, transparent);
+}
+
+[data-testid="command-deck-feedback"] {
+  transition: transform var(--dt-motion-fast) var(--dt-ease-command), border-color var(--dt-motion-fast) linear, background-color var(--dt-motion-fast) linear;
+}
+
+[data-testid="command-deck-feedback"][data-feedback-state="resolving"] {
+  background: color-mix(in srgb, var(--dt-state-current) 9%, rgba(8, 16, 23, 0.94));
+}
+
+[data-testid="command-deck-feedback"][data-feedback-state="updated"],
+[data-testid="command-deck-feedback"][data-feedback-state="completed"] {
+  background: color-mix(in srgb, var(--dt-state-completed) 8%, rgba(8, 16, 23, 0.94));
+}
+
+[data-testid="command-deck-feedback"][data-feedback-state="blocked"] {
+  background: color-mix(in srgb, var(--dt-state-blocked) 9%, rgba(8, 16, 23, 0.94));
+}
+
+[data-testid="command-deck-context-action"] {
+  transition: transform var(--dt-motion-fast) var(--dt-ease-command), filter var(--dt-motion-fast) linear, border-color var(--dt-motion-fast) linear;
+}
+
+[data-testid="command-deck-context-action"]:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+[data-command-deck-primary="true"] {
+  box-shadow: 0 0 0 1px rgba(198, 229, 255, 0.28), 0 7px 18px rgba(40, 126, 190, 0.18);
+}
+
+[data-testid="command-deck-map-lens"],
+.mapLensBadge,
+.mapTile {
+  transition: color var(--dt-motion-fast) linear, background-color var(--dt-motion-fast) linear, border-color var(--dt-motion-fast) linear, filter var(--dt-motion-medium) var(--dt-ease-command), transform var(--dt-motion-fast) var(--dt-ease-command);
+}
+
+.mapTile.selected {
+  outline: 2px solid var(--dt-state-selected);
+  outline-offset: -2px;
+}
+
+.mapLensBadge[data-tone="high"] {
+  box-shadow: 0 0 0 1px rgba(255, 142, 148, 0.24), 0 3px 10px rgba(0, 0, 0, 0.34);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-testid="command-deck-shell"][data-presentation-state="resolving"] [data-testid="command-deck-feedback"] {
+    animation: dt-resolve-pulse 1.15s ease-in-out infinite;
+  }
+
+  [data-testid="command-deck-feedback"][data-feedback-state="updated"],
+  [data-testid="command-deck-feedback"][data-feedback-state="completed"] {
+    animation: dt-feedback-arrive 220ms var(--dt-ease-command) both;
+  }
+}
+
+@keyframes dt-resolve-pulse {
+  0%, 100% { border-color: rgba(255, 224, 106, 0.3); }
+  50% { border-color: rgba(255, 224, 106, 0.84); }
+}
+
+@keyframes dt-feedback-arrive {
+  from { transform: translateY(3px); opacity: 0.68; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-testid="command-deck-shell"] *,
+  [data-testid="command-deck-shell"] *::before,
+  [data-testid="command-deck-shell"] *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+@media (max-width: 760px) {
+  [data-testid="command-deck-feedback"] {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+}

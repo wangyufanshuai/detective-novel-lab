@@ -1,14 +1,24 @@
-export type SafeContextActionKind = "search" | "question" | "challenge" | "inspect" | "advance";
+import {
+  getInvestigationActionDefinition,
+  type InvestigationActionHandlerKey,
+  type InvestigationActionKind
+} from "./investigation-action-registry";
+
+export type SafeContextActionKind = InvestigationActionKind;
 
 export type SafeContextAction = {
   kind: SafeContextActionKind;
   label: string;
   detail: string;
   enabled: boolean;
+  primary: boolean;
+  handlerKey: InvestigationActionHandlerKey;
+  shortcut?: string;
+  disabledReason?: string;
 };
 
 export type ContextActionResolverInput = {
-  contextKind?: "location" | "institution" | "actor";
+  contextKind?: "location" | "institution" | "actor" | "evidence" | "theory";
   hasCase?: boolean;
   hasSession: boolean;
   observed: boolean;
@@ -19,6 +29,8 @@ export type ContextActionResolverInput = {
   theorySubmitted: boolean;
   judgementAccepted: boolean;
   revealAvailable: boolean;
+  selectedEvidenceDiscovered?: boolean;
+  selectedEvidenceInTheory?: boolean;
 };
 
 /**
@@ -27,52 +39,84 @@ export type ContextActionResolverInput = {
  */
 export function resolveSafeContextActions(input: ContextActionResolverInput): SafeContextAction[] {
   const actions: SafeContextAction[] = [];
-  const add = (kind: SafeContextActionKind, label: string, detail: string, enabled = true) => {
+  const add = (kind: SafeContextActionKind, options: { enabled?: boolean; label?: string; detail?: string; disabledReason?: string } = {}) => {
     if (actions.some((action) => action.kind === kind)) return;
-    actions.push({ kind, label, detail, enabled });
+    const definition = getInvestigationActionDefinition(kind);
+    const enabled = options.enabled !== false;
+    actions.push({
+      kind,
+      label: options.label || definition.label,
+      detail: options.detail || definition.detail,
+      enabled,
+      primary: false,
+      handlerKey: definition.handlerKey,
+      shortcut: definition.shortcut,
+      disabledReason: enabled ? undefined : options.disabledReason || "This action is not available in the current public state."
+    });
   };
 
   if (!input.contextKind) {
-    add("inspect", "Select a public object", "Choose a location or character on the map.", false);
+    add("select-context", { enabled: false, disabledReason: "Select a public map object to see its legal actions." });
     return actions;
   }
 
   if (input.contextKind === "institution") {
-    add("inspect", "Inspect institution", "Review the public institution status without changing the certified case route.");
+    add("advance");
     if (input.theorySubmitted && !input.judgementAccepted) {
-      add("advance", "Return to case recovery", "Resolve the current certified theory gap before optional world action.");
+      add("recover");
     }
   } else if (input.contextKind === "location") {
     if (!input.hasSession || !input.joined) {
-      add("advance", "Join investigation", "Create a player session before searching this location.", input.hasCase !== false);
+      add("join", { enabled: input.hasCase !== false, disabledReason: "Create or extract a case before joining an investigation." });
     } else if (!input.observed) {
-      add("advance", "Observe case window", "Review the case window before searching for clues.");
+      add("observe");
     } else if (input.hasSearchableEvidence) {
-      add("search", "Search location", "Use the certified investigation route to inspect this public place.");
+      add("search");
     } else {
-      add("inspect", "Inspect location", "Review the public location context; no searchable clue is currently available.");
+      add("inspect", { label: "Inspect location", detail: "Review this public place; no searchable clue is currently available." });
     }
-    if (input.hasDiscoveredEvidence && !input.challengedTestimony) {
-      add("challenge", "Prepare a challenge", "Select a discovered clue before testing a testimony contradiction.");
-    }
-    if (input.revealAvailable) add("advance", "Review conclusion", "Open the certified conclusion review.");
-  } else {
+    if (input.revealAvailable) add("review");
+  } else if (input.contextKind === "actor") {
     if (!input.hasSession || !input.joined) {
-      add("advance", "Join investigation", "Create a player session before questioning this character.", input.hasCase !== false);
+      add("join", { enabled: input.hasCase !== false, disabledReason: "Create or extract a case before joining an investigation." });
     } else if (!input.observed) {
-      add("advance", "Observe case window", "Review the case window before questioning a character.");
+      add("observe");
     } else {
-      add("question", "Question character", "Ask a focused question using the existing memory-scoped route.");
+      add("question");
     }
     if (input.hasDiscoveredEvidence && !input.challengedTestimony) {
-      add("challenge", "Challenge testimony", "Present a discovered clue to test the current statement.");
+      add("challenge");
     }
-    if (input.revealAvailable) add("advance", "Review conclusion", "Open the certified conclusion review.");
+    if (input.revealAvailable) add("review");
+  } else if (input.contextKind === "evidence") {
+    if (!input.hasSession || !input.joined) {
+      add("join", { enabled: input.hasCase !== false, disabledReason: "Join the investigation before using a clue." });
+    } else if (!input.selectedEvidenceDiscovered) {
+      add("inspect", { enabled: false, label: "Clue not discovered", disabledReason: "Search its public location before using this clue." });
+    } else {
+      add("select-evidence", { label: input.selectedEvidenceInTheory ? "Remove clue from theory" : "Add clue to theory" });
+      add("edit-theory");
+    }
+    if (input.revealAvailable) add("review");
+  } else {
+    if (!input.hasSession || !input.joined) add("join", { enabled: input.hasCase !== false });
+    else if (!input.observed) add("observe");
+    else if (input.judgementAccepted || input.revealAvailable) add("review");
+    else if (input.theorySubmitted) {
+      add("recover");
+      add("edit-theory");
+      add("submit");
+    } else {
+      add("edit-theory");
+      add("submit");
+    }
   }
 
   if (input.theorySubmitted && !input.judgementAccepted) {
-    add("advance", "Repair theory", "Review the remaining certified gap before submitting again.");
+    add("recover");
   }
 
-  return actions.slice(0, 3);
+  const visible = actions.slice(0, 3);
+  const primaryIndex = visible.findIndex((action) => action.enabled);
+  return visible.map((action, index) => ({ ...action, primary: index === primaryIndex }));
 }

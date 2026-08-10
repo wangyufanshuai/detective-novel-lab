@@ -11,10 +11,33 @@ const widths = [390, 768, 1440];
 const failures = [];
 const observations = [];
 let server;
+let currentQaStep = "startup";
 
 function launchOptions() {
   const expected = chromium.executablePath();
   return fs.existsSync(expected) ? { headless: true, executablePath: expected } : { headless: true };
+}
+
+async function ensureEncounterVisible(page, encounter, inspectorToggle, label = "encounter") {
+  if (await encounter.isVisible()) return;
+  // The Inspector is allowed to own the primary layer. If a preceding
+  // certified action reopened it, close that layer before testing Encounter.
+  if (await inspectorToggle.getAttribute("aria-expanded") === "true") {
+    await inspectorToggle.click();
+  }
+  try {
+    await encounter.waitFor({ state: "visible", timeout: 15_000 });
+  } catch (error) {
+    const state = await page.evaluate(() => ({
+      inspector: document.querySelector("[data-testid='command-deck-shell'] [data-inspector-open]")?.getAttribute("data-inspector-open") || "",
+      dominant: document.querySelector("[data-testid='command-deck-shell']")?.getAttribute("data-dominant-overlay") || "",
+      suspendEncounter: document.querySelector("[data-testid='command-deck-shell']")?.getAttribute("data-suspend-encounter") || "",
+      activePanel: document.querySelector("[data-testid='command-deck-shell']")?.getAttribute("data-active-panel") || "",
+      context: document.querySelector("[data-testid='command-deck-context']")?.getAttribute("data-context-kind") || "",
+      theatre: document.querySelector("[data-testid='campaign-transition-theatre']")?.getAttribute("data-transition-phase") || "none"
+    }));
+    throw new Error(`${label}: ${error instanceof Error ? error.message : String(error)} / state ${JSON.stringify(state)}`);
+  }
 }
 
 function stopServer() {
@@ -49,29 +72,245 @@ try {
     for (const width of widths) {
       const page = await browser.newPage({ viewport: { width, height: width <= 390 ? 844 : 900 } });
       const contextKinds = [];
+      const lifecycleStates = [];
+      const transitionLayouts = [];
+      const rhythmAutomation = [];
+      if (width === 1440) await page.route("**/api/players/join", async (route) => { await new Promise((resolve) => setTimeout(resolve, 500)); await route.continue(); });
       await page.goto(`${baseUrl}/?runtime=server`, { waitUntil: "networkidle" });
+      const frontDoor = page.getByTestId("campaign-front-door");
+      await frontDoor.waitFor({ state: "visible", timeout: 15_000 });
+      const frontDoorCardCount = await frontDoor.getByTestId("campaign-front-door-card").count();
+      const frontDoorSelectedCount = await frontDoor.locator("[data-testid='campaign-front-door-card'][aria-pressed='true']").count();
+      const frontDoorRouteSelectedCount = await frontDoor.locator("[data-testid='campaign-front-door-route'][aria-pressed='true']").count();
+      const frontDoorPrimaryCount = await frontDoor.locator("[data-campaign-primary='true']:not([disabled])").count();
+      if (frontDoorCardCount !== 3 || frontDoorSelectedCount !== 1 || frontDoorRouteSelectedCount !== 1 || frontDoorPrimaryCount !== 1) failures.push(`${width}px Campaign Front Door did not expose three cards, one Campaign selection, one route selection, and one primary action.`);
+      await frontDoor.getByTestId("campaign-front-door-dismiss").click();
       await page.getByTestId("command-deck-pulse").waitFor({ state: "visible", timeout: 15_000 });
+      const encounterActor = page.locator("[data-testid='pixel-map'] .actorPin").first();
+      if (await encounterActor.count()) {
+        await encounterActor.click();
+        try {
+          await ensureEncounterVisible(page, page.getByTestId("character-encounter"), page.getByRole("button", { name: /Case files & detail/i }), `${width}px initial actor`);
+        } catch (error) {
+          const actorState = await page.evaluate(() => ({
+            selectedCount: document.querySelectorAll(".actor-current").length,
+            actorClass: document.querySelector("[data-testid='pixel-map'] .actorPin")?.className || "",
+            context: document.querySelector("[data-testid='command-deck-context']")?.getAttribute("data-context-kind") || ""
+          }));
+          throw new Error(`${error instanceof Error ? error.message : String(error)} / encounter actor state ${JSON.stringify(actorState)}`);
+        }
+        const encounterText = await page.getByTestId("character-encounter").innerText();
+        if (!/character encounter|public posture|next legal action/i.test(encounterText)) failures.push(`${width}px Character Encounter card is missing its public context sections.`);
+        if (await page.getByTestId("character-encounter").locator("[data-encounter-action]").count() > 3) failures.push(`${width}px Character Encounter exposed more than three actions.`);
+        if (/\b(?:npc|case|event|source|location|institution|resource|evidence|session|character)-[a-z0-9-]*\d[a-z0-9-]*\b|culpritId|victimId|hiddenTruth|rawBody/i.test(encounterText)) failures.push(`${width}px Character Encounter exposed an internal identifier or hidden case binding.`);
+        await page.getByRole("button", { name: "Close character encounter" }).click();
+      }
+      await page.evaluate(() => {
+        window.__detectiveAudioCues = [];
+        window.__detectiveTransitionPhases = [];
+        window.__detectiveTransitionSamples = [];
+        window.addEventListener("detective-town:audio-cue", (event) => window.__detectiveAudioCues.push(event.detail));
+        const sampleTransition = () => {
+          const shell = document.querySelector("[data-testid='command-deck-shell']");
+          const theatre = document.querySelector("[data-testid='campaign-transition-theatre']");
+          if (!shell || !theatre) return;
+          const phase = theatre.getAttribute("data-transition-phase") || "";
+          if (phase && !window.__detectiveTransitionPhases.includes(phase)) window.__detectiveTransitionPhases.push(phase);
+          window.__detectiveTransitionSamples.push({
+            phase,
+            dominant: shell.getAttribute("data-dominant-overlay") || "",
+            encounterVisible: Boolean(document.querySelector("[data-testid='character-encounter']") && getComputedStyle(document.querySelector("[data-testid='character-encounter']")).display !== "none"),
+            frontsOpen: document.querySelector("[data-testid='district-fronts-panel']")?.getAttribute("aria-hidden") === "false",
+            contextInteractive: getComputedStyle(document.querySelector("[data-testid='command-deck-context-rail']")).pointerEvents !== "none",
+            notificationsVisible: Boolean(document.querySelector("[data-testid='command-deck-notifications']") && getComputedStyle(document.querySelector("[data-testid='command-deck-notifications']")).display !== "none")
+          });
+        };
+        new MutationObserver(() => window.requestAnimationFrame(sampleTransition)).observe(document.querySelector("[data-testid='command-deck-shell']"), { attributes: true, childList: true, subtree: true });
+        sampleTransition();
+      });
+      const lensKinds = [];
+      const lensButtons = page.getByTestId("command-deck-map-lens");
+      for (let index = 0; index < await lensButtons.count(); index += 1) {
+        const button = lensButtons.nth(index);
+        const kind = await button.getAttribute("data-map-lens-kind");
+        await button.click();
+        if (kind) lensKinds.push(kind);
+        if (await page.getByTestId("command-deck-shell").getAttribute("data-map-lens") !== kind) failures.push(`${width}px map lens ${kind} did not become active.`);
+      }
       if (width <= 760) {
         const drawerToggle = page.getByTestId("command-deck-drawer-toggle");
+        if (await drawerToggle.getAttribute("aria-expanded") === "true") {
+          await drawerToggle.click();
+          await page.waitForTimeout(180);
+        }
         await drawerToggle.click();
         if (await drawerToggle.getAttribute("aria-expanded") !== "true") failures.push(`${width}px context drawer did not open.`);
-        await drawerToggle.click();
+        await page.keyboard.press("Escape");
         if (await drawerToggle.getAttribute("aria-expanded") !== "false") failures.push(`${width}px context drawer did not close.`);
+        if (!(await drawerToggle.evaluate((node) => node === document.activeElement))) failures.push(`${width}px context drawer did not restore focus after Escape.`);
         await page.waitForTimeout(220);
       }
+      const inspectorDetailToggle = page.getByRole("button", { name: /Case files & detail/i });
+      if (await inspectorDetailToggle.getAttribute("aria-expanded") !== "false") failures.push(`${width}px full Inspector detail was not closed by default.`);
       if (width === 1440) {
+        await inspectorDetailToggle.click();
+        if (await inspectorDetailToggle.getAttribute("aria-expanded") !== "true") failures.push("1440px full Inspector detail did not open on request.");
+        currentQaStep = "1440 reset town";
         await page.locator(".settingsDrawer summary").click();
         await page.getByRole("button", { name: /Reset \/ Create Town/ }).click();
         await page.locator("[data-testid='pixel-map'] .mapTile").first().waitFor({ state: "visible", timeout: 30_000 });
+        // The full Inspector was opened above to verify its disclosure contract.
+        // Close it for the Encounter action path: Inspector ownership intentionally
+        // suspends the Encounter card, while actor selection remains available.
+        if (await inspectorDetailToggle.getAttribute("aria-expanded") === "true") {
+          await inspectorDetailToggle.click();
+          await page.waitForFunction(() => document.querySelector("[data-testid='character-encounter']")?.getAttribute("data-posture") !== "busy");
+        }
         const selectableLocation = page.locator("[data-testid='pixel-map'] .mapTile[aria-label]").first();
         if (await selectableLocation.count()) {
           await selectableLocation.click();
-          await page.getByTestId("command-deck-context").waitFor({ state: "visible" });
+          currentQaStep = "1440 location context";
+          await page.waitForFunction(() => document.querySelector("[data-testid='command-deck-context']")?.getAttribute("data-context-kind") === "location");
           contextKinds.push(await page.getByTestId("command-deck-context").getAttribute("data-context-kind"));
-          const actor = page.locator("[data-testid='pixel-map'] .actorPin").first();
-          if (await actor.count()) {
-            await actor.click();
+          const primaryAction = page.locator("[data-command-deck-primary='true']:not([disabled])");
+          for (const prerequisite of ["Join investigation", "Observe case window"]) {
+            if ((await page.locator("[data-command-deck-primary='true']:not([disabled])").first().innerText()).includes(prerequisite)) {
+              const interactionStartedAt = Date.now();
+              const panelBefore = await inspectorDetailToggle.getAttribute("aria-expanded");
+              const resolvePhase = width === 1440 && prerequisite === "Join investigation"
+                ? page.waitForFunction(() => document.querySelector("[data-testid='strategic-action-bar']")?.getAttribute("data-action-lifecycle") === "resolving")
+                : null;
+              await page.locator("[data-command-deck-primary='true']:not([disabled])").first().click();
+              if (resolvePhase) {
+                currentQaStep = "1440 resolve phase";
+                await resolvePhase;
+                lifecycleStates.push("resolving");
+              }
+              currentQaStep = `1440 ${prerequisite} completion`;
+              await page.waitForFunction((previous) => !document.querySelector("[data-command-deck-primary='true']:not([disabled])")?.textContent?.includes(previous), prerequisite, { timeout: 15_000 });
+              if (prerequisite === "Join investigation") await page.waitForFunction(() => document.querySelector("[data-testid='strategic-action-bar']")?.getAttribute("data-action-lifecycle") !== "resolving", undefined, { timeout: 15_000 });
+              rhythmAutomation.push({ stage: prerequisite === "Join investigation" ? "join" : "search", primaryClicks: 1, panelSwitches: panelBefore === await inspectorDetailToggle.getAttribute("aria-expanded") ? 0 : 1, settleMs: Date.now() - interactionStartedAt });
+            }
+          }
+          currentQaStep = "1440 search action ready";
+          await page.waitForFunction(() => document.querySelector("[data-command-deck-primary='true']:not([disabled])")?.textContent?.includes("Search location"), undefined, { timeout: 15_000 });
+          const searchStartedAt = Date.now();
+          const searchPanelBefore = await inspectorDetailToggle.getAttribute("aria-expanded");
+          await page.locator("[data-command-deck-primary='true']:not([disabled])").first().click();
+          currentQaStep = "1440 evidence context";
+          await page.waitForFunction(() => document.querySelector("[data-testid='command-deck-context']")?.getAttribute("data-context-kind") === "evidence", undefined, { timeout: 15_000 });
+          rhythmAutomation.push({ stage: "search", primaryClicks: 1, panelSwitches: searchPanelBefore === await inspectorDetailToggle.getAttribute("aria-expanded") ? 0 : 1, settleMs: Date.now() - searchStartedAt });
+          contextKinds.push("evidence");
+          lifecycleStates.push(await page.getByTestId("strategic-action-bar").getAttribute("data-action-lifecycle"));
+          currentQaStep = "1440 transition theatre";
+          await page.waitForFunction(() => document.querySelector("[data-testid='campaign-transition-theatre']")?.getAttribute("data-transition-phase") === "immediate-result", undefined, { timeout: 15_000 });
+          await page.waitForFunction(() => ["world-consequence", "next-objective"].includes(document.querySelector("[data-testid='campaign-transition-theatre']")?.getAttribute("data-transition-phase") || ""), undefined, { timeout: 15_000 });
+          if (await page.getByTestId("campaign-transition-theatre").getAttribute("data-transition-phase") === "world-consequence") {
+            await page.waitForFunction(() => document.querySelector("[data-testid='campaign-transition-theatre']")?.getAttribute("data-transition-phase") === "next-objective", undefined, { timeout: 15_000 });
+          }
+          for (const transitionWidth of widths) {
+            await page.setViewportSize({ width: transitionWidth, height: transitionWidth <= 390 ? 844 : 900 });
+            await page.waitForTimeout(240);
+            const layout = await page.evaluate(() => {
+              const theatre = document.querySelector("[data-testid='campaign-transition-theatre']");
+              const map = document.querySelector("[data-testid='command-deck-map-area']");
+              const action = document.querySelector("[data-testid='strategic-action-bar']");
+              const context = document.querySelector("[data-testid='command-deck-context-rail']");
+              const control = theatre?.querySelector("button");
+              const rect = theatre?.getBoundingClientRect();
+              const mapRect = map?.getBoundingClientRect();
+              const actionRect = action?.getBoundingClientRect();
+              const contextRect = context?.getBoundingClientRect();
+              const hit = rect ? document.elementFromPoint(rect.left + Math.min(rect.width / 2, 160), rect.top + Math.min(24, rect.height / 2)) : null;
+              const controlRect = control?.getBoundingClientRect();
+              const controlHit = controlRect ? document.elementFromPoint(controlRect.left + controlRect.width / 2, controlRect.top + controlRect.height / 2) : null;
+              const overlapHeight = rect && actionRect ? Math.max(0, Math.min(rect.bottom, actionRect.bottom) - Math.max(rect.top, actionRect.top)) : 0;
+              const overlapWidth = rect && actionRect ? Math.max(0, Math.min(rect.right, actionRect.right) - Math.max(rect.left, actionRect.left)) : 0;
+              const contextStyle = context ? getComputedStyle(context) : null;
+              const contextVisible = Boolean(contextStyle && contextStyle.display !== "none" && contextStyle.visibility !== "hidden" && Number.parseFloat(contextStyle.opacity) > 0.01);
+              const contextOverlapHeight = contextVisible && rect && contextRect ? Math.max(0, Math.min(rect.bottom, contextRect.bottom) - Math.max(rect.top, contextRect.top)) : 0;
+              const contextOverlapWidth = contextVisible && rect && contextRect ? Math.max(0, Math.min(rect.right, contextRect.right) - Math.max(rect.left, contextRect.left)) : 0;
+              return {
+                viewport: innerWidth,
+                overflow: Math.max(document.documentElement.scrollWidth, document.body?.scrollWidth || 0) - innerWidth,
+                top: rect?.top ?? -1,
+                left: rect?.left ?? -1,
+                right: rect?.right ?? -1,
+                width: rect?.width ?? 0,
+                height: rect?.height ?? 0,
+                controlHeight: control?.getBoundingClientRect().height ?? 0,
+                ownsHitPoint: Boolean(hit?.closest("[data-testid='campaign-transition-theatre']")),
+                controlOwnsHitPoint: Boolean(control && controlHit?.closest("button") === control),
+                actionOverlapArea: overlapHeight * overlapWidth,
+                contextOverlapArea: contextOverlapHeight * contextOverlapWidth,
+                mapVisible: Boolean(mapRect && mapRect.top < innerHeight && mapRect.bottom > 0)
+              };
+            });
+            transitionLayouts.push(layout);
+            if (layout.overflow > 1) failures.push(`${transitionWidth}px Theatre overflowed horizontally by ${layout.overflow}px.`);
+            if (layout.top < 0 || layout.top > Math.min(320, (transitionWidth <= 390 ? 844 : 900) * 0.45)) failures.push(`${transitionWidth}px Theatre did not remain in the map-focused upper viewport.`);
+            if (layout.left < -1 || layout.right > transitionWidth + 1 || layout.width < Math.min(360, transitionWidth) * 0.8) failures.push(`${transitionWidth}px Theatre escaped its bounded viewport width.`);
+            if (layout.controlHeight < 44) failures.push(`${transitionWidth}px Theatre control fell below 44px.`);
+            if (!layout.ownsHitPoint) failures.push(`${transitionWidth}px Theatre did not own its visible pointer layer.`);
+            if (!layout.controlOwnsHitPoint) failures.push(`${transitionWidth}px Theatre control did not own its pointer center.`);
+            if (layout.actionOverlapArea > 1) failures.push(`${transitionWidth}px Theatre overlapped the Current Action bar.`);
+            if (transitionWidth <= 900 && layout.contextOverlapArea > 1) failures.push(`${transitionWidth}px suspended Context drawer visually overlapped the Theatre.`);
+            if (!layout.mapVisible) failures.push(`${transitionWidth}px Theatre displaced the map outside the visible workspace.`);
+            await page.screenshot({ path: path.join(process.cwd(), "outputs", "command-deck-qa", `${transitionWidth}-transition.png`), fullPage: false });
+          }
+          await page.setViewportSize({ width: 1440, height: 900 });
+          const theatre = page.getByTestId("campaign-transition-theatre");
+          if (await theatre.isVisible().catch(() => false)) await theatre.getByRole("button", { name: "Continue" }).click();
+          await theatre.waitFor({ state: "detached", timeout: 5_000 }).catch(() => undefined);
+          // Search is a certified action that may open the full Inspector for
+          // its result. Close that detail layer before exercising the actor
+          // Encounter action; the later arbitration assertion re-opens it.
+          if (await inspectorDetailToggle.getAttribute("aria-expanded") === "true") {
+            await inspectorDetailToggle.click();
+          }
+          const actorPins = page.locator("[data-testid='pixel-map'] .actorPin");
+          if (await actorPins.count()) {
+            const encounter = page.getByTestId("character-encounter");
+            let encounterQuestion = encounter.locator("[data-encounter-action='question']:not([disabled])");
+            for (let actorIndex = 0; actorIndex < await actorPins.count() && !(await encounterQuestion.count()); actorIndex += 1) {
+              await actorPins.nth(actorIndex).click();
+              await page.waitForTimeout(50);
+              await ensureEncounterVisible(page, encounter, inspectorDetailToggle, `1440px post-search actor ${actorIndex}`);
+              encounterQuestion = encounter.locator("[data-encounter-action='question']:not([disabled])");
+              if (!(await encounterQuestion.count())) await encounter.getByRole("button", { name: "Close character encounter" }).click();
+            }
             contextKinds.push(await page.getByTestId("command-deck-context").getAttribute("data-context-kind"));
+            if (!(await page.getByTestId("command-deck-context").locator("h2").evaluate((node) => node === document.activeElement))) failures.push("1440px context selection did not move focus to the inspector heading.");
+            if (await encounterQuestion.count()) {
+              currentQaStep = "1440 encounter question action";
+              const questionStartedAt = Date.now();
+              await encounterQuestion.click();
+              await page.waitForFunction(() => /Questioning recorded|Challenge recorded|Case accepted/i.test(document.querySelector("[data-testid='character-encounter']")?.textContent || ""), undefined, { timeout: 20_000 });
+              rhythmAutomation.push({ stage: "question", primaryClicks: 1, panelSwitches: 0, settleMs: Date.now() - questionStartedAt });
+              await page.getByTestId("campaign-transition-theatre").waitFor({ state: "visible", timeout: 15_000 });
+              const resolvingDismiss = page.getByTestId("campaign-transition-theatre").getByRole("button", { name: "Hide while resolving" });
+              if (await resolvingDismiss.count()) await resolvingDismiss.click();
+              else {
+                const skipTransition = page.getByTestId("campaign-transition-theatre").getByRole("button", { name: "Skip to next" });
+                if (await skipTransition.count()) await skipTransition.click();
+                await page.waitForFunction(() => document.querySelector("[data-testid='campaign-transition-theatre']")?.getAttribute("data-transition-phase") === "next-objective", undefined, { timeout: 15_000 });
+                await page.getByTestId("campaign-transition-theatre").getByRole("button", { name: "Continue" }).click();
+              }
+              await page.getByTestId("campaign-transition-theatre").waitFor({ state: "detached", timeout: 5_000 });
+            } else failures.push("1440px Character Encounter did not expose the existing Question registry action after Search.");
+            // Re-open the Inspector after the action Theatre is dismissed. This
+            // is an intentional overlay boundary: the selected actor remains
+            // selectable, but its Encounter card is hidden while the Inspector
+            // owns the primary layer.
+            currentQaStep = "1440 inspector/encounter arbitration";
+            if (await inspectorDetailToggle.getAttribute("aria-expanded") === "false") await inspectorDetailToggle.click();
+            await encounter.waitFor({ state: "hidden", timeout: 5_000 });
+            if (await page.getByTestId("command-deck-context").getAttribute("data-context-kind") !== "actor") failures.push("1440px opening Inspector lost the selected actor context.");
+            currentQaStep = "1440 theory context after transition";
+            await page.locator(".inspectorTabs button").nth(2).click();
+            await page.waitForFunction(() => document.querySelector("[data-testid='command-deck-context']")?.getAttribute("data-context-kind") === "theory");
+            contextKinds.push("theory");
+            currentQaStep = "1440 institution context after transition";
             await page.locator(".inspectorTabs button").nth(3).click();
             await page.waitForFunction(() => document.querySelector("[data-testid='command-deck-context']")?.getAttribute("data-context-kind") === "institution");
             contextKinds.push("institution");
@@ -83,18 +322,57 @@ try {
       const metrics = await page.evaluate(() => {
         const map = document.querySelector("[data-testid='command-deck-map-area']");
         const shell = document.querySelector("[data-testid='command-deck-shell']");
+        const objective = document.querySelector("[data-testid='strategic-pacing']");
+        const currentAction = document.querySelector("[data-testid='strategic-action-bar']");
+        const objectiveRect = objective?.getBoundingClientRect();
+        const mapRect = map?.getBoundingClientRect();
+        const currentActionRect = currentAction?.getBoundingClientRect();
         return {
           viewport: window.innerWidth,
           overflow: document.documentElement.scrollWidth - window.innerWidth,
           mapWidth: map?.getBoundingClientRect().width || 0,
           shellWidth: shell?.getBoundingClientRect().width || 0,
-          agenda: Boolean(document.querySelector("[data-testid='command-deck-agenda']")),
+          agenda: Boolean(document.querySelector("[data-testid='strategic-pacing']")),
           context: Boolean(document.querySelector("[data-testid='command-deck-context']"))
           ,mapIntel: document.querySelector("[data-testid='command-deck-map-intel']")?.textContent || ""
           ,drawerToggle: Boolean(document.querySelector("[data-testid='command-deck-drawer-toggle']"))
           ,contextActions: document.querySelectorAll("[data-testid='command-deck-context-action']").length
           ,primaryActions: document.querySelectorAll("[data-command-deck-primary='true']:not([disabled])").length
-          ,rawLeak: /\b(?:npc|case|event|source|location|institution|resource)-[a-z0-9-]*\d[a-z0-9-]*\b/i.test(document.body.innerText)
+          ,lensCount: document.querySelectorAll("[data-testid='command-deck-map-lens']").length
+          ,pressedLensCount: document.querySelectorAll("[data-testid='command-deck-map-lens'][aria-pressed='true']").length
+          ,visibleLensBadgeCount: Array.from(document.querySelectorAll(".mapLensBadge")).filter((node) => getComputedStyle(node).display !== "none").length
+          ,pacing: Boolean(document.querySelector("[data-testid='strategic-pacing']"))
+          ,currentObjectiveCount: document.querySelectorAll("[data-testid='strategic-pacing']").length
+          ,currentObjectiveText: objective?.textContent || ""
+          ,caseRhythmCount: document.querySelectorAll("[data-testid='strategic-case-rhythm']").length
+          ,caseRhythmBeatCount: document.querySelectorAll("[data-testid='strategic-case-rhythm'] li").length
+          ,caseRhythmCurrentBeatCount: document.querySelectorAll("[data-testid='strategic-case-rhythm'] li[data-status='current']").length
+          ,caseRhythmStep: document.querySelector("[data-testid='strategic-case-rhythm']")?.getAttribute("data-rhythm-step") || ""
+          ,caseRhythmRawLeak: /\b(?:npc|case|event|source|location|institution|resource|evidence|session|character)-[a-z0-9-]*\d[a-z0-9-]*\b|culpritId|victimId|hiddenTruth|rawBody/i.test(document.querySelector("[data-testid='strategic-case-rhythm']")?.textContent || "")
+          ,caseRhythmDetailCount: document.querySelectorAll("[data-testid='certified-case-rhythm']").length
+          ,caseRhythmRouteOpen: document.querySelector("[data-testid='certified-case-rhythm'] details")?.hasAttribute("open") || false
+          ,caseRhythmManualFirst: /manual first/i.test(document.querySelector("[data-testid='certified-case-rhythm']")?.textContent || "")
+          ,objectiveBeforeMap: Boolean(objectiveRect && mapRect && objectiveRect.top < mapRect.top)
+          ,currentActionAfterMap: Boolean(currentActionRect && mapRect && currentActionRect.top > mapRect.top)
+          ,pacingPhase: document.querySelector("[data-testid='strategic-pacing']")?.getAttribute("data-pacing-phase") || ""
+          ,campaignPulseText: document.querySelector("[data-testid='command-deck-pulse']")?.textContent || ""
+          ,strategicWhyNowText: document.querySelector("[data-testid='strategic-why-now']")?.textContent || ""
+          ,campaignPanelText: document.querySelector("[data-testid='campaign-session']")?.textContent || ""
+          ,campaignPacingText: document.querySelector("[data-testid='campaign-pacing']")?.textContent || ""
+          ,campaignPacingPrimaryCount: document.querySelectorAll("[data-testid='campaign-pacing'] button").length
+          ,feedbackState: document.querySelector("[data-testid='command-deck-feedback']")?.getAttribute("data-feedback-state") || ""
+          ,feedbackVisible: Boolean(document.querySelector("[data-testid='command-deck-feedback']"))
+          ,encounterVisible: Boolean(document.querySelector("[data-testid='character-encounter']"))
+          ,encounterPosture: document.querySelector("[data-testid='character-encounter']")?.getAttribute("data-posture") || ""
+          ,encounterActionCount: document.querySelectorAll("[data-testid='character-encounter'] [data-encounter-action]").length
+          ,encounterRawLeak: /\b(?:npc|case|event|source|location|institution|resource|evidence|session|character)-[a-z0-9-]*\d[a-z0-9-]*\b|culpritId|victimId|hiddenTruth|rawBody/i.test(document.querySelector("[data-testid='character-encounter']")?.textContent || "")
+          ,audioCues: window.__detectiveAudioCues || []
+          ,transitionPhases: window.__detectiveTransitionPhases || []
+          ,transitionSamples: window.__detectiveTransitionSamples || []
+          ,feedbackLayerCount: document.querySelectorAll("[data-testid='command-deck-feedback'] > span").length
+          ,feedbackLabels: Array.from(document.querySelectorAll("[data-testid='command-deck-feedback'] > span > small")).map((node) => node.textContent || "")
+          ,rawLeak: /\b(?:npc|case|event|source|location|institution|resource|evidence|scene|session|character)-[a-z0-9-]*\d[a-z0-9-]*\b/i.test(document.body.innerText)
+          ,rawLeakSurfaces: Array.from(new Set(Array.from(document.querySelectorAll("[data-testid], section, article, aside, .notebookMeta, .notebookTags, h3, p")).filter((node) => /\b(?:npc|case|event|source|location|institution|resource|evidence|scene|session|character)-[a-z0-9-]*\d[a-z0-9-]*\b/i.test(node.textContent || "")).map((node) => node.getAttribute("data-testid") || node.className || node.tagName).filter((value) => typeof value === "string"))).slice(-10)
           ,tileSample: document.querySelector(".pixelMap .mapTile") ? {
             className: document.querySelector(".pixelMap .mapTile")?.className || "",
             background: getComputedStyle(document.querySelector(".pixelMap .mapTile")).backgroundColor
@@ -102,17 +380,59 @@ try {
         };
       });
       metrics.contextKinds = contextKinds;
+      metrics.frontDoorCardCount = frontDoorCardCount;
+      metrics.frontDoorSelectedCount = frontDoorSelectedCount;
+      metrics.frontDoorRouteSelectedCount = frontDoorRouteSelectedCount;
+      metrics.frontDoorPrimaryCount = frontDoorPrimaryCount;
+      metrics.lensKinds = lensKinds;
+      metrics.lifecycleStates = lifecycleStates;
+      metrics.transitionLayouts = transitionLayouts;
+      metrics.rhythmAutomation = rhythmAutomation;
       observations.push(metrics);
       if (metrics.overflow > 1) failures.push(`${width}px document overflowed by ${metrics.overflow}px.`);
       if (!metrics.agenda || !metrics.context) failures.push(`${width}px missing agenda/context surface.`);
+      if (!metrics.pacing || !["brief", "inspect", "choose", "execute", "resolve", "advance"].includes(metrics.pacingPhase)) failures.push(`${width}px strategic pacing phase is missing or invalid.`);
+      if (metrics.currentObjectiveCount !== 1 || !/current objective/i.test(metrics.currentObjectiveText)) failures.push(`${width}px did not expose exactly one canonical Current Objective.`);
+      if (metrics.caseRhythmCount !== 1 || metrics.caseRhythmBeatCount !== 4 || metrics.caseRhythmCurrentBeatCount !== 1) failures.push(`${width}px Certified Case Rhythm did not expose four beats with one current beat.`);
+      if (metrics.caseRhythmRawLeak) failures.push(`${width}px Certified Case Rhythm exposed an internal identifier or hidden field.`);
+      if (metrics.feedbackLayerCount !== 3 || !["Immediate Result", "World Consequence", "Next Objective"].every((label) => metrics.feedbackLabels.includes(label))) failures.push(`${width}px three-layer Resolve feedback is missing or incomplete.`);
+      if (!metrics.feedbackVisible || !["idle", "available", "selected", "resolving", "updated", "blocked", "completed"].includes(metrics.feedbackState)) failures.push(`${width}px presentation feedback state is missing or invalid.`);
+      if (!metrics.campaignPulseText.includes("Town Reckoning")) failures.push(`${width}px Town Pulse does not expose the bound safe campaign label.`);
+      if (metrics.campaignPanelText && !metrics.campaignPanelText.includes("Civic records, merchant debt, and institutional pressure")) failures.push(`${width}px Campaign Journey does not expose the safe authored theme.`);
+      if (width >= 1200 && metrics.strategicWhyNowText.replace(/why now/i, "").trim().length < 12) failures.push(`${width}px Command Deck is missing its campaign-specific Why Now context.`);
+      if (metrics.campaignPacingText && !["campaign pacing", "why now", "what changes / what stays fair"].every((label) => metrics.campaignPacingText.toLowerCase().includes(label))) failures.push(`${width}px visible Campaign Pacing context is incomplete.`);
+      if (metrics.campaignPacingPrimaryCount !== 0) failures.push(`${width}px Campaign Pacing created a competing action control.`);
       if (width <= 760 && !metrics.drawerToggle) failures.push(`${width}px missing mobile context drawer toggle.`);
       if (width >= 1200 && metrics.contextActions < 1) failures.push(`${width}px context inspector did not expose a safe action.`);
       if (metrics.contextActions > 3) failures.push(`${width}px context inspector exposed more than three actions.`);
+      if (metrics.encounterActionCount > 3) failures.push(`${width}px Character Encounter exceeded the three-action budget.`);
+      if (metrics.encounterRawLeak) failures.push(`${width}px Character Encounter contains a raw identifier-like token.`);
       if (metrics.primaryActions > 1) failures.push(`${width}px exposed more than one primary Command Deck action.`);
+      if (metrics.lensCount !== 4 || metrics.pressedLensCount !== 1) failures.push(`${width}px map lenses are not four mutually exclusive controls.`);
+      if (!metrics.visibleLensBadgeCount) failures.push(`${width}px active map lens has no visible location signal.`);
+      if (!["institution", "pressure", "reaction", "evidence"].every((kind) => metrics.lensKinds.includes(kind))) failures.push(`${width}px did not activate all four map lenses.`);
       if (metrics.rawLeak) failures.push(`${width}px command deck body contains a raw identifier-like token.`);
       if (width >= 1200 && metrics.mapWidth / Math.max(metrics.shellWidth, 1) < 0.55) failures.push(`${width}px map area is below the 55% target.`);
-      if (width >= 1200 && !["INSTITUTION", "WORLD PRESSURE", "TOWN REACTION"].every((label) => metrics.mapIntel.includes(label))) failures.push(`${width}px map intel is missing institution, pressure, or social response.`);
-      if (width >= 1200 && !["location", "actor", "institution"].every((kind) => metrics.contextKinds.includes(kind))) failures.push(`${width}px did not cover location, actor, and institution contexts.`);
+      if (width >= 1200 && !["INSTITUTION", "PRESSURE", "REACTION", "EVIDENCE"].every((label) => metrics.mapIntel.includes(label))) failures.push(`${width}px map intel is missing one or more fixed lenses.`);
+      if (width >= 1200 && !["location", "actor", "institution", "evidence", "theory"].every((kind) => metrics.contextKinds.includes(kind))) failures.push(`${width}px did not cover location, actor, institution, evidence, and theory contexts.`);
+      if (width >= 1200 && !metrics.lifecycleStates.includes("resolving")) failures.push(`${width}px did not expose the resolving lifecycle while an existing handler was in flight.`);
+      if (width >= 1200 && (metrics.caseRhythmDetailCount !== 1 || metrics.caseRhythmRouteOpen || !metrics.caseRhythmManualFirst)) failures.push(`${width}px Inspector rhythm did not keep the full route default-closed with its Manual First boundary.`);
+      if (width >= 1200 && !metrics.rhythmAutomation.length) failures.push(`${width}px did not collect automated Certified Case Rhythm interaction samples.`);
+      for (const sample of metrics.rhythmAutomation) {
+        if (sample.primaryClicks > 2) failures.push(`${width}px ${sample.stage} exceeded the two-click automated rhythm budget.`);
+        if (sample.panelSwitches > 1) failures.push(`${width}px ${sample.stage} exceeded the one-panel-switch rhythm budget.`);
+        const settleBudget = sample.stage === "question" || sample.stage === "challenge" ? 12000 : 3000;
+        if (sample.settleMs > settleBudget) failures.push(`${width}px ${sample.stage} exceeded the ${settleBudget}ms automated settle budget (${sample.settleMs}ms).`);
+      }
+      if (width >= 1200 && !["action-resolving", "immediate-result", "next-objective"].every((phase) => metrics.transitionPhases.includes(phase))) failures.push(`${width}px Campaign Transition Theatre did not expose Resolve, Result, and Next phases.`);
+      if (metrics.transitionSamples.some((sample) => ["action", "transition"].includes(sample.dominant) && (sample.encounterVisible || sample.frontsOpen || sample.contextInteractive || sample.notificationsVisible))) failures.push(`${width}px a lower-priority overlay competed with the Campaign Transition Theatre.`);
+      if (width >= 1200 && !metrics.audioCues.some((cue) => cue?.cue === "resolve" || cue?.cue === "confirm")) failures.push(`${width}px did not emit a browser-local resolve/confirm audio cue hook.`);
+      if (width === 390) {
+        if (!metrics.objectiveBeforeMap || !metrics.currentActionAfterMap) failures.push("390px order is not Current Objective -> Map -> Current Action.");
+        await page.emulateMedia({ reducedMotion: "reduce" });
+        const reducedMotionDuration = await page.getByTestId("command-deck-feedback").evaluate((node) => getComputedStyle(node).animationDuration);
+        if (Number.parseFloat(reducedMotionDuration) > 0.01) failures.push(`390px presentation feedback ignored prefers-reduced-motion.`);
+      }
       const screenshotPath = path.join(process.cwd(), "outputs", "command-deck-qa", `${width}.png`);
       fs.mkdirSync(path.dirname(screenshotPath), { recursive: true });
       await page.evaluate(() => {
@@ -130,19 +450,43 @@ try {
       if (pathname.startsWith("/api/")) apiRequests.push(pathname);
     });
     await staticPage.goto(`${baseUrl}/?runtime=static&study=1`, { waitUntil: "networkidle" });
+    const staticFrontDoor = staticPage.getByTestId("campaign-front-door");
+    if (!(await staticFrontDoor.count()) || !(await staticFrontDoor.isVisible())) failures.push("Static runtime did not expose its read-only Campaign preview boundary.");
+    const staticOnboarding = staticPage.getByTestId("onboarding-overlay");
+    if (await staticOnboarding.count() && await staticOnboarding.isVisible()) await staticOnboarding.locator("button").last().click();
+    await staticPage.getByTestId("command-deck-pulse").waitFor({ state: "visible", timeout: 15_000 });
+    const staticActor = staticPage.locator("[data-testid='pixel-map'] .actorPin").first();
+    if (await staticActor.count()) {
+      await staticActor.click();
+      await staticPage.waitForTimeout(120);
+      const staticEncounter = staticPage.getByTestId("character-encounter");
+      await ensureEncounterVisible(
+        staticPage,
+        staticEncounter,
+        staticPage.getByRole("button", { name: /Case files & detail/i }),
+        "static actor"
+      );
+      const staticEncounterText = await staticEncounter.innerText();
+      if (await staticEncounter.locator("[data-encounter-action]").count() > 3) failures.push("Static Character Encounter exceeded the three-action budget.");
+      if (/\b(?:npc|case|event|source|location|institution|resource|evidence|session|character)-[a-z0-9-]*\d[a-z0-9-]*\b|culpritId|victimId|hiddenTruth|rawBody/i.test(staticEncounterText)) failures.push("Static Character Encounter exposed an internal identifier or hidden case binding.");
+    }
     const staticState = await staticPage.evaluate(() => ({
       overflow: document.documentElement.scrollWidth - window.innerWidth,
-      studyRecorder: document.body.innerText.includes("Campaign Study Recorder")
+      studyRecorder: document.body.innerText.includes("Campaign Study Recorder"),
+      theatreCount: document.querySelectorAll("[data-testid='campaign-transition-theatre']").length,
+      storageLength: localStorage.length
     }));
     if (apiRequests.length) failures.push(`Static Command Deck requested ${apiRequests.join(", ")}.`);
     if (staticState.overflow > 1) failures.push(`Static 390px overflowed by ${staticState.overflow}px.`);
     if (staticState.studyRecorder) failures.push("Static runtime displayed Study Recorder.");
+    if (staticState.theatreCount) failures.push("Static runtime rendered a persistent Campaign Transition Theatre.");
+    if (staticState.storageLength) failures.push("Static Command Deck wrote localStorage.");
     await staticPage.close();
   } finally {
     await browser.close();
   }
 } catch (error) {
-  failures.push(error instanceof Error ? error.message : String(error));
+  failures.push(`${currentQaStep}: ${error instanceof Error ? error.message : String(error)}`);
 } finally {
   stopServer();
 }

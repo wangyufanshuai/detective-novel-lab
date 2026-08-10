@@ -1,5 +1,6 @@
 import { invalidateTownCandidateCache } from "./cases";
 import type { PersistentTownRuntime, TownCaseType } from "../persistent-town";
+import { detectiveCampaignRouteForRuntime } from "./campaign-catalog";
 
 export type ArcConvergenceStatus = "locked" | "forming" | "ready" | "active" | "completed";
 export type ArcConvergenceApproach = "coalition" | "resilience" | "pressure-balance";
@@ -30,7 +31,6 @@ export type ArcConvergencePublicSummary = {
   nextAction: string;
 };
 
-const FINALE_CASE_TYPE: TownCaseType = "court-intimidation";
 const REQUIRED_CASES = 2;
 const REQUIRED_STAGES = 2;
 
@@ -107,10 +107,11 @@ function deriveApproach(runtime: PersistentTownRuntime) {
 
 export function toArcConvergencePublicSummary(runtime: PersistentTownRuntime): ArcConvergencePublicSummary {
   const state = runtime.arcConvergence || deriveArcConvergenceState(runtime);
+  const campaignRoute = detectiveCampaignRouteForRuntime(runtime);
   const approachLabel = state.approach ? APPROACH_LABELS[state.approach] : "Multiple routes remain open";
   return {
     status: state.status,
-    finaleLabel: "Town Reckoning",
+    finaleLabel: campaignRoute.finaleLabel,
     approachLabel,
     caseProgressLabel: `${Math.min(REQUIRED_CASES, state.acceptedCaseCount)}/${REQUIRED_CASES} certified cases`,
     worldProgressLabel: `${Math.min(REQUIRED_STAGES, state.advancedStageCount)}/${REQUIRED_STAGES} world stages`,
@@ -139,7 +140,7 @@ function deriveArcConvergenceState(runtime: PersistentTownRuntime): ArcConvergen
   return {
     status,
     approach: path?.approach,
-    finaleCaseType: FINALE_CASE_TYPE,
+    finaleCaseType: detectiveCampaignRouteForRuntime(runtime).finaleCaseType,
     acceptedCaseCount: accepted,
     advancedStageCount: stages,
     supportingSignalCount: path?.signalKeys.length || 0,

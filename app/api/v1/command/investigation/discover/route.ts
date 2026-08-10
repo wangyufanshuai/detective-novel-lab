@@ -1,6 +1,6 @@
 import { errorResponse, fail, ok, readJson } from "@/app/api/v1/_utils";
 import { worldRepository } from "@/lib/world/repository";
-import { getRuntimeFactionRelationshipSummary, recordRuntimeInvestigatorProgressionStep, recordRuntimePlayerResourceCommitmentStep } from "@/app/api/v1/_town-runtime";
+import { getRuntimeFactionRelationshipSummary, isRuntimeInvestigationAuthority, recordRuntimeInvestigatorProgressionStep, recordRuntimePlayerResourceCommitmentStep } from "@/app/api/v1/_town-runtime";
 
 export async function POST(request: Request) {
   try {
@@ -18,10 +18,16 @@ export async function POST(request: Request) {
       updatedAt: new Date().toISOString()
     };
     worldRepository.saveSession(next);
-    const investigatorProgression = session.playerId === "auto-player"
+    const authoritative = session.playerId !== "auto-player" && isRuntimeInvestigationAuthority(session.worldId, { sessionId: session.id, caseId: session.caseId });
+    const investigatorProgression = !authoritative
       ? undefined
       : recordRuntimeInvestigatorProgressionStep(session.worldId, { sourceKey: `${session.id}:${session.caseId}:search`, kind: "search" });
-    const playerResourceCommitment = recordRuntimePlayerResourceCommitmentStep(session.worldId, { sessionId: session.id, caseId: session.caseId, lane: "search" });
+    const playerResourceCommitment = !authoritative ? undefined : recordRuntimePlayerResourceCommitmentStep(session.worldId, {
+      sessionId: session.id,
+      caseId: session.caseId,
+      lane: "search",
+      caseSceneLocationId: activeCase.generationProfile.sceneLocationId || activeCase.deductionCase.scenes[0]?.id
+    });
     const factionRelationship = playerResourceCommitment ? getRuntimeFactionRelationshipSummary(session.worldId) : undefined;
     return ok({ session: next, playerResourceCommitment, factionRelationship, investigatorProgression });
   } catch (error) {

@@ -30,13 +30,6 @@ export type SelectionHighlight = {
   eventId?: string;
 };
 
-type PersistedOnboarding = {
-  dismissed: boolean;
-  wrongTheorySubmitted: boolean;
-};
-
-const storageKey = "detective-town-onboarding-v1";
-
 const definitions: Array<Omit<GuidedTask, "state">> = [
   { id: "observe", title: "观察案发窗口", detail: "把时间轴移动到 21:47，观察事件和 NPC 位置。", targetTab: "events" },
   { id: "search", title: "搜索地点", detail: "点击地图上的可搜索建筑，发现第一条证据。", targetTab: "investigation" },
@@ -46,25 +39,6 @@ const definitions: Array<Omit<GuidedTask, "state">> = [
   { id: "correct-theory", title: "提交完整推理", detail: "补齐凶手、动机、手法和关键证据链。", targetTab: "investigation" },
   { id: "reveal", title: "查看解答", detail: "解锁最终结论节点并复盘完整因果链。", targetTab: "logic" }
 ];
-
-function readPersisted(): PersistedOnboarding {
-  if (typeof window === "undefined") return { dismissed: false, wrongTheorySubmitted: false };
-  try {
-    const value = localStorage.getItem(storageKey);
-    const parsed = value ? JSON.parse(value) : {};
-    return {
-      dismissed: Boolean(parsed.dismissed),
-      wrongTheorySubmitted: Boolean(parsed.wrongTheorySubmitted)
-    };
-  } catch {
-    return { dismissed: false, wrongTheorySubmitted: false };
-  }
-}
-
-function writePersisted(value: PersistedOnboarding) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(storageKey, JSON.stringify(value));
-}
 
 export function useGuidedOnboarding(input: {
   runtimeMode: RuntimeMode;
@@ -78,16 +52,8 @@ export function useGuidedOnboarding(input: {
   const [manuallyOpened, setManuallyOpened] = useState(false);
 
   useEffect(() => {
-    const saved = readPersisted();
-    setDismissed(saved.dismissed);
-    setWrongTheorySubmitted(saved.wrongTheorySubmitted);
     setReady(true);
   }, []);
-
-  useEffect(() => {
-    if (!ready || input.runtimeMode !== "static-demo") return;
-    localStorage.setItem(storageKey, JSON.stringify({ dismissed, wrongTheorySubmitted }));
-  }, [dismissed, input.runtimeMode, ready, wrongTheorySubmitted]);
 
   const interrogationCount = input.session?.interrogationLog.length || 0;
   const accepted = Boolean(input.session?.judgement?.accepted);
@@ -115,19 +81,14 @@ export function useGuidedOnboarding(input: {
     currentTask: tasks.find((task) => task.state === "current") || tasks[tasks.length - 1],
     overlayOpen: ready && input.runtimeMode === "static-demo" && (!dismissed || manuallyOpened),
     dismiss: useCallback(() => {
-      writePersisted({ dismissed: true, wrongTheorySubmitted });
       setDismissed(true);
       setManuallyOpened(false);
-    }, [wrongTheorySubmitted]),
+    }, []),
     reopen: useCallback(() => setManuallyOpened(true), []),
     recordTheoryResult: useCallback((acceptedTheory: boolean) => {
       if (!acceptedTheory) {
-        const saved = readPersisted();
-        const nextDismissed = dismissed || saved.dismissed;
-        writePersisted({ dismissed: nextDismissed, wrongTheorySubmitted: true });
-        if (nextDismissed) setDismissed(true);
         setWrongTheorySubmitted(true);
       }
-    }, [dismissed])
+    }, [])
   };
 }

@@ -1,83 +1,28 @@
 .commandDeckShell {
-  --deck-bg: #060a0f;
-  --deck-surface: rgba(14, 22, 30, 0.96);
-  --deck-surface-raised: rgba(24, 36, 47, 0.98);
-  --deck-line: rgba(124, 157, 178, 0.28);
-  --deck-ink: #f2f7f6;
-  --deck-muted: #9fb0ba;
-  --deck-accent: #7fc5ff;
-  --deck-warning: #ffe06a;
+  --deck-bg: #080b0d;
+  --deck-surface: rgba(18, 25, 29, 0.97);
+  --deck-surface-raised: rgba(31, 40, 44, 0.98);
+  --deck-line: rgba(177, 151, 101, 0.3);
+  --deck-ink: #eee9dd;
+  --deck-muted: #a8b2b3;
+  --deck-accent: #91bed2;
+  --deck-warning: #e1bd77;
   --deck-success: #65ffc4;
   --deck-danger: #ff8e94;
 }
 
 .commandDeckShell {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
   height: 100vh;
   max-height: 100vh;
   min-height: 100vh;
   overflow: hidden;
   color: var(--deck-ink);
   background:
-    radial-gradient(circle at 52% 14%, rgba(86, 166, 255, 0.11), transparent 34rem),
+    radial-gradient(circle at 52% 14%, rgba(129, 169, 181, 0.1), transparent 34rem),
+    linear-gradient(135deg, rgba(70, 54, 33, 0.05), transparent 34%),
     var(--deck-bg);
-}
-
-.commandDeckPulse {
-  display: flex;
-  min-width: 0;
-  min-height: 70px;
-  align-items: stretch;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 10px 16px;
-  background: rgba(7, 12, 18, 0.98);
-  border-bottom: 1px solid var(--deck-line);
-  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.24);
-  z-index: 20;
-}
-
-.commandDeckPulseBrand,
-.commandDeckPulseMetrics,
-.commandDeckSectionHeading {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-}
-
-.commandDeckPulseBrand {
-  gap: 10px;
-}
-
-.commandDeckPulseBrand > div {
-  display: grid;
-  min-width: 0;
-  gap: 2px;
-}
-
-.commandDeckPulseBrand strong {
-  max-width: 330px;
-  overflow: hidden;
-  color: var(--deck-ink);
-  font-size: 14px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.commandDeckMark {
-  display: grid;
-  width: 38px;
-  height: 38px;
-  place-items: center;
-  color: #061018;
-  background: var(--deck-accent);
-  border: 1px solid #c6e5ff;
-  border-radius: 4px;
-  box-shadow: 3px 3px 0 #000;
-  font-size: 11px;
-  font-weight: 1000;
-  letter-spacing: 0.08em;
 }
 
 .commandDeckEyebrow {
@@ -88,39 +33,9 @@
   text-transform: uppercase;
 }
 
-.commandDeckPulseMetrics {
-  justify-content: flex-end;
-  gap: 1px;
-  overflow: hidden;
-}
-
-.commandDeckPulseMetrics span {
-  display: grid;
-  min-width: 92px;
-  gap: 2px;
-  padding: 3px 11px;
-  border-left: 1px solid rgba(124, 157, 178, 0.2);
-}
-
-.commandDeckPulseMetrics small,
-.commandDeckNextAction small {
-  color: var(--deck-muted);
-  font-size: 9px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-}
-
-.commandDeckPulseMetrics b {
-  overflow: hidden;
-  color: var(--deck-ink);
-  font-size: 11px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .commandDeckGrid {
   display: grid;
-  grid-template-columns: 250px minmax(0, 1fr) 320px;
+  grid-template-columns: 240px minmax(0, 1fr) 280px;
   height: 100%;
   min-height: 0;
   overflow: hidden;
@@ -136,11 +51,10 @@
 
 .commandDeckAgendaRail {
   overflow: auto;
-  background: linear-gradient(180deg, rgba(17, 26, 35, 0.98), rgba(9, 15, 21, 0.98));
+  background: linear-gradient(180deg, rgba(25, 31, 34, 0.98), rgba(11, 16, 19, 0.98));
   border-right: 1px solid var(--deck-line);
 }
 
-.commandDeckAgendaSummary,
 .commandDeckContextSummary {
   display: grid;
   gap: 8px;
@@ -149,7 +63,6 @@
   border-bottom: 1px solid var(--deck-line);
 }
 
-.commandDeckAgendaSummary h2,
 .commandDeckContextSummary h2 {
   margin: 0;
   color: var(--deck-ink);
@@ -157,7 +70,6 @@
   line-height: 1.35;
 }
 
-.commandDeckAgendaSummary p,
 .commandDeckContextSummary p {
   margin: 0;
   color: var(--deck-muted);
@@ -182,12 +94,13 @@
   border: 1px solid rgba(124, 157, 178, 0.34);
   border-radius: 4px;
   cursor: pointer;
+  min-height: 44px;
 }
 
-.commandDeckContextAction.primary {
-  color: #08121b;
+.commandDeckContextAction[data-context-recommended="true"] {
+  color: #171006;
   background: var(--deck-accent);
-  border-color: #c6e5ff;
+  border-color: #d6eaf1;
 }
 
 .commandDeckContextAction:hover:not(:disabled) {
@@ -203,14 +116,39 @@
   font-size: 11px;
 }
 
+.commandDeckActionTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.commandDeckActionTitle kbd {
+  min-width: 22px;
+  padding: 1px 4px;
+  color: inherit;
+  background: rgba(127, 197, 255, 0.12);
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  font: 800 9px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace;
+  text-align: center;
+}
+
 .commandDeckContextAction span {
   color: var(--deck-muted);
   font-size: 10px;
   line-height: 1.35;
 }
 
-.commandDeckContextAction.primary span {
-  color: rgba(8, 18, 27, 0.72);
+.commandDeckContextAction[data-context-recommended="true"] span {
+  color: rgba(8, 18, 27, 0.78);
+}
+
+.commandDeckContextAction:focus-visible,
+.commandDeckDrawerToggle:focus-visible,
+.commandDeckContextSummary h2:focus-visible {
+  outline: 3px solid var(--deck-warning);
+  outline-offset: 2px;
 }
 
 .commandDeckCollapsible {
@@ -244,66 +182,6 @@
   margin-inline: 0;
 }
 
-.commandDeckSectionHeading {
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.commandDeckObjectiveBadge {
-  padding: 3px 6px;
-  color: #091019;
-  background: var(--deck-warning);
-  border-radius: 3px;
-  font-size: 9px;
-  font-weight: 1000;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.commandDeckNextAction {
-  display: grid;
-  gap: 3px;
-  padding-top: 7px;
-  border-top: 1px solid rgba(124, 157, 178, 0.22);
-}
-
-.commandDeckAgendaMeta {
-  display: grid;
-  gap: 5px;
-  padding: 7px 0;
-  border-top: 1px solid rgba(124, 157, 178, 0.2);
-  border-bottom: 1px solid rgba(124, 157, 178, 0.2);
-}
-
-.commandDeckAgendaMeta span {
-  display: grid;
-  grid-template-columns: 82px minmax(0, 1fr);
-  gap: 6px;
-  align-items: baseline;
-}
-
-.commandDeckAgendaMeta small {
-  color: var(--deck-muted);
-  font-size: 8px;
-  font-weight: 900;
-  letter-spacing: 0.05em;
-}
-
-.commandDeckAgendaMeta b {
-  overflow: hidden;
-  color: #dbe8ec;
-  font-size: 10px;
-  font-weight: 800;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.commandDeckNextAction span {
-  color: #d6e5ea;
-  font-size: 11px;
-  line-height: 1.4;
-}
-
 .commandDeckLegacyControl {
   min-width: 0;
 }
@@ -320,6 +198,7 @@
 
 .commandDeckLegacyControl > :global(.controlRail) > :global(.brandBlock),
 .commandDeckLegacyControl > :global(.controlRail) > :global(.currentCasePanel),
+.commandDeckLegacyControl > :global(.controlRail) > :global(.nextActionPanel),
 .commandDeckLegacyControl > :global(.controlRail) > :global(.guidedTaskPanel),
 .commandDeckLegacyControl > :global(.controlRail) > :global(.progressPanel) {
   display: none;
@@ -335,22 +214,83 @@
   pointer-events: auto;
 }
 
+/* Strategic Fronts owns the map detail layer while it is open. Keep transient
+   actor/location cards from competing for the same edge-panel space. */
+.commandDeckShell[data-active-panel="fronts"] .commandDeckMapArea :global([data-testid="character-encounter"]),
+.commandDeckShell[data-active-panel="fronts"] .commandDeckMapArea :global([data-testid="location-hover-card"]) {
+  display: none;
+}
+
+.commandDeckShell[data-suspend-encounter="true"] .commandDeckMapArea :global([data-testid="character-encounter"]),
+.commandDeckShell[data-suspend-location-hover="true"] .commandDeckMapArea :global([data-testid="location-hover-card"]),
+.commandDeckShell[data-suspend-notifications="true"] .commandDeckNotifications,
+.commandDeckShell[data-suspend-toasts="true"] > :global([data-testid="toast-stack"]) {
+  display: none;
+}
+
+.commandDeckShell[data-suspend-fronts="true"] .commandDeckMapArea :global([data-testid="district-strategic-fronts"]),
+.commandDeckShell[data-suspend-context="true"] .commandDeckContextRail {
+  opacity: 0.42;
+  pointer-events: none;
+}
+
+.commandDeckShell[data-dominant-overlay="action"] .commandDeckMapArea,
+.commandDeckShell[data-dominant-overlay="transition"] .commandDeckMapArea {
+  box-shadow: inset 0 0 0 2px rgba(225, 189, 119, 0.42), inset 0 0 64px rgba(4, 10, 16, 0.32);
+}
+
 .commandDeckMapIntel {
   position: absolute;
-  bottom: 198px;
+  bottom: 18px;
   left: 18px;
-  z-index: 11;
-  display: flex;
-  max-width: calc(100% - 36px);
-  gap: 1px;
+  z-index: 32;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px;
+  width: min(560px, calc(100% - 36px));
+  gap: 0;
   overflow: hidden;
-  pointer-events: none;
+  pointer-events: auto;
   border: 1px solid rgba(124, 157, 178, 0.3);
   border-radius: 4px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 
-.commandDeckMapIntel span {
+.commandDeckLensControls {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  padding: 1px;
+  background: rgba(7, 14, 20, 0.96);
+}
+
+.commandDeckLensControls button {
+  min-width: 0;
+  padding: 7px 8px;
+  overflow: hidden;
+  color: var(--deck-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: rgba(18, 29, 39, 0.98);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.commandDeckLensControls button[aria-pressed="true"] {
+  color: #071019;
+  background: var(--deck-accent);
+  border-bottom-color: var(--deck-warning);
+}
+
+.commandDeckLensControls button:focus-visible {
+  outline: 2px solid var(--deck-warning);
+  outline-offset: -2px;
+}
+
+.commandDeckLensSummary {
   display: grid;
   min-width: 0;
   gap: 2px;
@@ -372,6 +312,41 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.commandDeckMapArea :global(.mapLensBadge) {
+  position: absolute;
+  right: 1px;
+  top: 1px;
+  z-index: 8;
+  display: none;
+  max-width: 92px;
+  padding: 2px 4px;
+  overflow: hidden;
+  color: #071019;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 1px solid rgba(0, 0, 0, 0.72);
+  border-radius: 3px;
+  box-shadow: 1px 2px 0 rgba(0, 0, 0, 0.36);
+  font-size: 7px;
+  font-weight: 1000;
+  pointer-events: none;
+}
+
+.commandDeckShell[data-map-lens="institution"] :global(.mapLens-institution:not([data-tone="quiet"])),
+.commandDeckShell[data-map-lens="pressure"] :global(.mapLens-pressure:not([data-tone="quiet"])),
+.commandDeckShell[data-map-lens="reaction"] :global(.mapLens-reaction:not([data-tone="quiet"])),
+.commandDeckShell[data-map-lens="evidence"] :global(.mapLens-evidence:not([data-tone="quiet"])) {
+  display: block;
+}
+
+.commandDeckMapArea :global(.mapLensBadge[data-tone="quiet"]) { background: rgba(185, 199, 202, 0.88); }
+.commandDeckMapArea :global(.mapLensBadge[data-tone="watch"]) { background: rgba(255, 224, 106, 0.94); }
+.commandDeckMapArea :global(.mapLensBadge[data-tone="high"]) { color: #fff; background: rgba(199, 64, 73, 0.96); }
+.commandDeckShell[data-map-lens="institution"] :global(.mapTile:has(.mapLens-institution[data-tone="high"]):not(.selected)),
+.commandDeckShell[data-map-lens="pressure"] :global(.mapTile:has(.mapLens-pressure[data-tone="high"]):not(.selected)),
+.commandDeckShell[data-map-lens="reaction"] :global(.mapTile:has(.mapLens-reaction[data-tone="high"]):not(.selected)),
+.commandDeckShell[data-map-lens="evidence"] :global(.mapTile:has(.mapLens-evidence[data-tone="high"]):not(.selected)) { filter: saturate(1.12); }
 
 .commandDeckMapArea > :global(.mapStage) {
   height: 100%;
@@ -395,16 +370,52 @@
   min-height: 0;
 }
 
-.commandDeckContextDrawerBody > :global(.inspectorRail) {
-  height: auto;
+.commandDeckInspectorDisclosure {
+  display: grid;
   min-height: 0;
-  border-left: 0;
+  grid-template-rows: auto minmax(0, 1fr);
+  border-top: 1px solid var(--deck-line);
+}
+
+.commandDeckInspectorToggle {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  color: #dcc89b;
+  text-align: left;
+  background: rgba(10, 16, 20, 0.96);
+  border: 0;
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.commandDeckInspectorToggle b { color: var(--deck-accent); font-size: 8px; }
+.commandDeckInspectorToggle:focus-visible { outline: 3px solid var(--deck-warning); outline-offset: -3px; }
+.commandDeckInspectorBody { min-height: 0; overflow: hidden; }
+.commandDeckInspectorBody > :global(.inspectorRail) { width: 100%; height: 100%; min-height: 0; border-left: 0; }
+
+.commandDeckShell[data-focus-target="map"] .commandDeckMapArea,
+.commandDeckShell[data-focus-target="result"] .commandDeckMapArea {
+  box-shadow: inset 0 0 0 1px rgba(225, 189, 119, 0.34);
+}
+
+.commandDeckShell[data-focus-target="character"] .commandDeckContextRail,
+.commandDeckShell[data-focus-target="institution"] .commandDeckContextRail,
+.commandDeckShell[data-focus-target="investigation"] .commandDeckContextRail,
+.commandDeckShell[data-focus-target="world-choice"] .commandDeckContextRail {
+  box-shadow: inset 3px 0 rgba(145, 190, 210, 0.36);
 }
 
 .commandDeckNotifications {
   position: fixed;
   right: 18px;
-  bottom: 18px;
+  bottom: 132px;
   z-index: 80;
   display: grid;
   width: min(360px, calc(100vw - 36px));
@@ -460,13 +471,11 @@
   }
 
   .commandDeckMapIntel {
-    display: none;
+    bottom: 12px;
+    left: 12px;
+    width: min(520px, calc(100% - 24px));
   }
 
-  .commandDeckPulseMetrics span {
-    min-width: 76px;
-    padding-inline: 8px;
-  }
 }
 
 @media (max-width: 760px) {
@@ -475,39 +484,7 @@
     height: auto;
     max-height: none;
     overflow-x: hidden;
-    padding-bottom: 52px;
-  }
-
-  .commandDeckPulse {
-    position: sticky;
-    top: 0;
-    display: grid;
-    gap: 8px;
-    min-height: 0;
-    padding: 8px 10px;
-  }
-
-  .commandDeckPulseBrand strong {
-    max-width: calc(100vw - 76px);
-  }
-
-  .commandDeckPulseMetrics {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    width: 100%;
-  }
-
-  .commandDeckPulseMetrics span {
-    min-width: 0;
-    padding: 2px 5px;
-  }
-
-  .commandDeckPulseMetrics b,
-  .commandDeckPulseMetrics small {
-    overflow: hidden;
-    font-size: 8px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    padding-bottom: 122px;
   }
 
   .commandDeckGrid {
@@ -529,10 +506,15 @@
     grid-row: auto;
   }
 
+  .commandDeckMapArea {
+    display: flex;
+    flex-direction: column;
+  }
+
   .commandDeckAgendaRail { display: contents; }
-  .commandDeckAgendaSummary { order: 1; }
-  .commandDeckMapArea { order: 2; }
-  .commandDeckLegacyControl { order: 3; }
+  .commandDeckMapArea { order: 1; }
+  .commandDeckAgendaRail > :global([data-testid="strategic-decision-queue"]) { order: 3; }
+  .commandDeckLegacyControl { order: 4; }
   .commandDeckContextRail {
     position: fixed;
     right: 0;
@@ -595,14 +577,142 @@
     height: auto;
   }
 
+  .commandDeckMapIntel {
+    position: relative;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    left: auto;
+    width: 100%;
+    max-width: none;
+    grid-template-columns: minmax(0, 1fr);
+    order: -1;
+    border-inline: 0;
+  }
+
+  .commandDeckMapArea :global(.mapLensBadge) {
+    max-width: 64px;
+    font-size: 6px;
+  }
+
   .commandDeckLegacyControl > :global(.controlRail) {
     padding: 8px 10px 16px;
   }
 
   .commandDeckNotifications {
     right: 10px;
-    bottom: 62px;
+    bottom: 118px;
     z-index: 90;
     width: calc(100vw - 20px);
   }
+}
+
+@media (max-width: 900px) {
+  .commandDeckShell[data-suspend-context="true"] .commandDeckContextRail {
+    visibility: hidden;
+    opacity: 0;
+  }
+}
+
+@media (min-width: 521px) and (max-width: 900px) {
+  .commandDeckGrid {
+    position: relative;
+    grid-template-columns: 220px minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    overflow: hidden;
+  }
+
+  .commandDeckAgendaRail { grid-column: 1; grid-row: 1; }
+  .commandDeckMapArea { grid-column: 2; grid-row: 1; }
+  .commandDeckMapArea > :global(.mapStage) { height: 100%; min-height: 0; }
+
+  .commandDeckContextRail {
+    position: fixed;
+    top: 86px;
+    right: 0;
+    bottom: 82px;
+    z-index: 106;
+    width: min(320px, 35vw);
+    max-height: none;
+    overflow: hidden;
+    background: rgba(9, 15, 19, 0.995);
+    border-top: 1px solid var(--deck-line);
+    border-left: 1px solid var(--deck-line);
+    box-shadow: -16px 0 36px rgba(0, 0, 0, 0.4);
+    transform: translateX(calc(100% - 52px));
+    transition: transform 160ms ease-out;
+  }
+
+  .commandDeckContextRail.drawerOpen { transform: translateX(0); }
+  .commandDeckDrawerToggle {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    width: 100%;
+    min-height: 52px;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 8px;
+    color: var(--deck-ink);
+    text-align: left;
+    background: rgba(11, 19, 24, 0.99);
+    border: 0;
+    border-bottom: 1px solid var(--deck-line);
+  }
+  .commandDeckDrawerToggle span,
+  .commandDeckDrawerToggle b { color: var(--deck-accent); font-size: 8px; text-transform: uppercase; }
+  .commandDeckDrawerToggle strong { min-width: 0; overflow: hidden; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+  .commandDeckContextDrawerBody { height: calc(100% - 52px); overflow: hidden; }
+  .commandDeckContextSummary { max-height: 44%; overflow: auto; }
+  .commandDeckInspectorDisclosure[data-inspector-open="true"] { min-height: 56%; }
+  .commandDeckMapIntel { bottom: 10px; left: 10px; width: min(430px, calc(100% - 72px)); }
+}
+
+@media (max-width: 520px) {
+  .commandDeckShell {
+    display: block;
+    height: auto;
+    max-height: none;
+    min-height: 100vh;
+    overflow-x: hidden;
+    padding-bottom: 122px;
+  }
+
+  .commandDeckGrid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto auto;
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  .commandDeckAgendaRail,
+  .commandDeckMapArea,
+  .commandDeckContextRail { width: 100%; grid-column: auto; grid-row: auto; overflow: visible; }
+  .commandDeckAgendaRail { display: contents; }
+  .commandDeckMapArea { display: flex; order: 1; flex-direction: column; }
+  .commandDeckAgendaRail > :global([data-testid="strategic-decision-queue"]) { order: 3; }
+  .commandDeckLegacyControl { order: 4; }
+  .commandDeckMapArea > :global(.mapStage) { height: auto; min-height: 520px; }
+
+  .commandDeckContextRail {
+    position: fixed;
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 88;
+    width: 100%;
+    height: min(66vh, 560px);
+    max-height: none;
+    overflow: hidden;
+    border-top: 1px solid var(--deck-line);
+    border-left: 0;
+    box-shadow: 0 -16px 36px rgba(0, 0, 0, 0.42);
+    transform: translateY(calc(100% - 52px));
+    transition: transform 160ms ease-out;
+  }
+
+  .commandDeckContextRail.drawerOpen { transform: translateY(0); } .commandDeckContextSummary { max-height: 42%; overflow: auto; }
+  .commandDeckInspectorDisclosure[data-inspector-open="true"] { min-height: 58%; } .commandDeckNotifications { bottom: 126px; }
 }

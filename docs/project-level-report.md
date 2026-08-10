@@ -902,47 +902,323 @@ Three reference projects remain useful, but they now highlight different gaps:
 - [Battle for Wesnoth](https://github.com/wesnoth/wesnoth) remains the benchmark for legible scenario transitions, authored branching, difficulty communication, and campaign recovery. Detective Town now has a real campaign state machine and a more systemic town, but its transitions and emotional beats are less authored.
 - [AI Town](https://github.com/a16z-infra/ai-town) remains the benchmark for visible agent social life and immediately readable autonomous behavior. Detective Town is much more constrained and auditable, but many of its strongest state changes are still summarized in panels rather than dramatized through characters.
 
-The strategic conclusion after v6.2 instrumentation is that architecture is no longer the immediate uncertainty. The project can now gather privacy-safe evidence about whether people understand the current action, recover without prompting, explain the finale, and want to replay. The unknown is the result of the eight official sessions. Further runtime subsystems would have poor marginal value before that evidence exists.
+The strategic conclusion after v6.2 instrumentation is that architecture is no longer the immediate uncertainty. The frozen P1 baseline can gather privacy-safe evidence about whether people understand the current action, recover without prompting, explain the finale, and want to replay. The separate post-gate branch may continue automated core development, but those changes are experimental and cannot be used to claim the frozen Human Gate passed.
 
 ## Forward Version Plan: v6.3+
 
-Before v6.3 implementation, complete the fixed v6.2 matrix of eight official sessions. The gate requires median first meaningful action below 300 seconds; at least 7/8 sessions with no more than one main-objective misunderstanding and an overall mean no greater than one; at least 3/4 unprompted Recovery starts; at least 6/8 Campaign completions without moderator operation; at least 7/8 correct Finale explanations; and at least 4/8 different-route Replay intents. A failed metric keeps v6.2 open while still producing a truthful aggregate report.
+The frozen v6.2 study baseline still requires the fixed matrix of eight official sessions before it can claim `human gate passed`. Experimental v6.3+ work proceeds only on the separate branch and remains an automated product-development line; it does not rewrite the study result.
 
-### v6.3: Progressive Disclosure and Campaign Pacing
+### v6.3: Command Deck Consolidation
 
-Goal: make the implemented architecture feel like play rather than an evaluator dashboard.
+Goal: make the implemented architecture feel like map-first play rather than an evaluator dashboard.
 
-- Default-collapse proof, scorecard, and audit material until the player reaches Review Source or explicitly asks for detail. Keep Current world action, current certified case step, and immediate consequence above the fold.
-- Add transition pacing states using the existing campaign summary: short case opening, one world consequence beat, one optional strategy decision, then the next case choice.
-- Measure and cap simultaneous calls to action. Empty, blocked, and completed states must always provide one useful next action without exposing internal state.
-- Exit gate: the 390px and desktop paths both complete without sideways scrolling, hidden primary controls, or requiring developer terminology.
+- `InvestigationActionRegistry` is the single presentation source for map context, Playable Path, and Guided Manual Run action labels and handler bindings.
+- The visible loop is `current objective -> select map object -> at most three legal actions -> existing authoritative handler -> feedback -> next objective`.
+- Context now covers location, public character, institution, discovered evidence, and theory. One enabled action is primary; disabled actions provide a safe reason.
+- Map tile and undiscovered marker clicks select context instead of silently discovering evidence. Search, Question, Challenge, theory evidence selection, submission, and review continue through existing handlers.
+- Case Intake and Playable Path are read-only route explanations in Command Deck mode, removing competing Join/Next commands while preserving their underlying legacy path outside the deck.
+- Mobile uses a real bottom drawer with Escape and focus restoration. Desktop map area remains above 55% at 1440px; 390/768/1440 have no horizontal overflow.
+- Replay-practice types and pure helpers were extracted from `app/page.tsx`; further page/controller decomposition remains technical debt for later passes.
+- Public Notebook tags now sanitize internal identifier-shaped content before rendering. The test suite covers this visible projection directly.
+- The exit evidence is automated only: registry/model determinism, authority equivalence, public-safe output, responsive Browser QA, Static zero API, and repository budgets. Human comprehension remains unproven.
 
-### v6.4: Authored Consequence and Social Visibility Pass
+### v6.4: Town Map Lenses
 
-Goal: make persistent state changes visible through people and places.
+Goal: make existing case and world state readable spatially without creating a second simulation or proof surface.
 
-- Add backward-compatible content rows for faction-specific reactions, institution follow-up copy, location recovery/pressure beats, and witness availability context. Reuse existing runtime deltas and safe labels; do not create a dialogue authority or hidden-truth narration layer.
-- Expand the v6.1 fixed reaction families with backward-compatible faction/location-specific texture only where playtests show repetition. Keep every label causal, low-spoiler, and backed by recorded state.
-- Expand only where playtests show repetition. Prioritize distinct texture across the three packaged cases over raw row count.
+- Four fixed, mutually exclusive lenses are available: Institution, Pressure, Reaction, and Evidence. Evidence is the default investigation view.
+- A pure view-model maps existing institution influence, location profiles/Situation Brief, public town reactions, and map clue counts to `quiet | watch | high` bands.
+- Each location signal contains only a public location name, optional public organization/reaction wording, one bounded tone, and a short next-reading label. Internal location, institution, event, actor, evidence, and runtime keys are stripped from the output.
+- Switching lenses is browser-local React state. It does not write runtime JSON or localStorage, issue requests, generate events, advance ticks, mutate candidates, or affect a current/previous/future case.
+- Browser QA activates all four lenses at 390, 768, and 1440 pixels, requires exactly one pressed lens, visible non-quiet location signals, no horizontal overflow, and no raw identifier-like text.
+- The mobile lens strip is in normal document flow above the playfield rather than covering map interactions or the Context Drawer.
 
-### v6.5: Campaign Variety Without Fairness Drift
+### v6.5: Investigation Turn Loop
 
-Goal: increase replay value while keeping one certified investigation authority.
+Goal: make each player action read as a compact strategy-game turn while keeping one certified investigation authority.
 
-- Author at least two additional three-case sequences and one additional finale context using the existing case, event, progression, recovery, and convergence grammar.
-- Preserve shared fairness invariants: identical truth judgement rules, route certification, evidence coverage, legal action set, bounded influence budget, and safe public projection.
-- Add deterministic campaign matrix tests across seeds and route choices. Compare candidate membership, completion reachability, consequence contrast, and debrief differentiation.
+- The fixed phase order is `choose-target -> choose-action -> resolve -> feedback -> next-objective`, rendered as Target, Action, Resolve, Feedback, and Next.
+- Map/context selection supplies only a public label. Legal actions still come exclusively from `InvestigationActionRegistry` and the existing resolver.
+- Starting an action moves the presentation model to Resolve and awaits the existing async handler. No alternative request, command, judgement, or legality path exists.
+- Optimistic Join/progress updates cannot skip the Resolve state. Handler completion reads the latest authoritative objective key and displays either neutral Feedback or Next Objective.
+- A browser-local turn number advances once per processed handler and is explicitly not a Persistent Town tick, event sequence, study field, save value, or scoring input.
+- Pure tests cover fixed transition order, duplicate-sync idempotence, in-flight stability, no authority fields, and deterministic state. Browser QA delays Join to observe Resolve and then requires Next Objective after the real handler returns.
 
-### v6.6: Operational and Release Readiness
+### v6.6: World Consequence Legibility
 
-Goal: turn the verified local product into a supportable release candidate without weakening privacy or determinism.
+Goal: explain the existing world loops as one causal player-facing chain without adding a new world system.
 
-- Add concise failure diagnostics for local runtime loading, corrupted bounded state, and interrupted campaign resume. Prefer recovery and safe reset guidance over raw snapshots or absolute paths.
-- Establish a release checklist that separates read-only validation from artifact refresh. Protected public catalogs may only change in an explicitly authorized artifact-release task.
-- Run accessibility, keyboard, reduced-motion, localization-length, and slow-machine browser passes in addition to the current Static zero-API and 390px gates.
-- A release candidate requires deterministic campaign completion, human comprehension targets, safe public scans, and documented rollback/recovery behavior. It does not require a new service, schema, endpoint, or background queue.
+- A fixed six-beat order—World Lead, World Arc, Faction Directive, World Pressure, Campaign Recovery, Town Reaction—reuses only existing public summaries.
+- Blocked player-facing work has highest priority, then Recovery, Directive, Lead, Pressure, Reaction, and Arc. Exactly one beat is current/blocked; simultaneous active systems remain pending rather than competing for attention.
+- Completed, settled, consumed, resolved, skipped, and declined statuses become completed history without exposing the underlying case, event, actor, institution, location, or resource binding.
+- One compact Agenda chain replaces separate world-system notifications. Guided Journal and actual World Event feedback remain independent because they describe investigation execution rather than consequence state.
+- The pure projection sanitizes identifier-shaped text, caps summary length, is deterministic, does not mutate inputs, and has empty/active/blocked/settled tests.
+- No new choice, handler, event, tick, state record, candidate weight, public artifact, endpoint, schema, or proof card is introduced.
+
+### v6.7: Campaign Content Expansion
+
+Goal: turn the three existing WorldPackages into three distinguishable playable campaign structures without creating a second case engine.
+
+- The internal campaign catalog defines Town Reckoning, Harbor Testimony, and Clinic Headlines. Each has exactly three authored chapters with a separate objective, preferred case-family matrix, evidence theme, visible world surface, finale label/family, and replay contrast.
+- City Hall / merchant debt stays the civic-record baseline. Dock / court / market becomes a movement-and-witness campaign ending in Harbor Inquest. Hospital / family / press becomes a medical-timing and reputation campaign ending in Public Trust Review.
+- WorldPackage selection binds the matching campaign while the session is still at opening. The campaign ID freezes after the first successful extraction, preventing a mid-campaign package switch from rewriting chapter history or Finale authority.
+- Chapter content supplies a small deterministic preference inside the existing future candidate type selection and final ranking boundary. It does not remove candidates, bypass validity, or modify a case already extracted. Arc Convergence reads the bound campaign's Finale family and still reruns the normal candidate validator before activation.
+- Campaign Journey, Situation Brief, and Command Deck expose only safe campaign, theme, chapter objective, evidence-theme, world-surface, progress, and next-action labels. Internal campaign keys, package keys, case-family IDs, candidate bindings, truth, and evidence IDs remain outside public projection.
+- `test:campaign-content` proves three distinct matrices and finales, deterministic binding, first-extraction freeze, bounded preference, public-safe previews, and unchanged Route Certificate, auto-solve, evidence coverage, case authority, and judgement.
+- The implementation adds no endpoint, SQLite/content/public schema, public artifact, background service, event, tick, proof card, or second investigation authority. The v6.2 human gate remains `instrumentation ready` rather than passed.
+
+### v6.8: Presentation Pass
+
+Goal: give the existing map-first loop a coherent strategy-game material and transition language without obscuring the playfield or adding authority.
+
+- A pure seven-state presentation model covers idle, available, selected, resolving, updated, blocked, and completed. Priority is deterministic: blocked work and in-flight resolution cannot be hidden by passive completion or context state.
+- Command Deck receives one compact `aria-live` feedback strip rather than another panel. The shell carries safe state/tone attributes used by shared CSS tokens for selection, current work, warning, and completion.
+- A separate presentation stylesheet defines spacing, radii, shadow, state color, timing, and easing tokens. Context CTA, map lens, selected tile, high signal, Resolve, and confirmed feedback reuse those tokens.
+- Motion is limited to action resolution and meaningful state arrival. `prefers-reduced-motion` reduces animation and transition duration to effectively zero, including the new feedback strip.
+- The browser-local `detective-town:audio-cue` CustomEvent exposes focus, confirm, resolve, warning, and complete hooks to a future optional sound layer. No audio asset, autoplay, volume persistence, request, event log, or runtime field is added.
+- Pure and browser tests verify all seven states, priority, deterministic signatures, safe output, actual Resolve/Confirm cue emission, responsive feedback visibility, and reduced-motion behavior.
+- This applies the game UI constraint of protecting the playfield: the map remains the largest desktop surface, the feedback strip stays inside the existing Agenda, mobile retains the Context Drawer, and long proof/replay tools remain collapsed.
+
+### v6.9: Controller and Surface Decomposition
+
+Goal: remove the source-structure bottleneck before Campaign front-door, nine-case content, and investigation economy work, without changing player or runtime behavior.
+
+- `app/page.tsx` now composes five explicit client controller hooks: Town Runtime, Investigation, Campaign, Replay, and Review. They own the corresponding React lifecycle state and setters but deliberately contain no `fetch`, `postV1`, `postJson`, or `/api/*` strings; the existing page handlers therefore retain request sequencing and payload authority.
+- The former all-in-one UI file is divided into independent Map, Control, Investigation, Campaign, and Review/Runtime surface modules. The unrelated Novel World Workbench is also isolated as its own mode component rather than occupying the Campaign page controller.
+- The stylesheet suffix beginning with Evidence Notebook and investigation/review rules is moved into `app/styles/investigation-review.css`. Root layout imports it immediately after `globals.css`, preserving its original order before Campaign Study and Presentation overrides.
+- `test:controller-contracts` checks all five hooks are composed, cannot initiate requests, all five player surfaces are independently exported, and the three source budgets remain below their v6.9 limits. It executes both the legacy direct action path and a decomposed registry path and compares truth, Route Certificate, evidence coverage, judgement, candidate state, NPC legal actions, and world consequences.
+- Production validation preserves 125 API route files, approximately 2.80 MB runtime JSON, and an 8.38 ms sampled p95 tick against the existing 4 MB / 250 ms budgets. Command Deck browser QA passes at 390, 768, and 1440 pixels; Static Browser QA records zero `/api/*` calls and no 390px overflow.
+- The completed line budgets are `app/page.tsx` 5,848 lines, `DetectiveTownUI.tsx` 878 lines, and `globals.css` 8,908 lines, down from 8,954, 4,077, and 10,989 respectively. The extracted modules remain direct imports rather than barrel exports, preserving tree-shaking and making later conditional loading possible.
+- No endpoint, API payload, runtime JSON field, SQLite/content/public schema, public artifact, event, tick, candidate rule, study field, truth, route, or judgement changed. Protected public catalogs remain byte-diff clean, and v6.2 remains **instrumentation ready**, not Human Gate passed.
+
+This closes the structural prerequisite for v7.0 Player Campaign Front Door. It does not itself claim improved comprehension or add a player-facing feature.
+
+### v7.0: Player Campaign Front Door
+
+Goal: make the three authored Campaign structures the normal player entry instead of a hidden WorldPackage capability.
+
+- A dedicated Front Door presents Town Reckoning, Harbor Testimony, and Clinic Headlines as three archival strategy dossiers. Each card exposes only its public investigation theme, primary town surface, evidence style, pressure surface, three chapter labels, Finale label, and replay contrast. Package IDs, Campaign IDs, case-family IDs, runtime keys, and case authority never enter the card view model.
+- Server Runtime supports one selected card and exactly one primary Start action. Starting creates a clean Campaign-ready world through the existing world-create endpoint, binds the selected existing WorldPackage, starts the existing single-writer runtime, advances in bounded eight-tick batches only until a valid first candidate exists, and calls the unchanged route-integrity extraction endpoint.
+- The Campaign-ready configuration uses 20 generated NPCs because Browser QA proved the old 8-NPC Premium placeholder could remain without a route-certified persistent candidate after seven ticks. This is a playable-start correction, not a relaxed validator: at most five eight-tick attempts are allowed, and failure still blocks extraction.
+- The first successful extraction activates and freezes the Campaign through the existing Campaign Session state. Pure tests prove pre-extraction rebinding, post-extraction freeze, deterministic card order, distinct Finales, safe serialization, and unchanged extracted truth.
+- Continue reads the existing browser-local world/session pointer, reloads the same Server state, restores bounded investigation progress from the saved session, and refreshes the existing public Campaign summary. It introduces no account, cloud save, import format, database migration, or new endpoint.
+- The Campaigns button reopens the Front Door from the map-first control rail. Players no longer need Review, Scenario Pack, or WorldPackage Catalog panels to choose, start, or continue a Campaign.
+- Static renders the three safe cards as a non-interactive control-rail preview. It has no Start, Continue, selection, persistence, pre-simulation, or package request. Moving the preview out of the overlay stack preserves every existing Static playthrough click and the 390px no-overflow gate.
+- `test:campaign-front-door` covers safe content, determinism, selection fallback, binding/freeze, truth isolation, and the Static boundary. `qa:campaign-front-door` executes New Harbor Testimony through create/select/start/step/extract, reopens the Front Door, continues the saved Campaign, then verifies three Static cards, zero Static API, no raw identifiers, one primary CTA, and responsive overflow.
+- Existing Command Deck QA passes at 390/768/1440 with the Front Door present and then dismissed; full Static Browser QA and the three-case Server API smoke remain green. No endpoint, SQLite/content/public schema, public artifact, second case engine, remote service, or background queue was added. v6.2 remains **instrumentation ready** rather than Human Gate passed.
+
+This closes the player-entry gap. v7.1 can now replace the three Campaigns' case-family preference matrices with nine genuinely authored chapter cases while retaining the same Front Door and case authority.
+
+### v7.1: Nine Authored Case Trilogy
+
+Goal: turn the three Campaign structures into nine genuinely differentiated case chapters while preserving one deterministic case authority.
+
+- Town Reckoning now runs The Open Ledger, The Debt Notice, and The Closed Hearing. Harbor Testimony runs The Broken Manifest, The Borrowed Voice, and The Harbor Inquest. Clinic Headlines runs The Missing Interval, The Private Copy, and The Public Trust Review. The three Finales use separate case families.
+- Every chapter owns an original public premise, causal bridge, occupational pressure, evidence frame and titles, two red herrings, five-step clue rhythm, witness frame, challenge frame, World Lead focus, and aftermath sentence. A uniqueness gate compares those combined treatments so the nine chapters cannot pass as name or location substitutions.
+- The existing engine still generates the culprit, victim, scenes, source events, evidence membership, testimony authority, and judgement. The authored layer then changes only public framing, scene presentation order, clue difficulty/order, safe biographies, red herrings, and testimony wording before `validateWorldCase` runs again.
+- Explicit WorldPackage Campaigns alone receive the treatment. Legacy Premium, unbound Town Reckoning, preview-only paths, and Static keep their previous behavior. The same seed and Campaign chapter select the same definition.
+- Each chapter's authored Search, Question, or Challenge tendency is applied by giving the matching existing action kind a bounded four-point lead and capping all other existing tendencies at three. This changes a recommendation/ranking tendency only: NPC action membership and legality remain identical, and content source bindings are untouched.
+- Accepted player completion records the chapter's allow-listed aftermath inside the existing private Campaign Session history. The public Campaign summary and debrief can show up to three authored aftermath sentences as causal history; the internal case/cycle binding and acceptance tick remain stripped. Wrong theory, autosolve, preview, and activation alone do not write aftermath.
+- `test:authored-campaign-cases` covers all nine treatments, three distinct Finales, hard logic, Route Certificate, deterministic auto-solve, evidence coverage, non-culprit exclusion, timeline closure, truth/evidence isolation, stable runtime selection, actual World Lead focus, unchanged NPC legal actions, accepted aftermath, and public-safe output.
+- No second case engine, judgement, endpoint, SQLite/content/public schema, public artifact, background service, or proof card is introduced. v6.2 remains **instrumentation ready**, not Human Gate passed.
+
+This closes the authored-content prerequisite for v7.2 Investigation Operations Economy. The next version may add strategic cost and time choices around the certified handlers, but it must not reinterpret any of these nine cases' truth or required proof.
+
+### v7.2: Investigation Operations Economy
+
+Goal: turn existing resource commitments and certified investigation actions into one playable, bounded case economy without a second action or time authority.
+
+- Join now opens one Case Operations Board with Search, Question, and Challenge lanes. The player may support zero, one, or two lanes using the existing Police Time, Informant Trust, and Evidence Integrity ledgers; the third lane always remains available through Manual First.
+- The existing relationship terms and investigator-practice discount still calculate each reserve cost. Replanning is atomic and zero tick: unused future support may move, used support cannot be removed, an invalid third slot leaves the ledger unchanged, and accepted closure or case switch returns every unused reserve once.
+- Search, Question, and Challenge still run only through their existing discovery/interrogation handlers. Each lane records one idempotent After Action. Supported work uses one existing town interval; Manual First uses two. Map selection uses none, and normal Advance Town remains the only command that advances the actual world clock or executes simulation phases.
+- The public board shows availability bands, fixed resource mapping, reserve cost, expected bounded benefit, time cost, priority order, and a four-part After Action: spent cost, gained result, world pressure, and next legal direction. Situation Brief, Journal, Debrief, Replay Practice Loop, and Scorecard reuse only aggregate plan status, support count, resolved lanes, and time.
+- Accepted settlement maps four-or-fewer operation blocks to one point of relief, six blocks to one point of pressure, and the middle band to no shift. The actual clamp-aware delta is applied only to the existing case-scene location pressure and can affect future unextracted cases through existing rules. Case switch produces no tempo result.
+- Exhausting every relevant resource still completes all three Manual First operations. Recovery never inserts evidence or theory text. Autosolve, preview, wrong theory, repeated handler calls, and read paths cannot create or settle a player Operations history.
+- `test:investigation-operations` covers zero/one/two-slot planning, stable order, atomic over-cap rejection, replan/refund, idempotent lane completion, supported/manual time, accepted/case-switch settlement, resource-exhaustion no-deadlock, truth/evidence/certificate/auto-solve/legal-action isolation, and public safety.
+- The implementation extends the existing runtime-step payload and private runtime JSON only. It adds no endpoint, SQLite/content/public schema, currency, public artifact, background service, event, proof card, or second clock.
+
+This creates the first direct strategic cost loop inside the nine authored cases. v7.3 may now put these actions on public NPC encounters without allowing ambient character state to rewrite testimony or case authority.
+
+### v7.2.1: Investigation Authority & Replay Isolation Gate
+
+Implemented scope: close the remaining v7.2 authority risk before adding Character Encounter behavior.
+
+- The first non-automatic player session bound to an active Campaign extraction cycle claims a private Operations authority record. The cycle key comes from the server Campaign extraction sequence; it is never accepted from public input and never appears in a public projection.
+- `prepare`, plan, lane completion, accepted settlement, and case-switch refund all consult the same authority. A second session or a post-settlement Replay receives a frozen `practice` summary of the existing plan, with no new support slots and no second tempo result.
+- Replay Search/Question/Challenge can still exercise session-local handlers and local judgement, but they do not persist investigator marks, resource commitments, Recovery entries, testimony updates, World Lead decisions, World Arc advancement, handoff, directive, pressure, faction, or social consequences. A rejected Replay theory can show a browser-only Recovery prompt and complete it without a runtime write.
+- Duplicate accepted requests, page reloads, repeated lane calls, autosolve proof, candidate preview, wrong theory, and case-switch settlement are explicitly idempotent. Spent lanes remain spent; unused reserves return exactly once.
+- The Guided Step Journal exposes a safe completed-step marker instead of relying on a truncated last-20 text window. The Operations Board has distinct Current Case authority and Replay Practice presentations; practice has no mutation controls. Browser QA covers Server Replay freeze and 390px Board layout while Static remains zero `/api/*`.
+- New regression evidence includes replay resource/pressure byte stability, no additional WorldEvent, extracted-case truth/evidence/testimony stability, unchanged Campaign summaries, public-safety checks, and API smoke through a rejected and accepted Replay attempt.
+
+This is the required v7.2 closure gate. It does not add a proof card, endpoint, schema, currency, public artifact, or new case engine, and it does not start v7.3. The next version remains **v7.3 Character Encounter Layer** only after this gate and the existing v6.3–v7.1 validations stay green. v6.2 remains **instrumentation ready**, not Human Gate passed.
+
+### v7.3: Character Encounter Layer
+
+Implemented scope: make visible NPCs carry existing investigation and public-world state without granting ambient presentation any case authority.
+
+- Selecting a map actor now opens one compact Encounter dossier with public name, profession, current public place, availability, textual posture, safe faction standing, latest matching Town Reaction, known contact progress, and one next legal direction. The card is bounded to three actions and uses the same registry metadata as the Command Deck context surface.
+- Public posture is a deterministic projection with fixed precedence: matching supportive/guarded reaction, explicit avoidance, closed or guarded faction standing, high institution/location pressure, known contact workload, then routine fallback. Map pins pair posture color with a visible `+`, `!`, `…`, `×`, or `·` symbol and a text legend.
+- Observe, Question, and Challenge call the existing Command Deck dispatcher and authoritative investigation handlers. The Encounter does not execute an NPC action, invent an action kind, call an Agent intervention, write a memory, mutate runtime, or create a second dialogue/case engine. Residents outside the current certified character set remain public-only.
+- The pure model has no case, runtime, world-event, memory, testimony, or truth input. Its output strips action handler keys and contains no raw actor/location/institution/case/event/source/evidence/session values. Replay carries the explicit practice/frozen boundary from v7.2.1 while preserving legal session-local rehearsal.
+- The UI uses a single map-edge dossier rather than another permanent dashboard panel. It retains the existing dark civic-dossier material language, one primary action, 44px controls, keyboard focus styles, restrained motion, and reduced-motion support. Browser QA opens the Encounter at 390/768/1440, checks no horizontal overflow or raw key leakage, and executes Question through the existing registry path.
+- `test:character-encounter` covers determinism, no mutation, five-state derivation branches, replay/public-only boundaries, action order/limit, and safe output. Existing context-action and map-lens tests remain green. No endpoint, request field, Persistent Town field, SQLite/content/public schema, public artifact, tick, event, candidate rule, proof card, or protected catalog changed.
+- The independent gate retains 125 API route files, a 2,811,669-byte sampled runtime JSON, and a 12.81 ms sampled p95 tick. Static Browser QA remains zero `/api/*`; Command Deck QA passes at 390/768/1440 and executes Question through the Encounter. The Static QA launcher now binds dev fallback explicitly to IPv4, kills the complete Windows child process tree, and reuses a production build only when its build marker is newer than all app/package/content inputs, avoiding both the former orphan-server failure and stale-build validation.
+
+This closes the v7.3 player-facing map-character bridge. It improves the visible relationship between residents, public world response, and certified investigation actions, but it does not claim human comprehension evidence; v6.2 remains **instrumentation ready**. The next version is v7.4 Investigator Headquarters and Long-Term Progression, subject to an independent v7.3 validation gate.
+
+### v7.4: Investigator Headquarters and Long-Term Progression
+
+Implemented scope: convert existing Investigator Progression marks into a bounded, player-visible transition between accepted Campaign cases. This is the first cross-case build choice in the Campaign loop; it is not a proof card and it does not weaken certified investigation fairness.
+
+- After accepted case one or two, the existing Persistent Town runtime prepares one `ready` Headquarters stage. The player chooses Field Search, Witness Work, Contradiction Analysis, Evidence Handling, or Institutional Access. The choice is a mutually exclusive zero-clock command; the next extraction is rejected with `INVESTIGATOR_HEADQUARTERS_REQUIRED` until a legal choice is locked.
+- Eligibility is derived from existing manual practice marks. Campaign-specific recommendation order is deterministic, while available directions remain player-selectable. The three lane directions apply one matching reserve discount, Evidence Handling schedules one Recovery assist through the existing Campaign Recovery cadence, and Institutional Access adds only an early public pressure band.
+- Lifecycle is bounded to `ready → prepared → active → completed`, with at most two preparations per Campaign. Successful route-integrity extraction activates the selected preparation; accepted theory completes it. Duplicate accepted requests, previews, autosolve, wrong theory, case-switch settlement, and Replay never create or consume a preparation.
+- Public runtime, Situation Brief, World Campaign, Guided Step Journal, Debrief, and Replay surfaces show only aggregate status, safe labels, benefit text, progress, and next action. Internal cycle/case/target/tick/resource/action/Recovery-use fields are stripped. Static Runtime shows a Server-only boundary and remains read-only with zero `/api/*`.
+- Fairness invariants retain candidate membership/order, validity, truth, evidence coverage, Route Certificate, legal NPC actions, judgement, current case authority, and event counts. No second investigation or Recovery engine is introduced.
+
+The v7.4 gate includes deterministic pure tests, old-runtime compatibility, zero-clock API smoke, extraction-gate lifecycle, two-stage bound, reserve/Recovery idempotence, public-key scans, Situation Brief rendering, and 390/768/1440 browser checks. v6.2 remains **instrumentation ready**; no Human Gate claim is made without the required真人 sessions.
+
+### v7.5: Campaign Command Deck and Production Hardening
+
+Goal: integrate the existing Campaign systems and prove that the nine authored cases remain deterministic, fair, readable, and operationally bounded without introducing another mechanic layer.
+
+- A dedicated production-Server API playthrough runs all three Campaign choices independently: Town Reckoning, Harbor Testimony, and Clinic Headlines. Each completes its Opening, Escalation, and Finale case through the existing Front Door package binding, route-integrity extraction, Headquarters preparation gate, World Lead follow/resolve, Operations reservation, certified Search/Question/Challenge handlers, explicit Recovery, accepted theory, Arc convergence, and safe Campaign debrief. The result is exactly nine completed authored cases, not nine renamed candidate rows.
+- The playthrough uses a temporary database path supplied only to the test process and removes the database, WAL, and SHM files in `finally`. It does not touch the default 10+ GB development database, add a SQLite migration, or produce a repository artifact. Existing Persistent Town API smoke remains the detailed Faction Directive, Offer, Pressure Cascade, and Town Social Response lifecycle gate.
+- A 24-seed fairness/property sweep compares a baseline runtime with Headquarters, Handoff, and bounded Pressure state. It requires identical candidate membership and authority fields, truth, evidence membership/coverage, Route Certificate, judgement, NPC legal action sets, and same-seed candidate ordering. A candidate may move in the queue only through the existing bounded influence layer; no extracted case authority may move.
+- The Command Deck now has a production QA contract around one Current Action, map-first context, foldable secondary world summaries, and the existing 44px/focus/reduced-motion rules. Browser checks cover Front Door, Headquarters ready/prepared/active/completed, Encounter actions, keyboard focus restoration, screenshot states, 390/768/1440 widths, Static zero `/api/*`, and raw-key safety.
+- The measured production budgets remain below their independent limits: approximately 2.81 MB sampled runtime JSON, roughly 15 ms sampled p95 tick in the current run, and 125 API route files against limits of 4 MB, 250 ms, and 130. Protected `public/dataset-reader` and `public/review-catalog` remain read-only.
+- Public directive text was tightened to describe “normal town steps” instead of exposing implementation cadence terminology. Public summaries still omit case/session/source/event/NPC/location/institution/resource/action keys, hidden truth, raw bodies, absolute paths, and internal clock fields.
+
+Validation evidence for this gate is `test:nine-case-campaign`, `test:v75-invariants`, `test:investigator-headquarters`, the existing world/persistent-town/content suites, production build, Command Deck browser QA, Static browser QA, performance budget, forbidden scans, and protected-public diff checks. This is automated integration hardening only; v6.2 remains **instrumentation ready** until the required真人 sessions produce an eligible human-gate result.
 
 ## Release Handoff Notes
+
+### v8.0: Strategic Investigation Command Layer
+
+v8.0 closes the largest automated usability gap left by v7.5: the world systems now resolve through a single map-first command rhythm instead of competing panel hierarchies. The top ribbon exposes eight safe resource bands; the left rail owns one current objective; the center map remains the main visual field; the right inspector uses progressive disclosure; and the bottom action bar owns exactly one primary action with no more than three secondary actions. Immediate Result, World Consequence, and Next Objective reuse existing safe summaries rather than creating a proof card or event log.
+
+The pure queue and dispatcher are deterministic and non-authoritative. A 64-sample property suite verifies primary uniqueness, secondary caps, action-adapter equivalence, no input mutation, public-safe serialization, and isolation from truth, evidence coverage, Route Certificate, judgement, and NPC legal actions. The nine-case production playthrough now records one Strategic Command certified-route verification per authored case, while v7.5 remains the candidate/truth/fairness baseline.
+
+Architecture debt was reduced materially: Replay view models and Persistent Town lifecycle behavior moved into dedicated hooks; Campaign Study and Persistent Town render surfaces moved into presenters; encounter collection became a pure domain projection; CSS was split by domain without changing cascade order. The enforced budgets are now `page.tsx < 4,000` physical lines and `globals.css < 6,500`, with the existing 4 MB runtime JSON, 250 ms sampled p95 tick, and 130 API-route limits unchanged.
+
+This remains an automated comprehension improvement, not human evidence. v6.2 is still **instrumentation ready** and must not be described as Human Gate passed. Recommended v8.1 work is content pacing and context-sensitive progressive disclosure backed by future human results, not another independent mechanic layer.
+
+### v8.1: Strategic Campaign Pacing & Progressive Disclosure
+
+v8.1 converts the v8.0 command hierarchy into a visibly staged turn without changing world or case rules. The new deterministic Pacing model owns Brief/Inspect/Choose/Execute/Resolve/Advance presentation, Why Now, Now/Soon/Later grouping, disclosure priority, safe forecast, focus target, and a five-entry React-session outcome history. Disabled upstream actions cannot be promoted; one primary and three-secondary caps remain hard invariants. The Promise-aware action lifecycle continues through the existing adapter and payload, so no second business state machine or Server authority exists.
+
+The UI now behaves as a game surface rather than an equal-weight dashboard. Desktop keeps a narrow objective rail, 63.9% measured map share, essential-only Inspector, and one bottom primary action. The 768px Character Encounter is attached to the map edge and measures 35% of map width; Queue, Context, and Resources share one panel state. At 390px the map begins at 152px, four core resources remain visible, All Resources is a local sheet, Current Action sits above Context, horizontal overflow is zero, and Escape restores the appropriate trigger. Form focus suppresses global shortcuts; J/K and brackets use roving Queue focus; reduced-motion removes meaningful transitions.
+
+Architecture budgets are now materially tighter: `app/page.tsx` is 2,989 physical lines, `app/globals.css` 4,821, `CommandDeckShell.tsx` 353, its CSS 762, and the largest new Pacing/workflow surface 342. Review/Scenario orchestration, campaign world choices, replay-session setup, and Journal aggregation moved into bounded hooks. Sampled performance remains 2,814,819 runtime JSON bytes and 19.92ms p95 across the 24-tick budget sample, with 125 API routes.
+
+Automated evidence includes the pure model/property suite, keyboard/focus/responsive browser gate, Static zero-API/zero-storage gate, and nine-case production playthrough. All nine cases report Inspect -> Execute -> Resolve, certified handler reuse, three-layer feedback, and unchanged Persistent Town projection apart from the read-generated presentation timestamp. This does not constitute human comprehension evidence: v6.2 remains **instrumentation ready**, not Human Gate passed.
+
+Recommended v8.2 direction is District Operations and Strategic Fronts only after the v8.1 gates remain green: make existing world consequences a bounded map decision, rather than adding another proof or summary card.
+
+### v8.2: District Operations / Strategic Fronts
+
+v8.2 completes that direction as a bounded map interaction rather than a new world system. The new pure projection groups the established public-safe map lenses, Strategic Command queue, current objective, and consequence timeline into a fixed Investigation / Institution / Pressure order. It exposes at most three fronts, exactly one current front, deterministic public-location tie-breaking, and at most one already-enabled upstream action per front. Disabled actions remain disabled and cannot be promoted by spatial presentation.
+
+The player can inspect a front, switch the existing map lens, and focus a public district without an API request, tick, event, persistence write, candidate refresh, resource change, or localStorage entry. Choosing Open Existing Action delegates the unchanged command token to the existing adapter and endpoint. Fronts joins Resources, Queue, and Context in the single panel state; Character Encounter and location hover cards yield while Fronts owns the map edge, eliminating the 768px double-panel collision found during visual review. Responsive budgets are a 390px sheet above Current Action, a 35%-maximum 768px edge panel, and a 420px desktop ceiling.
+
+Automated evidence now includes a dedicated deterministic/property suite, 390/768/1440 plus Static browser QA, and per-case checks in the production nine-case playthrough. Those checks confirm the same certified Search dispatch, zero-tick focus selection, no raw identifier exposure, and unchanged extracted-case and Persistent Town projections apart from read-generated timestamps. The established v7.5 invariant sweep remains the deeper candidate/truth/evidence/Route Certificate/judgement/NPC-action authority gate. New file budgets cap the front model, component, and CSS independently at 500 lines each.
+
+This materially improves strategic legibility: world consequences now have a location, priority, and legal next verb without becoming another summary card. It still is automated usability evidence only. v6.2 remains **instrumentation ready**, not Human Gate passed. A suitable next release should deepen district continuity through existing consequences or reduce remaining presentation debt; it should not add an independent proof or authority layer.
+
+### v8.3: Guided Workflow Boundary Split
+
+v8.3 takes the presentation-debt branch of that recommendation. The remaining page-local Guided code mixed three responsibilities with different change rates: deciding the next certified stage, submitting a theory and projecting server summaries, and executing one Guided action. Those responsibilities now live in `useGuidedManualViewModel`, `useTheorySubmissionActions`, and `useGuidedManualActions`. The page composes their outputs and no longer owns either mutation state machine.
+
+The change is deliberately non-expansive. All Join/Search/Question/Challenge handlers, the `/api/investigation/submit-theory` endpoint and payload, response-setter order, Replay Manual First/fallback rules, Recovery behavior, Journal copy, and Static local submission remain the same. The new pure suite covers every Guided transition plus World Lead priority, determinism, and non-mutation. The controller contract now scans the moved request source and verifies all three workflow exports remain under 500 lines while preserving the established authority snapshot.
+
+Measured architecture improves from `page.tsx` 2,990 lines to 2,368, with the pure projection at 140 lines, theory submission at 246, and Guided execution at 322. The enforced page ceiling is now 2,500 rather than 3,000; the pure target module is capped at 250 and both mutation modules at 500. Runtime JSON, API-route count, tick budget, public schemas, SQLite, candidate ranking, and protected artifacts are unaffected. This remains automated maintainability evidence; v6.2 is still **instrumentation ready**, not Human Gate passed.
+
+### v8.4: Certified Investigation Workspace Boundary Split
+
+v8.4 removes the remaining certified investigation mutation graph from the root page. A single typed adapter now owns the established Join, Search, Question/Challenge, evidence-selection, and Reveal behavior for Map, Command Deck, Guided Manual Run, and direct controls. The exact Server endpoints, Static engine helpers, optimistic Join, response setter order, Operations Journal, world-summary projection, Study signals, toasts, error handling, and theory-submit boundary remain unchanged. Certified autosolve and browser-only navigation are separately bounded so neither can become a second player authority.
+
+The 1,746-line Investigation Surface is replaced by a 171-line composition boundary, a pure deterministic workspace model, and direct Core Actions, Route & Review, and Debrief & Replay surfaces. Original classes, test ids, visible copy, ARIA behavior, DOM order, collapsibles, and CSS cascade are retained without a new wrapper or dynamic import. Measured source sizes are approximately 1,874 lines for `page.tsx`, 172 for the composer, 179/241/179 for the three surfaces, 318 for the pure model, and 356/158/256 for certified actions, playthrough, and navigation.
+
+The new contract verifies all adapter methods, endpoint ownership, Static delegation, setter order, shared entry binding, request-free presentation/navigation, deterministic seven-step projection, and non-mutation. Controller contracts expand to nine surfaces and seven workflows while retaining truth, Route Certificate, evidence coverage, judgement, candidates, NPC legal actions, and world-consequence equivalence. Sampled runtime remains approximately 2.81 MB with 125 API routes and a low double-digit millisecond tick p95 against unchanged 4 MB / 130 / 250 ms limits. This is automated maintainability evidence only; v6.2 remains **instrumentation ready**, not Human Gate passed.
+
+### v8.5: Town Bootstrap & Campaign Launch Boundary Split
+
+v8.5 removes the next root-page orchestration cluster while keeping the player path behaviorally frozen. `useWorldSessionActions` now owns the `detective-town-launch-v1` persistence shape, Static/Server bootstrap guard, hydration, create/load/tick, and runtime/template switching. `useInvestigationReadQueries` owns map, deduction-graph, live-eval, and safe Developer API read projections. `useCampaignLaunchActions` owns the existing Front Door order: campaign-ready create, WorldPackage selection, two-step start, five bounded eight-step retries, route-integrity extraction, and post-success Continue persistence.
+
+The Headquarters zero-tick request remains in `useCampaignWorldChoiceActions`; Persistent Town refresh and request-free browser lifecycle effects are isolated from the root page. A source contract verifies that the root page has no request calls, Static runtime is resolved before any Server read, initialization is idempotent, launch phases stay ordered, and failed launch/continue paths cannot close the Front Door as a false success. The measured root page is 1,464 physical lines; new boundaries remain below 500/300/250/150 lines respectively.
+
+This is an architecture-only release. It adds no endpoint, SQLite/content/public schema, runtime field, event, tick, public artifact, ranking modifier, proof card, or client-side authority. Existing truth, evidence coverage, Route Certificate, judgement, candidate membership/order, NPC legal actions, world consequences, Static zero-API behavior, protected public directories, and v6.2 `instrumentation ready` status remain unchanged.
+
+### v8.6: Campaign Pacing & Content Value Loop
+
+Implemented scope: convert existing authored content and public runtime summaries into one legible chapter rhythm without adding another simulation layer or proof surface.
+
+- A 301-line pure presentation model derives nine safe value rows from the existing three Campaign definitions and nine authored-case treatments. Each row exposes a distinct public hook, primary town surface, visible consequence, Why Now, next-case context, replay contrast, and the already-authored Search/Question/Challenge emphasis. No content, public, or runtime schema changes.
+- Strategic Command retains the existing Decision Queue and typed adapters. The pacing projection enriches Current Objective and safe forecast only; it cannot promote a disabled action, issue a request, write storage, advance a tick, generate an event, or influence candidate ordering.
+- World Campaign uses progressive disclosure: Current Objective and Why Now remain visible, while What Changes / What Stays Fair is collapsed. Situation Brief adds one compact context; Guided Step Journal, Solved Case Debrief, and Replay Practice Loop show aggregate pacing status only. No new button, dashboard, proof card, or action handler is introduced.
+- Static Runtime shows a single Server-only Campaign Pacing boundary and omits persistent pacing context from Journal, Debrief, and Replay. It continues to make zero `/api/*` requests and exposes no persistent controls or internal identifiers.
+- The dedicated gate covers the nine-row matrix, within-Campaign content contrast, determinism, non-mutation, missing-summary fallback, one primary action, three-secondary cap, status lifecycle, request/storage isolation, public safety, and detached authority isolation. Existing Campaign Content, Strategic Pacing, Controller, World Session, 24-seed, nine-case, browser, and performance gates remain independent authority evidence.
+
+Measured budgets after the change are `app/page.tsx` 1,494 lines, Campaign Pacing model 301, World Campaign surface 843, runtime JSON 2,814,819 bytes, 125 API routes, and a sampled 11.36 ms p95 tick against limits of 1,550 / 350 / 900 / 4 MB / 130 / 250 ms. These are automated product and architecture results only. v6.2 remains **instrumentation ready**; no Human Gate result can be inferred without the required official sessions.
+
+Comparative interpretation: v8.6 moves the project closer to Wesnoth's objective clarity, Endless Sky's mission-state legibility, and Unciv/Freeciv's map-first turn explanation while retaining stronger formal detective fairness and public-safe audit. It still trails those mature projects in authored volume, transition dramatization, audio/visual feedback breadth, accessibility validation, localization, and human-tested pacing. The next high-value release should expand authored transitions or consolidate the oversized Situation/Review surface; it should not add another independent consequence engine.
+
+### v8.7: Focused Resolution & Campaign Transition Theatre
+
+Implemented scope: dramatize existing action resolution and Campaign handoff without creating a second action, consequence, or case authority.
+
+- A bounded pure presentation model derives six safe beat kinds and the fixed Resolve -> Result -> Consequence -> Next rail from existing Strategic Command, Campaign Pacing, and public outcome summaries. It is deterministic, non-mutating, request-free, and storage-free.
+- A browser-local hook observes the established action lifecycle and safe feedback signatures across Command Deck, Character Encounter, and Context entry points. Hiding a resolving beat never cancels, repeats, or changes the underlying handler.
+- A fixed overlay arbiter prevents blocking setup, Theatre, Encounter, Context, Strategic Fronts, panels, notifications, and toasts from occupying the primary layer simultaneously. Case Files may replace the Encounter presentation while retaining the selected actor.
+- The responsive Theatre protects the map, uses 44px controls, moves focus to its heading, supports Skip/Continue, and removes non-essential animation for reduced-motion users. Static mounts no Theatre and shows one read-only Server-only boundary after the local Join path.
+- World Campaign was split into a small top-level composition plus Journey, Lifecycle, Operations, and Static boundary surfaces. This is an ownership reduction, not a DOM-order or world-rule expansion.
+- Live browser regression exposed and fixed one client refresh race: a consumed next-case handoff can no longer regress to an older ready summary when an earlier Persistent Town read completes late. The runtime remains the single writer, and the public summary remains identifier-safe.
+
+The dedicated gate covers six-phase determinism, public sanitization, request/storage isolation, overlay precedence, Server-only rendering, 44px/reduced-motion behavior, Inspector/Encounter arbitration, 390/768/1440 responsiveness, and the existing Static zero-API boundary. Runtime JSON remains below 4 MB, API routes remain below 130, and sampled tick p95 remains far below 250 ms. No endpoint, payload, SQLite/content/public schema, event, tick, candidate modifier, protected artifact, or proof card is introduced.
+
+Comparative interpretation: the transition rail brings the project closer to Civilization VI's focused action-result staging and Endless Sky's mission transition clarity while preserving the map-first restraint expected from Wesnoth/Unciv-style interfaces. The project still lacks their authored animation breadth, sound design, localization maturity, and human-validated pacing. v6.2 therefore remains **instrumentation ready**, not Human Gate passed; automated Theatre evidence cannot substitute for the official comprehension sessions.
+
+### v8.8: Objective-First Command Deck
+
+Implemented scope: reduce simultaneous world-system presentation and make one objective visually authoritative without changing any game authority.
+
+- `deriveCurrentWorldAction` now returns a presentation-only `surface`. Its existing priority decides which already-rendered subsystem owns `world-campaign-focus`; all other safe summaries and unchanged controls move into one default-closed `world-campaign-archive`.
+- Strategic Pacing is the only canonical Current Objective. The compact order is Objective -> Theatre/map -> Current Action; Public Change and the latest safe result moved into Safe Forecast, and the duplicate world-action heading became Campaign priority.
+- Town Pulse styles moved into an independently budgeted module. Manual Replay drill actions, authoring runtime construction, campaign presentation derivation, and deduction-graph character selection moved into bounded request-free boundaries.
+- The dedicated model/source gate verifies deterministic surface priority, one Current Action marker, focus/archive ownership, request/storage isolation, compact ordering, CSS separation, source budgets, and detached authority. Existing Controller, World Session, Campaign Transition, Pacing, browser, Static, 24-seed, nine-case, performance, privacy, and protected-public checks remain independent gates.
+
+Measured architecture is `app/page.tsx` 1,345 lines, Command Deck CSS 719, Town Pulse CSS 76, World Campaign panel 188, campaign-presentation hook 85, runtime JSON 2,814,819 bytes, 125 API routes, and 8.84 ms sampled tick p95 against limits of 1,350 / 720 / 120 / 300 / 350 / 4 MB / 130 / 250 ms. No endpoint, payload, runtime field, SQLite/content/public schema, event, tick, ranking modifier, public artifact, storage key, world rule, or proof card was added.
+
+Comparative interpretation: v8.8 adopts Civilization VI's single-turn priority, Endless Sky's selected-versus-available mission distinction, and Wesnoth/Unciv's map-first disclosure discipline without copying their assets or creating a second mission authority. The project still trails mature games in authored breadth, audio/animation, localization, accessibility field validation, and human-tested pacing. v6.2 remains **instrumentation ready**, not Human Gate passed.
+
+### v8.9: Certified Case Rhythm
+
+Implemented scope: reduce the interaction distance across one certified case without changing case authority.
+
+- A deterministic presentation model groups Join, Search, Question, Challenge, Select Evidence, Submit, and Review Source into Intake, Fieldwork, Deduction, and Review. The existing Observe preparation remains explicit and does not count as a new proof step.
+- Strategic Command uses the rhythm only when the certified investigation owns the primary slot. Matching map context calls the existing certified adapter; mismatched context focuses the route target. Evidence selection, theory entry, submission, and Recovery remain Manual First and are never auto-filled by target focus.
+- Rejected theory state exposes one sanitized public gap and one repair instruction. It does not display submitted prose, hidden truth, raw ids, source bodies, or a certified answer.
+- The full seven-step route moved behind a default-closed disclosure in Command Deck mode. The persistent HUD retains one objective, one four-beat rail, the protected map, and one Current Action; existing Guided, proof, source review, Debrief, and Replay surfaces remain available in their disclosures.
+- Automated budgets cap each exercised stage at two primary clicks and one panel switch, local presentation settle at 3,000 ms, and network-backed Question/Challenge settle at 12,000 ms. The final browser sample measured Join 609 ms, Search context focus 94 ms, Search execution 105 ms, and Question 2,487 ms. These are automation timings, not participant comprehension data.
+
+Measured architecture is `app/page.tsx` 1,346 lines, rhythm model 281, hook 17, action adapter 31, surface 33, CSS 84, Command Deck CSS 719, runtime JSON 2,814,819 bytes, 125 filesystem-counted API routes, and 18.23 ms sampled tick p95 against limits of 1,350 / 300 / 50 / 80 / 100 / 180 / 720 / 4 MB / 130 / 250 ms. Controller, Strategic, Workspace, Theatre, 24-seed, nine-case, API, and Static gates remain the independent authority evidence.
+
+Comparative interpretation: v8.9 borrows Civilization VI's single-turn instruction, Endless Sky's selected objective detail, and Wesnoth's compact objective progression while preserving a stronger detective-specific Route Certificate and Manual First boundary. The next product bottleneck is authored breadth and replay contrast, not another world-state mechanism. v6.2 remains **instrumentation ready**, not Human Gate passed.
+
+### v9.0: Authored Campaign Route Variants
+
+Implemented scope: double authored Campaign treatment breadth while keeping every run at three cases and retaining one case authority.
+
+- Town Reckoning, Harbor Testimony, and Clinic Headlines each expose an original and counter route. The six routes provide 18 distinct treatments, six distinct Finale families, route-specific preferred case types, different Search / Question / Challenge ordering, separate occupational pressure, public premise, evidence framing, red herrings, causal bridges, and aftermath copy.
+- Front Door route choice extends the existing WorldPackage-select request with one optional internal route key. It adds no endpoint. The route is selected before extraction, persists in the existing Campaign Session JSON, defaults safely for legacy state, and returns `CAMPAIGN_ROUTE_LOCKED` without mutating the runtime when a later request attempts to switch it.
+- Candidate preference is bounded and applies only to future, unextracted cases. Route-integrity extraction freezes the active case; route selection cannot change its truth, evidence membership, Route Certificate, judgement, legal NPC actions, or certified investigation path.
+- Public projection strips the internal route key with the internal Campaign history. Front Door, Campaign Journey, Situation Brief, Pacing, Theatre, and debrief receive only the safe route label, strategy framing, and authored consequence copy. Static shows both safe route names plus the original route detail without controls or API requests.
+- The original 9-case production playthrough remains green. A new six-world gate completes all 18 treatments through the same Server endpoints, including World Lead, Operations, explicit Recovery, accepted theory, Headquarters, Arc convergence, Strategic Command/Pacing/Fronts, distinct route Finale, public-safety checks, and post-extraction route-lock checks.
+
+Measured architecture is `app/page.tsx` 1,348 lines, Campaign Pacing model 307, Campaign catalog 344, authored-treatment catalog 439, Front Door model / surface / CSS / launch adapter 63 / 128 / 432 / 157, Command Deck CSS 719, runtime JSON 2,815,674 bytes, 125 filesystem-counted API routes, and 9.13 ms sampled tick p95 against limits of 1,350 / 350 / 450 / 600 / 140 / 180 / 500 / 220 / 720 / 4 MB / 130 / 250 ms. The implementation adds no SQLite/content/public schema, public artifact, background process, proof card, event, tick, or second case engine.
+
+Comparative interpretation: v9.0 adopts the explicit route-selection and replay-contrast strengths of mature mission games without allowing route content to become a second detective authority. Authored breadth is now materially better, but the project still needs additional Campaign families, richer bespoke visual/audio assets, localization, accessibility field validation, and human-tested pacing. v6.2 remains **instrumentation ready**, not Human Gate passed.
+
 
 Recommended future release scope for v6.0 or later:
 

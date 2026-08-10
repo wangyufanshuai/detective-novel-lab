@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./styles/novel-workbench.css";
+import "./styles/authoring.css";
+import "./styles/town-shell.css";
+import "./styles/command-center.css";
+import "./styles/investigation-review.css";
 import "./styles/campaign-study.css";
+import "./styles/presentation-pass.css";
 
 export const metadata: Metadata = {
   title: "Detective Town",

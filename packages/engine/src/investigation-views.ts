@@ -660,6 +660,14 @@ export function buildPlayableCaseIntake(
   };
 }
 
+function safeNotebookTagLabel(value: string, fallback: string): string {
+  const normalized = value.trim();
+  if (!normalized) return fallback;
+  return /\b(?:npc|case|event|source|location|institution|resource|evidence|scene|session|character)-[a-z0-9-]*\d[a-z0-9-]*\b/i.test(normalized)
+    ? fallback
+    : normalized;
+}
+
 export function buildEvidenceNotebook(caseFromLog: CaseFromLog, events: WorldEvent[] = [], session?: PlayerSession | null): EvidenceNotebookItem[] {
   const discovered = new Set(session?.discoveredEvidenceIds || []);
   return caseFromLog.deductionCase.evidence.map((evidence, index) => {
@@ -667,8 +675,10 @@ export function buildEvidenceNotebook(caseFromLog: CaseFromLog, events: WorldEve
     const isDiscovered = discovered.has(evidence.id);
     const challengeNpcIds = Array.from(new Set([...evidence.relatedCharacterIds, ...caseFromLog.testimonies.filter((item) => item.contradictionEvidenceIds.includes(evidence.id)).map((item) => item.characterId)]));
     const challengeNpcNames = challengeNpcIds.map((id) => characterName(caseFromLog, id));
-    const supports = evidence.supportsConclusion.length ? evidence.supportsConclusion : evidence.isKey ? ["关键证据链"] : ["背景还原"];
-    const contradicts = evidence.contradicts.length ? evidence.contradicts : caseFromLog.testimonies.filter((item) => item.contradictionEvidenceIds.includes(evidence.id)).map((item) => `${characterName(caseFromLog, item.characterId)} 的证词`);
+    const supports = (evidence.supportsConclusion.length ? evidence.supportsConclusion : evidence.isKey ? ["关键证据链"] : ["背景还原"])
+      .map((label) => safeNotebookTagLabel(label, "Certified proof obligation"));
+    const contradicts = (evidence.contradicts.length ? evidence.contradicts : caseFromLog.testimonies.filter((item) => item.contradictionEvidenceIds.includes(evidence.id)).map((item) => `${characterName(caseFromLog, item.characterId)} 的证词`))
+      .map((label) => safeNotebookTagLabel(label, "Recorded testimony claim"));
     return {
       evidenceId: evidence.id,
       title: isDiscovered ? evidence.title : hiddenEvidenceTitle(index),

@@ -1,6 +1,11 @@
 import type { SafeContextAction } from "./context-action-resolver";
+import type { TownMapLensViewModel } from "./town-map-lens-model";
+import type { InvestigationTurnState } from "./investigation-turn-model";
+import type { WorldConsequenceTimeline } from "./world-consequence-timeline";
+import type { CampaignPacingViewModel } from "./campaign-pacing-model";
+import { derivePresentationFeedback, type PresentationFeedback } from "./presentation-feedback";
 
-export type CommandDeckObjectiveAction = "observe" | "join" | "search" | "question" | "submit" | "review" | "world-choice" | "advance" | "recover" | "complete";
+export type CommandDeckObjectiveAction = "observe" | "join" | "search" | "question" | "challenge" | "select-evidence" | "submit" | "review" | "world-choice" | "advance" | "recover" | "complete";
 
 export type CampaignCommandDeckViewModel = {
   runtimeMode: "static-demo" | "server";
@@ -22,7 +27,7 @@ export type CampaignCommandDeckViewModel = {
     progressLabel: string;
   };
   selectedContext?: {
-    kind: "location" | "institution" | "actor";
+    kind: "location" | "institution" | "actor" | "evidence" | "theory";
     label: string;
     detail: string;
     actions: SafeContextAction[];
@@ -37,6 +42,12 @@ export type CampaignCommandDeckViewModel = {
     pressureLabel: string;
     socialResponseLabel: string;
   };
+  mapLenses: TownMapLensViewModel;
+  investigationTurn: InvestigationTurnState;
+  worldConsequenceTimeline: WorldConsequenceTimeline;
+  presentationFeedback: PresentationFeedback;
+  /** Optional content/pacing context; it never owns a command or authority. */
+  campaignPacing?: CampaignPacingViewModel;
   notifications: Array<{
     label: string;
     detail: string;
@@ -51,14 +62,23 @@ type CommandDeckSuggestedAction = {
   targetTab?: string;
 };
 
-type CommandDeckStatus = {
+export type CommandDeckStatus = {
   status?: string;
   label?: string;
+  campaignLabel?: string;
+  themeLabel?: string;
+  chapterLabel?: string;
+  chapterObjective?: string;
   primaryActionLabel?: string;
   nextAction?: string;
   directionLabel?: string;
   headline?: string;
   progressLabel?: string;
+  benefitLabel?: string;
+  costLabel?: string;
+  recoveryActionLabel?: string;
+  operationLabel?: string;
+  actionLabel?: string;
 };
 
 export type CampaignCommandDeckInput = {
@@ -81,8 +101,12 @@ export type CampaignCommandDeckInput = {
   recovery?: CommandDeckStatus;
   guidedJournal?: CommandDeckStatus;
   worldEvent?: CommandDeckStatus;
-  selectedContext?: { kind: "location" | "institution" | "actor"; label: string };
+  selectedContext?: { kind: "location" | "institution" | "actor" | "evidence" | "theory"; label: string };
   contextActions?: SafeContextAction[];
+  mapLenses?: TownMapLensViewModel;
+  investigationTurn?: InvestigationTurnState;
+  worldConsequenceTimeline?: WorldConsequenceTimeline;
+  campaignPacing?: CampaignPacingViewModel;
 };
 
 function actionFromPhase(phase: string): CommandDeckObjectiveAction {
@@ -120,19 +144,23 @@ function trustBand(value: number | undefined, fallback: string) {
 }
 
 export function deriveCampaignCommandDeckViewModel(input: CampaignCommandDeckInput): CampaignCommandDeckViewModel {
+  const openingCampaignLabel = input.runtimeMode === "server" ? "Town Reckoning" : "Campaign demonstration";
   const suggested = input.suggestedAction || {};
   const phase = suggested.phase || "Next";
-  const title = suggested.title || input.campaign?.primaryActionLabel || "Continue the investigation";
-  const detail = suggested.detail || input.campaign?.nextAction || "Choose the next legal action from the current context.";
+  const title = input.campaignPacing?.currentObjective.label
+    || suggested.title
+    || input.campaign?.primaryActionLabel
+    || "Continue the investigation";
+  const detail = input.campaignPacing?.currentObjective.detail
+    || suggested.detail
+    || input.campaign?.nextAction
+    || "Choose the next legal action from the current context.";
   const notifications = [
     statusNotification("Guided Journal", input.guidedJournal, input.guidedJournal?.status === "done" ? "success" : "info"),
     statusNotification("World Event", input.worldEvent),
-    statusNotification("Recovery", input.recovery, input.recovery?.status === "blocked" ? "warning" : "info"),
-    statusNotification("World Lead", input.worldLead),
-    statusNotification("World Arc", input.worldArc),
-    statusNotification("Faction Directive", input.directive, input.directive?.status === "completed" ? "success" : "info"),
-    statusNotification("World Pressure", input.pressure, input.pressure?.status === "active" ? "warning" : "info"),
-    statusNotification("Town Response", input.socialResponse, input.socialResponse?.status === "settled" ? "success" : "info")
+    input.worldConsequenceTimeline && input.worldConsequenceTimeline.state !== "empty"
+      ? { label: input.worldConsequenceTimeline.headline, detail: input.worldConsequenceTimeline.summary, tone: input.worldConsequenceTimeline.state === "blocked" ? "warning" as const : input.worldConsequenceTimeline.state === "settled" ? "success" as const : "info" as const }
+      : undefined
   ].filter((item): item is NonNullable<typeof item> => Boolean(item));
 
   const objectiveAction = suggested.targetTab === "events"
@@ -140,6 +168,25 @@ export function deriveCampaignCommandDeckViewModel(input: CampaignCommandDeckInp
     : suggested.targetTab === "investigation" && phase.toLowerCase().includes("join")
       ? "join"
       : actionFromPhase(phase);
+  const resolvedTurn = input.investigationTurn || {
+    turnNumber: 1,
+    phase: input.selectedContext ? "choose-action" as const : "choose-target" as const,
+    objectiveKey: `${phase}:${title}`,
+    contextLabel: input.selectedContext?.label,
+    feedbackLabel: input.selectedContext ? "Choose one legal action for the selected public context." : "Select a public map object to begin the next investigation turn."
+  };
+  const enabledActionLabel = input.contextActions?.find((action) => action.enabled && action.primary)?.label
+    || input.contextActions?.find((action) => action.enabled)?.label;
+  const presentationFeedback = derivePresentationFeedback({
+    turnPhase: resolvedTurn.phase,
+    turnNumber: resolvedTurn.turnNumber,
+    selectedContextLabel: input.selectedContext?.label,
+    enabledActionLabel,
+    lastActionLabel: resolvedTurn.lastActionLabel,
+    consequenceState: input.worldConsequenceTimeline?.state,
+    consequenceHeadline: input.worldConsequenceTimeline?.headline,
+    campaignStatus: input.campaign?.status
+  });
 
   return {
     runtimeMode: input.runtimeMode,
@@ -149,14 +196,16 @@ export function deriveCampaignCommandDeckViewModel(input: CampaignCommandDeckInp
       heatLabel: pressureBand(input.heat, input.urgency || "stable"),
       trustLabel: trustBand(input.publicTrust, input.socialResponse?.directionLabel || "stable"),
       pressureLabel: pressureBand(input.resourcePressure, input.pressure?.directionLabel || "none"),
-      campaignLabel: input.campaign?.progressLabel || "Campaign opening"
+      campaignLabel: input.campaign?.campaignLabel || input.campaign?.progressLabel || openingCampaignLabel
     },
     currentObjective: {
       action: objectiveAction,
       phase,
       title,
       detail,
-      nextAction: input.campaign?.nextAction || "Complete the current certified step before opening optional world actions.",
+      nextAction: input.campaignPacing?.nextAction
+        || input.campaign?.nextAction
+        || "Complete the current certified step before opening optional world actions.",
       recoveryLabel: input.recovery?.status || "not needed",
       progressLabel: input.campaign?.progressLabel || "Opening case"
     },
@@ -167,20 +216,54 @@ export function deriveCampaignCommandDeckViewModel(input: CampaignCommandDeckInp
             ? "Selected public location. Available actions remain governed by the certified investigation route."
             : input.selectedContext.kind === "institution"
               ? "Selected public institution. World strategy remains optional and separate from certified case authority."
-              : "Selected public character. Only legal investigation actions are shown.",
+              : input.selectedContext.kind === "evidence"
+                ? "Selected discovered clue. Theory and challenge actions reuse the existing case handlers."
+                : input.selectedContext.kind === "theory"
+                  ? "Current theory workspace. Judgement remains governed by the certified case authority."
+                  : "Selected public character. Only legal investigation actions are shown.",
           actions: input.contextActions || []
         }
       : undefined,
     campaignProgress: {
-      chapterLabel: input.campaign?.label || input.campaign?.status || "Opening case",
+      chapterLabel: [input.campaign?.campaignLabel, input.campaign?.chapterLabel].filter(Boolean).join(" · ") || input.campaign?.label || input.campaign?.status || "Opening case",
       progressLabel: input.campaign?.progressLabel || "Campaign opening",
-      nextAction: input.campaign?.nextAction || "Create or join a case to begin the campaign."
+      nextAction: input.campaignPacing?.whyNow
+        || input.campaign?.chapterObjective
+        || input.campaign?.nextAction
+        || "Create or join a case to begin the campaign."
     },
     mapSignals: {
       institutionLabel: input.institutionLabel || "No institution selected",
       pressureLabel: input.pressure?.directionLabel || input.pressure?.status || "No active pressure",
       socialResponseLabel: input.socialResponse?.directionLabel || input.socialResponse?.status || "Town response stable"
     },
+    mapLenses: input.mapLenses || {
+      defaultLens: "evidence",
+      controls: [
+        { kind: "institution", label: "Institution", summary: "No institution signal" },
+        { kind: "pressure", label: "Pressure", summary: "No pressure signal" },
+        { kind: "reaction", label: "Reaction", summary: "No public response" },
+        { kind: "evidence", label: "Evidence", summary: "No case clue signal" }
+      ],
+      locationSignals: []
+    },
+    investigationTurn: resolvedTurn,
+    worldConsequenceTimeline: input.worldConsequenceTimeline || {
+      state: "empty",
+      headline: "World state stable",
+      summary: "Player-facing world consequences will appear here after a real campaign choice.",
+      nextAction: "Continue the certified investigation route.",
+      beats: [
+        { kind: "world-lead", title: "World Lead", state: "inactive", summary: "No world lead decision is active." },
+        { kind: "world-arc", title: "World Arc", state: "inactive", summary: "No campaign arc change is active." },
+        { kind: "directive", title: "Faction Directive", state: "inactive", summary: "No faction operation is active." },
+        { kind: "pressure", title: "World Pressure", state: "inactive", summary: "No cross-case pressure is active." },
+        { kind: "recovery", title: "Campaign Recovery", state: "inactive", summary: "No recovery action is required." },
+        { kind: "reaction", title: "Town Reaction", state: "inactive", summary: "No public town reaction is active." }
+      ]
+    },
+    presentationFeedback,
+    campaignPacing: input.campaignPacing,
     notifications: notifications.slice(0, 5)
   };
 }
