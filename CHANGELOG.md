@@ -4,6 +4,8 @@
 
 ### Added
 
+- Added v10.0 clean-worktree closure with two independent RC passes, Windows/Linux distribution smoke, save compatibility fixtures, deterministic manifests/checksums, and lockfile/license evidence.
+
 - Added the `greenhouse-blade` premium hard case to expand the built-in Case Library.
 - Added a browser-only Local Case Gallery for Authoring mode with built-in template cards, local draft saves, JSON bundle import/export, and Static Demo launch for valid drafts.
 - Added SQLite storage health reporting, transactional world/case/event saves, and a local backup script for Docker Server Runtime.
@@ -19,6 +21,8 @@
 - Added a low-spoiler Investigation Coach for playable case intake, turning the certified route into player-facing search, question, challenge, evidence-selection, submit, and source-review guidance.
 
 ### Changed
+
+- Updated Next.js and its affected production dependency chain to versions without the advisories present in the v9.7 lockfile; Docker runtime images now prune development dependencies after build.
 
 - Docker Server smoke now validates runtime storage health, premium case creation, and Scenario Runner execution.
 - Productized Living World Lab with chapter queue summaries, merged-graph progress, Audit Studio flow steps, and replay provenance counts for source, inferred, counterfactual, and gap steps.

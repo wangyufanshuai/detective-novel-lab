@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 import { exportStaticDatasetReader, readDatasetPackageReader, validateDatasetPackage } from "../lib/dataset-package.ts";
 import { assertInside, scanPublicTextFiles, toPosix, validateAllowedFileSet, validatePublicCaseSummaryIndexFile } from "./public-artifact-safety-lib.mjs";
@@ -33,25 +34,40 @@ function scanPublicReader(relativePath) {
 const packagePath = argValue("path", DEFAULT_PACKAGE_PATH);
 const datasetId = argValue("dataset", "");
 const json = hasFlag("json");
+const publicOnly = hasFlag("public-only");
+
+function directoryBytes(relativePath) {
+  const target = path.resolve(process.cwd(), relativePath);
+  return fs.readdirSync(target, { withFileTypes: true }).reduce((total, entry) => {
+    const item = path.join(target, entry.name);
+    return total + (entry.isDirectory() ? directoryBytes(path.relative(process.cwd(), item)) : fs.statSync(item).size);
+  }, 0);
+}
 
 try {
-  const validation = validateDatasetPackage({ path: packagePath });
-  if (!validation.ok) throw new Error(`Dataset package validation failed: ${validation.errors.join("; ")}`);
-
-  const exported = exportStaticDatasetReader({ path: packagePath, datasetId: datasetId || undefined });
-  const reader = readDatasetPackageReader({ path: exported.relativeExportPath || DEFAULT_STATIC_PATH });
+  let staticReaderPath = DEFAULT_STATIC_PATH;
+  let bytes = directoryBytes(DEFAULT_STATIC_PATH);
+  if (!publicOnly) {
+    const validation = validateDatasetPackage({ path: packagePath });
+    if (!validation.ok) throw new Error(`Dataset package validation failed: ${validation.errors.join("; ")}`);
+    const exported = exportStaticDatasetReader({ path: packagePath, datasetId: datasetId || undefined });
+    staticReaderPath = exported.relativeExportPath || DEFAULT_STATIC_PATH;
+    bytes = exported.bytes;
+  }
+  const reader = readDatasetPackageReader({ path: staticReaderPath });
   if (!reader.ok) throw new Error(`Static reader read failed: ${reader.validation?.errors?.join("; ") || "unknown error"}`);
 
-  const scan = scanPublicReader(exported.relativeExportPath || DEFAULT_STATIC_PATH);
+  const scan = scanPublicReader(staticReaderPath);
   if (!scan.ok) throw new Error(`Static reader safety scan failed: ${scan.findings.map((item) => `${item.file}: ${item.message}`).join("; ")}`);
 
   const report = {
     ok: true,
     datasetId: reader.datasetId,
     sourceRunId: reader.sourceRunId,
-    staticReaderPath: exported.relativeExportPath,
+    mode: publicOnly ? "public-only" : "source-export",
+    staticReaderPath,
     fileCount: reader.fileCount,
-    bytes: exported.bytes,
+    bytes,
     readerIndexHash: reader.readerIndexHash,
     caseSummaryIndexHash: reader.caseSummaryIndexHash,
     caseSummary: reader.caseSummary,

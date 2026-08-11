@@ -1,0 +1,86 @@
+{
+  "formatVersion": 1,
+  "pointers": {
+    "legacy": {
+      "input": {
+        "worldId": "fixture-world-legacy",
+        "sessionId": "fixture-session-legacy"
+      },
+      "expectedStatus": "legacy"
+    },
+    "current": {
+      "input": {
+        "formatVersion": 1,
+        "worldId": "fixture-world-current",
+        "sessionId": "fixture-session-current"
+      },
+      "expectedStatus": "ready"
+    },
+    "corrupt": {
+      "input": "{not-valid-json",
+      "expectedStatus": "invalid"
+    },
+    "stale": {
+      "input": {
+        "formatVersion": 1,
+        "worldId": "fixture-world-no-longer-present",
+        "sessionId": ""
+      },
+      "expectedStatus": "ready"
+    }
+  },
+  "runtimes": {
+    "legacy": {
+      "status": "running",
+      "tick": 3,
+      "maxTicks": 24,
+      "currentDay": 1,
+      "currentTime": "10:30",
+      "caseLifecycle": {
+        "activeCaseIds": [],
+        "solvedCaseIds": [],
+        "failedCaseIds": [],
+        "caseCooldownByNpcId": {}
+      },
+      "forwardCompatibleExtension": {
+        "retained": true
+      }
+    },
+    "current": {
+      "status": "paused",
+      "tick": 4,
+      "maxTicks": 24,
+      "currentDay": 1,
+      "currentTime": "11:00",
+      "agentStates": [],
+      "decisionTraces": [],
+      "candidates": [],
+      "interventions": [],
+      "reports": [],
+      "forwardCompatibleExtension": {
+        "retained": true,
+        "revision": 2
+      }
+    },
+    "corrupt": {
+      "status": "unsupported",
+      "tick": -4,
+      "maxTicks": 0,
+      "currentDay": -1,
+      "currentTime": "invalid",
+      "candidates": "invalid",
+      "reports": "invalid"
+    },
+    "stale": {
+      "worldId": "fixture-world-no-longer-present",
+      "status": "paused",
+      "tick": 2,
+      "maxTicks": 12,
+      "currentDay": 1,
+      "currentTime": "09:00",
+      "forwardCompatibleExtension": {
+        "retained": true
+      }
+    }
+  }
+}

@@ -2,7 +2,19 @@
 
 Use this checklist before pushing a launch or demo-readiness change. The v3.x public baseline is the Static Demo reader path plus the 5000 tick dataset handoff.
 
-## v9.7 read-only Release Candidate gate
+## v10.0 clean distribution closure
+
+Use a committed or explicit tree snapshot for the canonical clean run:
+
+```powershell
+npm.cmd run quality:v10-clean-worktree -- --snapshot=HEAD
+```
+
+Acceptance requires exact lockfile installation, TypeScript/build from empty derived state, a zero-production-advisory check, two complete `quality:rc` passes with `.next`, outputs, and temporary data removed between them, native production smoke, available Docker/Linux smoke, safe release evidence, zero residual QA databases/processes, and the frozen protected-public hash. See [v10.0-distribution-runbook.md](v10.0-distribution-runbook.md), [v10.0-migration-policy.md](v10.0-migration-policy.md), and [v10.0-validation-report.md](v10.0-validation-report.md).
+
+The branch's nine protected public files are byte-locked external inputs rather than tracked source. Do not regenerate or stage them. A clean worktree must provision the exact hash documented by the runbook before claiming full Static distribution closure.
+
+## v9.7/v10 read-only Release Candidate gate
 
 For the frozen v9.7 worktree, use the single non-generating gate:
 
@@ -10,7 +22,7 @@ For the frozen v9.7 worktree, use the single non-generating gate:
 npm.cmd run quality:rc -- --json
 ```
 
-It builds before production Server QA, uses dynamic ports and unique temporary SQLite files, removes DB/WAL/SHM/journal companions in `finally`, reports structured failure tails, scans privacy/security boundaries, and hashes both protected public trees before and after execution. A passing gate must leave no new RC database or project-owned Next process.
+It builds before production Server QA, uses dynamic ports and unique temporary SQLite files, removes DB/WAL/SHM/journal companions in `finally`, reports structured failure tails, scans privacy/security boundaries, checks v10 distribution contracts and lockfile/licenses, runs the native production distribution smoke, validates Static Reader in `--public-only` mode, and hashes both protected public trees before and after execution. A passing gate must leave no new RC database or project-owned Next process.
 
 Do not run the Refresh or Public Catalog Build commands below during a protected-artifact freeze. Those sections describe a separately authorized artifact-release workflow. The v9.7 gate does not invoke artifact generation or extended long-tick validation. See [v9.7-rc-manifest.md](v9.7-rc-manifest.md), [v9.7-known-issues.md](v9.7-known-issues.md), and [v9.7-recovery-runbook.md](v9.7-recovery-runbook.md).
 

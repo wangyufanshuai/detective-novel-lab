@@ -65,10 +65,9 @@ for (const protectedPath of ["public/dataset-reader", "public/review-catalog"]) 
   assert.match(gateSource, new RegExp(protectedPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `quality:rc hashes ${protectedPath}`);
 }
 for (const documentPath of [
-  "docs/v9.7-rc-manifest.md",
-  "docs/v9.7-known-issues.md",
-  "docs/v9.7-recovery-runbook.md",
-  "docs/v9.7-validation-report.md"
+  "docs/v10.0-distribution-runbook.md",
+  "docs/v10.0-migration-policy.md",
+  "docs/v10.0-validation-report.md"
 ]) {
   assert.equal(fs.existsSync(path.join(root, documentPath)), true, `${documentPath} is part of the RC handoff`);
 }

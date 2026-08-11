@@ -2,6 +2,11 @@
   "name": "detective-novel-lab",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22 <25",
+    "npm": ">=10 <12"
+  },
+  "packageManager": "npm@11.9.0",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -102,25 +107,32 @@
     "qa:release-local": "node scripts/run-release-local-qa.mjs",
     "test:replay-audit": "node scripts/run-replay-audit-tests.mjs",
     "test:release-candidate-contracts": "node scripts/run-release-candidate-contract-tests.mjs",
+    "test:v10-distribution": "node scripts/run-v10-distribution-contract-tests.mjs",
     "quality:release-candidate-safety": "node scripts/run-release-candidate-safety.mjs",
+    "quality:v10-supply-chain": "node scripts/run-v10-supply-chain-audit.mjs",
+    "quality:v10-evidence-safety": "node scripts/run-v10-release-evidence-safety.mjs",
     "quality:rc": "node scripts/run-release-candidate-gate.mjs",
+    "quality:v10-clean-worktree": "node scripts/run-v10-clean-worktree.mjs",
+    "qa:v10-distribution": "node scripts/run-v10-distribution-smoke.mjs",
+    "qa:v10-docker": "node scripts/run-v10-docker-smoke.mjs --optional",
+    "release:v10-evidence": "node scripts/run-v10-release-evidence.mjs",
     "backup:sqlite": "node scripts/backup-sqlite.mjs"
   },
   "dependencies": {
-    "@types/node": "^24.10.1",
-    "@types/react": "^19.2.6",
-    "@types/react-dom": "^19.2.3",
     "better-sqlite3": "^12.10.0",
     "lucide-react": "^0.468.0",
-    "next": "^16.0.4",
+    "next": "^16.3.0",
     "phaser": "^4.0.0",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "typescript": "^5.9.3"
+    "react-dom": "^19.2.0"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",
     "@playwright/test": "^1.60.0",
-    "@types/better-sqlite3": "^7.6.13"
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.2.6",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^5.9.3"
   }
 }

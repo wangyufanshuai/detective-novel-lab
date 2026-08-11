@@ -6,6 +6,7 @@ import ts from "typescript";
 import { loadEngineForTool } from "./load-engine-for-tools.mjs";
 
 const root = process.cwd();
+const fixtures = JSON.parse(await fs.readFile(path.join(root, "tests", "fixtures", "save-compatibility-v10.json"), "utf8"));
 const runtimeDir = path.join(root, "outputs", "v96-save-recovery-runtime");
 await fs.rm(runtimeDir, { recursive: true, force: true });
 await fs.mkdir(runtimeDir, { recursive: true });
@@ -16,6 +17,9 @@ const pointerOutput = ts.transpileModule(pointerSource, {
 await fs.writeFile(path.join(runtimeDir, "world-session-persistence.cjs"), pointerOutput, "utf8");
 const pointer = await import(`${pathToFileURL(path.join(runtimeDir, "world-session-persistence.cjs")).href}?v96=${Date.now()}`);
 
+for (const [name, fixture] of Object.entries(fixtures.pointers)) {
+  assert.equal(pointer.normalizeWorldSessionPointer(fixture.input).status, fixture.expectedStatus, `${name} pointer fixture is classified deterministically`);
+}
 assert.deepEqual(pointer.normalizeWorldSessionPointer(null), { status: "empty", pointer: null });
 assert.deepEqual(pointer.normalizeWorldSessionPointer("not json"), { status: "invalid", pointer: null });
 assert.equal(pointer.normalizeWorldSessionPointer({ worldId: "world-legacy", sessionId: "session-legacy" }).status, "legacy");
@@ -55,6 +59,23 @@ assert.deepEqual(normalized.unknownFutureField, { retained: true }, "unknown opt
 assert.equal(Boolean(normalized.campaignSessionSummary), true, "legacy Campaign state receives a safe current summary");
 assert.equal(JSON.stringify(world), beforeWorld, "normalization does not mutate world authority");
 
+for (const [name, fixture] of Object.entries(fixtures.runtimes)) {
+  const fixtureWorld = JSON.parse(JSON.stringify(world));
+  const fixtureBefore = JSON.stringify(fixtureWorld);
+  const fixtureEvents = [];
+  const migrated = engine.normalizePersistentTownRuntime(fixtureWorld, fixtureEvents, fixture);
+  assert.equal(migrated.worldId, fixtureWorld.id, `${name} runtime binds to the loaded world instead of a stale key`);
+  assert.ok(migrated.maxTicks >= 1, `${name} runtime receives a bounded maximum tick`);
+  assert.ok(migrated.tick >= 0 && migrated.tick <= migrated.maxTicks, `${name} runtime receives a bounded current tick`);
+  assert.equal(Array.isArray(migrated.candidates), true, `${name} runtime has a valid candidate collection`);
+  assert.equal(Array.isArray(migrated.reports), true, `${name} runtime has a valid report collection`);
+  assert.equal(JSON.stringify(fixtureWorld), fixtureBefore, `${name} migration remains pure over world authority`);
+  assert.equal(fixtureEvents.length, 0, `${name} migration emits no events`);
+  if (fixture.forwardCompatibleExtension) {
+    assert.deepEqual(migrated.forwardCompatibleExtension, fixture.forwardCompatibleExtension, `${name} preserves unknown fields`);
+  }
+}
+
 const corrupt = engine.normalizePersistentTownRuntime(world, [], { status: "invented", tick: -9, maxTicks: 0, candidates: "bad", worldId: "another-world" });
 assert.equal(corrupt.status, "paused");
 assert.equal(corrupt.tick, 0);
@@ -82,4 +103,4 @@ assert.match(sourceFiles[2], /setSession\(confirmedSession\)[\s\S]*setProgress\(
 assert.match(sourceFiles[3], /submitInFlight\.current/);
 for (const source of sourceFiles) assert.doesNotMatch(source, /setStatus\(error instanceof Error \? error\.message/, "main-path request errors are not rendered raw");
 
-console.log(JSON.stringify({ ok: true, suite: "save-recovery", pointerVersion: 1, normalizedRuntime: true }));
+console.log(JSON.stringify({ ok: true, suite: "save-recovery", pointerVersion: 1, fixtures: ["legacy", "current", "corrupt", "stale"], normalizedRuntime: true, unknownFieldsPreserved: true }));

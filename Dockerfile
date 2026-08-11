@@ -6,6 +6,7 @@ RUN npm ci
 COPY . .
 RUN mkdir -p public
 RUN npm run build
+RUN npm prune --omit=dev
 
 FROM node:22-bookworm-slim AS runtime
 WORKDIR /app
