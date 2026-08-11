@@ -1,41 +1,19 @@
 import fs from "node:fs";
 import path from "node:path";
-import { spawn, spawnSync } from "node:child_process";
 import { chromium } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { startReleaseCandidateServer } from "./lib/release-candidate-server.mjs";
 
 const jsonMode = process.argv.includes("--json");
-const host = "127.0.0.1";
-const port = 3426;
-const baseUrl = `http://${host}:${port}`;
+let baseUrl = "";
 const failures = [];
 const observations = [];
-let server;
+let serverHarness;
 let step = "startup";
 
 function launchOptions() {
   const executablePath = chromium.executablePath();
   return fs.existsSync(executablePath) ? { headless: true, executablePath } : { headless: true };
-}
-
-function stopServer() {
-  if (!server?.pid) return;
-  if (process.platform === "win32") spawnSync("taskkill", ["/pid", String(server.pid), "/t", "/f"], { stdio: "ignore" });
-  else {
-    try { process.kill(-server.pid, "SIGTERM"); } catch { server.kill("SIGTERM"); }
-  }
-}
-
-async function waitForServer() {
-  const deadline = Date.now() + 45_000;
-  while (Date.now() < deadline) {
-    try {
-      const response = await fetch(`${baseUrl}/?runtime=static&lang=en-US`);
-      if (response.ok) return;
-    } catch {}
-    await new Promise((resolve) => setTimeout(resolve, 300));
-  }
-  throw new Error("Bilingual accessibility production server did not become ready.");
 }
 
 async function assertAxe(page, label) {
@@ -53,12 +31,12 @@ async function assertNoOverflow(page, label) {
 
 try {
   if (!fs.existsSync(path.join(process.cwd(), ".next", "BUILD_ID"))) throw new Error("Run npm.cmd run build before bilingual accessibility QA.");
-  const command = process.platform === "win32" ? "cmd.exe" : "npm";
-  const args = process.platform === "win32"
-    ? ["/d", "/s", "/c", `npm.cmd run start -- -H ${host} -p ${port}`]
-    : ["run", "start", "--", "-H", host, "-p", String(port)];
-  server = spawn(command, args, { cwd: process.cwd(), env: process.env, detached: process.platform !== "win32", stdio: "ignore" });
-  await waitForServer();
+  serverHarness = await startReleaseCandidateServer({
+    prefix: "rc-accessibility-bilingual",
+    healthPath: "/?runtime=static&lang=en-US",
+    env: { AI_PROVIDER: "mock", DEEPSEEK_API_KEY: "", SILICONFLOW_API_KEY: "" }
+  });
+  baseUrl = serverHarness.baseUrl;
   const browser = await chromium.launch(launchOptions());
   try {
     for (const locale of ["en-US", "zh-CN"]) {
@@ -90,7 +68,6 @@ try {
         await assertNoOverflow(page, step);
         if (width === 320) {
           await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
-          await page.waitForTimeout(80);
           await assertNoOverflow(page, `${step} at 200% text zoom`);
           const controls = await page.locator("button:visible:not(.mapTile):not(.mapTileHitTarget):not(.marker):not(.actorPin), select:visible, input:visible:not([type='range'])").evaluateAll((nodes) => nodes.slice(0, 80).map((node) => ({
             height: node.getBoundingClientRect().height,
@@ -116,6 +93,11 @@ try {
     await page.goto(`${baseUrl}/?runtime=server&lang=en-US`, { waitUntil: "networkidle" });
     const frontDoor = page.getByTestId("campaign-front-door");
     await frontDoor.waitFor({ state: "visible", timeout: 15_000 });
+    const frontDoorOnboarding = page.getByTestId("onboarding-overlay");
+    if (await frontDoorOnboarding.isVisible().catch(() => false)) {
+      await frontDoorOnboarding.locator(".closeButton").click();
+      await frontDoorOnboarding.waitFor({ state: "hidden", timeout: 5_000 });
+    }
     if (!await page.locator("#campaign-front-door-title").evaluate((node) => node === document.activeElement)) failures.push("Front Door did not focus its heading on open.");
     for (let index = 0; index < 18; index += 1) await page.keyboard.press("Tab");
     if (!await frontDoor.evaluate((node) => node.contains(document.activeElement))) failures.push("Front Door Tab sequence escaped the modal.");
@@ -126,8 +108,10 @@ try {
     await reopen.focus();
     await reopen.press("Enter");
     await frontDoor.waitFor({ state: "visible", timeout: 5_000 });
+    await page.waitForFunction(() => document.querySelector("#campaign-front-door-title") === document.activeElement, undefined, { timeout: 5_000 });
     await page.keyboard.press("Escape");
-    await page.waitForFunction(() => document.querySelector("[data-testid='open-campaign-front-door']") === document.activeElement, undefined, { timeout: 2_000 }).catch(() => undefined);
+    await frontDoor.waitFor({ state: "hidden", timeout: 5_000 });
+    await page.waitForFunction(() => document.querySelector("[data-testid='open-campaign-front-door']") === document.activeElement, undefined, { timeout: 5_000 });
     if (!await reopen.evaluate((node) => node === document.activeElement)) failures.push("Front Door did not restore focus to its trigger after Escape.");
 
     step = "Server reload idempotence";
@@ -148,7 +132,6 @@ try {
     step = "Server responsive workspace";
     for (const width of [320, 390, 768, 1440]) {
       await page.setViewportSize({ width, height: width <= 390 ? 780 : 900 });
-      await page.waitForTimeout(60);
       await assertNoOverflow(page, `Server en-US ${width}px`);
       if (!await page.getByTestId("command-deck-shell").isVisible()) failures.push(`Server en-US ${width}px lost the Command Deck.`);
     }
@@ -212,7 +195,7 @@ try {
 } catch (error) {
   failures.push(`${step}: ${error instanceof Error ? error.message : String(error)}`);
 } finally {
-  stopServer();
+  await serverHarness?.cleanup();
 }
 
 const result = { ok: failures.length === 0, observations, failures };

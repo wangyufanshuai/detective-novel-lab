@@ -101,6 +101,9 @@
     "qa:accessibility-bilingual": "node scripts/run-bilingual-accessibility-browser-qa.mjs",
     "qa:release-local": "node scripts/run-release-local-qa.mjs",
     "test:replay-audit": "node scripts/run-replay-audit-tests.mjs",
+    "test:release-candidate-contracts": "node scripts/run-release-candidate-contract-tests.mjs",
+    "quality:release-candidate-safety": "node scripts/run-release-candidate-safety.mjs",
+    "quality:rc": "node scripts/run-release-candidate-gate.mjs",
     "backup:sqlite": "node scripts/backup-sqlite.mjs"
   },
   "dependencies": {

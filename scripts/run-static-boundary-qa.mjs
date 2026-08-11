@@ -1,16 +1,14 @@
-import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { chromium } from "@playwright/test";
+import { startReleaseCandidateServer } from "./lib/release-candidate-server.mjs";
 
 const jsonMode = process.argv.includes("--json");
-const host = "127.0.0.1";
-const port = 3412;
-const baseUrl = `http://${host}:${port}`;
+let baseUrl = "";
 const failures = [];
 let apiRequestCount = 0;
-let server;
+let serverHarness;
 
 function chromiumLaunchOptions() {
   const expected = chromium.executablePath();
@@ -27,38 +25,13 @@ function chromiumLaunchOptions() {
   return executablePath ? { headless: true, executablePath } : { headless: true };
 }
 
-function stopServer() {
-  if (!server?.pid) return;
-  if (process.platform === "win32") spawnSync("taskkill", ["/pid", String(server.pid), "/t", "/f"], { stdio: "ignore" });
-  else {
-    try { process.kill(-server.pid, "SIGTERM"); } catch { server.kill("SIGTERM"); }
-  }
-}
-
-async function waitForServer() {
-  const deadline = Date.now() + 30_000;
-  while (Date.now() < deadline) {
-    try {
-      const response = await fetch(`${baseUrl}/?runtime=static`);
-      if (response.ok) return;
-    } catch {}
-    await new Promise((resolve) => setTimeout(resolve, 250));
-  }
-  throw new Error("Static boundary server did not become ready.");
-}
-
 try {
-  const command = process.platform === "win32" ? "cmd.exe" : "npm";
-  const args = process.platform === "win32"
-    ? ["/d", "/s", "/c", `npm.cmd run start -- -H ${host} -p ${port}`]
-    : ["run", "start", "--", "-H", host, "-p", String(port)];
-  server = spawn(command, args, {
-    cwd: process.cwd(),
-    detached: process.platform !== "win32",
-    env: { ...process.env, NEXT_PUBLIC_DEMO_MODE: "static" },
-    stdio: "ignore"
+  serverHarness = await startReleaseCandidateServer({
+    prefix: "rc-static-boundary",
+    healthPath: "/?runtime=static&lang=en-US",
+    env: { NEXT_PUBLIC_DEMO_MODE: "static", AI_PROVIDER: "mock", DEEPSEEK_API_KEY: "", SILICONFLOW_API_KEY: "" }
   });
-  await waitForServer();
+  baseUrl = serverHarness.baseUrl;
   const browser = await chromium.launch(chromiumLaunchOptions());
   try {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
@@ -67,7 +40,7 @@ try {
       const pathname = new URL(request.url()).pathname;
       if (pathname.startsWith("/api/")) apiRequests.push(pathname);
     });
-    await page.goto(`${baseUrl}/?runtime=static&study=1`, { waitUntil: "networkidle" });
+    await page.goto(`${baseUrl}/?runtime=static&study=1&lang=en-US`, { waitUntil: "networkidle" });
     apiRequestCount = apiRequests.length;
     const boundary = await page.evaluate(() => ({
       overflow: document.documentElement.scrollWidth - window.innerWidth,
@@ -84,7 +57,7 @@ try {
 } catch (error) {
   failures.push(error instanceof Error ? error.message : String(error));
 } finally {
-  stopServer();
+  await serverHarness?.cleanup();
 }
 
 const result = { ok: failures.length === 0, apiRequestCount, viewportWidth: 390, failures };

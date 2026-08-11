@@ -1,26 +1,12 @@
 import fs from "node:fs";
-import net from "node:net";
-import path from "node:path";
-import { spawn, spawnSync } from "node:child_process";
 import { chromium } from "@playwright/test";
+import { startReleaseCandidateServer } from "./lib/release-candidate-server.mjs";
 
 const jsonMode = process.argv.includes("--json");
-const host = "127.0.0.1";
-const port = await new Promise((resolve, reject) => {
-  const probe = net.createServer();
-  probe.unref();
-  probe.once("error", reject);
-  probe.listen(0, host, () => {
-    const address = probe.address();
-    probe.close((error) => error ? reject(error) : resolve(typeof address === "object" && address ? address.port : 0));
-  });
-});
-const baseUrl = `http://${host}:${port}`;
-const dbName = `v82-district-front-browser-${process.pid}.db`;
-const dbPath = path.join(process.cwd(), "data", dbName);
+let baseUrl = "";
 const failures = [];
 const observations = [];
-let server;
+let serverHarness;
 let currentStep = "startup";
 
 function check(condition, message) {
@@ -30,41 +16,6 @@ function check(condition, message) {
 function launchOptions() {
   const executablePath = chromium.executablePath();
   return fs.existsSync(executablePath) ? { headless: true, executablePath } : { headless: true };
-}
-
-function stopServer() {
-  if (!server?.pid) return;
-  if (process.platform === "win32") spawnSync("taskkill", ["/pid", String(server.pid), "/t", "/f"], { stdio: "ignore" });
-  else {
-    try { process.kill(-server.pid, "SIGTERM"); } catch { server.kill("SIGTERM"); }
-  }
-}
-
-function cleanDatabase() {
-  for (const suffix of ["", "-wal", "-shm", "-journal"]) {
-    try { fs.rmSync(`${dbPath}${suffix}`, { force: true }); } catch {}
-  }
-}
-
-async function cleanDatabaseAfterStop() {
-  for (let attempt = 0; attempt < 8; attempt += 1) {
-    cleanDatabase();
-    if (!["", "-wal", "-shm", "-journal"].some((suffix) => fs.existsSync(`${dbPath}${suffix}`))) return;
-    await new Promise((resolve) => setTimeout(resolve, 125));
-  }
-  cleanDatabase();
-}
-
-async function waitForServer() {
-  const deadline = Date.now() + 45_000;
-  while (Date.now() < deadline) {
-    try {
-      const response = await fetch(`${baseUrl}/?runtime=static`);
-      if (response.ok) return;
-    } catch {}
-    await new Promise((resolve) => setTimeout(resolve, 250));
-  }
-  throw new Error("District Strategic Front production server did not become ready.");
 }
 
 async function openPage(browser, width, runtime = "server") {
@@ -94,7 +45,6 @@ async function openPage(browser, width, runtime = "server") {
     await page.keyboard.press("Escape");
     await theatre.waitFor({ state: "detached", timeout: 10_000 }).catch(() => undefined);
   }
-  await page.waitForTimeout(250);
   const encounter = page.getByTestId("character-encounter");
   if (await encounter.isVisible().catch(() => false)) {
     await page.getByTestId("character-encounter-close").click();
@@ -134,19 +84,13 @@ async function runtimeTick(worldId) {
   return json?.data?.runtime?.tick ?? json?.runtime?.tick ?? null;
 }
 
-cleanDatabase();
 try {
-  const command = process.platform === "win32" ? "cmd.exe" : "npm";
-  const args = process.platform === "win32"
-    ? ["/d", "/s", "/c", `npm.cmd run start -- -H ${host} -p ${port}`]
-    : ["run", "start", "--", "-H", host, "-p", String(port)];
-  server = spawn(command, args, {
-    cwd: process.cwd(),
-    detached: process.platform !== "win32",
-    env: { ...process.env, DATABASE_URL: `file:./data/${dbName}` },
-    stdio: "ignore"
+  serverHarness = await startReleaseCandidateServer({
+    prefix: "rc-district-fronts",
+    healthPath: "/?runtime=static&lang=en-US",
+    env: { AI_PROVIDER: "mock", DEEPSEEK_API_KEY: "", SILICONFLOW_API_KEY: "" }
   });
-  await waitForServer();
+  baseUrl = serverHarness.baseUrl;
   const browser = await chromium.launch(launchOptions());
   try {
     currentStep = "390px Server front selection";
@@ -303,8 +247,7 @@ try {
 } catch (error) {
   failures.push(`${currentStep}: ${error instanceof Error ? error.message : String(error)}`);
 } finally {
-  stopServer();
-  await cleanDatabaseAfterStop();
+  await serverHarness?.cleanup();
 }
 
 const result = { ok: failures.length === 0, observations, failures };

@@ -204,7 +204,7 @@ const componentSource = await fs.readFile(path.join(root, "app/components/Campai
 const shellSource = await fs.readFile(path.join(root, "app/components/CommandDeckShell.tsx"), "utf8");
 const theatreSource = await fs.readFile(path.join(root, "app/components/CampaignTransitionTheatre.tsx"), "utf8");
 const journalSource = await fs.readFile(path.join(root, "app/components/InvestigationRouteReviewSurface.tsx"), "utf8");
-assert.deepEqual([...componentSource.matchAll(/label: "(Result|World Change|Objective Progress|Next Action)"/g)].map((match) => match[1]), ["Result", "World Change", "Objective Progress", "Next Action"], "one shared component owns the fixed four-stage chain");
+assert.deepEqual([...componentSource.matchAll(/messageKey: "(ledger\.(?:result|worldChange|objectiveProgress|nextAction))"/g)].map((match) => match[1]), ["ledger.result", "ledger.worldChange", "ledger.objectiveProgress", "ledger.nextAction"], "one shared component owns the localized fixed four-stage chain");
 assert.match(shellSource, /CampaignResolutionLedgerProvider ledger=\{resolutionLedger\}/, "Command Deck provides one canonical Ledger object to all descendants");
 assert.match(shellSource, /<CampaignResolutionLatest ledger=\{resolutionLedger\}/, "Command Deck consumes the canonical latest resolution");
 assert.match(shellSource, /<CampaignTransitionTheatre presentation=\{theatre\.presentation\} ledger=\{resolutionLedger\}/, "Theatre consumes that same Ledger object");

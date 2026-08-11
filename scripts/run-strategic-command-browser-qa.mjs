@@ -1,29 +1,14 @@
 import fs from "node:fs";
-import net from "node:net";
 import path from "node:path";
-import { spawn, spawnSync } from "node:child_process";
 import { chromium } from "@playwright/test";
+import { startReleaseCandidateServer } from "./lib/release-candidate-server.mjs";
 
 const jsonMode = process.argv.includes("--json");
-const host = "127.0.0.1";
-const port = await new Promise((resolve, reject) => {
-  const probe = net.createServer();
-  probe.unref();
-  probe.once("error", reject);
-  probe.listen(0, host, () => {
-    const address = probe.address();
-    const availablePort = typeof address === "object" && address ? address.port : 0;
-    probe.close((error) => error ? reject(error) : resolve(availablePort));
-  });
-});
-const baseUrl = `http://${host}:${port}`;
+let baseUrl = "";
 const widths = [390, 768, 1440];
 const failures = [];
 const observations = [];
-const dbName = `v92-strategic-command-browser-${process.pid}.db`;
-const dbPath = path.join(process.cwd(), "data", dbName);
-const databaseUrl = `file:./data/${dbName}`;
-let server;
+let serverHarness;
 let currentStep = "startup";
 
 function launchOptions() {
@@ -31,56 +16,19 @@ function launchOptions() {
   return fs.existsSync(expected) ? { headless: true, executablePath: expected } : { headless: true };
 }
 
-function stopServer() {
-  if (!server?.pid) return;
-  if (process.platform === "win32") spawnSync("taskkill", ["/pid", String(server.pid), "/t", "/f"], { stdio: "ignore" });
-  else {
-    try { process.kill(-server.pid, "SIGTERM"); } catch { server.kill("SIGTERM"); }
-  }
-}
-
-function cleanDatabase() {
-  for (const suffix of ["", "-wal", "-shm", "-journal"]) {
-    try { fs.rmSync(`${dbPath}${suffix}`, { force: true }); } catch {}
-  }
-}
-
-async function cleanDatabaseAfterStop() {
-  for (let attempt = 0; attempt < 8; attempt += 1) {
-    cleanDatabase();
-    if (!["", "-wal", "-shm", "-journal"].some((suffix) => fs.existsSync(`${dbPath}${suffix}`))) return;
-    await new Promise((resolve) => setTimeout(resolve, 125));
-  }
-  cleanDatabase();
-}
-
-async function waitForServer() {
-  const deadline = Date.now() + 45_000;
-  while (Date.now() < deadline) {
-    try {
-      const response = await fetch(`${baseUrl}/?runtime=server`);
-      if (response.ok) return;
-    } catch {}
-    await new Promise((resolve) => setTimeout(resolve, 250));
-  }
-  throw new Error("Strategic Command production server did not become ready.");
-}
-
-cleanDatabase();
 try {
-  const command = process.platform === "win32" ? "cmd.exe" : "npm";
-  const args = process.platform === "win32"
-    ? ["/d", "/s", "/c", `npm.cmd run start -- -H ${host} -p ${port}`]
-    : ["run", "start", "--", "-H", host, "-p", String(port)];
-  server = spawn(command, args, { cwd: process.cwd(), detached: process.platform !== "win32", env: { ...process.env, DATABASE_URL: databaseUrl }, stdio: "ignore" });
-  await waitForServer();
+  serverHarness = await startReleaseCandidateServer({
+    prefix: "rc-strategic-command",
+    env: { AI_PROVIDER: "mock", DEEPSEEK_API_KEY: "", SILICONFLOW_API_KEY: "" }
+  });
+  baseUrl = serverHarness.baseUrl;
   const browser = await chromium.launch(launchOptions());
   try {
     for (const width of widths) {
       currentStep = `${width}px server`;
       const page = await browser.newPage({ viewport: { width, height: width === 390 ? 844 : 900 } });
       page.setDefaultTimeout(20_000);
-      await page.goto(`${baseUrl}/?runtime=server`, { waitUntil: "domcontentloaded", timeout: 30_000 });
+      await page.goto(`${baseUrl}/?runtime=server&lang=en-US`, { waitUntil: "domcontentloaded", timeout: 30_000 });
       const frontDoor = page.getByTestId("campaign-front-door");
       await frontDoor.waitFor({ state: "visible", timeout: 15_000 });
       await frontDoor.getByTestId("campaign-front-door-dismiss").click();
@@ -176,7 +124,7 @@ try {
       if (pathname.startsWith("/api/")) apiRequests.push(pathname);
     });
     staticPage.setDefaultTimeout(20_000);
-    await staticPage.goto(`${baseUrl}/?runtime=static&study=1`, { waitUntil: "domcontentloaded", timeout: 30_000 });
+    await staticPage.goto(`${baseUrl}/?runtime=static&study=1&lang=en-US`, { waitUntil: "domcontentloaded", timeout: 30_000 });
     await staticPage.waitForFunction(() => (
       document.querySelector("[data-testid='strategic-decision-queue']")?.getAttribute("data-queue-state") === "readonly"
       && document.querySelector("[data-testid='strategic-action-bar']")?.getAttribute("data-advance-state") === "readonly"
@@ -201,8 +149,7 @@ try {
 } catch (error) {
   failures.push(`${currentStep}: ${error instanceof Error ? error.message : String(error)}`);
 } finally {
-  stopServer();
-  await cleanDatabaseAfterStop();
+  await serverHarness?.cleanup();
 }
 
 const result = { ok: failures.length === 0, widths, observations, failures };

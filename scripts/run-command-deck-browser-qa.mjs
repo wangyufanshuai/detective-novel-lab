@@ -1,16 +1,14 @@
 import fs from "node:fs";
 import path from "node:path";
-import { spawn, spawnSync } from "node:child_process";
 import { chromium } from "@playwright/test";
+import { startReleaseCandidateServer } from "./lib/release-candidate-server.mjs";
 
 const jsonMode = process.argv.includes("--json");
-const host = "127.0.0.1";
-const port = 3413;
-const baseUrl = `http://${host}:${port}`;
+let baseUrl = "";
 const widths = [390, 768, 1440];
 const failures = [];
 const observations = [];
-let server;
+let serverHarness;
 let currentQaStep = "startup";
 
 function launchOptions() {
@@ -46,37 +44,50 @@ async function closeContextDrawerIfOpen(page) {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     if (await toggle.getAttribute("aria-expanded") !== "true") return;
     await toggle.click({ force: true });
-    await page.waitForTimeout(220);
+    await page.waitForFunction(() => document.querySelector("[data-testid='command-deck-drawer-toggle']")?.getAttribute("aria-expanded") === "false", undefined, { timeout: 5_000 }).catch(() => undefined);
   }
 }
 
-function stopServer() {
-  if (!server?.pid) return;
-  if (process.platform === "win32") spawnSync("taskkill", ["/pid", String(server.pid), "/t", "/f"], { stdio: "ignore" });
-  else {
-    try { process.kill(-server.pid, "SIGTERM"); } catch { server.kill("SIGTERM"); }
-  }
-}
-
-async function waitForServer() {
-  const deadline = Date.now() + 30_000;
-  while (Date.now() < deadline) {
-    try {
-      const response = await fetch(`${baseUrl}/?runtime=server`);
-      if (response.ok) return;
-    } catch {}
-    await new Promise((resolve) => setTimeout(resolve, 250));
-  }
-  throw new Error("Command Deck production server did not become ready.");
+async function waitForStableTheatreGeometry(page, timeout = 5_000) {
+  await page.evaluate(({ timeout }) => new Promise((resolve, reject) => {
+    const startedAt = performance.now();
+    let previous = "";
+    let stableFrames = 0;
+    const sample = () => {
+      const theatre = document.querySelector("[data-testid='campaign-transition-theatre']");
+      const control = theatre?.querySelector("button");
+      const rect = theatre?.getBoundingClientRect();
+      const controlRect = control?.getBoundingClientRect();
+      const layerHit = rect ? document.elementFromPoint(rect.left + Math.min(rect.width / 2, 160), rect.top + Math.min(24, rect.height / 2)) : null;
+      const controlHit = controlRect ? document.elementFromPoint(controlRect.left + controlRect.width / 2, controlRect.top + controlRect.height / 2) : null;
+      const animationsIdle = theatre ? theatre.getAnimations({ subtree: true }).every((animation) => animation.playState !== "running" && animation.playState !== "pending") : false;
+      const signature = rect ? [rect.top, rect.left, rect.width, rect.height].map((value) => value.toFixed(2)).join(":") : "missing";
+      const ready = Boolean(
+        theatre
+        && control
+        && rect
+        && rect.top >= 0
+        && rect.top <= 560
+        && layerHit?.closest("[data-testid='campaign-transition-theatre']") === theatre
+        && controlHit?.closest("button") === control
+        && animationsIdle
+      );
+      stableFrames = ready && signature === previous ? stableFrames + 1 : 0;
+      previous = signature;
+      if (stableFrames >= 3) return resolve(true);
+      if (performance.now() - startedAt >= timeout) return reject(new Error(`Theatre geometry did not settle (${signature}).`));
+      requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  }), { timeout });
 }
 
 try {
-  const command = process.platform === "win32" ? "cmd.exe" : "npm";
-  const args = process.platform === "win32"
-    ? ["/d", "/s", "/c", `npm.cmd run start -- -H ${host} -p ${port}`]
-    : ["run", "start", "--", "-H", host, "-p", String(port)];
-  server = spawn(command, args, { cwd: process.cwd(), detached: process.platform !== "win32", env: process.env, stdio: "ignore" });
-  await waitForServer();
+  serverHarness = await startReleaseCandidateServer({
+    prefix: "rc-command-deck",
+    env: { AI_PROVIDER: "mock", DEEPSEEK_API_KEY: "", SILICONFLOW_API_KEY: "" }
+  });
+  baseUrl = serverHarness.baseUrl;
   const browser = await chromium.launch(launchOptions());
   try {
     for (const width of widths) {
@@ -87,6 +98,7 @@ try {
       const rhythmAutomation = [];
       const resolutionConsistency = [];
       let workspaceLayout = null;
+      // Controlled latency injection exercises the resolving UI; response completion remains the synchronization boundary.
       if (width === 1440) await page.route("**/api/players/join", async (route) => { await new Promise((resolve) => setTimeout(resolve, 500)); await route.continue(); });
       await page.goto(`${baseUrl}/?runtime=server&lang=en-US`, { waitUntil: "networkidle" });
       const frontDoor = page.getByTestId("campaign-front-door");
@@ -156,14 +168,15 @@ try {
         const drawerToggle = page.getByTestId("command-deck-drawer-toggle");
         if (await drawerToggle.getAttribute("aria-expanded") === "true") {
           await drawerToggle.click();
-          await page.waitForTimeout(180);
+          await page.waitForFunction(() => document.querySelector("[data-testid='command-deck-drawer-toggle']")?.getAttribute("aria-expanded") === "false", undefined, { timeout: 5_000 });
         }
         await drawerToggle.click();
+        await page.waitForFunction(() => document.querySelector("[data-testid='command-deck-drawer-toggle']")?.getAttribute("aria-expanded") === "true", undefined, { timeout: 5_000 });
         if (await drawerToggle.getAttribute("aria-expanded") !== "true") failures.push(`${width}px context drawer did not open.`);
         await page.keyboard.press("Escape");
+        await page.waitForFunction(() => document.querySelector("[data-testid='command-deck-drawer-toggle']")?.getAttribute("aria-expanded") === "false", undefined, { timeout: 5_000 });
         if (await drawerToggle.getAttribute("aria-expanded") !== "false") failures.push(`${width}px context drawer did not close.`);
         if (!(await drawerToggle.evaluate((node) => node === document.activeElement))) failures.push(`${width}px context drawer did not restore focus after Escape.`);
-        await page.waitForTimeout(220);
       }
       const inspectorDetailToggle = page.getByTestId("command-deck-inspector-toggle");
       if (await inspectorDetailToggle.getAttribute("aria-expanded") !== "false") failures.push(`${width}px full Inspector detail was not closed by default.`);
@@ -233,7 +246,7 @@ try {
           }
           for (const transitionWidth of widths) {
             await page.setViewportSize({ width: transitionWidth, height: transitionWidth <= 390 ? 844 : 900 });
-            await page.waitForTimeout(240);
+            await waitForStableTheatreGeometry(page);
             const layout = await page.evaluate(() => {
               const theatre = document.querySelector("[data-testid='campaign-transition-theatre']");
               const map = document.querySelector("[data-testid='command-deck-map-area']");
@@ -297,7 +310,6 @@ try {
             let encounterQuestion = encounter.locator("[data-encounter-action='question']:not([disabled])");
             for (let actorIndex = 0; actorIndex < await actorPins.count() && !(await encounterQuestion.count()); actorIndex += 1) {
               await actorPins.nth(actorIndex).click();
-              await page.waitForTimeout(50);
               await ensureEncounterVisible(page, encounter, inspectorDetailToggle, `1440px post-search actor ${actorIndex}`);
               encounterQuestion = encounter.locator("[data-encounter-action='question']:not([disabled])");
               if (!(await encounterQuestion.count())) await encounter.getByTestId("character-encounter-close").click();
@@ -557,7 +569,6 @@ try {
     const staticActor = staticPage.locator("[data-testid='pixel-map'] .actorPin").first();
     if (await staticActor.count()) {
       await staticActor.click();
-      await staticPage.waitForTimeout(120);
       const staticEncounter = staticPage.getByTestId("character-encounter");
       await ensureEncounterVisible(
         staticPage,
@@ -604,7 +615,7 @@ try {
 } catch (error) {
   failures.push(`${currentQaStep}: ${error instanceof Error ? error.message : String(error)}`);
 } finally {
-  stopServer();
+  await serverHarness?.cleanup();
 }
 
 const result = { ok: failures.length === 0, widths, observations, failures };

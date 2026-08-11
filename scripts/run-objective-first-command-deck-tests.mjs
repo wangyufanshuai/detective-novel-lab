@@ -69,7 +69,7 @@ assert.equal((panel.match(/data-testid="world-campaign-current-action"/g) || [])
 assert.match(panel, /data-testid="world-campaign-focus"/);
 assert.match(panel, /data-testid="world-campaign-archive"/);
 assert.match(panel, /<details className="worldCampaignArchive"/);
-assert.match(panel, /Focused world context/);
+assert.match(panel, /t\("world\.focusedContext"\)/, "World Campaign uses the localized focused-context label");
 assert.doesNotMatch(panel, /\b(fetch|postJson|postV1|getV1)\s*\(|\/api\//, "World Campaign presentation remains request-free");
 assert.doesNotMatch(panel, /localStorage|sessionStorage|indexedDB/, "World Campaign focus/archive remains storage-free");
 assert.match(panel, /commandBrief\?\.primaryAction\?\.label/, "World Campaign reuses the canonical brief action");

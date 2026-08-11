@@ -1,17 +1,15 @@
 import fs from "node:fs";
 import path from "node:path";
-import { spawn, spawnSync } from "node:child_process";
 import { chromium } from "@playwright/test";
+import { startReleaseCandidateServer } from "./lib/release-candidate-server.mjs";
 
 const jsonMode = process.argv.includes("--json");
-const host = "127.0.0.1";
-const port = 3415;
-const baseUrl = `http://${host}:${port}`;
+let baseUrl = "";
 const failures = [];
 const screenshotDir = path.join(process.cwd(), "outputs", "campaign-front-door-qa");
 fs.mkdirSync(screenshotDir, { recursive: true });
 const requests = [];
-let server;
+let serverHarness;
 let currentStep = "startup";
 
 function safeRequestPath(pathname) {
@@ -23,33 +21,12 @@ function launchOptions() {
   return fs.existsSync(expected) ? { headless: true, executablePath: expected } : { headless: true };
 }
 
-function stopServer() {
-  if (!server?.pid) return;
-  if (process.platform === "win32") spawnSync("taskkill", ["/pid", String(server.pid), "/t", "/f"], { stdio: "ignore" });
-  else {
-    try { process.kill(-server.pid, "SIGTERM"); } catch { server.kill("SIGTERM"); }
-  }
-}
-
-async function waitForServer() {
-  const deadline = Date.now() + 30_000;
-  while (Date.now() < deadline) {
-    try {
-      const response = await fetch(`${baseUrl}/?runtime=server`);
-      if (response.ok) return;
-    } catch {}
-    await new Promise((resolve) => setTimeout(resolve, 250));
-  }
-  throw new Error("Campaign Front Door production server did not become ready.");
-}
-
 try {
-  const command = process.platform === "win32" ? "cmd.exe" : "npm";
-  const args = process.platform === "win32"
-    ? ["/d", "/s", "/c", `npm.cmd run start -- -H ${host} -p ${port}`]
-    : ["run", "start", "--", "-H", host, "-p", String(port)];
-  server = spawn(command, args, { cwd: process.cwd(), detached: process.platform !== "win32", env: process.env, stdio: "ignore" });
-  await waitForServer();
+  serverHarness = await startReleaseCandidateServer({
+    prefix: "rc-campaign-front-door",
+    env: { AI_PROVIDER: "mock", DEEPSEEK_API_KEY: "", SILICONFLOW_API_KEY: "" }
+  });
+  baseUrl = serverHarness.baseUrl;
   const browser = await chromium.launch(launchOptions());
   try {
     const page = await browser.newPage({ viewport: { width: 1440, height: 960 } });
@@ -163,7 +140,7 @@ try {
 } catch (error) {
   failures.push(`${currentStep}: ${error instanceof Error ? error.message : String(error)}`);
 } finally {
-  stopServer();
+  await serverHarness?.cleanup();
 }
 
 const result = { ok: failures.length === 0, requests: Array.from(new Set(requests)), failures };

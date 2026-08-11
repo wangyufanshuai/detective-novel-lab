@@ -1,32 +1,10 @@
-import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import { chromium } from "@playwright/test";
 import assert from "node:assert/strict";
+import { startReleaseCandidateServer } from "./lib/release-candidate-server.mjs";
 
-const host = "127.0.0.1";
-const port = 3421;
-const baseUrl = `http://${host}:${port}`;
-let server;
-
-function stopServer() {
-  if (!server?.pid) return;
-  if (process.platform === "win32") spawnSync("taskkill", ["/pid", String(server.pid), "/t", "/f"], { stdio: "ignore" });
-  else {
-    try { process.kill(-server.pid, "SIGTERM"); } catch { server.kill("SIGTERM"); }
-  }
-}
-
-async function waitForServer() {
-  const deadline = Date.now() + 30_000;
-  while (Date.now() < deadline) {
-    try {
-      const response = await fetch(`${baseUrl}/?runtime=server`);
-      if (response.ok) return;
-    } catch {}
-    await new Promise((resolve) => setTimeout(resolve, 250));
-  }
-  throw new Error("production server did not become ready");
-}
+let baseUrl = "";
+let serverHarness;
 
 function launchOptions() {
   const executablePath = chromium.executablePath();
@@ -131,10 +109,11 @@ async function solve(worldId, extracted, label) {
 }
 
 try {
-  const command = process.platform === "win32" ? "cmd.exe" : "npm";
-  const args = process.platform === "win32" ? ["/d", "/s", "/c", `npm.cmd run start -- -H ${host} -p ${port}`] : ["run", "start", "--", "-H", host, "-p", String(port)];
-  server = spawn(command, args, { cwd: process.cwd(), detached: process.platform !== "win32", env: process.env, stdio: "ignore" });
-  await waitForServer();
+  serverHarness = await startReleaseCandidateServer({
+    prefix: "rc-investigator-headquarters",
+    env: { AI_PROVIDER: "mock", DEEPSEEK_API_KEY: "", SILICONFLOW_API_KEY: "" }
+  });
+  baseUrl = serverHarness.baseUrl;
   const worldCreated = await request("/api/v1/command/town/create", { method: "POST", body: JSON.stringify({ seed: "investigator-headquarters-browser", mode: "showcase", caseMode: "generated", npcCount: 20, timelineHours: 24 }) });
   const worldId = worldCreated.world.id;
   let started = await request("/api/v1/command/town/runtime/start", { method: "POST", body: JSON.stringify({ worldId, steps: 2 }) });
@@ -223,5 +202,5 @@ try {
   }
   console.log(JSON.stringify({ ok: true, suite: "investigator-headquarters-browser", lifecycle: ["ready", "prepared", "active", "completed"] }));
 } finally {
-  stopServer();
+  await serverHarness?.cleanup();
 }

@@ -1,22 +1,21 @@
-import { spawn, spawnSync } from "node:child_process";
 import assert from "node:assert/strict";
+import { startReleaseCandidateServer, waitForServer } from "./lib/release-candidate-server.mjs";
 
-const port = Number(process.env.PERSISTENT_TOWN_API_SMOKE_PORT || 3102);
-let baseUrl = process.env.PERSISTENT_TOWN_API_BASE_URL || `http://127.0.0.1:${port}`;
-const serverOutput = [];
-const smokeTimeout = setTimeout(() => {
-  console.error(`Persistent town Agent API smoke test timed out at ${baseUrl}.`);
-  process.exit(1);
-}, 180_000);
+const externalBaseUrl = process.env.PERSISTENT_TOWN_API_BASE_URL?.replace(/\/$/, "") || "";
+const overallSignal = AbortSignal.timeout(180_000);
+let baseUrl = externalBaseUrl;
+let serverHarness;
 
-async function sleep(ms) {
-  await new Promise((resolve) => setTimeout(resolve, ms));
+function requestSignal(signal) {
+  return AbortSignal.any([overallSignal, AbortSignal.timeout(30_000), ...(signal ? [signal] : [])]);
 }
 
 async function request(path, options = {}) {
+  const { signal, ...requestOptions } = options;
   const response = await fetch(`${baseUrl}${path}`, {
-    ...options,
-    headers: { "content-type": "application/json", ...(options.headers || {}) }
+    ...requestOptions,
+    headers: { "content-type": "application/json", ...(requestOptions.headers || {}) },
+    signal: requestSignal(signal)
   });
   const json = await response.json().catch(() => ({}));
   if (!response.ok || json.ok === false) {
@@ -26,9 +25,11 @@ async function request(path, options = {}) {
 }
 
 async function requestFailure(path, options = {}, expectedStatus = 409) {
+  const { signal, ...requestOptions } = options;
   const response = await fetch(`${baseUrl}${path}`, {
-    ...options,
-    headers: { "content-type": "application/json", ...(options.headers || {}) }
+    ...requestOptions,
+    headers: { "content-type": "application/json", ...(requestOptions.headers || {}) },
+    signal: requestSignal(signal)
   });
   const json = await response.json().catch(() => ({}));
   assert.equal(response.status, expectedStatus, `${options.method || "GET"} ${path} returns the expected failure status`);
@@ -36,31 +37,17 @@ async function requestFailure(path, options = {}, expectedStatus = 409) {
   return json.error || json;
 }
 
-async function waitForServer() {
-  for (let attempt = 0; attempt < 80; attempt += 1) {
-    try {
-      await fetch(`${baseUrl}/api/v1/query/runtime/status`);
-      return;
-    } catch {
-      await sleep(500);
-    }
-  }
-  throw new Error(`server did not start at ${baseUrl}\n${serverOutput.slice(-20).join("\n")}`);
-}
-
-const server = process.env.PERSISTENT_TOWN_API_BASE_URL
-  ? null
-  : spawn(process.platform === "win32" ? process.env.ComSpec || "cmd.exe" : "npm", process.platform === "win32" ? ["/c", "npm", "run", "dev", "--", "-p", String(port)] : ["run", "dev", "--", "-p", String(port)], {
-      stdio: ["ignore", "pipe", "pipe"],
-      detached: process.platform !== "win32",
-      env: { ...process.env, PORT: String(port), AI_PROVIDER: "mock", DEEPSEEK_API_KEY: "", SILICONFLOW_API_KEY: "" }
-    });
-
-server?.stdout.on("data", (chunk) => serverOutput.push(String(chunk).trim()));
-server?.stderr.on("data", (chunk) => serverOutput.push(String(chunk).trim()));
-
 try {
-  await waitForServer();
+  if (externalBaseUrl) {
+    await waitForServer(baseUrl, { pathName: "/api/v1/query/runtime/status", timeoutMs: 30_000 });
+  } else {
+    serverHarness = await startReleaseCandidateServer({
+      prefix: "rc-persistent-town-api-smoke",
+      healthPath: "/api/v1/query/runtime/status",
+      env: { AI_PROVIDER: "mock", DEEPSEEK_API_KEY: "", SILICONFLOW_API_KEY: "" }
+    });
+    baseUrl = serverHarness.baseUrl;
+  }
   const explicitCreated = await request("/api/v1/command/town/create", {
     method: "POST",
     body: JSON.stringify({ seed: "persistent-api-smoke-explicit", mode: "showcase", caseMode: "generated", npcCount: 8, timelineHours: 24 })
@@ -801,16 +788,5 @@ try {
 
   console.log("Persistent town Agent API smoke test passed.");
 } finally {
-  clearTimeout(smokeTimeout);
-  if (server) {
-    if (process.platform === "win32") {
-      spawnSync("taskkill", ["/PID", String(server.pid), "/T", "/F"], { stdio: "ignore" });
-    } else {
-      try {
-        process.kill(-server.pid, "SIGTERM");
-      } catch {
-        server.kill("SIGTERM");
-      }
-    }
-  }
+  await serverHarness?.cleanup();
 }

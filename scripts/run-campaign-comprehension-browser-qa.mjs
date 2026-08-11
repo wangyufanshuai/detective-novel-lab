@@ -1,19 +1,12 @@
-import http from "node:http";
-import net from "node:net";
 import fs from "node:fs";
-import { execFileSync, spawn } from "node:child_process";
 import { chromium } from "@playwright/test";
+import { startReleaseCandidateServer } from "./lib/release-candidate-server.mjs";
 
 const STORAGE_KEY = "detective-town-campaign-study-v1";
 const EXPORT_FILE = "detective-town-campaign-study-v1.json";
 
 function hasFlag(name) {
   return process.argv.includes(`--${name}`);
-}
-
-function argValue(name) {
-  const prefix = `--${name}=`;
-  return process.argv.find((value) => value.startsWith(prefix))?.slice(prefix.length);
 }
 
 function launchOptions() {
@@ -24,60 +17,6 @@ function launchOptions() {
     : fs.existsSync(fallback)
       ? { headless: true, executablePath: fallback }
       : { headless: true };
-}
-
-function findAvailableLocalPort() {
-  return new Promise((resolve, reject) => {
-    const server = net.createServer();
-    server.unref();
-    server.once("error", reject);
-    server.listen(0, "127.0.0.1", () => {
-      const address = server.address();
-      const port = typeof address === "object" && address ? address.port : 0;
-      server.close((error) => error ? reject(error) : resolve(port));
-    });
-  });
-}
-
-function get(url, timeoutMs = 2500) {
-  return new Promise((resolve) => {
-    const request = http.get(url, { timeout: timeoutMs }, (response) => {
-      response.resume();
-      response.on("end", () => resolve({ ok: true, status: response.statusCode || 0 }));
-    });
-    request.on("timeout", () => {
-      request.destroy();
-      resolve({ ok: false, status: 0 });
-    });
-    request.on("error", () => resolve({ ok: false, status: 0 }));
-  });
-}
-
-async function waitForServer(baseUrl, timeoutMs = 120000) {
-  const startedAt = Date.now();
-  while (Date.now() - startedAt < timeoutMs) {
-    const result = await get(`${baseUrl}/?runtime=server`);
-    if (result.ok && result.status >= 200 && result.status < 500) return;
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-  }
-  throw new Error(`Timed out waiting for ${baseUrl}.`);
-}
-
-async function ensureServer(baseUrl, forceStart) {
-  const existing = forceStart ? { ok: false } : await get(`${baseUrl}/?runtime=server`);
-  if (existing.ok) return { started: false, child: null };
-  const port = new URL(baseUrl).port;
-  const command = process.platform === "win32" ? "cmd.exe" : "npm";
-  const args = process.platform === "win32"
-    ? ["/d", "/s", "/c", `npm.cmd run dev -- -p ${port}`]
-    : ["run", "dev", "--", "-p", port];
-  const child = spawn(command, args, {
-    cwd: process.cwd(),
-    env: { ...process.env, NEXT_PUBLIC_DEMO_MODE: "server" },
-    stdio: "ignore"
-  });
-  await waitForServer(baseUrl);
-  return { started: true, child };
 }
 
 async function streamText(stream) {
@@ -95,11 +34,8 @@ async function dismissCampaignFrontDoor(page) {
       await page.waitForFunction((element) => element instanceof HTMLButtonElement && !element.disabled, await dismiss.elementHandle(), { timeout: 30000 });
       await dismiss.click({ force: true });
     }
-    await page.waitForTimeout(250);
-    if (!(await frontDoor.isVisible().catch(() => false))) {
-      await page.waitForTimeout(250);
-      if (!(await frontDoor.isVisible().catch(() => false))) return;
-    }
+    await frontDoor.waitFor({ state: "hidden", timeout: 3_000 }).catch(() => undefined);
+    if (!(await frontDoor.isVisible().catch(() => false))) return;
   }
   throw new Error("Campaign Front Door remained open while entering Campaign Study.");
 }
@@ -302,7 +238,6 @@ async function verifyStatic(context, baseUrl) {
   }
   await studyBoundary.waitFor({ state: "visible", timeout: 30000 });
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.waitForTimeout(500);
   const summary = await page.evaluate((key) => ({
     recorderCount: document.querySelectorAll("[data-testid='campaign-study-recorder']").length,
     storageValue: window.localStorage.getItem(key),
@@ -322,13 +257,15 @@ async function verifyStatic(context, baseUrl) {
   return { ok: failures.length === 0, summary: { ...checks, apiRequests }, failures };
 }
 
-const requestedUrl = argValue("url")?.replace(/\/$/, "");
-const baseUrl = requestedUrl || `http://127.0.0.1:${await findAvailableLocalPort()}`;
 const json = hasFlag("json");
-let server;
+let serverHarness;
 let browser;
 try {
-  server = await ensureServer(baseUrl, !requestedUrl);
+  serverHarness = await startReleaseCandidateServer({
+    prefix: "rc-campaign-study",
+    env: { NEXT_PUBLIC_DEMO_MODE: "server", AI_PROVIDER: "mock", DEEPSEEK_API_KEY: "", SILICONFLOW_API_KEY: "" }
+  });
+  const baseUrl = serverHarness.baseUrl;
   browser = await chromium.launch(launchOptions());
   const serverContext = await browser.newContext({ viewport: { width: 1280, height: 800 }, acceptDownloads: true });
   await serverContext.addInitScript((key) => {
@@ -342,7 +279,7 @@ try {
   const staticReport = await verifyStatic(staticContext, baseUrl);
   await staticContext.close();
   const failures = [...serverReport.failures, ...staticReport.failures];
-  const report = { ok: failures.length === 0, baseUrl, serverStarted: server.started, server: serverReport, static: staticReport, failures };
+  const report = { ok: failures.length === 0, baseUrl, serverStarted: true, server: serverReport, static: staticReport, failures };
   console.log(json ? JSON.stringify(report, null, 2) : `Campaign comprehension browser QA: ${report.ok ? "ok" : `failed\n${failures.join("\n")}`}`);
   if (!report.ok) process.exitCode = 1;
 } catch (error) {
@@ -351,13 +288,5 @@ try {
   process.exitCode = 1;
 } finally {
   if (browser) await browser.close();
-  if (server?.started && server.child) {
-    if (process.platform === "win32" && server.child.pid) {
-      try {
-        execFileSync("taskkill", ["/PID", String(server.child.pid), "/T", "/F"], { stdio: "ignore" });
-      } catch {
-        server.child.kill();
-      }
-    } else server.child.kill();
-  }
+  await serverHarness?.cleanup();
 }

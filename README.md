@@ -41,6 +41,7 @@ DeepSeek is used only for NPC surface dialogue and optional solution prose. It d
 - v9.4 adds the **Final Detective Workspace**: Current Objective, Evidence, Testimony, Contradictions, Theory, Recovery, Source Review, and the v9.3 Resolution Ledger now form one investigation theatre with one Current Task and one primary action. Map, Command Deck, Guided Manual Run, and direct investigation continue through the same certified adapter. Desktop uses a three-column case-files theatre; narrow containers use one-column progressive disclosure. Static uses the same public-safe local projection with zero `/api/*`; no case or world authority changed.
 - v9.5 completes **Campaign Content Completion**: Midnight Chorus adds a fourth Campaign, Public Reckoning and Backstage Compact routes, a real theatre/market/night-watch WorldPackage, six new authored treatments, and two new Finale families. The catalog now contains four Campaigns, eight routes, and 24 treatments while every route remains exactly three cases. Content changes only future candidate preference and safe presentation; truth, evidence membership/coverage, Route Certificate, judgement, candidate validity, NPC legal actions, and world authority remain unchanged. The 24-case production gate, Front Door, Pacing, API smoke, 24-seed fairness, Static zero API, privacy, performance, and protected-public checks remain required evidence. v6.2 is still instrumentation ready, not Human Gate passed.
 - v9.6 completes **Accessibility, Localization & Save Hardening** for the release baseline: typed Chinese/English presentation, semantic keyboard map controls, modal/drawer focus ownership, axe gates, versioned Continue recovery, Strict Mode bootstrap de-duplication, staged Campaign launch, runtime normalization, and public-safe client failures. It adds no endpoint, world mechanic, proof card, or protected public artifact. Automated checks remain distinct from the v6.2 Human Gate, which is still instrumentation ready.
+- v9.7 freezes the **Release Candidate** feature baseline. `quality:rc` is the single read-only gate for TypeScript, core authority tests, 24-seed fairness, all 24 Campaign cases, content, build, isolated API/browser QA, performance, privacy, accessibility, and protected-public hashes. Server QA now uses dynamic ports and unique temporary SQLite files with guaranteed cleanup; browser synchronization waits for real state, focus, or committed renders. No feature, endpoint, schema, world rule, public artifact, or proof card was added. See the [RC manifest](docs/v9.7-rc-manifest.md) and [validation report](docs/v9.7-validation-report.md). v6.2 remains instrumentation ready, not Human Gate passed.
 - Project-level v3.6/v3.7 assessment and roadmap: [docs/project-level-report.md](docs/project-level-report.md).
 
 ## Try In 3 Modes
@@ -48,6 +49,12 @@ DeepSeek is used only for NPC surface dialogue and optional solution prose. It d
 ```powershell
 npm install
 npm run dev -- -p 3000
+```
+
+Release Candidate verification is intentionally separate from artifact generation:
+
+```powershell
+npm.cmd run quality:rc -- --json
 ```
 
 - **Static Demo**: open `http://127.0.0.1:3000/?runtime=static` for the public, no-server Premium Showcase plus the Final Detective Workspace, read-only Playable Investigation Path audit, Guided Manual Run, Guided Step Journal, Static Playthrough Proof, Source Review, Solved Case Debrief, Replay Practice Loop, Replay Goal Coach, Manual Evidence Drill, Manual Theory Drill, Replay Attempt Scorecard, Static Reviewer Home, Pack / Replay / Map / Agent main path, Proof Strip, Stable World Proof drilldown, non-blocking Case Quality Proof, World Systems overview, aggregate Public Dataset Explorer, and spoiler-safe Public Case Explorer.

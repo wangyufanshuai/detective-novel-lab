@@ -2,16 +2,13 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { spawn, spawnSync } from "node:child_process";
 import ts from "typescript";
 import { pathToFileURL } from "node:url";
+import { startReleaseCandidateServer, waitForServer } from "./lib/release-candidate-server.mjs";
 
-const port = Number(process.env.NINE_CASE_PLAYTHROUGH_PORT || 3430);
-const baseUrl = process.env.NINE_CASE_PLAYTHROUGH_BASE_URL || `http://127.0.0.1:${port}`;
-const databasePath = path.join(os.tmpdir(), `detective-town-v75-${process.pid}.db`);
-const databaseUrl = `file:${databasePath.replace(/\\/g, "/")}`;
-const serverOutput = [];
-let server;
+const externalBaseUrl = process.env.NINE_CASE_PLAYTHROUGH_BASE_URL?.replace(/\/$/, "") || "";
+let baseUrl = externalBaseUrl;
+let serverHarness;
 const strategicArtifacts = [
   path.join(os.tmpdir(), `v80-presentation-${process.pid}.mjs`),
   path.join(os.tmpdir(), `v80-command-deck-${process.pid}.mjs`),
@@ -61,30 +58,12 @@ const campaigns = allRoutes
   ? [...baselineCampaigns, ...counterCampaigns, ...(includeMidnight ? midnightCampaigns : [])]
   : baselineCampaigns;
 
-function stopServer() {
-  if (!server?.pid) return;
-  if (process.platform === "win32") spawnSync("taskkill", ["/pid", String(server.pid), "/t", "/f"], { stdio: "ignore" });
-  else {
-    try { process.kill(-server.pid, "SIGTERM"); } catch { server.kill("SIGTERM"); }
-  }
-}
-
-async function waitForServer() {
-  const deadline = Date.now() + 45_000;
-  while (Date.now() < deadline) {
-    try {
-      const response = await fetch(`${baseUrl}/api/v1/query/runtime/status`);
-      if (response.ok) return;
-    } catch {}
-    await new Promise((resolve) => setTimeout(resolve, 250));
-  }
-  throw new Error(`nine-case playthrough server did not start: ${serverOutput.slice(-8).join(" | ")}`);
-}
-
 async function request(pathname, options = {}) {
+  const { signal, ...requestOptions } = options;
   const response = await fetch(`${baseUrl}${pathname}`, {
-    ...options,
-    headers: { "content-type": "application/json", ...(options.headers || {}) }
+    ...requestOptions,
+    headers: { "content-type": "application/json", ...(requestOptions.headers || {}) },
+    signal: AbortSignal.any([AbortSignal.timeout(60_000), ...(signal ? [signal] : [])])
   });
   const json = await response.json().catch(() => ({}));
   if (!response.ok || json.ok === false) {
@@ -378,22 +357,16 @@ async function runCampaign(definition, index) {
 }
 
 try {
-  for (const suffix of ["", "-wal", "-shm"]) {
-    try { fs.rmSync(`${databasePath}${suffix}`, { force: true }); } catch {}
+  if (externalBaseUrl) {
+    await waitForServer(baseUrl, { pathName: "/api/v1/query/runtime/status", timeoutMs: 45_000 });
+  } else {
+    serverHarness = await startReleaseCandidateServer({
+      prefix: "rc-nine-case-playthrough",
+      healthPath: "/api/v1/query/runtime/status",
+      env: { AI_PROVIDER: "mock", DEEPSEEK_API_KEY: "", SILICONFLOW_API_KEY: "" }
+    });
+    baseUrl = serverHarness.baseUrl;
   }
-  const command = process.platform === "win32" ? "cmd.exe" : "npm";
-  const args = process.platform === "win32"
-    ? ["/d", "/s", "/c", `npm.cmd run start -- -H 127.0.0.1 -p ${port}`]
-    : ["run", "start", "--", "-H", "127.0.0.1", "-p", String(port)];
-  server = spawn(command, args, {
-    cwd: process.cwd(),
-    detached: process.platform !== "win32",
-    env: { ...process.env, PORT: String(port), DATABASE_URL: databaseUrl, AI_PROVIDER: "mock", DEEPSEEK_API_KEY: "", SILICONFLOW_API_KEY: "" },
-    stdio: ["ignore", "pipe", "pipe"]
-  });
-  server.stdout?.on("data", (chunk) => serverOutput.push(String(chunk).trim()));
-  server.stderr?.on("data", (chunk) => serverOutput.push(String(chunk).trim()));
-  await waitForServer();
   const reports = [];
   for (let index = 0; index < campaigns.length; index += 1) reports.push(await runCampaign(campaigns[index], index));
   const expectedCases = campaigns.length * 3;
@@ -403,10 +376,7 @@ try {
   assert.equal(reports.reduce((sum, item) => sum + item.districtFrontCases, 0), expectedCases, `all ${expectedCases} cases expose District Operations without authority writes`);
   console.log(JSON.stringify({ ok: true, suite: includeMidnight ? "twenty-four-case-campaign-playthrough" : allRoutes ? "eighteen-case-campaign-playthrough" : "nine-case-campaign-playthrough", campaigns: reports, totalCases: expectedCases, strategicCommandCases: expectedCases, strategicPacingCases: expectedCases, districtFrontCases: expectedCases }));
 } finally {
-  stopServer();
-  for (const suffix of ["", "-wal", "-shm"]) {
-    try { fs.rmSync(`${databasePath}${suffix}`, { force: true }); } catch {}
-  }
+  await serverHarness?.cleanup();
   for (const artifact of strategicArtifacts) {
     try { fs.rmSync(artifact, { force: true }); } catch {}
   }

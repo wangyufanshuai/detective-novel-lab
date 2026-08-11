@@ -2,6 +2,18 @@
 
 Use this checklist before pushing a launch or demo-readiness change. The v3.x public baseline is the Static Demo reader path plus the 5000 tick dataset handoff.
 
+## v9.7 read-only Release Candidate gate
+
+For the frozen v9.7 worktree, use the single non-generating gate:
+
+```powershell
+npm.cmd run quality:rc -- --json
+```
+
+It builds before production Server QA, uses dynamic ports and unique temporary SQLite files, removes DB/WAL/SHM/journal companions in `finally`, reports structured failure tails, scans privacy/security boundaries, and hashes both protected public trees before and after execution. A passing gate must leave no new RC database or project-owned Next process.
+
+Do not run the Refresh or Public Catalog Build commands below during a protected-artifact freeze. Those sections describe a separately authorized artifact-release workflow. The v9.7 gate does not invoke artifact generation or extended long-tick validation. See [v9.7-rc-manifest.md](v9.7-rc-manifest.md), [v9.7-known-issues.md](v9.7-known-issues.md), and [v9.7-recovery-runbook.md](v9.7-recovery-runbook.md).
+
 ## Refresh
 
 ```powershell

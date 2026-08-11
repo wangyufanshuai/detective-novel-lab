@@ -1,9 +1,7 @@
-import http from "node:http";
-import net from "node:net";
 import fs from "node:fs";
 import path from "node:path";
-import { execFileSync, spawn } from "node:child_process";
 import { chromium } from "@playwright/test";
+import { startReleaseCandidateServer } from "./lib/release-candidate-server.mjs";
 
 function chromiumLaunchOptions() {
   const expected = chromium.executablePath();
@@ -21,120 +19,8 @@ function chromiumLaunchOptions() {
   return executablePath ? { headless: true, executablePath } : { headless: true };
 }
 
-function findAvailableLocalPort() {
-  return new Promise((resolve, reject) => {
-    const server = net.createServer();
-    server.unref();
-    server.once("error", reject);
-    server.listen(0, "127.0.0.1", () => {
-      const address = server.address();
-      const port = typeof address === "object" && address ? address.port : 0;
-      server.close((error) => error ? reject(error) : resolve(port));
-    });
-  });
-}
-
-async function resolveBaseUrl() {
-  const requested = argValue("url");
-  if (requested) return requested.replace(/\/$/, "");
-  // A generic response on :3000 may belong to another local Next.js project
-  // or to a stale build. An isolated ephemeral port makes the default QA run
-  // project-owned; callers can still opt into a known server with --url.
-  return `http://127.0.0.1:${await findAvailableLocalPort()}`;
-}
-
 function hasFlag(name) {
   return process.argv.includes(`--${name}`);
-}
-
-function argValue(name, fallback = "") {
-  const prefix = `--${name}=`;
-  const found = process.argv.find((arg) => arg.startsWith(prefix));
-  return found ? found.slice(prefix.length) : fallback;
-}
-
-function get(url, timeoutMs = 2000) {
-  return new Promise((resolve) => {
-    const request = http.get(url, { timeout: timeoutMs }, (response) => {
-      response.resume();
-      response.on("end", () => resolve({ ok: true, status: response.statusCode || 0 }));
-    });
-    request.on("timeout", () => {
-      request.destroy();
-      resolve({ ok: false, status: 0 });
-    });
-    request.on("error", () => resolve({ ok: false, status: 0 }));
-  });
-}
-
-async function waitForServer(baseUrl, timeoutMs = 120000) {
-  const start = Date.now();
-  while (Date.now() - start < timeoutMs) {
-    const result = await get(`${baseUrl}/?runtime=static`);
-    if (result.ok && result.status >= 200 && result.status < 500) return true;
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-  }
-  return false;
-}
-
-function stopServerChild(child) {
-  if (!child) return;
-  if (process.platform === "win32" && child.pid) {
-    try {
-      execFileSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], { stdio: "ignore" });
-      return;
-    } catch {}
-  }
-  child.kill();
-}
-
-function latestInputMtime(target) {
-  if (!fs.existsSync(target)) return 0;
-  const stat = fs.statSync(target);
-  if (stat.isFile()) return stat.mtimeMs;
-  return fs.readdirSync(target, { withFileTypes: true }).reduce((latest, entry) => {
-    if (entry.name === "node_modules" || entry.name === ".next") return latest;
-    return Math.max(latest, latestInputMtime(path.join(target, entry.name)));
-  }, stat.mtimeMs);
-}
-
-function hasFreshProductionBuild() {
-  const buildIdPath = path.join(process.cwd(), ".next", "BUILD_ID");
-  if (!fs.existsSync(buildIdPath)) return false;
-  const buildMtime = fs.statSync(buildIdPath).mtimeMs;
-  const inputs = ["app", "packages", "content", "package.json", "next.config.ts", "tsconfig.json"]
-    .map((entry) => path.join(process.cwd(), entry));
-  return inputs.every((entry) => latestInputMtime(entry) <= buildMtime);
-}
-
-async function ensureServer(baseUrl) {
-  const existing = await get(`${baseUrl}/?runtime=static`);
-  if (existing.ok && existing.status >= 200 && existing.status < 500) return { started: false, child: null };
-  const command = process.platform === "win32" ? "cmd.exe" : "npm";
-  const parsedUrl = new URL(baseUrl);
-  const port = parsedUrl.port || (parsedUrl.protocol === "https:" ? "443" : "80");
-  const serverScript = hasFlag("dev") ? "dev" : hasFlag("production") || hasFreshProductionBuild() ? "start" : "dev";
-  const args = process.platform === "win32"
-    ? ["/d", "/s", "/c", `npm.cmd run ${serverScript} -- -H 127.0.0.1 -p ${port}`]
-    : ["run", serverScript, "--", "-H", "127.0.0.1", "-p", port];
-  const child = spawn(command, args, {
-    cwd: process.cwd(),
-    env: { ...process.env, NEXT_PUBLIC_DEMO_MODE: "static" },
-    stdio: ["ignore", "pipe", "pipe"]
-  });
-  let startupOutput = "";
-  const collectStartupOutput = (chunk) => {
-    startupOutput = `${startupOutput}${String(chunk)}`.slice(-8000);
-  };
-  child.stdout?.on("data", collectStartupOutput);
-  child.stderr?.on("data", collectStartupOutput);
-  const ready = await waitForServer(baseUrl);
-  if (!ready) {
-    stopServerChild(child);
-    const detail = startupOutput.trim().replace(/\s+/g, " ").slice(-1600);
-    throw new Error(`Timed out waiting for local ${serverScript} server on port ${port}.${detail ? ` Startup output: ${detail}` : ""}`);
-  }
-  return { started: true, child, serverScript };
 }
 
 async function waitForGuidedStepIdle(page, timeout = 18000) {
@@ -191,12 +77,16 @@ async function waitForCommandButtonReady(button, timeout = 30000) {
   );
 }
 
+async function waitForRenderCommit(page) {
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+}
+
 async function runUntilManualTheoryDrill(page, maxClicks = 12) {
   for (let index = 0; index < maxClicks; index += 1) {
     if (await page.getByTestId("manual-theory-drill").isVisible().catch(() => false)) return;
     await page.getByTestId("run-next-guided-step").click();
     await waitForGuidedStepIdle(page);
-    await page.waitForTimeout(650);
+    await waitForRenderCommit(page);
   }
   await page.getByTestId("manual-theory-drill").waitFor({ state: "visible", timeout: 30000 });
 }
@@ -218,14 +108,14 @@ async function completeManualTheoryReplay(page) {
   await page.getByText("Manual Theory Drill", { exact: true }).first().waitFor({ state: "visible", timeout: 30000 });
   const manualTheoryDrillTextBeforeFill = await page.getByTestId("manual-theory-drill").innerText();
   await fillManualTheoryDrill(page);
-  await page.waitForTimeout(400);
+  await waitForRenderCommit(page);
   const manualTheoryDrillTextAfterFill = await page.getByTestId("manual-theory-drill").innerText();
   const replayPracticeLoopTextAfterManualTheoryFill = await page.getByTestId("replay-practice-loop").innerText();
   const guidedStepJournalTextAfterManualTheoryFill = await page.getByTestId("guided-step-journal").innerText();
   const replayAttemptScorecardTextAfterManualTheoryFill = await page.getByTestId("replay-attempt-scorecard").innerText();
   await page.getByTestId("run-next-guided-step").click();
   await waitForGuidedStepIdle(page);
-  await page.waitForTimeout(850);
+  await waitForRenderCommit(page);
   const manualTheoryDrillTextAfterBlockedSubmit = await page.getByTestId("manual-theory-drill").innerText();
   const replayPracticeLoopTextAfterBlockedSubmit = await page.getByTestId("replay-practice-loop").innerText();
   const finalWorkspaceRecovery = await page.getByTestId("final-detective-workspace").evaluate((node) => ({
@@ -248,14 +138,14 @@ async function completeManualTheoryReplay(page) {
     finalWorkspacePostRecoveryActionKind = await page.getByTestId("final-workspace-primary-action").getAttribute("data-action-kind") || "";
   }
   await page.getByTestId("manual-theory-fallback").click();
-  await page.waitForTimeout(400);
+  await waitForRenderCommit(page);
   const manualTheoryDrillTextAfterFallback = await page.getByTestId("manual-theory-drill").innerText();
   const replayPracticeLoopTextAfterFallback = await page.getByTestId("replay-practice-loop").innerText();
   const guidedStepJournalTextAfterManualTheoryFallback = await page.getByTestId("guided-step-journal").innerText();
   const replayAttemptScorecardTextAfterManualTheoryFallback = await page.getByTestId("replay-attempt-scorecard").innerText();
   await page.getByTestId("run-next-guided-step").click();
   await waitForGuidedStepIdle(page);
-  await page.waitForTimeout(900);
+  await waitForRenderCommit(page);
   await page.getByText(/completed replay delta/i).first().waitFor({ state: "visible", timeout: 30000 });
   const replayPracticeLoopTextCompleted = await page.getByTestId("replay-practice-loop").innerText();
   const finalWorkspaceResolved = await page.getByTestId("final-detective-workspace").evaluate((node) => ({
@@ -288,7 +178,7 @@ async function completeManualTheoryReplay(page) {
 
 async function keepCommandDeckSectionsOpen(page) {
   await page.getByTestId("command-deck-shell").waitFor({ state: "visible", timeout: 30000 });
-  await page.waitForTimeout(350);
+  await waitForRenderCommit(page);
   await page.evaluate(() => {
     const openSections = () => {
       document.querySelectorAll("details[data-command-deck-collapsible]").forEach((element) => {
@@ -371,7 +261,7 @@ async function verifyStaticPage(page, baseUrl) {
     if (/review source audit/i.test(guidedText) || /source review ready/i.test(guidedText) || /\baccepted\b/i.test(guidedText)) break;
     await page.getByTestId("run-next-guided-step").click();
     await page.waitForFunction(() => !/running guided step/i.test(document.querySelector("[data-testid='run-next-guided-step']")?.textContent || ""), undefined, { timeout: 12000 }).catch(() => undefined);
-    await page.waitForTimeout(650);
+    await waitForRenderCommit(page);
     if (await page.getByTestId("source-review-workbench").isVisible().catch(() => false)) break;
   }
   await page.getByTestId("static-playthrough-proof").waitFor({ state: "visible", timeout: 30000 });
@@ -420,20 +310,20 @@ async function verifyStaticPage(page, baseUrl) {
     if (/review source audit/i.test(guidedText) || /source review ready/i.test(guidedText) || /\baccepted\b/i.test(guidedText)) break;
     await page.getByTestId("run-next-guided-step").click();
     await page.waitForFunction(() => !/running guided step/i.test(document.querySelector("[data-testid='run-next-guided-step']")?.textContent || ""), undefined, { timeout: 12000 }).catch(() => undefined);
-    await page.waitForTimeout(650);
+    await waitForRenderCommit(page);
   }
   await page.getByTestId("manual-evidence-drill").waitFor({ state: "visible", timeout: 30000 });
   await page.getByText("Manual Evidence Drill", { exact: true }).first().waitFor({ state: "visible", timeout: 30000 });
   const guidedManualTextAtManualDrill = await page.getByTestId("guided-manual-run").innerText();
   const manualEvidenceDrillTextBeforeAdd = await page.getByTestId("manual-evidence-drill").innerText();
   await page.getByTestId("manual-evidence-add").first().click();
-  await page.waitForTimeout(400);
+  await waitForRenderCommit(page);
   const manualEvidenceDrillTextAfterFirstAdd = await page.getByTestId("manual-evidence-drill").innerText();
   for (let index = 0; index < 8; index += 1) {
     const addCount = await page.getByTestId("manual-evidence-add").count().catch(() => 0);
     if (!addCount) break;
     await page.getByTestId("manual-evidence-add").first().click();
-    await page.waitForTimeout(250);
+    await waitForRenderCommit(page);
   }
   const manualEvidenceDrillTextAfterAdd = await page.getByTestId("manual-evidence-drill").innerText();
   const guidedStepJournalTextAfterManualDrill = await page.getByTestId("guided-step-journal").innerText();
@@ -497,7 +387,7 @@ async function verifyStaticPage(page, baseUrl) {
   await page.getByRole("button", { name: "Gate & Audit" }).click();
   await page.getByText("Static boundary summary", { exact: true }).first().waitFor({ state: "visible", timeout: 30000 });
   await page.getByTestId("distribution-explorer").getByRole("button", { name: "Public Case Explorer" }).click();
-  await page.waitForTimeout(750);
+  await waitForRenderCommit(page);
 
   const summary = await page.evaluate(() => {
     const text = document.body?.innerText || "";
@@ -764,7 +654,7 @@ async function verifyStaticPage(page, baseUrl) {
   await backupCard.getByRole("button", { name: "Load into Authoring" }).click();
   await page.waitForFunction((expectedTitle) => document.querySelector(".stageTopbar h2")?.textContent === expectedTitle, originalAuthoringTitle, { timeout: 30000 });
   await page.getByRole("button", { name: "Content", exact: true }).click();
-  await page.waitForTimeout(500);
+  await waitForRenderCommit(page);
   const authoringSummary = await page.evaluate((contentSeedUndoRestored) => {
     const text = document.body?.innerText || "";
     const lowerText = text.toLowerCase();
@@ -897,7 +787,7 @@ async function verifyMobile(page, baseUrl) {
   await page.getByRole("heading", { name: "Public Dataset Explorer" }).waitFor({ state: "visible", timeout: 30000 });
   await page.getByText("Reviewer next step", { exact: true }).first().waitFor({ state: "visible", timeout: 30000 });
   await page.getByTestId("distribution-explorer").getByRole("button", { name: "Public Case Explorer" }).click();
-  await page.waitForTimeout(750);
+  await waitForRenderCommit(page);
   const summary = await page.evaluate(() => {
     const text = document.body?.innerText || "";
     const lowerText = text.toLowerCase();
@@ -1056,7 +946,7 @@ async function verifyServerRuntime(page, baseUrl) {
   ]);
   await page.getByTestId("open-persistent-town").click();
   await page.getByRole("heading", { name: "Dataset Package" }).waitFor({ state: "visible", timeout: 30000 });
-  await page.waitForTimeout(1000);
+  await waitForRenderCommit(page);
   const serverCatalogText = await page.locator("body").innerText();
   await page.getByTestId("persistent-command-center").waitFor({ state: "visible", timeout: 30000 });
   const commandControls = page.locator(".commandControls").first();
@@ -1135,7 +1025,7 @@ async function verifyServerRuntime(page, baseUrl) {
     if (/review source audit/i.test(guidedText) || /source review ready/i.test(guidedText) || /\baccepted\b/i.test(guidedText)) break;
     await page.getByTestId("run-next-guided-step").click();
     await waitForGuidedStepIdle(page);
-    await page.waitForTimeout(900);
+    await waitForRenderCommit(page);
     await openWorldCampaignArchive(page);
     if (!serverWorldLeadTextActive && await page.getByTestId("world-lead-outcome").isVisible().catch(() => false)) {
       serverWorldLeadTextActive = await page.getByTestId("world-lead-panel").innerText();
@@ -1211,20 +1101,20 @@ async function verifyServerRuntime(page, baseUrl) {
     if (/review source audit/i.test(guidedText) || /source review ready/i.test(guidedText) || /\baccepted\b/i.test(guidedText)) break;
     await page.getByTestId("run-next-guided-step").click();
     await waitForGuidedStepIdle(page);
-    await page.waitForTimeout(900);
+    await waitForRenderCommit(page);
   }
   await page.getByTestId("manual-evidence-drill").waitFor({ state: "visible", timeout: 30000 });
   await page.getByText("Manual Evidence Drill", { exact: true }).first().waitFor({ state: "visible", timeout: 30000 });
   const serverGuidedManualTextAtManualDrill = await page.getByTestId("guided-manual-run").innerText();
   const serverManualEvidenceDrillTextBeforeAdd = await page.getByTestId("manual-evidence-drill").innerText();
   await page.getByTestId("manual-evidence-add").first().click();
-  await page.waitForTimeout(500);
+  await waitForRenderCommit(page);
   const serverManualEvidenceDrillTextAfterFirstAdd = await page.getByTestId("manual-evidence-drill").innerText();
   for (let index = 0; index < 8; index += 1) {
     const addCount = await page.getByTestId("manual-evidence-add").count().catch(() => 0);
     if (!addCount) break;
     await page.getByTestId("manual-evidence-add").first().click();
-    await page.waitForTimeout(300);
+    await waitForRenderCommit(page);
   }
   const serverManualEvidenceDrillTextAfterAdd = await page.getByTestId("manual-evidence-drill").innerText();
   const serverGuidedStepJournalTextAfterManualDrill = await page.getByTestId("guided-step-journal").innerText();
@@ -1573,7 +1463,7 @@ async function verifyServerRuntime(page, baseUrl) {
     && /\b(?:improved|unchanged|regressed|completed)\b/i.test(serverReplayAttemptScorecardTextCompleted);
   summary.hasServerReplayAttemptScorecardNoRawIds = !/\bnpc-\d+\b|\bev-[a-z0-9-]+\b|\b(?:evidence|event|source)-[a-z0-9-]*\d[a-z0-9-]*\b/i.test(`${serverReplayAttemptScorecardTextBeforeAttempt}\n${serverReplayAttemptScorecardTextPending}\n${serverReplayAttemptScorecardTextCompleted}`);
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.waitForTimeout(250);
+  await waitForRenderCommit(page);
   const serverOperationsMobile = await page.evaluate(() => ({
     overflow: Math.max(document.documentElement.scrollWidth, document.body?.scrollWidth || 0) - window.innerWidth,
     boardVisible: Boolean(document.querySelector("[data-testid='player-resource-commitment']")),
@@ -1591,13 +1481,17 @@ async function verifyServerRuntime(page, baseUrl) {
 }
 
 const json = hasFlag("json");
-const baseUrl = await resolveBaseUrl();
 
-let server;
+let serverHarness;
 let browser;
 let currentQaStep = "startup";
 try {
-  server = await ensureServer(baseUrl);
+  serverHarness = await startReleaseCandidateServer({
+    prefix: "rc-static-browser",
+    healthPath: "/?runtime=static&lang=en-US",
+    env: { NEXT_PUBLIC_DEMO_MODE: "static", AI_PROVIDER: "mock", DEEPSEEK_API_KEY: "", SILICONFLOW_API_KEY: "" }
+  });
+  const baseUrl = serverHarness.baseUrl;
   browser = await chromium.launch(chromiumLaunchOptions());
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 
@@ -1611,7 +1505,7 @@ try {
   const report = {
     ok: failures.length === 0,
     baseUrl,
-    serverStarted: server.started,
+    serverStarted: true,
     static: staticReport,
     mobile: mobileReport,
     serverRuntime: serverReport,
@@ -1620,7 +1514,7 @@ try {
   if (json) console.log(JSON.stringify(report, null, 2));
   else {
     console.log(`Static browser QA: ${report.ok ? "ok" : "failed"}`);
-    console.log(`Server: ${server.started ? "started" : "reused"}`);
+    console.log("Server: isolated production runtime");
     console.log(`Static /api requests: ${staticReport.apiRequests.length}`);
     console.log(`Static catalog requests: ${staticReport.catalogRequests.length}`);
     console.log(`Static dataset requests: ${staticReport.datasetRequests.length}`);
@@ -1637,7 +1531,5 @@ try {
   process.exitCode = 1;
 } finally {
   if (browser) await browser.close();
-  if (server?.started && server.child) {
-    stopServerChild(server.child);
-  }
+  await serverHarness?.cleanup();
 }
