@@ -228,8 +228,15 @@ async function completeManualTheoryReplay(page) {
   await page.waitForTimeout(850);
   const manualTheoryDrillTextAfterBlockedSubmit = await page.getByTestId("manual-theory-drill").innerText();
   const replayPracticeLoopTextAfterBlockedSubmit = await page.getByTestId("replay-practice-loop").innerText();
+  const finalWorkspaceRecovery = await page.getByTestId("final-detective-workspace").evaluate((node) => ({
+    stage: node.getAttribute("data-workspace-stage") || "",
+    theoryState: node.querySelector("[data-testid='final-workspace-theory']")?.getAttribute("data-theory-state") || "",
+    recoveryVisible: Boolean(node.querySelector("[data-testid='final-workspace-recovery']")),
+    actionKind: node.querySelector("[data-testid='final-workspace-primary-action']")?.getAttribute("data-action-kind") || ""
+  }));
   let campaignRecoveryTextReady = "";
   let campaignRecoveryTextCompleted = "";
+  let finalWorkspacePostRecoveryActionKind = finalWorkspaceRecovery.actionKind;
   const campaignRecoveryStart = page.getByTestId("campaign-recovery-start");
   if (await campaignRecoveryStart.isVisible().catch(() => false)) {
     campaignRecoveryTextReady = await page.getByTestId("campaign-recovery").innerText();
@@ -238,6 +245,7 @@ async function completeManualTheoryReplay(page) {
     await openWorldCampaignArchive(page);
     await page.getByTestId("campaign-recovery").getByText("completed", { exact: true }).first().waitFor({ state: "visible", timeout: 30000 });
     campaignRecoveryTextCompleted = await page.getByTestId("campaign-recovery").innerText();
+    finalWorkspacePostRecoveryActionKind = await page.getByTestId("final-workspace-primary-action").getAttribute("data-action-kind") || "";
   }
   await page.getByTestId("manual-theory-fallback").click();
   await page.waitForTimeout(400);
@@ -250,6 +258,13 @@ async function completeManualTheoryReplay(page) {
   await page.waitForTimeout(900);
   await page.getByText(/completed replay delta/i).first().waitFor({ state: "visible", timeout: 30000 });
   const replayPracticeLoopTextCompleted = await page.getByTestId("replay-practice-loop").innerText();
+  const finalWorkspaceResolved = await page.getByTestId("final-detective-workspace").evaluate((node) => ({
+    stage: node.getAttribute("data-workspace-stage") || "",
+    theoryState: node.querySelector("[data-testid='final-workspace-theory']")?.getAttribute("data-theory-state") || "",
+    sourceReviewVisible: Boolean(node.querySelector("[data-testid='source-review-workbench']")),
+    ledgerVisible: Boolean(node.querySelector("[data-testid='final-workspace-latest-resolution']")),
+    primaryCount: node.querySelectorAll("[data-testid='final-workspace-primary-action']").length
+  }));
   return {
     manualTheoryDrillTextBeforeFill,
     manualTheoryDrillTextAfterFill,
@@ -264,7 +279,10 @@ async function completeManualTheoryReplay(page) {
     replayAttemptScorecardTextAfterManualTheoryFill,
     replayAttemptScorecardTextAfterManualTheoryFallback,
     campaignRecoveryTextReady,
-    campaignRecoveryTextCompleted
+    campaignRecoveryTextCompleted,
+    finalWorkspaceRecovery,
+    finalWorkspacePostRecoveryActionKind,
+    finalWorkspaceResolved
   };
 }
 
@@ -365,7 +383,8 @@ async function verifyStaticPage(page, baseUrl) {
   await page.getByText(/completed \/ accepted theory/i).first().waitFor({ state: "visible", timeout: 30000 });
   await page.getByTestId("source-review-unlock").waitFor({ state: "visible", timeout: 30000 });
   await page.getByText("Source Review Unlock", { exact: true }).first().waitFor({ state: "visible", timeout: 30000 });
-  await page.getByText(/unlocked \/ source-backed audit ready/i).first().waitFor({ state: "visible", timeout: 30000 });
+  await page.getByTestId("source-review-unlock").getByText(/source review unlocked/i).first().waitFor({ state: "visible", timeout: 30000 });
+  await page.getByTestId("source-review-unlock").getByText(/audit ready/i).first().waitFor({ state: "visible", timeout: 30000 });
   await page.getByTestId("source-review-workbench").waitFor({ state: "visible", timeout: 30000 });
   await page.getByTestId("source-review-trail").getByText("Source Trail", { exact: true }).waitFor({ state: "visible", timeout: 30000 });
   await page.getByTestId("source-review-obligations").getByText("Proof Obligations", { exact: true }).waitFor({ state: "visible", timeout: 30000 });
@@ -490,7 +509,7 @@ async function verifyStaticPage(page, baseUrl) {
     return {
       hasPlayableInvestigationPath: playablePathText.toLowerCase().includes("playable investigation path"),
       hasPlayableInvestigationSteps: ["Join", "Search", "Question", "Challenge", "Select Evidence", "Submit", "Review Source"].every((label) => playablePathText.includes(label)),
-      hasPlayablePathBoundary: playablePathText.includes("Low-spoiler route guidance only"),
+      hasPlayablePathBoundary: /read-only route audit/i.test(playablePathText) && /final detective workspace/i.test(playablePathText) && /existing certified adapter/i.test(playablePathText),
       hasCampaignResolutionLedger: ["Result", "World Change", "Objective Progress", "Next Action"].every((label) => resolutionLabels.includes(label)),
       hasStaticResolutionNoPersistence: document.querySelector("[data-testid='command-deck-feedback'] [data-resolution-field='worldChange'] b")?.textContent === "No persistent world change",
       hasCampaignResolutionNoRawIds: !/\b(?:npc|case|event|source|location|institution|resource|evidence|scene|session|character)-[a-z0-9-]*\d[a-z0-9-]*\b|culpritId|victimId|hiddenTruth|rawBody|sourceId|[A-Za-z]:[\\/]/i.test(resolutionText),
@@ -566,7 +585,7 @@ async function verifyStaticPage(page, baseUrl) {
   });
   summary.hasPlayableInvestigationPath = summary.hasPlayableInvestigationPath || playablePathTextBeforeReview.toLowerCase().includes("playable investigation path");
   summary.hasPlayableInvestigationSteps = summary.hasPlayableInvestigationSteps || ["Join", "Search", "Question", "Challenge", "Select Evidence", "Submit", "Review Source"].every((label) => playablePathTextBeforeReview.includes(label));
-  summary.hasPlayablePathBoundary = summary.hasPlayablePathBoundary || playablePathTextBeforeReview.includes("Low-spoiler route guidance only");
+  summary.hasPlayablePathBoundary = summary.hasPlayablePathBoundary || (/read-only route audit/i.test(playablePathTextBeforeReview) && /final detective workspace/i.test(playablePathTextBeforeReview) && /existing certified adapter/i.test(playablePathTextBeforeReview));
   summary.hasCampaignResolutionLedger = /campaign resolution ledger/i.test(guidedStepJournalTextBeforeReview)
     && ["result", "world change", "objective progress", "next action"].every((label) => guidedStepJournalTextBeforeReview.toLowerCase().includes(label));
   summary.hasStaticResolutionNoPersistence = /no persistent world change/i.test(guidedStepJournalTextBeforeReview);
@@ -596,7 +615,7 @@ async function verifyStaticPage(page, baseUrl) {
   summary.hasGuidedStepJournalFallback = /certified fallback/i.test(guidedStepJournalTextBeforeReview) && /used/i.test(guidedStepJournalTextBeforeReview);
   summary.hasGuidedStepJournalReviewUnlock = /review unlocked/i.test(guidedStepJournalTextBeforeReview) || /source review workbench unlocked/i.test(guidedStepJournalTextBeforeReview);
   summary.hasGuidedStepJournalNoRawIds = !/\bnpc-\d+\b|\bev-[a-z0-9-]+\b|\b(?:evidence|event|source)-[a-z0-9-]*\d[a-z0-9-]*\b/i.test(guidedStepJournalTextBeforeReview);
-  summary.hasSourceReviewUnlock = /source review unlock/i.test(sourceReviewTextBeforeReview) && /unlocked \/ source-backed audit ready/i.test(sourceReviewTextBeforeReview);
+  summary.hasSourceReviewUnlock = /source review unlock/i.test(sourceReviewTextBeforeReview) && /source review unlocked/i.test(sourceReviewTextBeforeReview) && /audit ready/i.test(sourceReviewTextBeforeReview);
   summary.hasSourceReviewWorkbench = ["source trail", "proof obligations", "certified route", "conclusion review"].every((label) => sourceReviewTextBeforeReview.toLowerCase().includes(label));
   summary.hasSourceReviewNoRawIds = !/\bnpc-\d+\b|\bev-[a-z0-9-]+\b|\b(?:evidence|event|source)-[a-z0-9-]*\d[a-z0-9-]*\b/i.test(sourceReviewTextBeforeReview);
   summary.hasSolvedCaseDebrief = /solved case debrief/i.test(solvedCaseDebriefTextBeforeReview) && /investigation completed \/ accepted/i.test(solvedCaseDebriefTextBeforeReview);
@@ -621,6 +640,15 @@ async function verifyStaticPage(page, baseUrl) {
     && /unlocked/i.test(staticManualTheoryReplay.replayPracticeLoopTextCompleted)
     && /completed/i.test(staticManualTheoryReplay.replayPracticeLoopTextCompleted)
     && /scorecard/i.test(staticManualTheoryReplay.replayPracticeLoopTextCompleted);
+  summary.hasFinalWorkspaceRecovery = staticManualTheoryReplay.finalWorkspaceRecovery.stage === "recovery"
+    && staticManualTheoryReplay.finalWorkspaceRecovery.theoryState === "rejected"
+    && staticManualTheoryReplay.finalWorkspaceRecovery.recoveryVisible
+    && staticManualTheoryReplay.finalWorkspaceRecovery.actionKind === "submit";
+  summary.hasFinalWorkspaceSourceReview = ["source-review", "resolved"].includes(staticManualTheoryReplay.finalWorkspaceResolved.stage)
+    && staticManualTheoryReplay.finalWorkspaceResolved.theoryState === "accepted"
+    && staticManualTheoryReplay.finalWorkspaceResolved.sourceReviewVisible
+    && staticManualTheoryReplay.finalWorkspaceResolved.primaryCount === 1;
+  summary.hasFinalWorkspaceResolutionLedger = staticManualTheoryReplay.finalWorkspaceResolved.ledgerVisible;
   summary.hasReplayPracticeLoopNoRawIds = !/\bnpc-\d+\b|\bev-[a-z0-9-]+\b|\b(?:evidence|event|source)-[a-z0-9-]*\d[a-z0-9-]*\b/i.test(`${replayPracticeLoopTextBeforeAttempt}\n${replayPracticeLoopTextAfterAttempt}\n${replayPracticeLoopTextAfterManualDrill}\n${staticManualTheoryReplay.replayPracticeLoopTextAfterManualTheoryFill}\n${staticManualTheoryReplay.replayPracticeLoopTextAfterBlockedSubmit}\n${staticManualTheoryReplay.replayPracticeLoopTextAfterFallback}\n${staticManualTheoryReplay.replayPracticeLoopTextCompleted}`);
   summary.hasManualEvidenceDrill = /manual evidence drill/i.test(manualEvidenceDrillTextBeforeAdd);
   summary.hasManualEvidenceDrillProgress = /selected evidence/i.test(manualEvidenceDrillTextBeforeAdd) && /route target count/i.test(manualEvidenceDrillTextBeforeAdd) && /remaining proof slots/i.test(manualEvidenceDrillTextBeforeAdd);
@@ -878,7 +906,7 @@ async function verifyMobile(page, baseUrl) {
     return {
       hasPlayableInvestigationPath: playablePathText.toLowerCase().includes("playable investigation path"),
       hasPlayableInvestigationSteps: ["Join", "Search", "Question", "Challenge", "Select Evidence", "Submit", "Review Source"].every((label) => playablePathText.includes(label)),
-      hasPlayablePathBoundary: playablePathText.includes("Low-spoiler route guidance only"),
+      hasPlayablePathBoundary: /read-only route audit/i.test(playablePathText) && /final detective workspace/i.test(playablePathText) && /existing certified adapter/i.test(playablePathText),
       hasReviewerHome: /Reviewer\s+Home/.test(text),
       hasReviewerMainPath: text.includes("Reviewer Main Path"),
       hasTrustSnapshot: text.includes("Trust Snapshot"),
@@ -935,7 +963,7 @@ async function verifyMobile(page, baseUrl) {
   });
   summary.hasPlayableInvestigationPath = summary.hasPlayableInvestigationPath || playablePathTextBeforeReview.toLowerCase().includes("playable investigation path");
   summary.hasPlayableInvestigationSteps = summary.hasPlayableInvestigationSteps || ["Join", "Search", "Question", "Challenge", "Select Evidence", "Submit", "Review Source"].every((label) => playablePathTextBeforeReview.includes(label));
-  summary.hasPlayablePathBoundary = summary.hasPlayablePathBoundary || playablePathTextBeforeReview.includes("Low-spoiler route guidance only");
+  summary.hasPlayablePathBoundary = summary.hasPlayablePathBoundary || (/read-only route audit/i.test(playablePathTextBeforeReview) && /final detective workspace/i.test(playablePathTextBeforeReview) && /existing certified adapter/i.test(playablePathTextBeforeReview));
   summary.hasGuidedManualRun = /guided manual run/i.test(guidedManualTextBeforeReview);
   summary.hasGuidedStepJournal = /guided step journal/i.test(guidedStepJournalTextBeforeReview);
   summary.hasStaticPlaythroughProof = staticPlaythroughTextBeforeReview.toLowerCase().includes("static playthrough proof");
@@ -1073,7 +1101,18 @@ async function verifyServerRuntime(page, baseUrl) {
   const serverFactionRelationshipTextInitial = await page.getByTestId("faction-relationship-summary").innerText();
   const operationSupportButtons = page.locator("[data-testid^='investigation-operations-']:not([data-testid='investigation-operations-confirm']):not([disabled])");
   const operationSupportCount = Math.min(2, await operationSupportButtons.count());
-  if (operationSupportCount < 1) throw new Error("No Investigation Operations support lane is available in Server Runtime QA.");
+  if (operationSupportCount < 1) {
+    const operationPanelState = await page.getByTestId("player-resource-commitment").evaluate((node) => ({
+      text: node.textContent || "",
+      scope: node.getAttribute("data-operation-scope") || "",
+      controls: Array.from(node.querySelectorAll("button")).map((button) => ({
+        testId: button.getAttribute("data-testid") || "",
+        disabled: button.disabled,
+        label: button.textContent || ""
+      }))
+    }));
+    throw new Error(`No Investigation Operations support lane is available in Server Runtime QA. ${JSON.stringify(operationPanelState)}`);
+  }
   for (let index = 0; index < operationSupportCount; index += 1) await operationSupportButtons.nth(index).click();
   await page.getByTestId("investigation-operations-confirm").click();
   await settleCampaignTransitionTheatre(page);
@@ -1487,6 +1526,16 @@ async function verifyServerRuntime(page, baseUrl) {
     && /unlocked/i.test(serverManualTheoryReplay.replayPracticeLoopTextCompleted)
     && /completed/i.test(serverManualTheoryReplay.replayPracticeLoopTextCompleted)
     && /scorecard/i.test(serverManualTheoryReplay.replayPracticeLoopTextCompleted);
+  summary.hasServerFinalWorkspaceRecovery = serverManualTheoryReplay.finalWorkspaceRecovery.stage === "recovery"
+    && serverManualTheoryReplay.finalWorkspaceRecovery.theoryState === "rejected"
+    && serverManualTheoryReplay.finalWorkspaceRecovery.recoveryVisible
+    && serverManualTheoryReplay.finalWorkspaceRecovery.actionKind === "recover"
+    && serverManualTheoryReplay.finalWorkspacePostRecoveryActionKind === "submit";
+  summary.hasServerFinalWorkspaceSourceReview = ["source-review", "resolved"].includes(serverManualTheoryReplay.finalWorkspaceResolved.stage)
+    && serverManualTheoryReplay.finalWorkspaceResolved.theoryState === "accepted"
+    && serverManualTheoryReplay.finalWorkspaceResolved.sourceReviewVisible
+    && serverManualTheoryReplay.finalWorkspaceResolved.primaryCount === 1;
+  summary.hasServerFinalWorkspaceResolutionLedger = serverManualTheoryReplay.finalWorkspaceResolved.ledgerVisible;
   summary.hasServerReplayPracticeLoopNoRawIds = !/\bnpc-\d+\b|\bev-[a-z0-9-]+\b|\b(?:evidence|event|source)-[a-z0-9-]*\d[a-z0-9-]*\b/i.test(`${serverReplayPracticeLoopTextBeforeAttempt}\n${serverReplayPracticeLoopTextAfterAttempt}\n${serverReplayPracticeLoopTextAfterManualDrill}\n${serverManualTheoryReplay.replayPracticeLoopTextAfterManualTheoryFill}\n${serverManualTheoryReplay.replayPracticeLoopTextAfterBlockedSubmit}\n${serverManualTheoryReplay.replayPracticeLoopTextAfterFallback}\n${serverManualTheoryReplay.replayPracticeLoopTextCompleted}`);
   summary.hasServerManualEvidenceDrill = /manual evidence drill/i.test(serverManualEvidenceDrillTextBeforeAdd);
   summary.hasServerManualEvidenceDrillProgress = /selected evidence/i.test(serverManualEvidenceDrillTextBeforeAdd) && /route target count/i.test(serverManualEvidenceDrillTextBeforeAdd) && /remaining proof slots/i.test(serverManualEvidenceDrillTextBeforeAdd);

@@ -76,6 +76,7 @@ try {
       const transitionLayouts = [];
       const rhythmAutomation = [];
       const resolutionConsistency = [];
+      let workspaceLayout = null;
       if (width === 1440) await page.route("**/api/players/join", async (route) => { await new Promise((resolve) => setTimeout(resolve, 500)); await route.continue(); });
       await page.goto(`${baseUrl}/?runtime=server`, { waitUntil: "networkidle" });
       const frontDoor = page.getByTestId("campaign-front-door");
@@ -323,10 +324,57 @@ try {
             await page.waitForFunction(() => document.querySelector("[data-testid='command-deck-context']")?.getAttribute("data-context-kind") === "institution");
             contextKinds.push("institution");
             await page.locator(".inspectorTabs button").nth(1).click();
+            if (await inspectorDetailToggle.getAttribute("aria-expanded") === "true") await inspectorDetailToggle.click();
             await selectableLocation.click();
           }
         }
       }
+      currentQaStep = `${width}px Final Detective Workspace`;
+      const drawerToggleForWorkspace = page.getByTestId("command-deck-drawer-toggle");
+      if (width <= 1020 && await drawerToggleForWorkspace.isVisible().catch(() => false) && await drawerToggleForWorkspace.getAttribute("aria-expanded") !== "true") {
+        await drawerToggleForWorkspace.click();
+      }
+      if (await inspectorDetailToggle.getAttribute("aria-expanded") !== "true") await inspectorDetailToggle.click();
+      const inspectorTabs = page.locator(".inspectorTabs button");
+      if (await inspectorTabs.count() > 1) await inspectorTabs.nth(1).click();
+      await page.getByTestId("final-detective-workspace").waitFor({ state: "visible", timeout: 15_000 });
+      await page.evaluate(() => {
+        const content = document.querySelector(".inspectorContent");
+        if (content) content.scrollTop = 0;
+      });
+      workspaceLayout = await page.evaluate(() => {
+        const workspace = document.querySelector("[data-testid='final-detective-workspace']");
+        const objective = workspace?.querySelector("[data-testid='final-workspace-objective']");
+        const task = workspace?.querySelector("[data-testid='case-intake-next-action']");
+        const active = workspace?.querySelector("[data-testid='final-workspace-active-area']");
+        const evidence = workspace?.querySelector("[data-testid='final-workspace-evidence']");
+        const context = workspace?.querySelector("[data-testid='final-workspace-context']");
+        const theory = workspace?.querySelector("[data-testid='final-workspace-theory']");
+        const resolution = workspace?.querySelector("[data-testid='final-workspace-latest-resolution']");
+        const primary = workspace?.querySelector("[data-testid='final-workspace-primary-action']");
+        const buttons = Array.from(workspace?.querySelectorAll("button") || []).filter((node) => getComputedStyle(node).display !== "none");
+        const follows = (left, right) => Boolean(left && right && left.compareDocumentPosition(right) & Node.DOCUMENT_POSITION_FOLLOWING);
+        const rect = workspace?.getBoundingClientRect();
+        const gridColumns = active ? getComputedStyle(active).gridTemplateColumns.split(/\s+/).filter(Boolean) : [];
+        const text = workspace?.textContent || "";
+        return {
+          visible: Boolean(workspace && rect && rect.width > 0),
+          stage: workspace?.getAttribute("data-workspace-stage") || "",
+          width: rect?.width || 0,
+          overflow: workspace ? workspace.scrollWidth - workspace.clientWidth : -1,
+          columnCount: gridColumns.length,
+          primaryCount: workspace?.querySelectorAll("[data-testid='final-workspace-primary-action']").length || 0,
+          primaryHeight: primary?.getBoundingClientRect().height || 0,
+          contextualMinHeight: buttons.length ? Math.min(...buttons.map((node) => node.getBoundingClientRect().height)) : 0,
+          actionKind: primary?.getAttribute("data-action-kind") || "",
+          ariaLiveCount: workspace?.querySelectorAll("[aria-live]").length || 0,
+          sourceReviewCount: workspace?.querySelectorAll("[data-testid='source-review-unlock']").length || 0,
+          sectionLabels: ["Evidence", "Testimony", "Contradictions", "Theory", "Source Review Unlock"].filter((label) => text.includes(label)),
+          rawLeak: /\b(?:npc|case|event|source|location|institution|resource|evidence|scene|session|character)-[a-z0-9-]*\d[a-z0-9-]*\b|culpritId|victimId|hiddenTruth|rawBody|sourceId|[A-Za-z]:[\\/]/i.test(text),
+          mobileOrder: follows(objective, task) && follows(task, evidence) && follows(evidence, context) && follows(context, theory) && (!resolution || follows(theory, resolution))
+        };
+      });
+      await page.screenshot({ path: path.join(process.cwd(), "outputs", "command-deck-qa", `${width}-detective-workspace.png`), fullPage: false });
       const metrics = await page.evaluate(() => {
         const map = document.querySelector("[data-testid='command-deck-map-area']");
         const shell = document.querySelector("[data-testid='command-deck-shell']");
@@ -408,6 +456,7 @@ try {
       metrics.transitionLayouts = transitionLayouts;
       metrics.rhythmAutomation = rhythmAutomation;
       metrics.resolutionConsistency = resolutionConsistency;
+      metrics.workspaceLayout = workspaceLayout;
       observations.push(metrics);
       if (metrics.overflow > 1) failures.push(`${width}px document overflowed by ${metrics.overflow}px.`);
       if (!metrics.agenda || !metrics.context) failures.push(`${width}px missing agenda/context surface.`);
@@ -434,6 +483,15 @@ try {
       if (!metrics.visibleLensBadgeCount) failures.push(`${width}px active map lens has no visible location signal.`);
       if (!["institution", "pressure", "reaction", "evidence"].every((kind) => metrics.lensKinds.includes(kind))) failures.push(`${width}px did not activate all four map lenses.`);
       if (metrics.rawLeak) failures.push(`${width}px command deck body contains a raw identifier-like token.`);
+      if (!metrics.workspaceLayout?.visible) failures.push(`${width}px Final Detective Workspace is not visible on request.`);
+      if (metrics.workspaceLayout?.overflow > 1) failures.push(`${width}px Final Detective Workspace overflowed its container by ${metrics.workspaceLayout.overflow}px.`);
+      if (metrics.workspaceLayout?.primaryCount !== 1 || metrics.workspaceLayout?.primaryHeight < 44) failures.push(`${width}px Final Detective Workspace did not expose exactly one 44px primary action.`);
+      if (metrics.workspaceLayout?.contextualMinHeight < 44) failures.push(`${width}px Final Detective Workspace exposed a control below 44px.`);
+      if (metrics.workspaceLayout?.ariaLiveCount !== 0) failures.push(`${width}px Final Detective Workspace competed for aria-live ownership.`);
+      if (metrics.workspaceLayout?.sourceReviewCount !== 1 || metrics.workspaceLayout?.sectionLabels.length !== 5) failures.push(`${width}px Final Detective Workspace did not consolidate Evidence, Testimony, Contradictions, Theory, and Source Review.`);
+      if (metrics.workspaceLayout?.rawLeak) failures.push(`${width}px Final Detective Workspace exposed an internal identifier, private field, or path.`);
+      if (width >= 1200 && (metrics.workspaceLayout?.width < 780 || metrics.workspaceLayout?.columnCount < 3)) failures.push(`${width}px Final Detective Workspace did not use the dedicated three-column desktop theatre.`);
+      if (width < 1200 && (metrics.workspaceLayout?.columnCount !== 1 || !metrics.workspaceLayout?.mobileOrder)) failures.push(`${width}px Final Detective Workspace did not preserve objective -> task -> workspace -> theory -> resolution progressive disclosure.`);
       if (width >= 1200 && metrics.mapWidth / Math.max(metrics.shellWidth, 1) < 0.55) failures.push(`${width}px map area is below the 55% target.`);
       if (width >= 1200 && !["INSTITUTION", "PRESSURE", "REACTION", "EVIDENCE"].every((label) => metrics.mapIntel.includes(label))) failures.push(`${width}px map intel is missing one or more fixed lenses.`);
       if (width >= 1200 && !["location", "actor", "institution", "evidence", "theory"].every((kind) => metrics.contextKinds.includes(kind))) failures.push(`${width}px did not cover location, actor, institution, evidence, and theory contexts.`);
@@ -476,6 +534,8 @@ try {
     await staticPage.goto(`${baseUrl}/?runtime=static&study=1`, { waitUntil: "networkidle" });
     const staticFrontDoor = staticPage.getByTestId("campaign-front-door");
     if (!(await staticFrontDoor.count()) || !(await staticFrontDoor.isVisible())) failures.push("Static runtime did not expose its read-only Campaign preview boundary.");
+    const staticFrontDoorDismiss = staticFrontDoor.getByTestId("campaign-front-door-dismiss");
+    if (await staticFrontDoorDismiss.count() && await staticFrontDoorDismiss.isVisible().catch(() => false)) await staticFrontDoorDismiss.click();
     const staticOnboarding = staticPage.getByTestId("onboarding-overlay");
     if (await staticOnboarding.count() && await staticOnboarding.isVisible()) await staticOnboarding.locator("button").last().click();
     await staticPage.getByTestId("command-deck-pulse").waitFor({ state: "visible", timeout: 15_000 });
@@ -494,6 +554,13 @@ try {
       if (await staticEncounter.locator("[data-encounter-action]").count() > 3) failures.push("Static Character Encounter exceeded the three-action budget.");
       if (/\b(?:npc|case|event|source|location|institution|resource|evidence|session|character)-[a-z0-9-]*\d[a-z0-9-]*\b|culpritId|victimId|hiddenTruth|rawBody/i.test(staticEncounterText)) failures.push("Static Character Encounter exposed an internal identifier or hidden case binding.");
     }
+    const staticDrawer = staticPage.getByTestId("command-deck-drawer-toggle");
+    if (await staticDrawer.isVisible().catch(() => false) && await staticDrawer.getAttribute("aria-expanded") !== "true") await staticDrawer.evaluate((node) => node.click());
+    const staticInspector = staticPage.getByRole("button", { name: /Case files & detail/i });
+    if (await staticInspector.getAttribute("aria-expanded") !== "true") await staticInspector.evaluate((node) => node.click());
+    const staticTabs = staticPage.locator(".inspectorTabs button");
+    if (await staticTabs.count() > 1) await staticTabs.nth(1).click();
+    await staticPage.getByTestId("final-detective-workspace").waitFor({ state: "visible", timeout: 15_000 });
     const staticState = await staticPage.evaluate(() => ({
       overflow: document.documentElement.scrollWidth - window.innerWidth,
       studyRecorder: document.body.innerText.includes("Campaign Study Recorder"),
@@ -501,7 +568,10 @@ try {
       resolutionFieldCount: document.querySelectorAll("[data-testid='command-deck-feedback'] > span").length,
       worldChange: document.querySelector("[data-testid='command-deck-feedback'] [data-resolution-field='worldChange'] b")?.textContent || "",
       resolutionAriaLive: document.querySelector("[data-testid='command-deck-feedback']")?.getAttribute("aria-live") || "",
-      storageLength: localStorage.length
+      storageLength: localStorage.length,
+      workspaceRuntime: document.querySelector("[data-testid='final-detective-workspace']")?.getAttribute("data-workspace-runtime") || "",
+      workspacePrimaryCount: document.querySelectorAll("[data-testid='final-detective-workspace'] [data-testid='final-workspace-primary-action']").length,
+      workspaceRawLeak: /\b(?:npc|case|event|source|location|institution|resource|evidence|session|character)-[a-z0-9-]*\d[a-z0-9-]*\b|culpritId|victimId|hiddenTruth|rawBody|sourceId|[A-Za-z]:[\\/]/i.test(document.querySelector("[data-testid='final-detective-workspace']")?.textContent || "")
     }));
     if (apiRequests.length) failures.push(`Static Command Deck requested ${apiRequests.join(", ")}.`);
     if (staticState.overflow > 1) failures.push(`Static 390px overflowed by ${staticState.overflow}px.`);
@@ -510,6 +580,8 @@ try {
     if (staticState.resolutionFieldCount !== 4 || staticState.worldChange !== "No persistent world change") failures.push("Static runtime did not expose the safe four-stage Ledger boundary.");
     if (staticState.resolutionAriaLive !== "polite") failures.push("Static Latest Resolution did not own its single polite live region.");
     if (staticState.storageLength) failures.push("Static Command Deck wrote localStorage.");
+    if (staticState.workspaceRuntime !== "static-demo" || staticState.workspacePrimaryCount !== 1) failures.push("Static runtime did not expose the same read-only Final Detective Workspace projection with one local action.");
+    if (staticState.workspaceRawLeak) failures.push("Static Final Detective Workspace exposed an internal identifier, private field, or path.");
     await staticPage.close();
   } finally {
     await browser.close();

@@ -2545,7 +2545,8 @@ blockquote {
   min-width: 0;
 }
 
-.playablePathSteps button {
+.playablePathSteps button,
+.playablePathSteps article {
   display: grid;
   align-content: start;
   gap: 5px;

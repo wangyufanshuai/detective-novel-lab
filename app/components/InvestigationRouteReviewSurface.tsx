@@ -10,37 +10,19 @@ import type {
   CertifiedPlaythroughProofSummary,
   GuidedManualRunSummary,
   GuidedStepJournalEntry,
-  PlayableInvestigationPathStep,
-  SourceReviewUnlockSummary
+  PlayableInvestigationPathStep
 } from "@/app/campaign/investigation-workspace-model";
-import type {
-  CaseProofCoverage,
-  CaseRouteCertificate,
-  CaseTruthLedger,
-  PlayableCaseIntake,
-  PlayableCaseNextAction,
-  ProofTourStep
-} from "@/lib/engine";
 
 function PlayableInvestigationPathPanel({
   steps,
-  onStepAction,
-  joinCase,
   rhythm,
   commandDeckMode = false
 }: {
   steps: PlayableInvestigationPathStep[];
-  onStepAction: (action: PlayableCaseNextAction) => void;
-  joinCase: () => void;
   rhythm?: CertifiedCaseRhythmViewModel | null;
   commandDeckMode?: boolean;
 }) {
   if (commandDeckMode && rhythm) return <div data-testid="playable-investigation-path"><CertifiedCaseRhythmSurface rhythm={rhythm} steps={steps} /></div>;
-  const currentStep = steps.find((step) => step.status === "current") || steps.find((step) => step.status === "ready") || steps[0];
-  function handleStep(step: PlayableInvestigationPathStep) {
-    if (step.action.kind === "join") joinCase();
-    else onStepAction(step.action);
-  }
   return (
     <section className="playableInvestigationPath" data-testid="playable-investigation-path">
       <div className="playablePathHeader">
@@ -48,17 +30,14 @@ function PlayableInvestigationPathPanel({
           <span>Playable Investigation Path</span>
           <strong>Join -&gt; Search -&gt; Question -&gt; Challenge -&gt; Select Evidence -&gt; Submit -&gt; Review Source</strong>
         </div>
-        {!commandDeckMode && <button type="button" className="primaryButton" data-testid="playable-path-next-action" onClick={() => handleStep(currentStep)}>{currentStep.action.buttonLabel}</button>}
       </div>
       <div className="playablePathSteps">
         {steps.map((step) => {
           const content = <><span>{step.label}</span><b>{step.metric}</b><strong>{step.question}</strong><small>{step.detail}</small></>;
-          return commandDeckMode
-            ? <article key={step.kind} className={step.status} data-testid="playable-investigation-step">{content}</article>
-            : <button key={step.kind} type="button" className={step.status} data-testid="playable-investigation-step" onClick={() => handleStep(step)}>{content}</button>;
+          return <article key={step.kind} className={step.status} data-testid="playable-investigation-step">{content}</article>;
         })}
       </div>
-      <small className="playablePathBoundary">Low-spoiler route guidance only: no hidden truth, raw bodies, internal ids, or source trail details.</small>
+      <small className="playablePathBoundary">Read-only route audit. The Final Detective Workspace owns the single Current Action and continues through the existing certified adapter.</small>
     </section>
   );
 }
@@ -148,78 +127,12 @@ function GuidedStepJournalPanel({ entries, campaignPacing }: { entries: GuidedSt
   );
 }
 
-function sourceReviewRouteCopy(step: CaseRouteCertificate["steps"][number]) {
-  if (step.kind === "question") return { label: "Question a certified witness", detail: "Ask the required witness before presenting contradiction evidence." };
-  if (step.kind === "challenge") return { label: "Challenge certified testimony", detail: "Present discovered contradiction evidence to the required witness." };
-  if (step.kind === "select-evidence") return { label: "Select certified evidence", detail: "Add the required discovered evidence to the theory." };
-  if (step.kind === "submit") return { label: "Submit the certified theory", detail: "Complete local judgement after the proof obligations are covered." };
-  return { label: step.label, detail: step.detail };
-}
-
-function SourceReviewUnlockPanel({
-  summary, intake, proofLedger, proofCoverage, routeCertificate, proofTourSteps, revealText, judgementExplanation
-}: {
-  summary: SourceReviewUnlockSummary;
-  intake?: PlayableCaseIntake | null;
-  proofLedger?: CaseTruthLedger | null;
-  proofCoverage?: CaseProofCoverage | null;
-  routeCertificate?: CaseRouteCertificate | null;
-  proofTourSteps: ProofTourStep[];
-  revealText: string;
-  judgementExplanation?: string;
-}) {
-  const sourceTrail = intake?.sourceTrail || [];
-  const obligations = proofLedger?.obligations || [];
-  const routeSteps = routeCertificate?.steps || [];
-  return (
-    <section className={`sourceReviewUnlock ${summary.unlocked ? "unlocked" : "locked"}`} data-testid="source-review-unlock">
-      <div className="sourceReviewHeader"><div><span>Source Review Unlock</span><strong>{summary.statusLabel}</strong></div><b>{summary.unlocked ? "audit ready" : "accepted theory required"}</b></div>
-      <div className="sourceReviewMetrics">
-        <span><b>{summary.sourceEventCount}</b>source events</span><span><b>{summary.memoryCount}</b>memories</span>
-        <span><b>{summary.coveredObligations}/{summary.totalObligations}</b>covered obligations</span><span><b>{summary.routeStepCount}</b>route steps</span>
-        <span><b>{summary.challengeHitCount}</b>challenge hits</span><span><b>{summary.selectedEvidenceCount}</b>selected evidence</span><span><b>{summary.proofGapCount}</b>proof gaps</span>
-      </div>
-      {!summary.unlocked ? <small>Locked source audit: complete the certified route and submit an accepted theory before source trail labels and conclusion review are shown.</small> : (
-        <div className="sourceReviewWorkbench" data-testid="source-review-workbench">
-          <section data-testid="source-review-trail"><strong>Source Trail</strong>
-            {(sourceTrail.length ? sourceTrail : [{ id: "source-review-empty", kind: "source", label: "Solved source trail", detail: "No separate source trail rows are available for this case.", hidden: false }]).slice(0, 6).map((item, index) => (
-              <article key={`${item.kind}:${index}`} className={item.hidden ? "locked" : "complete"}><span>{item.kind}</span><b>{item.label}</b><small>{item.detail}</small></article>
-            ))}
-          </section>
-          <section data-testid="source-review-obligations"><strong>Proof Obligations</strong>
-            {obligations.slice(0, 8).map((item, index) => {
-              const covered = Boolean(proofCoverage?.coveredObligationIds.includes(item.id));
-              return <article key={`${item.kind}:${index}`} className={covered ? "complete" : "locked"}><span>{covered ? "covered" : "open"} / {item.kind}</span><b>{item.label}</b><small>{item.detail}</small></article>;
-            })}
-          </section>
-          <section data-testid="source-review-route"><strong>Certified Route</strong>
-            {routeSteps.slice(0, 8).map((step, index) => {
-              const copy = sourceReviewRouteCopy(step);
-              return <article key={`${step.kind}:${index}`} className={step.complete ? "complete" : "locked"}><span>{step.complete ? "complete" : "blocked"} / {step.kind}</span><b>{copy.label}</b><small>{copy.detail}</small></article>;
-            })}
-          </section>
-          <section data-testid="source-review-conclusion"><strong>Conclusion Review</strong>
-            {proofTourSteps.filter((step) => !step.locked).slice(0, 5).map((step, index) => (
-              <article key={`${step.stage}:${index}`} className={step.complete ? "complete" : ""}><span>{step.stage}</span><b>{step.title}</b><small>{step.detail}</small></article>
-            ))}
-            <article className="complete conclusionText"><span>accepted theory</span><b>{judgementExplanation || "Local judgement accepted the submitted theory."}</b><small>{revealText ? "Reveal text is available below without raw replay or case body." : "Generate the answer review for final prose."}</small></article>
-            {revealText && <pre className="revealBox">{revealText}</pre>}
-          </section>
-        </div>
-      )}
-    </section>
-  );
-}
-
 export function InvestigationRouteReviewSurface({
-  steps, onStepAction, joinCase, rhythm, commandDeckMode = false, worldCampaign, guidedManualRun, runGuidedManualStep,
+  steps, rhythm, commandDeckMode = false, worldCampaign, guidedManualRun, runGuidedManualStep,
   guidedStepJournal, campaignPacing, staticPlaythroughProof, runStaticPlaythroughProof, serverPlaythroughProof,
-  runServerPlaythroughProof, sourceReviewUnlock, playableIntake, proofLedger, proofCoverage,
-  routeCertificate, proofTourSteps, revealText, judgementExplanation
+  runServerPlaythroughProof
 }: {
   steps: PlayableInvestigationPathStep[];
-  onStepAction: (action: PlayableCaseNextAction) => void;
-  joinCase: () => void;
   rhythm?: CertifiedCaseRhythmViewModel | null;
   commandDeckMode?: boolean;
   worldCampaign: ReactNode;
@@ -231,17 +144,9 @@ export function InvestigationRouteReviewSurface({
   runStaticPlaythroughProof?: () => void;
   serverPlaythroughProof?: CertifiedPlaythroughProofSummary | null;
   runServerPlaythroughProof?: () => void;
-  sourceReviewUnlock?: SourceReviewUnlockSummary | null;
-  playableIntake?: PlayableCaseIntake | null;
-  proofLedger?: CaseTruthLedger | null;
-  proofCoverage?: CaseProofCoverage | null;
-  routeCertificate?: CaseRouteCertificate | null;
-  proofTourSteps: ProofTourStep[];
-  revealText: string;
-  judgementExplanation?: string;
 }) {
   return <>
-    <PlayableInvestigationPathPanel steps={steps} onStepAction={onStepAction} joinCase={joinCase} rhythm={rhythm} commandDeckMode={commandDeckMode} />
+    <PlayableInvestigationPathPanel steps={steps} rhythm={rhythm} commandDeckMode={commandDeckMode} />
     {worldCampaign}
     <CommandDeckCollapsible enabled={commandDeckMode} title="Guided run and journal">
       {guidedManualRun && runGuidedManualStep && <GuidedManualRunPanel summary={guidedManualRun} onRunNext={runGuidedManualStep} />}
@@ -250,7 +155,6 @@ export function InvestigationRouteReviewSurface({
     <CommandDeckCollapsible enabled={commandDeckMode} title="Proof and source review">
       {staticPlaythroughProof && runStaticPlaythroughProof && <CertifiedPlaythroughProofPanel proof={staticPlaythroughProof} onRun={runStaticPlaythroughProof} />}
       {serverPlaythroughProof && runServerPlaythroughProof && <CertifiedPlaythroughProofPanel proof={serverPlaythroughProof} onRun={runServerPlaythroughProof} />}
-      {sourceReviewUnlock && <SourceReviewUnlockPanel summary={sourceReviewUnlock} intake={playableIntake} proofLedger={proofLedger} proofCoverage={proofCoverage} routeCertificate={routeCertificate} proofTourSteps={proofTourSteps} revealText={revealText} judgementExplanation={judgementExplanation} />}
     </CommandDeckCollapsible>
   </>;
 }

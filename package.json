@@ -19,6 +19,7 @@
     "test:strategic-pacing": "node scripts/run-strategic-pacing-model-tests.mjs",
     "test:campaign-command-brief": "node scripts/run-campaign-command-brief-tests.mjs",
     "test:campaign-resolution-ledger": "node scripts/run-campaign-resolution-ledger-tests.mjs",
+    "test:final-detective-workspace": "node scripts/run-final-detective-workspace-tests.mjs",
     "test:district-fronts": "node scripts/run-district-strategic-front-tests.mjs",
     "test:guided-workflow": "node scripts/run-guided-workflow-model-tests.mjs",
     "test:investigation-workspace": "node scripts/run-certified-investigation-adapter-tests.mjs",

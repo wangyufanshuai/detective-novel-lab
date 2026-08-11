@@ -178,8 +178,8 @@ export default function Home() {
   const workspacePresentation = useInvestigationWorkspacePresentation({ investigation, town });
   const {
     deductionCase, scenes, characters, discovered, selectedScene, selectedCharacter, sceneEvidence, discoveredEvidence,
-    playerTheoryEvidence, selectedTestimony, quality, selectedNpcMemories, evidenceImpacts, judgementGaps,
-    questionedCharacterIds, contradictedCharacterIds, selectedNpcContradictionHit, investigationStages, visibleEvents,
+    playerTheoryEvidence, quality, selectedNpcMemories, evidenceImpacts,
+    questionedCharacterIds, contradictedCharacterIds, investigationStages, visibleEvents,
     selectedEvidence,
     selectedAgent, hoveredLocationInfo, graphExplanation, suspectExplanations, gapCards, nextStepAdvice, solutionChain,
     inspectorSummary
@@ -742,32 +742,26 @@ export default function Home() {
                   notebookItems={evidenceNotebook}
                   onNotebookAction={handleNotebookAction}
                   selectedSceneName={selectedScene?.name || "\u9009\u62e9\u5730\u56fe\u5730\u70b9"}
-                  sceneEvidence={sceneEvidence}
                   discoveredEvidence={discoveredEvidence}
-                  discoveredIds={discovered}
                   evidenceImpacts={evidenceImpacts}
                   actionAdapter={certifiedInvestigationActions}
                   session={session}
+                  testimonies={activeCase?.testimonies || []}
                   characters={characters}
                   selectedCharacterId={selectedCharacterId}
                   setSelectedCharacterId={setSelectedCharacterId}
                   selectedEvidenceId={selectedEvidenceId}
                   setSelectedEvidenceId={setSelectedEvidenceId}
-                  selectedTestimony={selectedTestimony}
                   question={question}
                   setQuestion={setQuestion}
                   aiSafety={lastAiSafety}
                   memoryCount={selectedNpcMemories.length}
-                  evidenceCount={discoveredEvidence.length}
-                  contradictionHit={selectedNpcContradictionHit}
                   dialogueLog={session?.interrogationLog || []}
-                  deductionCase={deductionCase}
                   theory={theory}
                   setTheory={setTheory}
                   playerTheoryEvidence={playerTheoryEvidence}
                   submitTheory={() => void submitTheory()}
                   revealText={revealText}
-                  judgementGaps={judgementGaps}
                   gapCards={gapCards}
                   onGapSelect={handleGapCard}
                   nextStepAdvice={nextStepAdvice}

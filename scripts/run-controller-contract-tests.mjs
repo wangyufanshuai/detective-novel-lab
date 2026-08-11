@@ -85,6 +85,8 @@ assert.equal((await read("app/campaign/campaign-pacing-model.ts")).split(/\r?\n/
 assert.equal((await read("app/campaign/campaign-transition-model.ts")).split(/\r?\n/).length < 350, true, "Campaign Transition presentation model stays below 350 lines");
 assert.equal((await read("app/campaign/campaign-resolution-ledger-model.ts")).split(/\r?\n/).length < 350, true, "Campaign Resolution Ledger model stays below 350 lines");
 assert.equal((await read("app/components/CampaignResolutionLedger.tsx")).split(/\r?\n/).length < 180, true, "Campaign Resolution Ledger surface stays below 180 lines");
+assert.equal((await read("app/campaign/final-detective-workspace-model.ts")).split(/\r?\n/).length < 500, true, "Final Detective Workspace model stays below 500 lines");
+assert.equal((await read("app/components/FinalDetectiveWorkspace.tsx")).split(/\r?\n/).length < 500, true, "Final Detective Workspace surface stays below 500 lines");
 assert.equal((await read("app/components/WorldCampaignPanel.tsx")).split(/\r?\n/).length < 300, true, "World Campaign composition stays below 300 lines");
 
 const surfaceContracts = [
@@ -99,6 +101,7 @@ const surfaceContracts = [
   ["app/components/WorldCampaignPanel.tsx", "WorldCampaignPanel"],
   ["app/components/TownReviewSurface.tsx", "PersistentTownCommandCenter"],
   ["app/components/InvestigationCoreActionsSurface.tsx", "InvestigationCoreActionsSurface"],
+  ["app/components/FinalDetectiveWorkspace.tsx", "FinalDetectiveWorkspace"],
   ["app/components/InvestigationRouteReviewSurface.tsx", "InvestigationRouteReviewSurface"],
   ["app/components/InvestigationDebriefReplaySurface.tsx", "InvestigationDebriefReplaySurface"]
 ];
@@ -121,6 +124,8 @@ const workflowContracts = [
   ["app/hooks/useCertifiedCaseAuditModels.ts", "useCertifiedCaseAuditModels"],
   ["app/hooks/useCampaignCommandBrief.ts", "useCampaignCommandBrief"],
   ["app/hooks/useCampaignResolutionLedger.ts", "useCampaignResolutionLedger"],
+  ["app/hooks/useFinalDetectiveWorkspace.ts", "useFinalDetectiveWorkspace"],
+  ["app/campaign/final-detective-workspace-model.ts", "buildFinalDetectiveWorkspace"],
   ["app/campaign/investigation-workspace-model.ts", "buildPlayableInvestigationPath"]
 ];
 for (const [file, exportName] of workflowContracts) {
@@ -128,12 +133,13 @@ for (const [file, exportName] of workflowContracts) {
   assert.match(source, new RegExp(`export function ${exportName}\\b`), `${exportName} has an independent workflow boundary`);
   assert.equal(source.split(/\r?\n/).length < 500, true, `${file} stays below 500 lines`);
 }
-for (const file of ["app/hooks/useInvestigationWorkspacePresentation.ts", "app/hooks/useCertifiedCaseAuditModels.ts", "app/hooks/useCampaignCommandBrief.ts", "app/hooks/useCampaignResolutionLedger.ts"]) {
+for (const file of ["app/hooks/useInvestigationWorkspacePresentation.ts", "app/hooks/useCertifiedCaseAuditModels.ts", "app/hooks/useCampaignCommandBrief.ts", "app/hooks/useCampaignResolutionLedger.ts", "app/hooks/useFinalDetectiveWorkspace.ts"]) {
   const source = await read(file);
   assert.doesNotMatch(source, /\/api\/|\bfetch\s*\(|\bpostJson\s*\(|\bpostV1\s*\(/, `${file} remains request-free presentation ownership`);
 }
 assert.doesNotMatch(await read("app/campaign/campaign-command-brief-model.ts"), /\/api\/|\bfetch\s*\(|\bpostJson\s*\(|\bpostV1\s*\(|localStorage|sessionStorage|indexedDB|advancePersistentTown|stepPersistentTown/, "campaign command brief model remains pure and request-free");
 assert.doesNotMatch(await read("app/campaign/campaign-resolution-ledger-model.ts"), /\/api\/|\bfetch\s*\(|\bpostJson\s*\(|\bpostV1\s*\(|localStorage|sessionStorage|indexedDB|advancePersistentTown|stepPersistentTown/, "campaign resolution ledger model remains pure and request-free");
+assert.doesNotMatch(await read("app/campaign/final-detective-workspace-model.ts"), /\/api\/|\bfetch\s*\(|\bpostJson\s*\(|\bpostV1\s*\(|localStorage|sessionStorage|indexedDB|advancePersistentTown|stepPersistentTown/, "Final Detective Workspace model remains pure and request-free");
 assert.equal((await read("app/hooks/useCampaignCommandBrief.ts")).split(/\r?\n/).length < 80, true, "Campaign command brief hook stays below 80 lines");
 assert.equal((await read("app/hooks/useCampaignResolutionLedger.ts")).split(/\r?\n/).length < 100, true, "Campaign Resolution Ledger hook stays below 100 lines");
 

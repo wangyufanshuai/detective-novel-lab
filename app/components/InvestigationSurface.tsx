@@ -43,6 +43,7 @@ import type { CampaignPacingViewModel } from "@/app/campaign/campaign-pacing-mod
 import type { CampaignCommandBrief } from "@/app/campaign/campaign-command-brief-model";
 import type { CertifiedCaseRhythmViewModel } from "@/app/campaign/certified-case-rhythm-model";
 import type { CertifiedInvestigationActionAdapter } from "@/app/hooks/useCertifiedInvestigationActions";
+import { useFinalDetectiveWorkspace } from "@/app/hooks/useFinalDetectiveWorkspace";
 import type { EvidenceImpact } from "@/app/hooks/useInvestigationActions";
 import type {
   CaseProofCoverage,
@@ -56,16 +57,16 @@ import type {
   PlayerSession,
   PlayerTheory,
   ProofTourStep,
+  TestimonyRecord,
   WorldLeadFocus
 } from "@/lib/engine";
 
 export function InvestigationPanel({
   playableIntake, caseRhythm, onIntakeNextAction, notebookItems, onNotebookAction, selectedSceneName,
-  sceneEvidence, discoveredEvidence, discoveredIds, evidenceImpacts, actionAdapter, session,
+  discoveredEvidence, evidenceImpacts, actionAdapter, session, testimonies,
   characters, selectedCharacterId, setSelectedCharacterId, selectedEvidenceId, setSelectedEvidenceId,
-  selectedTestimony, question, setQuestion, aiSafety, memoryCount, evidenceCount, contradictionHit,
-  dialogueLog, deductionCase, theory, setTheory, playerTheoryEvidence, submitTheory, revealText,
-  judgementGaps, gapCards, onGapSelect, nextStepAdvice, staticPlaythroughProof,
+  question, setQuestion, aiSafety, memoryCount, dialogueLog, theory, setTheory,
+  playerTheoryEvidence, submitTheory, revealText, gapCards, onGapSelect, nextStepAdvice, staticPlaythroughProof,
   runStaticPlaythroughProof, serverPlaythroughProof, runServerPlaythroughProof, runtimeMode,
   worldLead, worldLeadOutcome, worldLeadCaseHandoff, worldArc, worldArcDirective,
   worldPressureCascade, worldInfluenceBudget, playerResourceCommitment, factionRelationship,
@@ -85,32 +86,26 @@ export function InvestigationPanel({
   notebookItems: EvidenceNotebookItem[];
   onNotebookAction: (item: EvidenceNotebookItem, action: NotebookAction) => void;
   selectedSceneName: string;
-  sceneEvidence: Evidence[];
   discoveredEvidence: Evidence[];
-  discoveredIds: Set<string>;
   evidenceImpacts: Map<string, EvidenceImpact>;
   actionAdapter: CertifiedInvestigationActionAdapter;
   session: PlayerSession | null;
+  testimonies: TestimonyRecord[];
   characters: DeductionCase["characters"];
   selectedCharacterId: string;
   setSelectedCharacterId: (value: string) => void;
   selectedEvidenceId: string;
   setSelectedEvidenceId: (value: string) => void;
-  selectedTestimony?: { currentStatement: string };
   question: string;
   setQuestion: (value: string) => void;
   aiSafety: AiSafetyView | null;
   memoryCount: number;
-  evidenceCount: number;
-  contradictionHit: boolean;
   dialogueLog: PlayerSession["interrogationLog"];
-  deductionCase: DeductionCase | null;
   theory: PlayerTheory;
   setTheory: (updater: (current: PlayerTheory) => PlayerTheory) => void;
   playerTheoryEvidence: Set<string>;
   submitTheory: () => void;
   revealText: string;
-  judgementGaps: string[];
   gapCards: GapCard[];
   onGapSelect: (card: GapCard) => void;
   nextStepAdvice?: string;
@@ -167,12 +162,39 @@ export function InvestigationPanel({
 }) {
   const playablePathSteps = buildPlayableInvestigationPath({ playableIntake, session, notebookItems, discoveredEvidence, dialogueLog, playerTheoryEvidence, characters });
   const serverCampaignPacing = runtimeMode === "server" ? campaignPacing : null;
+  const finalWorkspace = useFinalDetectiveWorkspace({
+    runtimeMode,
+    commandBrief: campaignCommandBrief,
+    rhythm: caseRhythm,
+    playableIntake,
+    session,
+    notebookItems,
+    discoveredEvidence,
+    characters,
+    testimonies,
+    theory,
+    selectedCharacterId,
+    selectedEvidenceId,
+    selectedSceneName,
+    promptSafe: aiSafety?.promptAudit?.safe,
+    memoryCount,
+    evidenceImpacts,
+    gapCards,
+    nextStepAdvice,
+    campaignRecovery,
+    sourceReviewUnlock,
+    proofLedger,
+    proofCoverage,
+    routeCertificate,
+    proofTourSteps,
+    revealAvailable: Boolean(revealText)
+  });
   const worldCampaign = <WorldCampaignPanel runtimeMode={runtimeMode} session={session} summary={worldLead} outcome={worldLeadOutcome} handoff={worldLeadCaseHandoff} arc={worldArc} directive={worldArcDirective} pressure={worldPressureCascade} influenceBudget={worldInfluenceBudget} playerResourceCommitment={playerResourceCommitment} factionRelationship={factionRelationship} worldEventOffer={worldEventOffer} investigatorProgression={investigatorProgression} campaignRecovery={campaignRecovery} investigatorHeadquarters={investigatorHeadquarters} arcConvergence={arcConvergence} campaignSession={campaignSession} campaignFinaleDebrief={campaignFinaleDebrief} townSocialResponse={townSocialResponse} campaignPacing={serverCampaignPacing} commandBrief={campaignCommandBrief} onDecision={updateWorldLead} onDirectiveDecision={updateWorldArcDirective} onResourceCommitmentDecision={updatePlayerResourceCommitment} onWorldEventOfferDecision={updateWorldEventOffer} onCampaignRecoveryDecision={updateCampaignRecovery} onInvestigatorHeadquartersDecision={updateInvestigatorHeadquarters} busy={busy} />;
   return (
     <div className="stackedInspector">
-      <InvestigationRouteReviewSurface steps={playablePathSteps} onStepAction={onIntakeNextAction} joinCase={actionAdapter.joinCase} rhythm={caseRhythm} commandDeckMode={commandDeckMode} worldCampaign={worldCampaign} campaignPacing={serverCampaignPacing} guidedManualRun={guidedManualRun} runGuidedManualStep={runGuidedManualStep} guidedStepJournal={guidedStepJournal} staticPlaythroughProof={staticPlaythroughProof} runStaticPlaythroughProof={runStaticPlaythroughProof} serverPlaythroughProof={serverPlaythroughProof} runServerPlaythroughProof={runServerPlaythroughProof} sourceReviewUnlock={sourceReviewUnlock} playableIntake={playableIntake} proofLedger={proofLedger} proofCoverage={proofCoverage} routeCertificate={routeCertificate} proofTourSteps={proofTourSteps} revealText={revealText} judgementExplanation={session?.judgement?.explanation} />
+      <InvestigationCoreActionsSurface model={finalWorkspace} currentAction={caseRhythm?.currentStep.action} notebookItems={notebookItems} discoveredEvidence={discoveredEvidence} characters={characters} actionAdapter={actionAdapter} onIntakeNextAction={onIntakeNextAction} onNotebookAction={onNotebookAction} selectedCharacterId={selectedCharacterId} setSelectedCharacterId={setSelectedCharacterId} selectedEvidenceId={selectedEvidenceId} setSelectedEvidenceId={setSelectedEvidenceId} question={question} setQuestion={setQuestion} theory={theory} setTheory={setTheory} submitTheory={submitTheory} gapCards={gapCards} onGapSelect={onGapSelect} onCampaignRecoveryStart={updateCampaignRecovery ? () => updateCampaignRecovery("start") : undefined} busy={busy} />
+      <InvestigationRouteReviewSurface steps={playablePathSteps} rhythm={caseRhythm} commandDeckMode={commandDeckMode} worldCampaign={worldCampaign} campaignPacing={serverCampaignPacing} guidedManualRun={guidedManualRun} runGuidedManualStep={runGuidedManualStep} guidedStepJournal={guidedStepJournal} staticPlaythroughProof={staticPlaythroughProof} runStaticPlaythroughProof={runStaticPlaythroughProof} serverPlaythroughProof={serverPlaythroughProof} runServerPlaythroughProof={runServerPlaythroughProof} />
       <InvestigationDebriefReplaySurface commandDeckMode={commandDeckMode} campaignPacing={serverCampaignPacing} solvedCaseDebrief={solvedCaseDebrief} replayPracticeLoop={replayPracticeLoop} replayGoalCoach={replayGoalCoach} manualEvidenceDrill={manualEvidenceDrill} toggleManualEvidenceDrillEvidence={toggleManualEvidenceDrillEvidence} manualTheoryDrill={manualTheoryDrill} updateManualTheoryDrillField={updateManualTheoryDrillField} approveManualTheoryFallback={approveManualTheoryFallback} replayAttemptScorecard={replayAttemptScorecard} startReplayGoalAttempt={startReplayGoalAttempt} />
-      <InvestigationCoreActionsSurface playableIntake={playableIntake} onIntakeNextAction={onIntakeNextAction} notebookItems={notebookItems} onNotebookAction={onNotebookAction} selectedSceneName={selectedSceneName} sceneEvidence={sceneEvidence} discoveredEvidence={discoveredEvidence} discoveredIds={discoveredIds} evidenceImpacts={evidenceImpacts} actionAdapter={actionAdapter} session={session} characters={characters} selectedCharacterId={selectedCharacterId} setSelectedCharacterId={setSelectedCharacterId} selectedEvidenceId={selectedEvidenceId} setSelectedEvidenceId={setSelectedEvidenceId} selectedTestimony={selectedTestimony} question={question} setQuestion={setQuestion} aiSafety={aiSafety} memoryCount={memoryCount} evidenceCount={evidenceCount} contradictionHit={contradictionHit} dialogueLog={dialogueLog} deductionCase={deductionCase} theory={theory} setTheory={setTheory} playerTheoryEvidence={playerTheoryEvidence} submitTheory={submitTheory} revealText={revealText} judgementGaps={judgementGaps} gapCards={gapCards} onGapSelect={onGapSelect} nextStepAdvice={nextStepAdvice} busy={busy} commandDeckMode={commandDeckMode} />
     </div>
   );
 }
