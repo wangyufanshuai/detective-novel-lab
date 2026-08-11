@@ -2,6 +2,7 @@ import type { CaseFromLog } from "../world-types";
 import type { PersistentTownRuntime, TownCaseType } from "../persistent-town";
 import type { WorldSystemRuntimeActionKind, WorldSystemRuntimeHints } from "../detective-content";
 import { detectiveCampaignForRuntime, type DetectiveCampaignId, type DetectiveCampaignRouteId } from "./campaign-catalog";
+import { MIDNIGHT_CHORUS_CASES } from "./midnight-chorus-campaign";
 
 export type AuthoredCampaignLeadFocus = "search" | "question" | "challenge";
 
@@ -303,7 +304,8 @@ const CASES: readonly AuthoredCampaignCaseDefinition[] = [
     witnessFrame: "The witness separates deadline pressure from the moment the source copy entered editorial custody.",
     challengeFrame: "Search the source and timing chain together; reputation pressure cannot replace material proof.",
     leadFocus: "search", aftermathLabel: "The correction hearing leaves a permanent public record of source custody and timing."
-  }
+  },
+  ...MIDNIGHT_CHORUS_CASES
 ] as const;
 
 const evidenceIdByKind = {

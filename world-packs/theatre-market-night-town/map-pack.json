@@ -1,0 +1,36 @@
+{
+  "manifest": { "id": "theatre-market-night-map", "name": "Theatre Market Night Map", "version": "1.0.0", "schemaVersion": "town-map-pack.v1", "description": "Semantic map for theatre publicity, backstage access, market leverage and night-watch procedure.", "createdAt": "2026-08-11T00:00:00.000Z", "entrypoint": "map.json" },
+  "locations": [
+    { "id": "town-square", "name": "Town Square", "kind": "public", "description": "Lantern posts, public notices and late audiences turn performance news into civic pressure.", "connectedLocationIds": ["old-theatre", "night-market", "watch-house", "print-kiosk"], "x": 0, "y": 0 },
+    { "id": "old-theatre", "name": "Old Theatre", "kind": "work", "description": "Playbills, rehearsal calls and public entrances preserve the theatre's visible record.", "connectedLocationIds": ["town-square", "backstage-passage", "print-kiosk"], "x": -1, "y": 1 },
+    { "id": "backstage-passage", "name": "Backstage Passage", "kind": "restricted", "description": "Prop cabinets, dressing-room keys and a service gate share one controlled route.", "connectedLocationIds": ["old-theatre", "night-market"], "x": -2, "y": 1 },
+    { "id": "night-market", "name": "Night Market", "kind": "public", "description": "Receipts, labor favors and fragile tips circulate after the theatre doors close.", "connectedLocationIds": ["town-square", "backstage-passage", "watch-house"], "x": 1, "y": 1 },
+    { "id": "watch-house", "name": "Watch House", "kind": "work", "description": "Patrol rosters, alarm entries and detention grounds are reviewed here.", "connectedLocationIds": ["town-square", "night-market"], "x": 1, "y": -1 },
+    { "id": "print-kiosk", "name": "Print Kiosk", "kind": "work", "description": "Playbill revisions and public corrections move between the theatre and square.", "connectedLocationIds": ["town-square", "old-theatre"], "x": -1, "y": -1 }
+  ],
+  "connections": [
+    { "from": "town-square", "to": "old-theatre", "kind": "street", "travelMinutes": 5 },
+    { "from": "old-theatre", "to": "backstage-passage", "kind": "interior", "travelMinutes": 2 },
+    { "from": "backstage-passage", "to": "night-market", "kind": "service-route", "travelMinutes": 5 },
+    { "from": "night-market", "to": "town-square", "kind": "arcade", "travelMinutes": 4 },
+    { "from": "town-square", "to": "watch-house", "kind": "street", "travelMinutes": 6 },
+    { "from": "night-market", "to": "watch-house", "kind": "lane", "travelMinutes": 5 },
+    { "from": "town-square", "to": "print-kiosk", "kind": "street", "travelMinutes": 3 },
+    { "from": "print-kiosk", "to": "old-theatre", "kind": "alley", "travelMinutes": 3 }
+  ],
+  "interactions": [
+    { "id": "review-playbills", "locationId": "print-kiosk", "kind": "work", "label": "Review playbill revisions", "risk": 28, "tags": ["media", "proof", "correction"] },
+    { "id": "audit-rehearsal", "locationId": "old-theatre", "kind": "question", "label": "Audit rehearsal call", "risk": 34, "tags": ["theatre", "witness", "schedule"] },
+    { "id": "inspect-backstage", "locationId": "backstage-passage", "kind": "search", "label": "Inspect backstage custody", "risk": 52, "tags": ["backstage", "trace", "custody"] },
+    { "id": "verify-market-tip", "locationId": "night-market", "kind": "socialize", "label": "Verify night-market tip", "risk": 42, "tags": ["informant", "receipt", "route"] },
+    { "id": "review-watch", "locationId": "watch-house", "kind": "work", "label": "Review night-watch record", "risk": 38, "tags": ["police", "record", "procedure"] }
+  ],
+  "spawnPoints": [
+    { "id": "spawn-square", "locationId": "town-square", "roleHint": "detective", "weight": 75 },
+    { "id": "spawn-theatre", "locationId": "old-theatre", "roleHint": "worker", "weight": 70 },
+    { "id": "spawn-market", "locationId": "night-market", "roleHint": "informant", "weight": 65 },
+    { "id": "spawn-watch", "locationId": "watch-house", "roleHint": "officer", "weight": 60 }
+  ],
+  "assets": {},
+  "docs": {}
+}

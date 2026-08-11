@@ -80,7 +80,14 @@ try {
   assert.equal(clinicCampaignSelection.campaignSession.campaignLabel, "Clinic Headlines", "hospital WorldPackage selects the third authored campaign before extraction");
   assert.equal(clinicCampaignSelection.campaignSession.routeLabel, "Clinical Review", "hospital WorldPackage rebinds the safe baseline route before extraction");
   assert.equal(clinicCampaignSelection.arcConvergence.finaleLabel, "Public Trust Review", "clinic campaign exposes its safe differentiated finale");
-  assert.equal(/campaignId|routeId|worldPackageId|caseType|caseId|culprit|victim|hidden|raw/i.test(JSON.stringify({ campaign: clinicCampaignSelection.campaignSession, convergence: clinicCampaignSelection.arcConvergence })), false, "campaign selection responses remain aggregate and public-safe");
+  const midnightCampaignSelection = await request("/api/v1/command/town/world-pack/select", {
+    method: "POST",
+    body: JSON.stringify({ worldId: explicitCreated.world.id, packageId: "theatre-market-night-town", campaignRouteId: "counter-route" })
+  });
+  assert.equal(midnightCampaignSelection.campaignSession.campaignLabel, "Midnight Chorus", "theatre WorldPackage selects the fourth authored campaign before extraction");
+  assert.equal(midnightCampaignSelection.campaignSession.routeLabel, "Backstage Compact", "theatre WorldPackage binds the safe counter-route label before extraction");
+  assert.equal(midnightCampaignSelection.arcConvergence.finaleLabel, "Midnight Compact", "Midnight Chorus exposes its distinct safe finale");
+  assert.equal(/campaignId|routeId|worldPackageId|caseType|caseId|culprit|victim|hidden|raw/i.test(JSON.stringify({ campaign: midnightCampaignSelection.campaignSession, convergence: midnightCampaignSelection.arcConvergence })), false, "campaign selection responses remain aggregate and public-safe");
 
   const created = await request("/api/v1/command/town/create", {
     method: "POST",

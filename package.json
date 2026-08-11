@@ -41,6 +41,7 @@
     "test:investigator-headquarters": "node scripts/run-investigator-headquarters-tests.mjs",
     "test:nine-case-campaign": "node scripts/run-nine-case-campaign-playthrough.mjs",
     "test:eighteen-case-campaign": "node scripts/run-nine-case-campaign-playthrough.mjs --all-routes",
+    "test:twenty-four-case-campaign": "node scripts/run-nine-case-campaign-playthrough.mjs --all-routes --include-midnight",
     "test:v75-invariants": "node scripts/run-v75-fairness-invariants.mjs",
     "study:analyze": "node scripts/analyze-campaign-comprehension-study.mjs",
     "test:novel-world": "node scripts/run-novel-world-tests.mjs",

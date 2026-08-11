@@ -62,10 +62,10 @@ try {
     const frontDoor = page.getByTestId("campaign-front-door");
     await frontDoor.waitFor({ state: "visible", timeout: 15_000 });
     const cards = frontDoor.getByTestId("campaign-front-door-card");
-    if (await cards.count() !== 3) failures.push("Server Front Door did not show exactly three Campaign cards.");
+    if (await cards.count() !== 4) failures.push("Server Front Door did not show exactly four Campaign cards.");
     const initialText = await frontDoor.innerText();
     const normalizedInitialText = initialText.toLowerCase();
-    for (const label of ["Town Reckoning", "Harbor Testimony", "Clinic Headlines", "Civic Procedure", "Merchant Leverage", "Public surface", "Evidence style", "World pressure", "Finale"]) {
+    for (const label of ["Town Reckoning", "Harbor Testimony", "Clinic Headlines", "Midnight Chorus", "Civic Procedure", "Merchant Leverage", "Public surface", "Evidence style", "World pressure", "Finale"]) {
       if (!normalizedInitialText.includes(label.toLowerCase())) failures.push(`Server Front Door is missing ${label}.`);
     }
     if (/\b(?:case|npc|event|source|location|institution|resource|evidence|session|world)-[a-z0-9-]*\d[a-z0-9-]*\b/i.test(initialText)) failures.push("Server Front Door exposed a raw identifier-shaped value.");
@@ -145,12 +145,12 @@ try {
     await staticPage.goto(`${baseUrl}/?runtime=static`, { waitUntil: "networkidle" });
     const staticFrontDoor = staticPage.getByTestId("campaign-front-door");
     await staticFrontDoor.waitFor({ state: "visible", timeout: 15_000 });
-    if (await staticFrontDoor.getByTestId("campaign-front-door-card").count() !== 3) failures.push("Static Front Door did not show three safe previews.");
+    if (await staticFrontDoor.getByTestId("campaign-front-door-card").count() !== 4) failures.push("Static Front Door did not show four safe previews.");
     if (await staticFrontDoor.getByTestId("campaign-front-door-start").count()) failures.push("Static Front Door exposed Start Campaign.");
     if (await staticFrontDoor.getByTestId("campaign-front-door-continue").count()) failures.push("Static Front Door exposed Continue Campaign.");
     if (await staticFrontDoor.getByTestId("campaign-front-door-route").count()) failures.push("Static Front Door exposed persistent route controls.");
     const staticText = await staticFrontDoor.innerText();
-    if (!staticText.includes("Civic Procedure") || !staticText.includes("Merchant Leverage")) failures.push("Static Front Door did not explain both safe authored routes.");
+    if (!["Civic Procedure", "Merchant Leverage", "Public Reckoning", "Backstage Compact"].every((label) => staticText.includes(label))) failures.push("Static Front Door did not explain the safe authored routes, including Midnight Chorus.");
     if (!staticText.toLowerCase().includes("server-only route choice / start / continue")) failures.push("Static Front Door is missing its Server-only route boundary.");
     await staticPage.screenshot({ path: path.join(screenshotDir, "390-static-routes.png"), fullPage: true });
     const staticOverflow = await staticPage.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);

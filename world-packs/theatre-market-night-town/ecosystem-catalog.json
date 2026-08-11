@@ -1,0 +1,46 @@
+{
+  "manifest": { "id": "theatre-market-night-ecosystem", "name": "Theatre Market Night Ecosystem", "version": "1.0.0", "schemaVersion": "ecosystem-catalog.v1", "createdAt": "2026-08-11T00:00:00.000Z", "description": "Table-driven theatre, backstage, market and night-watch pressures." },
+  "factions": [
+    { "id": "theatre-public-company", "name": "Theatre Public Company", "institutionKind": "media", "pressureBias": 12, "resourceBias": { "media_attention": -8, "court_docket": -3 }, "preferredCaseTypes": ["media-rumor", "false-testimony"] },
+    { "id": "backstage-service-circle", "name": "Backstage Service Circle", "institutionKind": "dock_union", "pressureBias": 14, "resourceBias": { "dock_credit": -8, "evidence_integrity": -6 }, "preferredCaseTypes": ["evidence-tampering", "missing-person"] },
+    { "id": "night-market-brokers", "name": "Night Market Brokers", "institutionKind": "commerce", "pressureBias": 13, "resourceBias": { "merchant_credit": -7, "informant_trust": -6 }, "preferredCaseTypes": ["blackmail", "missing-person"] },
+    { "id": "lantern-watch", "name": "Lantern Watch", "institutionKind": "police", "pressureBias": 12, "resourceBias": { "police_time": -8, "court_docket": -4 }, "preferredCaseTypes": ["police-misjudgment", "witness-disappearance"] }
+  ],
+  "resources": [
+    { "kind": "media_attention", "label": "Media Attention", "valueDelta": -7, "pressureDelta": 10 },
+    { "kind": "informant_trust", "label": "Informant Trust", "valueDelta": -8, "pressureDelta": 9 },
+    { "kind": "evidence_integrity", "label": "Evidence Integrity", "valueDelta": -6, "pressureDelta": 7 },
+    { "kind": "police_time", "label": "Police Time", "valueDelta": -6, "pressureDelta": 8 },
+    { "kind": "merchant_credit", "label": "Merchant Credit", "valueDelta": -5, "pressureDelta": 7 },
+    { "kind": "dock_credit", "label": "Service Credit", "valueDelta": -6, "pressureDelta": 8 }
+  ],
+  "markets": [
+    { "id": "playbill-attention", "label": "Playbill attention", "resource": "media_attention", "volatility": 0.32, "tags": ["theatre", "proof", "rumor"] },
+    { "id": "backstage-favors", "label": "Backstage favors", "resource": "dock_credit", "volatility": 0.36, "tags": ["backstage", "access", "handling"] },
+    { "id": "night-market-tips", "label": "Night-market tips", "resource": "informant_trust", "volatility": 0.34, "tags": ["market", "tip", "route"] }
+  ],
+  "territories": [
+    { "id": "theatre-territory", "locationId": "old-theatre", "factionId": "theatre-public-company", "influence": 80, "tags": ["theatre", "public"] },
+    { "id": "backstage-territory", "locationId": "backstage-passage", "factionId": "backstage-service-circle", "influence": 82, "tags": ["backstage", "custody"] },
+    { "id": "market-territory", "locationId": "night-market", "factionId": "night-market-brokers", "influence": 78, "tags": ["market", "leverage"] },
+    { "id": "watch-territory", "locationId": "watch-house", "factionId": "lantern-watch", "influence": 76, "tags": ["police", "procedure"] }
+  ],
+  "taskTemplates": [
+    { "id": "audit-playbill-route", "label": "Audit playbill route", "institutionKind": "media", "tags": ["theatre", "proof"], "pressureDelta": 8, "evidenceKinds": ["newspaper-proof", "telegram"] },
+    { "id": "inspect-backstage-chain", "label": "Inspect backstage chain", "institutionKind": "dock_union", "tags": ["backstage", "custody"], "pressureDelta": 10, "evidenceKinds": ["trace", "physical"] },
+    { "id": "verify-night-tip", "label": "Verify night-market tip", "institutionKind": "commerce", "tags": ["market", "tip"], "pressureDelta": 9, "evidenceKinds": ["anonymous-tip", "receipt"] },
+    { "id": "review-lantern-watch", "label": "Review lantern watch", "institutionKind": "police", "tags": ["watch", "record"], "pressureDelta": 9, "evidenceKinds": ["court-record", "testimony"] }
+  ],
+  "randomWorldEvents": [
+    { "id": "ecosystem-playbill-correction", "label": "Playbill correction", "weight": 20, "tags": ["theatre", "proof"], "pressureDelta": 8 },
+    { "id": "ecosystem-service-gate-gap", "label": "Service gate gap", "weight": 22, "tags": ["backstage", "route"], "pressureDelta": 10 },
+    { "id": "ecosystem-market-tip-shift", "label": "Night-market tip shift", "weight": 20, "tags": ["market", "tip"], "pressureDelta": 9 },
+    { "id": "ecosystem-lantern-dispute", "label": "Lantern checkpoint dispute", "weight": 21, "tags": ["watch", "procedure"], "pressureDelta": 9 }
+  ],
+  "pressureRules": [
+    { "id": "ecosystem-media-attention", "resource": "media_attention", "threshold": 55, "effect": "playbill rumors and public testimony become prominent" },
+    { "id": "ecosystem-informant-trust", "resource": "informant_trust", "threshold": 50, "effect": "night-market tips and witness routes become fragile" },
+    { "id": "ecosystem-evidence-integrity", "resource": "evidence_integrity", "threshold": 55, "effect": "backstage custody and handling disputes rise" },
+    { "id": "ecosystem-police-time", "resource": "police_time", "threshold": 50, "effect": "watch shortcuts and public misjudgement pressure rise" }
+  ]
+}

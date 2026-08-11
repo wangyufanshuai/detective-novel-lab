@@ -1,0 +1,30 @@
+{
+  "manifest": { "id": "theatre-market-night-town", "name": "Theatre Market Night Town", "version": "1.0.0", "schemaVersion": "scenario-pack.v1", "description": "Theatre publicity, backstage access, night-market leverage and watch procedure package.", "createdAt": "2026-08-11T00:00:00.000Z", "entrypoint": "scenario.json" },
+  "world": {
+    "seed": "theatre-market-night-town",
+    "mode": "advanced",
+    "timelineHours": 96,
+    "locations": [
+      { "id": "town-square", "name": "Town Square", "kind": "public", "description": "Lantern posts, public notices and late audiences turn performance news into civic pressure.", "connectedLocationIds": ["old-theatre", "night-market", "watch-house", "print-kiosk"], "x": 0, "y": 0 },
+      { "id": "old-theatre", "name": "Old Theatre", "kind": "work", "description": "Playbills, rehearsal calls and public entrances preserve the theatre's visible record.", "connectedLocationIds": ["town-square", "backstage-passage", "print-kiosk"], "x": -1, "y": 1 },
+      { "id": "backstage-passage", "name": "Backstage Passage", "kind": "restricted", "description": "Prop cabinets, dressing-room keys and a service gate share one controlled route.", "connectedLocationIds": ["old-theatre", "night-market"], "x": -2, "y": 1 },
+      { "id": "night-market", "name": "Night Market", "kind": "public", "description": "Receipts, labor favors and fragile tips circulate after the theatre doors close.", "connectedLocationIds": ["town-square", "backstage-passage", "watch-house"], "x": 1, "y": 1 },
+      { "id": "watch-house", "name": "Watch House", "kind": "work", "description": "Patrol rosters, alarm entries and detention grounds are reviewed here.", "connectedLocationIds": ["town-square", "night-market"], "x": 1, "y": -1 },
+      { "id": "print-kiosk", "name": "Print Kiosk", "kind": "work", "description": "Playbill revisions and public corrections move between the theatre and square.", "connectedLocationIds": ["town-square", "old-theatre"], "x": -1, "y": -1 }
+    ],
+    "npcs": [
+      { "id": "npc-tmn-1", "name": "Mara Venn", "role": "detective", "homeLocationId": "watch-house", "schedule": { "08:00": "watch-house", "12:00": "town-square", "18:00": "old-theatre" }, "relationships": { "npc-tmn-2": "public source" }, "secret": "Compares patrol conclusions with theatre attendance records.", "motiveSeed": "protect reviewable procedure", "skills": ["detective", "records"], "memoryEventIds": [], "liePolicy": "protects open inquiries", "alive": true },
+      { "id": "npc-tmn-2", "name": "Elara Quill", "role": "reporter", "homeLocationId": "print-kiosk", "schedule": { "08:00": "print-kiosk", "12:00": "town-square", "18:00": "old-theatre" }, "relationships": { "npc-tmn-3": "theatre source" }, "secret": "Held a corrected playbill until the evening crowd arrived.", "motiveSeed": "publish a defensible correction", "skills": ["reporter", "proof"], "memoryEventIds": [], "liePolicy": "separates print from rumor", "alive": true },
+      { "id": "npc-tmn-3", "name": "Tomas Reed", "role": "clerk", "homeLocationId": "old-theatre", "schedule": { "08:00": "old-theatre", "12:00": "print-kiosk", "18:00": "backstage-passage" }, "relationships": { "npc-tmn-4": "rehearsal contact" }, "secret": "Reassigned a rehearsal call after a private request.", "motiveSeed": "keep the performance open", "skills": ["clerk", "scheduling"], "memoryEventIds": [], "liePolicy": "answers from the call ledger", "alive": true },
+      { "id": "npc-tmn-4", "name": "Nell Crow", "role": "informant", "homeLocationId": "night-market", "schedule": { "08:00": "night-market", "12:00": "town-square", "18:00": "backstage-passage" }, "relationships": { "npc-tmn-5": "market favor" }, "secret": "Saw a dressing-room receipt traded beside the service gate.", "motiveSeed": "keep a safe route through the market", "skills": ["informant", "observation"], "memoryEventIds": [], "liePolicy": "withholds private names", "alive": true },
+      { "id": "npc-tmn-5", "name": "Bram Keel", "role": "dockworker", "homeLocationId": "backstage-passage", "schedule": { "08:00": "backstage-passage", "12:00": "night-market", "18:00": "old-theatre" }, "relationships": { "npc-tmn-3": "loading contract" }, "secret": "Moved a marked prop through the market loading route.", "motiveSeed": "protect irregular stage work", "skills": ["dockworker", "handling"], "memoryEventIds": [], "liePolicy": "minimizes service access", "alive": true }
+    ],
+    "institutions": [],
+    "professions": []
+  },
+  "rules": { "enabledModules": ["institutions", "professions", "long-actions", "public-opinion", "evidence-contamination", "case-aftermath"], "phaseConfig": { "snapshotEveryTicks": 1, "maxRunningLongActions": 8 }, "thresholds": { "maxEvidenceContamination": 74, "maxPublicOpinionHeat": 88, "minInstitutionTrust": 34 }, "longActionKinds": ["cultivate-informant", "verify-anonymous-tip", "protect-witness", "secure-evidence-locker", "review-court-record"] },
+  "scenario": { "id": "theatre-market-night-town", "name": "Theatre Market Night Town", "seed": "theatre-market-night-town", "worldOptions": { "mode": "advanced", "npcCount": 5, "timelineHours": 96 }, "baselineSteps": 8, "branches": [], "passCriteria": { "minValidCandidates": 0, "minEventGrowth": 1, "minMemoryGrowth": 1, "maxBlockedCandidates": 8 } },
+  "expectations": { "minValidCandidates": 1, "minEvidenceCoverage": 80, "maxEvidenceContamination": 74, "maxPublicOpinionHeat": 88, "benchmarkPreset": "quick-10" },
+  "assets": {},
+  "docs": {}
+}

@@ -41,7 +41,7 @@ const model = await import(`${pathToFileURL(modelOutputPath).href}?model=${Date.
 const matrixBefore = structuredClone(engine.listDetectiveCampaignDefinitions());
 const matrix = model.buildCampaignPacingValueMatrix();
 
-assert.equal(matrix.length, 18, "the content-value matrix covers all eighteen authored route treatments");
+assert.equal(matrix.length, 24, "the content-value matrix covers all twenty-four authored route treatments");
 assert.deepEqual(model.deriveCampaignValueMatrix(), matrix, "the exported matrix alias is deterministic");
 assert.deepEqual(engine.listDetectiveCampaignDefinitions(), matrixBefore, "matrix derivation does not mutate the engine catalog");
 
@@ -57,8 +57,8 @@ for (const entry of matrix) {
     assert.equal(Boolean(entry[field]), true, `${entry.campaignLabel} ${entry.chapterLabel} exposes ${field}`);
   }
 }
-assert.equal(campaigns.size, 3, "the matrix retains three distinct public campaigns");
-assert.equal(routes.size, 6, "the matrix exposes six public authored routes");
+assert.equal(campaigns.size, 4, "the matrix exposes four distinct public campaigns");
+assert.equal(routes.size, 8, "the matrix exposes eight public authored routes");
 for (const [routeLabel, entries] of routes) {
   assert.deepEqual(entries.map((entry) => entry.chapterOrdinal), [1, 2, 3], `${routeLabel} keeps the three-chapter order`);
   assert.equal(new Set(entries.map((entry) => entry.publicHook)).size, 3, `${routeLabel} does not repeat a public hook`);
@@ -146,5 +146,5 @@ console.log(JSON.stringify({
   campaigns: [...campaigns],
   routes: [...routes.keys()],
   cases: matrix.length,
-  checks: ["eighteen-treatment-matrix", "six-authored-routes", "content-contrast", "determinism", "non-mutation", "safe-fallback", "single-primary", "secondary-cap", "status-lifecycle", "static-boundary", "request-free", "storage-free", "public-safe", "authority-isolation"]
+  checks: ["twenty-four-treatment-matrix", "eight-authored-routes", "content-contrast", "determinism", "non-mutation", "safe-fallback", "single-primary", "secondary-cap", "status-lifecycle", "static-boundary", "request-free", "storage-free", "public-safe", "authority-isolation"]
 }));

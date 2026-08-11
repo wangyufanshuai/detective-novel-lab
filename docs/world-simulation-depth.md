@@ -317,6 +317,19 @@ Route content changes only future, unextracted Campaign material: chapter labels
 
 The catalog therefore grows from 9 to 18 authored treatments while each run remains three cases. Six production Server runs complete all 18 treatments through Join, World Lead, Search/Question/Challenge, rejected-theory Recovery, accepted theory, Headquarters, Arc convergence, and debrief. The original three-run/9-case gate remains as a compatibility check. Static shows both route names and the original route's read-only detail, never writes route state, and remains zero API.
 
+# v9.5 Campaign Content Completion
+
+v9.5 shifts the next bottleneck from presentation architecture to authored breadth. A fourth Campaign, **Midnight Chorus**, binds one new package (`theatre-market-night-town`) to the existing Campaign Session, WorldPackage selection, candidate preference, route-integrity extraction, authored treatment, Campaign Pacing, Transition Theatre, Resolution Ledger, Debrief, and Replay surfaces.
+
+The paired routes are deliberately different rather than cosmetic:
+
+- **Public Reckoning** uses Question -> Search -> Challenge emphasis, public playbill and witness movement surfaces, and ends in the new `police-misjudgment` Finale family.
+- **Backstage Compact** uses Search -> Challenge -> Question emphasis, private leverage and prop-custody surfaces, and ends in the new `missing-person` Finale family.
+
+The catalog therefore grows from 18 to 24 authored treatments, from six to eight routes, and from six to eight distinct Finale families. Each treatment has its own title, premise, case file, evidence framing, five-clue rhythm, two auditable red herrings, occupational pressure, causal bridge, witness/challenge framing, World Lead focus, and accepted aftermath. A deterministic premise-similarity gate prevents the new six from being name-only substitutions. The paired-route gate requires at least four distinct authored dimensions; the package validator checks all seven package files without modifying the public content pack.
+
+This is still a content layer over one authority. Candidate preference applies only before extraction; a successful route-integrity extraction freezes the current case. The new package and treatments cannot rewrite truth, evidence membership or coverage, Route Certificate, judgement, candidate validity, legal NPC actions, current-case objects, or world consequence authority. The production gate completes all eight routes and 24 cases with the existing endpoints, explicit Recovery, Headquarters, Strategic Command/Pacing/District Fronts, route lock, Arc convergence, and safe debrief. It produces no new endpoint, schema, event, tick, public artifact, proof card, or second action engine. v6.2 remains **instrumentation ready**, not Human Gate passed.
+
 # v9.1 Architecture Headroom Recovery
 
 v9.1 changes code ownership without changing the simulation. Two request-free hooks now isolate the Map/Inspector/Workspace presentation graph and the certified Route Certificate/proof/Source Review graph from the root page. They consume existing controller state and pure engine projections only; neither can issue a request, advance a tick, write runtime state, or judge a case.

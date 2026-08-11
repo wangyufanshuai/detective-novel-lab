@@ -36,10 +36,10 @@ await fs.writeFile(path.join(runtimeDir, "campaign-front-door-model.cjs"), model
 const engine = await import(`${pathToFileURL(path.join(runtimeDir, "index.cjs")).href}?front=${Date.now()}`);
 const model = await import(`${pathToFileURL(path.join(runtimeDir, "campaign-front-door-model.cjs")).href}?front=${Date.now()}`);
 const cards = model.deriveCampaignFrontDoorCards();
-assert.equal(cards.length, 3, "front door exposes exactly three safe Campaign previews");
-assert.deepEqual(cards.map((card) => card.label), ["Town Reckoning", "Harbor Testimony", "Clinic Headlines"], "Campaign order is stable");
+assert.equal(cards.length, 4, "front door exposes exactly four safe Campaign previews");
+assert.deepEqual(cards.map((card) => card.label), ["Town Reckoning", "Harbor Testimony", "Clinic Headlines", "Midnight Chorus"], "Campaign order is stable");
 assert.equal(cards.every((card) => card.routes.length === 2), true, "each Campaign preview exposes two authored routes");
-assert.equal(new Set(cards.flatMap((card) => card.routes.map((route) => route.finaleLabel))).size, 6, "each authored route has a distinct finale");
+assert.equal(new Set(cards.flatMap((card) => card.routes.map((route) => route.finaleLabel))).size, 8, "each authored route has a distinct finale");
 for (const card of cards) {
   for (const route of card.routes) {
     assert.equal(route.chapterLabels.length, 3, `${card.label}/${route.label} shows a three-chapter structure`);
@@ -48,6 +48,7 @@ for (const card of cards) {
 }
 assert.deepEqual(model.deriveCampaignFrontDoorCards(), cards, "front door catalog is deterministic");
 assert.equal(model.campaignFrontDoorSelection(cards, 2).selected.label, "Clinic Headlines", "valid selection is retained");
+assert.equal(model.campaignFrontDoorSelection(cards, 3).selected.label, "Midnight Chorus", "fourth Campaign selection is retained");
 assert.equal(model.campaignFrontDoorSelection(cards, 99).selected.label, "Town Reckoning", "invalid selection falls back deterministically");
 assert.equal(model.campaignFrontDoorSelection(cards, 1, 1).selectedRoute.label, "Chain Protection", "valid counter-route selection is retained");
 assert.equal(model.campaignFrontDoorSelection(cards, 1, 99).selectedRoute.label, "Cargo Testimony", "invalid route selection falls back deterministically");
@@ -83,4 +84,4 @@ assert.match(frontDoorCss, /composes:\s*routeChoice\s+from\s+"\.\/CampaignFrontD
 assert.equal(frontDoorCss.split(/\r?\n/).length < 360, true, "Front Door shell CSS stays below 360 lines");
 assert.equal(routeCss.split(/\r?\n/).length < 160, true, "Front Door route CSS stays below 160 lines");
 
-console.log(JSON.stringify({ ok: true, campaigns: cards.map((card) => card.label), routeCount: cards.flatMap((card) => card.routes).length, tests: ["three-safe-cards", "six-safe-routes", "determinism", "selection", "public-safe", "pre-extraction-rebind", "route-freeze", "first-extraction-freeze", "truth-isolation", "static-boundary", "css-ownership"] }));
+console.log(JSON.stringify({ ok: true, campaigns: cards.map((card) => card.label), routeCount: cards.flatMap((card) => card.routes).length, tests: ["four-safe-cards", "eight-safe-routes", "determinism", "selection", "public-safe", "pre-extraction-rebind", "route-freeze", "first-extraction-freeze", "truth-isolation", "static-boundary", "css-ownership"] }));

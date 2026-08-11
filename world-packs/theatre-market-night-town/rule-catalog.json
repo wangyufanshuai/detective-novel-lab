@@ -1,0 +1,59 @@
+{
+  "id": "theatre-market-night-rules",
+  "name": "Theatre Market Night Rules",
+  "version": "1.0.0",
+  "resources": [
+    { "kind": "police_time", "label": "Police Time", "value": 48, "capacity": 100, "pressure": 58 },
+    { "kind": "media_attention", "label": "Media Attention", "value": 46, "capacity": 100, "pressure": 64 },
+    { "kind": "family_influence", "label": "Family Influence", "value": 50, "capacity": 100, "pressure": 36 },
+    { "kind": "merchant_credit", "label": "Merchant Credit", "value": 51, "capacity": 100, "pressure": 52 },
+    { "kind": "medical_capacity", "label": "Medical Capacity", "value": 55, "capacity": 100, "pressure": 28 },
+    { "kind": "evidence_integrity", "label": "Evidence Integrity", "value": 76, "capacity": 100, "pressure": 40 },
+    { "kind": "court_docket", "label": "Court Docket", "value": 52, "capacity": 100, "pressure": 48 },
+    { "kind": "dock_credit", "label": "Service Credit", "value": 45, "capacity": 100, "pressure": 60 },
+    { "kind": "informant_trust", "label": "Informant Trust", "value": 43, "capacity": 100, "pressure": 62 }
+  ],
+  "institutions": [
+    { "id": "inst-police", "name": "Lantern Watch", "kind": "police", "resources": 48, "reputation": 51, "pressure": 58, "agenda": "Keep midnight patrol conclusions reviewable.", "influenceByLocation": { "watch-house": 84, "town-square": 70, "night-market": 54 }, "trustByNpcId": { "npc-tmn-1": 75 }, "activeCaseIds": [], "policyPressure": 58 },
+    { "id": "inst-media", "name": "Theatre and Print Desk", "kind": "media", "resources": 46, "reputation": 55, "pressure": 64, "agenda": "Correct public accounts without sacrificing sources.", "influenceByLocation": { "old-theatre": 75, "print-kiosk": 82, "town-square": 64 }, "trustByNpcId": { "npc-tmn-2": 75, "npc-tmn-4": 55 }, "activeCaseIds": [], "policyPressure": 64 },
+    { "id": "inst-family", "name": "Patron Households", "kind": "family", "resources": 50, "reputation": 54, "pressure": 36, "agenda": "Protect private patron agreements.", "influenceByLocation": { "old-theatre": 48 }, "trustByNpcId": {}, "activeCaseIds": [], "policyPressure": 36 },
+    { "id": "inst-commerce", "name": "Night Market Circle", "kind": "commerce", "resources": 51, "reputation": 49, "pressure": 52, "agenda": "Keep market receipts and favors moving.", "influenceByLocation": { "night-market": 82, "town-square": 55 }, "trustByNpcId": {}, "activeCaseIds": [], "policyPressure": 52 },
+    { "id": "inst-civic", "name": "Theatre Licensing Desk", "kind": "civic", "resources": 52, "reputation": 52, "pressure": 48, "agenda": "Preserve rehearsal, access and public-notice records.", "influenceByLocation": { "old-theatre": 72, "town-square": 56 }, "trustByNpcId": { "npc-tmn-3": 75 }, "activeCaseIds": [], "policyPressure": 48 },
+    { "id": "inst-medical", "name": "Town Clinic", "kind": "medical", "resources": 55, "reputation": 55, "pressure": 28, "agenda": "Remain available for public emergencies.", "influenceByLocation": { "town-square": 28 }, "trustByNpcId": {}, "activeCaseIds": [], "policyPressure": 28 },
+    { "id": "inst-court", "name": "Magistrate Court", "kind": "court", "resources": 52, "reputation": 54, "pressure": 48, "agenda": "Review watch procedure and protected testimony.", "influenceByLocation": { "watch-house": 62, "town-square": 50 }, "trustByNpcId": {}, "activeCaseIds": [], "policyPressure": 48 },
+    { "id": "inst-dock-union", "name": "Backstage Service Guild", "kind": "dock_union", "resources": 45, "reputation": 48, "pressure": 60, "agenda": "Control service access and protect irregular stage labor.", "influenceByLocation": { "backstage-passage": 85, "old-theatre": 62, "night-market": 55 }, "trustByNpcId": { "npc-tmn-5": 75 }, "activeCaseIds": [], "policyPressure": 60 }
+  ],
+  "professions": [
+    { "npcId": "npc-tmn-1", "kind": "detective", "institutionId": "inst-police", "rank": 3, "skills": ["detective", "records"], "income": 55, "workload": 56 },
+    { "npcId": "npc-tmn-2", "kind": "reporter", "institutionId": "inst-media", "rank": 2, "skills": ["reporter", "proof"], "income": 43, "workload": 52 },
+    { "npcId": "npc-tmn-3", "kind": "clerk", "institutionId": "inst-civic", "rank": 2, "skills": ["clerk", "scheduling"], "income": 41, "workload": 58 },
+    { "npcId": "npc-tmn-4", "kind": "informant", "institutionId": "inst-media", "rank": 1, "skills": ["informant", "observation"], "income": 31, "workload": 44 },
+    { "npcId": "npc-tmn-5", "kind": "dockworker", "institutionId": "inst-dock-union", "rank": 2, "skills": ["dockworker", "handling"], "income": 40, "workload": 61 }
+  ],
+  "longActionDefinitions": [
+    { "kind": "cultivate-informant", "label": "Cultivate night-market source", "durationTicks": 4, "resourceCosts": { "informant_trust": 4 }, "institutionDeltas": { "inst-media": { "resources": -2, "reputation": 2, "pressure": 2 }, "inst-commerce": { "pressure": 2 } }, "publicOpinionDelta": { "witnessFear": -3, "rumorVelocity": 2 }, "evidenceContaminationDelta": -5 },
+    { "kind": "verify-anonymous-tip", "label": "Verify backstage tip", "durationTicks": 3, "resourceCosts": { "informant_trust": 3, "police_time": 2 }, "institutionDeltas": { "inst-police": { "resources": -2, "reputation": 2, "pressure": -2 } }, "publicOpinionDelta": { "trustInPolice": 1, "witnessFear": -2 }, "evidenceContaminationDelta": -6 },
+    { "kind": "protect-witness", "label": "Protect theatre witness", "durationTicks": 4, "requiredInstitutionId": "inst-police", "resourceCosts": { "police_time": 4 }, "institutionDeltas": { "inst-police": { "resources": -4, "reputation": 3, "pressure": 2 }, "inst-media": { "pressure": 2 } }, "publicOpinionDelta": { "witnessFear": -6, "heat": 2 }, "evidenceContaminationDelta": -4 },
+    { "kind": "secure-evidence-locker", "label": "Secure prop custody", "durationTicks": 3, "requiredInstitutionId": "inst-police", "resourceCosts": { "evidence_integrity": 3, "police_time": 2 }, "institutionDeltas": { "inst-police": { "resources": -2, "reputation": 2, "pressure": -2 }, "inst-dock-union": { "pressure": 3 } }, "publicOpinionDelta": { "trustInPolice": 1 }, "evidenceContaminationDelta": -8 },
+    { "kind": "review-court-record", "label": "Review lantern procedure", "durationTicks": 3, "requiredInstitutionId": "inst-court", "resourceCosts": { "court_docket": 3 }, "institutionDeltas": { "inst-court": { "resources": -3, "reputation": 3, "pressure": -2 }, "inst-police": { "pressure": 3 } }, "publicOpinionDelta": { "trustInPolice": 1, "heat": 1 }, "evidenceContaminationDelta": -5 }
+  ],
+  "randomEvents": [
+    { "id": "playbill-revision", "label": "Playbill revision", "weight": 21, "tags": ["theatre", "proof", "rumor"] },
+    { "id": "service-gate-delay", "label": "Service gate delay", "weight": 23, "tags": ["backstage", "route", "custody"] },
+    { "id": "market-tip-withdrawn", "label": "Market tip withdrawn", "weight": 20, "tags": ["market", "informant", "witness"] },
+    { "id": "lantern-record-corrected", "label": "Lantern record corrected", "weight": 22, "tags": ["police", "record", "procedure"] }
+  ],
+  "casePressureRules": [
+    { "id": "theatre-media-pressure", "resource": "media_attention", "threshold": 55, "effect": "media rumor and public testimony become prominent" },
+    { "id": "backstage-integrity-pressure", "resource": "evidence_integrity", "threshold": 55, "effect": "evidence handling and backstage routes become prominent" },
+    { "id": "night-informant-pressure", "resource": "informant_trust", "threshold": 50, "effect": "missing witnesses and market leverage become prominent" },
+    { "id": "lantern-watch-pressure", "resource": "police_time", "threshold": 50, "effect": "police misjudgement and watch records become prominent" }
+  ],
+  "evidenceRules": [
+    { "id": "playbill-proof-chain", "kind": "newspaper-proof", "weakContaminationThreshold": 64, "strongProvenanceIntegrityFloor": 54, "relatedCaseTypes": ["media-rumor", "false-testimony"] },
+    { "id": "night-tip-chain", "kind": "anonymous-tip", "weakContaminationThreshold": 60, "strongProvenanceIntegrityFloor": 50, "relatedCaseTypes": ["witness-disappearance", "missing-person", "blackmail"] },
+    { "id": "backstage-trace-chain", "kind": "trace", "weakContaminationThreshold": 68, "strongProvenanceIntegrityFloor": 58, "relatedCaseTypes": ["evidence-tampering", "missing-person"] },
+    { "id": "lantern-record-chain", "kind": "court-record", "weakContaminationThreshold": 66, "strongProvenanceIntegrityFloor": 58, "relatedCaseTypes": ["police-misjudgment", "false-testimony"] },
+    { "id": "market-receipt-chain", "kind": "receipt", "weakContaminationThreshold": 68, "strongProvenanceIntegrityFloor": 54, "relatedCaseTypes": ["blackmail", "evidence-tampering"] }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "id": "theatre-market-night-town",
+  "name": "Theatre Market Night Town",
+  "version": "1.0.0",
+  "schemaVersion": "world-package.v1",
+  "description": "World package for theatre records, night-market leverage, backstage access and public-watch accountability.",
+  "author": "Detective Novel Lab",
+  "createdAt": "2026-08-11T00:00:00.000Z",
+  "license": "project-local-original",
+  "scenarioPackPath": "scenario-pack.json",
+  "mapPackPath": "map-pack.json",
+  "ruleCatalogPath": "rule-catalog.json",
+  "agentPackPath": "agent-pack.json",
+  "ecosystemCatalogPath": "ecosystem-catalog.json",
+  "expectationsPath": "expectations.json"
+}

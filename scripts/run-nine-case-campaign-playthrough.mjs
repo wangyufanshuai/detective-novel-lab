@@ -42,6 +42,7 @@ const { buildStrategicPacingViewModel } = await import(`${pathToFileURL(strategi
 const { buildDistrictStrategicFrontsViewModel } = await import(`${pathToFileURL(strategicArtifacts[4]).href}?run=${Date.now()}`);
 
 const allRoutes = process.argv.includes("--all-routes");
+const includeMidnight = process.argv.includes("--include-midnight");
 const baselineCampaigns = [
   { id: "town-reckoning", routeId: "baseline", routeLabel: "Civic Procedure", packageId: "city-hall-merchant-debt-town", finaleType: "court-intimidation", label: "Town Reckoning" },
   { id: "harbor-testimony", routeId: "baseline", routeLabel: "Cargo Testimony", packageId: "dock-court-market-town", finaleType: "dock-witness-swap", label: "Harbor Testimony" },
@@ -52,7 +53,13 @@ const counterCampaigns = [
   { id: "harbor-testimony", routeId: "counter-route", routeLabel: "Chain Protection", packageId: "dock-court-market-town", finaleType: "evidence-tampering", label: "Harbor Testimony" },
   { id: "clinic-headlines", routeId: "counter-route", routeLabel: "Public Correction", packageId: "hospital-family-press-town", finaleType: "editorial-coercion", label: "Clinic Headlines" }
 ];
-const campaigns = allRoutes ? [...baselineCampaigns, ...counterCampaigns] : baselineCampaigns;
+const midnightCampaigns = [
+  { id: "midnight-chorus", routeId: "baseline", routeLabel: "Public Reckoning", packageId: "theatre-market-night-town", finaleType: "police-misjudgment", label: "Midnight Chorus" },
+  { id: "midnight-chorus", routeId: "counter-route", routeLabel: "Backstage Compact", packageId: "theatre-market-night-town", finaleType: "missing-person", label: "Midnight Chorus" }
+];
+const campaigns = allRoutes
+  ? [...baselineCampaigns, ...counterCampaigns, ...(includeMidnight ? midnightCampaigns : [])]
+  : baselineCampaigns;
 
 function stopServer() {
   if (!server?.pid) return;
@@ -394,7 +401,7 @@ try {
   assert.equal(reports.reduce((sum, item) => sum + item.strategicCommandCases, 0), expectedCases, `all ${expectedCases} cases expose the Strategic Command primary route`);
   assert.equal(reports.reduce((sum, item) => sum + item.strategicPacingCases, 0), expectedCases, `all ${expectedCases} cases expose the Strategic Pacing lifecycle without authority writes`);
   assert.equal(reports.reduce((sum, item) => sum + item.districtFrontCases, 0), expectedCases, `all ${expectedCases} cases expose District Operations without authority writes`);
-  console.log(JSON.stringify({ ok: true, suite: allRoutes ? "eighteen-case-campaign-playthrough" : "nine-case-campaign-playthrough", campaigns: reports, totalCases: expectedCases, strategicCommandCases: expectedCases, strategicPacingCases: expectedCases, districtFrontCases: expectedCases }));
+  console.log(JSON.stringify({ ok: true, suite: includeMidnight ? "twenty-four-case-campaign-playthrough" : allRoutes ? "eighteen-case-campaign-playthrough" : "nine-case-campaign-playthrough", campaigns: reports, totalCases: expectedCases, strategicCommandCases: expectedCases, strategicPacingCases: expectedCases, districtFrontCases: expectedCases }));
 } finally {
   stopServer();
   for (const suffix of ["", "-wal", "-shm"]) {

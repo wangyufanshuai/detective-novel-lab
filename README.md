@@ -39,6 +39,7 @@ DeepSeek is used only for NPC surface dialogue and optional solution prose. It d
 - v9.2 adds **Campaign Command Clarity** through one shared Current Objective -> Current Action -> Map Focus -> Context brief. Command Deck, Map Intel, World Campaign, and Transition Theatre now reuse its public-safe priority and copy; District Fronts remain selection-only, Static remains zero API/storage, and no world or case authority changes.
 - v9.3 adds the **Command Resolution & Consequence Ledger**: Result -> World Change -> Objective Progress -> Next Action is now one canonical four-stage chain shared by Latest Resolution, Transition Theatre, and Guided Journal. History reuses existing session-local safe outcomes, is deduplicated and capped at six entries, and adds no endpoint, runtime state, event, tick, storage key, ranking modifier, or proof card.
 - v9.4 adds the **Final Detective Workspace**: Current Objective, Evidence, Testimony, Contradictions, Theory, Recovery, Source Review, and the v9.3 Resolution Ledger now form one investigation theatre with one Current Task and one primary action. Map, Command Deck, Guided Manual Run, and direct investigation continue through the same certified adapter. Desktop uses a three-column case-files theatre; narrow containers use one-column progressive disclosure. Static uses the same public-safe local projection with zero `/api/*`; no case or world authority changed.
+- v9.5 completes **Campaign Content Completion**: Midnight Chorus adds a fourth Campaign, Public Reckoning and Backstage Compact routes, a real theatre/market/night-watch WorldPackage, six new authored treatments, and two new Finale families. The catalog now contains four Campaigns, eight routes, and 24 treatments while every route remains exactly three cases. Content changes only future candidate preference and safe presentation; truth, evidence membership/coverage, Route Certificate, judgement, candidate validity, NPC legal actions, and world authority remain unchanged. The 24-case production gate, Front Door, Pacing, API smoke, 24-seed fairness, Static zero API, privacy, performance, and protected-public checks remain required evidence. v6.2 is still instrumentation ready, not Human Gate passed.
 - Project-level v3.6/v3.7 assessment and roadmap: [docs/project-level-report.md](docs/project-level-report.md).
 
 ## Try In 3 Modes
@@ -49,7 +50,7 @@ npm run dev -- -p 3000
 ```
 
 - **Static Demo**: open `http://127.0.0.1:3000/?runtime=static` for the public, no-server Premium Showcase plus the Final Detective Workspace, read-only Playable Investigation Path audit, Guided Manual Run, Guided Step Journal, Static Playthrough Proof, Source Review, Solved Case Debrief, Replay Practice Loop, Replay Goal Coach, Manual Evidence Drill, Manual Theory Drill, Replay Attempt Scorecard, Static Reviewer Home, Pack / Replay / Map / Agent main path, Proof Strip, Stable World Proof drilldown, non-blocking Case Quality Proof, World Systems overview, aggregate Public Dataset Explorer, and spoiler-safe Public Case Explorer.
-- **Server Runtime**: open `http://127.0.0.1:3000/?runtime=server` for SQLite-backed worlds, Persistent Agent Town, the optional World Lead Loop after Join, the Town Social Response cycle after real player-driven world results, the v7.4 Investigator Headquarters transition between accepted Campaign cases, the v9.4 Final Detective Workspace, and the Command Deck integration surface for three Campaigns with two authored three-case routes each. Server Playthrough Proof, Scenario Runner, Time Machine, and optional DeepSeek dialogue remain available. Headquarters is a bounded preparation choice, not a proof card: it can discount one next-case reserve, expose one safe Recovery assist, or clarify public context, but never changes truth or the certified route.
+- **Server Runtime**: open `http://127.0.0.1:3000/?runtime=server` for SQLite-backed worlds, Persistent Agent Town, the optional World Lead Loop after Join, the Town Social Response cycle after real player-driven world results, the v7.4 Investigator Headquarters transition between accepted Campaign cases, the v9.4 Final Detective Workspace, and the Command Deck integration surface for four Campaigns with two authored three-case routes each. Server Playthrough Proof, Scenario Runner, Time Machine, and optional DeepSeek dialogue remain available. Headquarters is a bounded preparation choice, not a proof card: it can discount one next-case reserve, expose one safe Recovery assist, or clarify public context, but never changes truth or the certified route.
 - **Campaign Study**: open `http://127.0.0.1:3000/?runtime=server&study=1` to show the default-collapsed browser-local recorder. Follow [the moderator protocol](docs/campaign-comprehension-study.md) and review the [aggregate gate status](docs/campaign-comprehension-results.md). Static Runtime never initializes this recorder, even when `study=1` is present.
 - **Agent API**: run `node examples/agent-client-node/index.mjs` or `node examples/scenario-runner/index.mjs` against a running server, or reuse the SDK starter in `examples/sdk`.
 
@@ -817,6 +818,31 @@ npm.cmd run test:campaign-resolution-ledger
 npm.cmd run test:campaign-transition
 npm.cmd run qa:command-deck -- --json
 npm.cmd run quality:performance-budget -- --json
+```
+
+## v9.5 Campaign Content Completion
+
+v9.5 increases authored breadth without adding another simulation subsystem. **Midnight Chorus** is a fourth Campaign with two intentionally different three-case routes:
+
+- **Public Reckoning**: Printed Whisper → Missing Chorus → Lantern Inquiry. It emphasizes public testimony, theatre and print records, witness movement, and night-watch accountability; its Finale family is `police-misjudgment`.
+- **Backstage Compact**: Price of Silence → Moved Prop → Empty Cue. It emphasizes private leverage, service passages, evidence custody, and a missing-person route; its Finale family is `missing-person`.
+
+The new `theatre-market-night-town` WorldPackage is a real package-catalog entry with Old Theatre, Backstage Passage, Night Market, Town Square, Watch House, and Print Kiosk surfaces. It reuses the existing institution, resource, profession, long-action, evidence, candidate, and route-integrity catalogs. No new content schema, endpoint, SQLite field, event type, tick behavior, proof card, or second case engine was added.
+
+The authored catalog now has four Campaigns, eight routes, 24 treatments, 24 unique titles, and eight distinct Finale families. Quality gates cover paired-route sequence differences, at least four authored dimensions of route contrast, premise-similarity bounds against the prior 18 treatments, deterministic treatment application, Route Certificate, complete evidence coverage, auto-solve, non-culprit exclusion, timeline closure, truth isolation, and public-safe projection. `test:twenty-four-case-campaign` completes all eight routes through the existing Server endpoints, including Recovery, Headquarters, Strategic Command/Pacing/District Fronts, route lock, accepted theory, Arc convergence, and safe debrief.
+
+The Static Runtime displays the fourth safe Campaign preview and both route descriptions but continues to omit Start/Continue/persistent route controls, writes no study or route storage, and makes zero `/api/*` requests. The Server Runtime may bind the fourth package before extraction; after the first successful extraction the existing route lock and case authority remain unchanged. Automated evidence is not human comprehension evidence: v6.2 remains **instrumentation ready**, and no claim of `human gate passed` is made.
+
+```powershell
+npm.cmd run test:campaign-content
+npm.cmd run test:authored-campaign-cases
+npm.cmd run test:campaign-pacing
+npm.cmd run test:campaign-front-door
+npm.cmd run test:twenty-four-case-campaign
+npm.cmd run qa:campaign-front-door -- --json
+npm.cmd run qa:command-deck -- --json
+npm.cmd run qa:campaign-study -- --json
+npm.cmd run qa:static-browser -- --json
 ```
 
 ## Roadmap

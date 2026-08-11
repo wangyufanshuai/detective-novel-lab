@@ -101,7 +101,8 @@ const CHOICE_ORDER: InvestigatorHeadquartersChoice[] = [
 const CAMPAIGN_RECOMMENDATIONS: Record<string, InvestigatorHeadquartersChoice[]> = {
   "town-reckoning": ["institutional-access", "evidence-handling", "field-search", "witness-work", "contradiction-analysis"],
   "harbor-testimony": ["field-search", "witness-work", "evidence-handling", "institutional-access", "contradiction-analysis"],
-  "clinic-headlines": ["contradiction-analysis", "evidence-handling", "witness-work", "institutional-access", "field-search"]
+  "clinic-headlines": ["contradiction-analysis", "evidence-handling", "witness-work", "institutional-access", "field-search"],
+  "midnight-chorus": ["witness-work", "field-search", "contradiction-analysis", "evidence-handling", "institutional-access"]
 };
 
 function competencies(runtime: PersistentTownRuntime) {

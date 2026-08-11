@@ -29,8 +29,8 @@ for (const file of await collectTsFiles(sourceDir)) {
 }
 const engine = await import(`${pathToFileURL(path.join(runtimeDir, "index.cjs")).href}?authored=${Date.now()}`);
 const definitions = engine.listAuthoredCampaignCaseDefinitions();
-assert.equal(definitions.length, 18, "three Campaigns expose exactly eighteen authored route treatments");
-for (const campaignId of ["town-reckoning", "harbor-testimony", "clinic-headlines"]) {
+assert.equal(definitions.length, 24, "four Campaigns expose exactly twenty-four authored route treatments");
+for (const campaignId of ["town-reckoning", "harbor-testimony", "clinic-headlines", "midnight-chorus"]) {
   const campaignCases = definitions.filter((item) => item.campaignId === campaignId);
   assert.equal(campaignCases.length, 6, `${campaignId} has two complete authored routes`);
   for (const routeId of ["baseline", "counter-route"]) {
@@ -40,7 +40,8 @@ for (const campaignId of ["town-reckoning", "harbor-testimony", "clinic-headline
   }
   assert.notDeepEqual(campaignCases.filter((item) => item.routeId === "baseline").map((item) => item.leadFocus), campaignCases.filter((item) => item.routeId === "counter-route").map((item) => item.leadFocus), `${campaignId} counter route changes the Search / Question / Challenge rhythm`);
 }
-assert.equal(new Set(definitions.filter((item) => item.ordinal === 3).map((item) => item.caseFamily)).size, 6, "six route finales use different case families");
+assert.equal(new Set(definitions.filter((item) => item.ordinal === 3).map((item) => item.caseFamily)).size, 8, "eight route finales use different case families");
+assert.equal(new Set(definitions.map((item) => item.title)).size, 24, "all twenty-four authored treatment titles are unique");
 assert.equal(new Set(definitions.map((item) => JSON.stringify({
   route: item.routeId,
   title: item.title,
@@ -50,7 +51,38 @@ assert.equal(new Set(definitions.map((item) => JSON.stringify({
   rhythm: item.rhythm,
   bridge: item.causalBridge,
   aftermath: item.aftermathLabel
-}))).size, 18, "eighteen treatments are not name/location substitutions");
+}))).size, 24, "twenty-four treatments are not name/location substitutions");
+
+function publicWords(value) {
+  return new Set(value.toLowerCase().replace(/[^a-z0-9\s-]/g, " ").split(/\s+/).filter((word) => word.length > 3));
+}
+
+function jaccard(left, right) {
+  const leftWords = publicWords(left);
+  const rightWords = publicWords(right);
+  const overlap = [...leftWords].filter((word) => rightWords.has(word)).length;
+  return overlap / Math.max(1, new Set([...leftWords, ...rightWords]).size);
+}
+
+const midnightCases = definitions.filter((item) => item.campaignId === "midnight-chorus");
+const establishedCases = definitions.filter((item) => item.campaignId !== "midnight-chorus");
+for (const current of midnightCases) {
+  const closest = Math.max(...establishedCases.map((existing) => jaccard(`${current.publicPremise} ${current.publicCaseFile}`, `${existing.publicPremise} ${existing.publicCaseFile}`)));
+  assert.equal(closest < 0.5, true, `${current.title} remains materially distinct from the established eighteen premises (similarity ${closest.toFixed(3)})`);
+}
+
+for (const campaignId of [...new Set(definitions.map((item) => item.campaignId))]) {
+  const baseline = definitions.filter((item) => item.campaignId === campaignId && item.routeId === "baseline");
+  const counter = definitions.filter((item) => item.campaignId === campaignId && item.routeId === "counter-route");
+  const dimensions = [
+    JSON.stringify(baseline.map((item) => item.rhythm)) !== JSON.stringify(counter.map((item) => item.rhythm)),
+    JSON.stringify(baseline.map((item) => item.evidenceFrame)) !== JSON.stringify(counter.map((item) => item.evidenceFrame)),
+    JSON.stringify(baseline.flatMap((item) => item.redHerrings)) !== JSON.stringify(counter.flatMap((item) => item.redHerrings)),
+    JSON.stringify(baseline.map((item) => item.causalBridge)) !== JSON.stringify(counter.map((item) => item.causalBridge)),
+    baseline.at(-1)?.caseFamily !== counter.at(-1)?.caseFamily
+  ];
+  assert.equal(dimensions.filter(Boolean).length >= 4, true, `${campaignId} paired routes differ in at least four authored dimensions`);
+}
 
 const templates = ["archive-blunt", "clocktower-locked-room", "clinic-poison", "greenhouse-blade"];
 const visibleCases = [];
@@ -96,7 +128,8 @@ assert.equal(/\b(?:culpritId|victimId|npcId|evidenceId|eventId|sourceId|hiddenTr
 const packageByCampaign = {
   "town-reckoning": "city-hall-merchant-debt-town",
   "harbor-testimony": "dock-court-market-town",
-  "clinic-headlines": "hospital-family-press-town"
+  "clinic-headlines": "hospital-family-press-town",
+  "midnight-chorus": "theatre-market-night-town"
 };
 for (const definition of definitions) {
   const world = engine.createInitialWorld(`authored-runtime-${definition.campaignId}-${definition.ordinal}`, { mode: "showcase", npcCount: 8, timelineHours: 24 });
@@ -186,4 +219,4 @@ for (const definition of definitions) {
   assert.equal(/caseId|cycleKey|acceptedAtTick|campaignId|sourceKey|hiddenTruth|rawBody/i.test(JSON.stringify(summary)), false, `${definition.title} public Campaign summary strips internal history bindings`);
 }
 
-console.log(JSON.stringify({ ok: true, caseCount: definitions.length, finales: definitions.filter((item) => item.ordinal === 3).map((item) => item.title), tests: ["eighteen-authored-treatments", "two-routes-per-campaign", "distinct-content", "lead-rhythm-contrast", "hard-logic", "route-certificate", "auto-solve", "evidence-coverage", "non-culprit-exclusion", "timeline-closure", "truth-isolation", "determinism", "runtime-selection", "runtime-lead-focus", "npc-legal-action-isolation", "accepted-aftermath", "public-safe"] }));
+console.log(JSON.stringify({ ok: true, caseCount: definitions.length, finales: definitions.filter((item) => item.ordinal === 3).map((item) => item.title), tests: ["twenty-four-authored-treatments", "two-routes-per-campaign", "unique-titles", "premise-similarity-gate", "paired-route-contrast", "distinct-content", "lead-rhythm-contrast", "hard-logic", "route-certificate", "auto-solve", "evidence-coverage", "non-culprit-exclusion", "timeline-closure", "truth-isolation", "determinism", "runtime-selection", "runtime-lead-focus", "npc-legal-action-isolation", "accepted-aftermath", "public-safe"] }));

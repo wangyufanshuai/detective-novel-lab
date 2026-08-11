@@ -85,7 +85,7 @@ try {
       const frontDoorSelectedCount = await frontDoor.locator("[data-testid='campaign-front-door-card'][aria-pressed='true']").count();
       const frontDoorRouteSelectedCount = await frontDoor.locator("[data-testid='campaign-front-door-route'][aria-pressed='true']").count();
       const frontDoorPrimaryCount = await frontDoor.locator("[data-campaign-primary='true']:not([disabled])").count();
-      if (frontDoorCardCount !== 3 || frontDoorSelectedCount !== 1 || frontDoorRouteSelectedCount !== 1 || frontDoorPrimaryCount !== 1) failures.push(`${width}px Campaign Front Door did not expose three cards, one Campaign selection, one route selection, and one primary action.`);
+      if (frontDoorCardCount !== 4 || frontDoorSelectedCount !== 1 || frontDoorRouteSelectedCount !== 1 || frontDoorPrimaryCount !== 1) failures.push(`${width}px Campaign Front Door did not expose four cards, one Campaign selection, one route selection, and one primary action.`);
       await frontDoor.getByTestId("campaign-front-door-dismiss").click();
       await page.getByTestId("command-deck-pulse").waitFor({ state: "visible", timeout: 15_000 });
       const encounterActor = page.locator("[data-testid='pixel-map'] .actorPin").first();

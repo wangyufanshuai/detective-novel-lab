@@ -1,6 +1,7 @@
 import type { PersistentTownRuntime, TownCaseType } from "../persistent-town";
+import { MIDNIGHT_CHORUS_CAMPAIGN } from "./midnight-chorus-campaign";
 
-export type DetectiveCampaignId = "town-reckoning" | "harbor-testimony" | "clinic-headlines";
+export type DetectiveCampaignId = "town-reckoning" | "harbor-testimony" | "clinic-headlines" | "midnight-chorus";
 export type DetectiveCampaignRouteId = "baseline" | "counter-route";
 
 export type DetectiveCampaignChapter = {
@@ -260,7 +261,8 @@ const CAMPAIGNS: readonly DetectiveCampaignDefinition[] = [
         ]
       }
     ]
-  }
+  },
+  MIDNIGHT_CHORUS_CAMPAIGN
 ] as const;
 
 const DEFAULT_CAMPAIGN = CAMPAIGNS[0];
