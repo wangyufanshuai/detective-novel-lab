@@ -704,7 +704,7 @@ export function WorldGraphWorkbench({ onBack, runtimeMode }: { onBack: () => voi
           });
         }
       } catch (error) {
-        setEvidenceStatus(`IndexedDB unavailable; using in-memory project. ${error instanceof Error ? error.message : ""}`);
+        setEvidenceStatus("IndexedDB unavailable; using the in-memory project for this tab.");
       } finally {
         if (!cancelled) setStorageReady(true);
       }
@@ -718,22 +718,22 @@ export function WorldGraphWorkbench({ onBack, runtimeMode }: { onBack: () => voi
   useEffect(() => {
     if (!storageReady || typeof window === "undefined") return;
     localStorage.setItem(novelProjectStorageKey, JSON.stringify(compactNovelProjectForLocalBackup(project)));
-    void writeNovelIndexedValue(novelIndexedProjectKey, project).catch((error) => setEvidenceStatus(`IndexedDB project save failed: ${error instanceof Error ? error.message : "unknown error"}`));
+    void writeNovelIndexedValue(novelIndexedProjectKey, project).catch(() => setEvidenceStatus("IndexedDB project save failed safely; the in-memory project remains available."));
   }, [project, storageReady]);
 
   useEffect(() => {
     if (!storageReady || typeof window === "undefined") return;
-    void writeNovelIndexedValue(novelIndexedChaptersKey, chapterTexts).catch((error) => setEvidenceStatus(`IndexedDB chapter save failed: ${error instanceof Error ? error.message : "unknown error"}`));
+    void writeNovelIndexedValue(novelIndexedChaptersKey, chapterTexts).catch(() => setEvidenceStatus("IndexedDB chapter save failed safely; the in-memory chapters remain available."));
   }, [chapterTexts, storageReady]);
 
   useEffect(() => {
     if (!storageReady || typeof window === "undefined") return;
-    void writeNovelIndexedValue(novelIndexedEvidenceKey, evidenceIndexes).catch((error) => setEvidenceStatus(`IndexedDB evidence save failed: ${error instanceof Error ? error.message : "unknown error"}`));
+    void writeNovelIndexedValue(novelIndexedEvidenceKey, evidenceIndexes).catch(() => setEvidenceStatus("IndexedDB evidence save failed safely; the in-memory index remains available."));
   }, [evidenceIndexes, storageReady]);
 
   useEffect(() => {
     if (!storageReady || typeof window === "undefined") return;
-    void writeNovelIndexedValue(novelIndexedBatchQueueKey, batchQueue).catch((error) => setEvidenceStatus(`IndexedDB batch queue save failed: ${error instanceof Error ? error.message : "unknown error"}`));
+    void writeNovelIndexedValue(novelIndexedBatchQueueKey, batchQueue).catch(() => setEvidenceStatus("IndexedDB batch queue save failed safely; the in-memory queue remains available."));
   }, [batchQueue, storageReady]);
 
   useEffect(() => {
@@ -745,22 +745,22 @@ export function WorldGraphWorkbench({ onBack, runtimeMode }: { onBack: () => voi
       worldView,
       inspectorTab,
       gameVisualPreferences
-    }).catch((error) => setEvidenceStatus(`IndexedDB arc preference save failed: ${error instanceof Error ? error.message : "unknown error"}`));
+    }).catch(() => setEvidenceStatus("IndexedDB arc preference save failed safely; the current tab preference remains active."));
   }, [gameVisualPreferences, inspectorTab, pinnedCausalChainIds, pinnedCharacterIds, pinnedThemeIds, storageReady, worldView]);
 
   useEffect(() => {
     if (!storageReady || typeof window === "undefined") return;
-    void writeNovelIndexedValue(novelIndexedAskHistoryKey, askHistory.slice(0, 20)).catch((error) => setEvidenceStatus(`IndexedDB ask history save failed: ${error instanceof Error ? error.message : "unknown error"}`));
+    void writeNovelIndexedValue(novelIndexedAskHistoryKey, askHistory.slice(0, 20)).catch(() => setEvidenceStatus("IndexedDB ask-history save failed safely; the in-memory history remains available."));
   }, [askHistory, storageReady]);
 
   useEffect(() => {
     if (!storageReady || typeof window === "undefined") return;
-    void writeNovelIndexedValue(novelIndexedSimulationRunsKey, simulationRuns.slice(0, 10)).catch((error) => setEvidenceStatus(`IndexedDB simulation save failed: ${error instanceof Error ? error.message : "unknown error"}`));
+    void writeNovelIndexedValue(novelIndexedSimulationRunsKey, simulationRuns.slice(0, 10)).catch(() => setEvidenceStatus("IndexedDB simulation save failed safely; the in-memory runs remain available."));
   }, [simulationRuns, storageReady]);
 
   useEffect(() => {
     if (!storageReady || typeof window === "undefined") return;
-    void writeNovelIndexedValue(novelIndexedCorrectionSetKey, correctionSet).catch((error) => setEvidenceStatus(`IndexedDB correction save failed: ${error instanceof Error ? error.message : "unknown error"}`));
+    void writeNovelIndexedValue(novelIndexedCorrectionSetKey, correctionSet).catch(() => setEvidenceStatus("IndexedDB correction save failed safely; the in-memory corrections remain available."));
   }, [correctionSet, storageReady]);
 
   const serverWorkspace = useMemo<NovelPersistentWorkspace>(() => ({
@@ -801,7 +801,7 @@ export function WorldGraphWorkbench({ onBack, runtimeMode }: { onBack: () => voi
       .catch((error) => {
         if (cancelled) return;
         setServerOffline(true);
-        setServerStatus(`Server unavailable; local draft remains safe. ${error instanceof Error ? error.message : ""}`);
+        setServerStatus("Server unavailable; the local draft remains safe and retryable.");
       });
     return () => {
       cancelled = true;
@@ -841,7 +841,7 @@ export function WorldGraphWorkbench({ onBack, runtimeMode }: { onBack: () => voi
       setServerStatus(`Opened ${data.workspace.project.title} from SQLite.`);
     } catch (error) {
       setServerOffline(true);
-      setServerStatus(error instanceof Error ? error.message : "Failed to open server project.");
+      setServerStatus("Failed to open the server project safely. The local draft remains unchanged.");
     } finally {
       setServerBusy(false);
     }
@@ -865,7 +865,7 @@ export function WorldGraphWorkbench({ onBack, runtimeMode }: { onBack: () => voi
         setServerStatus("Server copy changed. Reload it or save this draft as a copy.");
       } else {
         setServerOffline(true);
-        setServerStatus(error instanceof Error ? error.message : "Failed to save server project.");
+        setServerStatus("Failed to save the server project safely. The local draft remains unchanged.");
       }
     } finally {
       setServerBusy(false);
@@ -892,7 +892,7 @@ export function WorldGraphWorkbench({ onBack, runtimeMode }: { onBack: () => voi
       setServerStatus(`Saved a new SQLite copy: ${data.workspace.project.title}.`);
     } catch (error) {
       setServerOffline(true);
-      setServerStatus(error instanceof Error ? error.message : "Failed to save project copy.");
+      setServerStatus("Failed to save the project copy safely. The current project remains unchanged.");
     } finally {
       setServerBusy(false);
     }
@@ -1271,7 +1271,7 @@ export function WorldGraphWorkbench({ onBack, runtimeMode }: { onBack: () => voi
     } catch (error) {
       const fallback = createFallbackEvidenceIndex(chapterText);
       setEvidenceIndexes((current) => ({ ...current, [chapterText.chapterId]: fallback }));
-      setEvidenceStatus(`Evidence API unavailable; local fallback indexed ${fallback.snippets.length} paragraph(s). ${error instanceof Error ? error.message : ""}`);
+      setEvidenceStatus(`Evidence API unavailable; local fallback indexed ${fallback.snippets.length} paragraph(s).`);
       return fallback;
     }
   }
@@ -1468,7 +1468,7 @@ export function WorldGraphWorkbench({ onBack, runtimeMode }: { onBack: () => voi
       }
       setBatchQueue((queue) => updateNovelBatchChapterStatus(queue, chapter.input.id, "ready"));
       setSelected(fallbackThemeSignals[0] ? { type: "theme-signal", id: fallbackThemeSignals[0].id } : fallbackCharacterStates[0] ? { type: "character-state", id: fallbackCharacterStates[0].id } : { type: "entity", id: fallback.entities[0].id });
-      setStatus(`API unavailable; merged local fallback for ${chapter.input.title}. ${error instanceof Error ? error.message : ""}`);
+      setStatus(`API unavailable; merged the local fallback for ${chapter.input.title}.`);
     } finally {
       setBusy(false);
     }
@@ -1562,7 +1562,7 @@ export function WorldGraphWorkbench({ onBack, runtimeMode }: { onBack: () => voi
       setBatchQueue(createNovelBatchQueue(parsed, batchQueue.batchSize));
       setStatus("Project JSON imported.");
     } catch (error) {
-      setStatus(`Import failed: ${error instanceof Error ? error.message : "invalid JSON"}`);
+      setStatus("Import failed safely. Check the JSON structure and retry.");
     }
   }
 
@@ -1591,7 +1591,7 @@ export function WorldGraphWorkbench({ onBack, runtimeMode }: { onBack: () => voi
         setBatchQueue((queue) => updateNovelBatchChapterStatus(queue, chapterId, "ready"));
       } catch (error) {
         setBatchQueue((queue) => updateNovelBatchChapterStatus(queue, chapterId, "error"));
-        setStatus(`Batch chapter failed: ${chapterTitle(chapterId)}. ${error instanceof Error ? error.message : ""}`);
+        setStatus(`Batch chapter failed safely: ${chapterTitle(chapterId)}. Retry that chapter.`);
       }
     }
     setBatchQueue((queue) => ({ ...queue, running: false, updatedAt: new Date().toISOString() }));
@@ -1752,7 +1752,7 @@ export function WorldGraphWorkbench({ onBack, runtimeMode }: { onBack: () => voi
         : record));
       setSimulationStatus("Decision explanation generated without changing simulation state.");
     } catch (error) {
-      setSimulationStatus(`Explanation unavailable. ${error instanceof Error ? error.message : ""}`);
+      setSimulationStatus("Explanation unavailable. The current simulation state remains unchanged.");
     } finally {
       setSimulationExplainBusy(false);
     }
@@ -1815,7 +1815,7 @@ export function WorldGraphWorkbench({ onBack, runtimeMode }: { onBack: () => voi
       setActiveAskId(item.id);
       setAskHistory((items) => [item, ...items].slice(0, 20));
       setWorldView("ask");
-      setAskStatus(`API unavailable; using local evidence answer. ${error instanceof Error ? error.message : ""}`);
+      setAskStatus("API unavailable; using the local evidence answer.");
     } finally {
       setAskBusy(false);
     }
@@ -1860,7 +1860,7 @@ export function WorldGraphWorkbench({ onBack, runtimeMode }: { onBack: () => voi
       setBlueprint(fallback);
       setBlueprintExportText("");
       setWriterSelection(fallback.sceneBeats[0] ? { type: "beat", id: fallback.sceneBeats[0].id } : null);
-      setBlueprintStatus(`API unavailable; using local fallback. ${error instanceof Error ? error.message : ""}`);
+      setBlueprintStatus("API unavailable; using the local blueprint fallback.");
     } finally {
       setBlueprintBusy(false);
     }

@@ -6,7 +6,14 @@ import type { useInvestigationController } from "@/app/controllers/useInvestigat
 import type { useReplayController } from "@/app/controllers/useReplayController";
 import type { useTownRuntimeController } from "@/app/controllers/useTownRuntimeController";
 import type { useCampaignComprehensionStudy } from "@/app/hooks/useCampaignComprehensionStudy";
-import { apiUrl, loadLocal, postJson, resolveRuntimeMode } from "@/app/lib/client-runtime";
+import { useAppLocale } from "@/app/localization/locale-context";
+import { apiUrl, postJson, resolveRuntimeMode } from "@/app/lib/client-runtime";
+import {
+  WORLD_SESSION_STORAGE_KEY,
+  WORLD_BOOTSTRAP_STORAGE_KEY,
+  normalizeWorldSessionPointer,
+  serializeWorldSessionPointer
+} from "@/app/lib/world-session-persistence";
 import {
   createStaticDemoRuntime,
   listCaseTemplates,
@@ -24,8 +31,6 @@ import type {
   WorldState
 } from "@/lib/engine";
 
-const storageKey = "detective-town-launch-v1";
-
 type InvestigationController = ReturnType<typeof useInvestigationController>;
 type CampaignController = ReturnType<typeof useCampaignController>;
 type ReplayController = ReturnType<typeof useReplayController>;
@@ -35,7 +40,11 @@ type CampaignStudy = Pick<ReturnType<typeof useCampaignComprehensionStudy>, "rec
 export type WorldCreationOptions = {
   saveAsContinue?: boolean;
   campaignReady?: boolean;
+  sessionBootstrap?: boolean;
+  applyToClient?: boolean;
 };
+
+export type WorldLoadOptions = { saveAsContinue?: boolean };
 
 export type HydratedCasePayload = {
   world: WorldState;
@@ -58,7 +67,7 @@ export type WorldSessionActionAdapter = {
   currentStaticState: () => DemoRuntimeState | null;
   hydrateCase: (data: HydratedCasePayload) => void;
   createWorld: (forcedRuntime?: RuntimeMode, options?: WorldCreationOptions) => Promise<WorldState | null>;
-  loadWorld: (targetWorldId?: string, preferredSessionId?: string) => Promise<LoadedWorldResult | null>;
+  loadWorld: (targetWorldId?: string, preferredSessionId?: string, options?: WorldLoadOptions) => Promise<LoadedWorldResult | null>;
   tickWorld: () => Promise<void>;
   switchRuntime: (next: RuntimeMode) => void;
   switchCaseTemplate: (next: CaseTemplateId) => void;
@@ -90,6 +99,10 @@ export function useWorldSessionActions({
   loadLatestLiveEval
 }: WorldSessionActionsInput): WorldSessionActionAdapter {
   const initialized = useRef(false);
+  const createInFlight = useRef(false);
+  const loadInFlight = useRef(false);
+  const tickInFlight = useRef(false);
+  const { t } = useAppLocale();
   const {
     world,
     setWorld,
@@ -126,6 +139,8 @@ export function useWorldSessionActions({
   } = investigation;
   const {
     setFrontDoorOpen,
+    setFrontDoorStatus,
+    continueWorldId,
     continueSessionId,
     setContinueWorldId,
     setContinueSessionId
@@ -137,7 +152,16 @@ export function useWorldSessionActions({
     if (runtimeMode !== "server") return;
     const persistedWorldId = nextWorldId ?? world?.id;
     const persistedSessionId = nextSessionId ?? session?.id;
-    localStorage.setItem(storageKey, JSON.stringify({ worldId: persistedWorldId, sessionId: persistedSessionId }));
+    if (!persistedWorldId) {
+      try { localStorage.removeItem(WORLD_SESSION_STORAGE_KEY); } catch {}
+      setContinueWorldId("");
+      setContinueSessionId("");
+      return;
+    }
+    const serialized = serializeWorldSessionPointer(persistedWorldId, persistedSessionId || "");
+    if (!serialized) return;
+    try { localStorage.setItem(WORLD_SESSION_STORAGE_KEY, serialized); } catch {}
+    try { sessionStorage.removeItem(WORLD_BOOTSTRAP_STORAGE_KEY); } catch {}
     if (persistedWorldId) {
       setContinueWorldId(persistedWorldId);
       setContinueSessionId(persistedSessionId || "");
@@ -190,6 +214,8 @@ export function useWorldSessionActions({
       setReplaying(false);
       return staticState.world;
     }
+    if (createInFlight.current) return null;
+    createInFlight.current = true;
     setBusy(true);
     try {
       const generatedNpcCount = options.campaignReady ? 20 : mode === "advanced" ? 30 : caseMode === "generated" ? 20 : 8;
@@ -203,6 +229,7 @@ export function useWorldSessionActions({
         preSimDays: mode === "advanced" ? 5 : 1,
         caseArchetype
       });
+      if (options.applyToClient === false) return data.world;
       hydrateCase(data);
       setWorldIdInput(data.world.id);
       setSession(null);
@@ -212,28 +239,41 @@ export function useWorldSessionActions({
       setProgress(initialProgress);
       setReplaying(false);
       if (options.saveAsContinue !== false) persist(data.world.id, "");
-      setStatus("Detective Town created: map, events, memories, and evidence were generated from the simulated world.");
+      if (options.sessionBootstrap) {
+        const bootstrapPointer = serializeWorldSessionPointer(data.world.id, "");
+        if (bootstrapPointer) try { sessionStorage.setItem(WORLD_BOOTSTRAP_STORAGE_KEY, bootstrapPointer); } catch {}
+      }
+      setStatus(t("status.worldCreated"));
       setTownRuntime(null);
       setTownQueue(null);
       setSelectedAgentCandidates([]);
       return data.world;
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to create town");
+    } catch {
+      if (options.sessionBootstrap) try { sessionStorage.removeItem(WORLD_BOOTSTRAP_STORAGE_KEY); } catch {}
+      setStatus(t("error.create"));
       return null;
     } finally {
+      createInFlight.current = false;
       setBusy(false);
     }
   }
 
-  async function loadWorld(targetWorldId = worldIdInput.trim(), preferredSessionId = ""): Promise<LoadedWorldResult | null> {
+  async function loadWorld(targetWorldId = worldIdInput.trim(), preferredSessionId = "", options: WorldLoadOptions = {}): Promise<LoadedWorldResult | null> {
     if (runtimeMode === "static-demo") {
       setStatus("Static demo uses a built-in deterministic world. Switch to Server Runtime to load a SQLite world.");
       return null;
     }
     if (!targetWorldId) return null;
+    if (loadInFlight.current) return null;
+    loadInFlight.current = true;
     setBusy(true);
     try {
-      const state = await fetch(apiUrl(`/api/worlds/${targetWorldId}/state`)).then((response) => response.json()) as {
+      const stateResponse = await fetch(apiUrl(`/api/worlds/${targetWorldId}/state`));
+      if (stateResponse.status === 404 && targetWorldId === continueWorldId) {
+        persist("", "");
+        setFrontDoorStatus(t("front.recovery.stale"));
+      }
+      const state = await stateResponse.json() as {
         ok: boolean;
         error?: string;
         world: WorldState;
@@ -258,13 +298,14 @@ export function useWorldSessionActions({
         solvedCase: Boolean(restoredSession.judgement?.accepted)
       } : initialProgress);
       setWorldIdInput(state.world.id);
-      persist(state.world.id, restoredSession?.id || "");
-      setStatus("Existing Detective Town loaded.");
+      if (options.saveAsContinue !== false) persist(state.world.id, restoredSession?.id || "");
+      setStatus(t("status.worldLoaded"));
       return { world: state.world, activeCase: state.activeCase, sessions, events: restoredEvents, restoredSession };
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to read town");
+    } catch {
+      setStatus(t("error.load"));
       return null;
     } finally {
+      loadInFlight.current = false;
       setBusy(false);
     }
   }
@@ -275,6 +316,8 @@ export function useWorldSessionActions({
       setStatus("Static demo is fixed to the 24-hour Premium case. Use the time rail for playback.");
       return;
     }
+    if (tickInFlight.current) return;
+    tickInFlight.current = true;
     setBusy(true);
     try {
       const data = await postJson<{ world: WorldState; events: WorldEvent[]; activeCase: CaseFromLog }>(`/api/worlds/${world.id}/tick`, {});
@@ -282,11 +325,12 @@ export function useWorldSessionActions({
       setEvents((items) => [...items, ...data.events]);
       setActiveCase(data.activeCase);
       setRevealText("");
-      setStatus(`Town advanced to day ${data.world.day}; new events were written to the log.`);
+      setStatus(t("status.worldAdvanced"));
       campaignStudy.recordMeaningfulAction();
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to advance town");
+    } catch {
+      setStatus(t("error.tick"));
     } finally {
+      tickInFlight.current = false;
       setBusy(false);
     }
   }
@@ -297,8 +341,7 @@ export function useWorldSessionActions({
     setReplaying(false);
     setFrontDoorOpen(true);
     if (next === "static-demo") {
-      const saved = loadLocal<{ runtimeState?: DemoRuntimeState }>(storageKey, {});
-      hydrateStatic(saved.runtimeState?.mode === "static-demo" ? saved.runtimeState : createStaticDemoRuntime(caseTemplateId));
+      hydrateStatic(createStaticDemoRuntime(caseTemplateId));
       return;
     }
     setWorld(null);
@@ -325,18 +368,44 @@ export function useWorldSessionActions({
     initialized.current = true;
     const selectedRuntime = resolveRuntimeMode();
     setRuntimeMode(selectedRuntime);
-    const saved = loadLocal<{ worldId?: string; sessionId?: string; runtimeState?: DemoRuntimeState }>(storageKey, {});
-    if (selectedRuntime === "server") {
-      setContinueWorldId(saved.worldId || "");
-      setContinueSessionId(saved.sessionId || "");
-    }
     if (selectedRuntime === "static-demo") {
-      hydrateStatic(saved.runtimeState?.mode === "static-demo" ? saved.runtimeState : createStaticDemoRuntime(caseTemplateId));
+      hydrateStatic(createStaticDemoRuntime(caseTemplateId));
       return;
     }
-    if (saved.worldId) setWorldIdInput(saved.worldId);
+    let saved = normalizeWorldSessionPointer(null);
+    try { saved = normalizeWorldSessionPointer(localStorage.getItem(WORLD_SESSION_STORAGE_KEY)); } catch {}
+    if (saved.status === "invalid") {
+      try { localStorage.removeItem(WORLD_SESSION_STORAGE_KEY); } catch {}
+      setFrontDoorStatus(t("front.recovery.corrupt"));
+    } else if (saved.pointer) {
+      setContinueWorldId(saved.pointer.worldId);
+      setContinueSessionId(saved.pointer.sessionId);
+      setWorldIdInput(saved.pointer.worldId);
+      if (saved.status === "legacy") {
+        const migrated = serializeWorldSessionPointer(saved.pointer.worldId, saved.pointer.sessionId);
+        if (migrated) try { localStorage.setItem(WORLD_SESSION_STORAGE_KEY, migrated); } catch {}
+      }
+    }
     void loadLatestLiveEval();
-    void createWorld("server", { saveAsContinue: false });
+    if (saved.pointer) return;
+    void (async () => {
+      let bootstrapRaw: string | null = null;
+      try { bootstrapRaw = sessionStorage.getItem(WORLD_BOOTSTRAP_STORAGE_KEY); } catch {}
+      if (bootstrapRaw === "pending") {
+        for (let attempt = 0; attempt < 120 && bootstrapRaw === "pending"; attempt += 1) {
+          await new Promise((resolve) => window.setTimeout(resolve, 100));
+          try { bootstrapRaw = sessionStorage.getItem(WORLD_BOOTSTRAP_STORAGE_KEY); } catch { bootstrapRaw = null; }
+        }
+      }
+      const bootstrap = normalizeWorldSessionPointer(bootstrapRaw);
+      if (bootstrap.pointer) {
+        const restored = await loadWorld(bootstrap.pointer.worldId, bootstrap.pointer.sessionId, { saveAsContinue: false });
+        if (restored) return;
+        try { sessionStorage.removeItem(WORLD_BOOTSTRAP_STORAGE_KEY); } catch {}
+      }
+      try { sessionStorage.setItem(WORLD_BOOTSTRAP_STORAGE_KEY, "pending"); } catch {}
+      await createWorld("server", { saveAsContinue: false, sessionBootstrap: true });
+    })();
     // Bootstrap intentionally runs once; adapter functions preserve the legacy request order.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

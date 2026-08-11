@@ -10,143 +10,150 @@ import type {
   ReplayPracticeLoopSummary,
   SolvedCaseDebriefSummary
 } from "@/app/campaign/investigation-workspace-model";
+import { useAppLocale } from "@/app/localization/locale-context";
 
 function SolvedCaseDebriefPanel({ summary, campaignPacing }: { summary: SolvedCaseDebriefSummary; campaignPacing?: CampaignPacingViewModel | null }) {
+  const { number, t, text } = useAppLocale();
   if (!summary.accepted) return null;
   const coverageLabel = summary.totalObligations ? `${summary.coveredObligations}/${summary.totalObligations}` : `${summary.coveredObligations}`;
   return (
     <section className="solvedCaseDebrief" data-testid="solved-case-debrief">
-      <div className="solvedCaseDebriefHeader"><div><span>Solved Case Debrief</span><strong>investigation completed / accepted</strong></div><b>{summary.sourceReviewUnlocked ? "source review unlocked" : "source review locked"}</b></div>
+      <div className="solvedCaseDebriefHeader"><div><span>{t("replay.debrief")}</span><strong>{t("replay.completedAccepted")}</strong></div><b>{summary.sourceReviewUnlocked ? t("replay.sourceUnlocked") : t("replay.sourceLocked")}</b></div>
       <div className="solvedCaseDebriefMetrics">
-        <span className="pass"><b>{summary.manualStepsCompleted}/{summary.totalManualSteps}</b>manual guided steps</span>
-        <span className={summary.fallbackUsed ? "check" : "pass"}><b>{summary.fallbackUsed ? "used" : "not used"}</b>certified fallback</span>
-        <span><b>{summary.selectedEvidenceCount}</b>selected evidence</span><span><b>{summary.challengeHitCount}</b>challenge hits</span><span><b>{coverageLabel}</b>covered obligations</span>
-        <span className={summary.proofGapCount ? "check" : "pass"}><b>{summary.proofGapCount}</b>proof gaps</span>
-        <span className={summary.worldLeadOutcomeStatus === "settled" ? "pass" : "check"}><b>{summary.worldLeadOutcomeStatus}</b>world lead outcome</span>
-        <span className={summary.worldLeadHandoffStatus === "consumed" ? "pass" : "check"}><b>{summary.worldLeadHandoffStatus}</b>next-case handoff</span>
-        <span className={summary.worldArcStatus === "completed" ? "pass" : "check"}><b>{summary.worldArcProgress}</b>world arc</span>
-        <span className={summary.worldArcDirectiveStatus === "completed" ? "pass" : summary.worldArcDirectiveStatus === "blocked" ? "check" : ""}><b>{summary.worldArcDirectiveStatus}</b>faction directive</span>
-        <span className={summary.worldPressureCascadeStatus === "consumed" ? "pass" : summary.worldPressureCascadeStatus === "active" ? "check" : ""}><b>{summary.worldPressureCascadeStatus}</b>world pressure</span>
-        <span className={summary.townSocialResponseStatus === "settled" ? "pass" : summary.townSocialResponseStatus === "active" || summary.townSocialResponseStatus === "ready" ? "check" : ""}><b>{summary.townSocialResponseStatus}</b>town reactions</span>
-        <span className={summary.investigationOperationsStatus === "settled" ? "pass" : "check"}><b>{summary.investigationOperationsProgress}</b>operations / {summary.investigationOperationsTime}</span>
+        <span className="pass"><b>{number(summary.manualStepsCompleted)}/{number(summary.totalManualSteps)}</b>{t("replay.manualGuidedSteps")}</span>
+        <span className={summary.fallbackUsed ? "check" : "pass"}><b>{summary.fallbackUsed ? t("replay.used") : t("replay.notUsed")}</b>{t("replay.certifiedFallback")}</span>
+        <span><b>{number(summary.selectedEvidenceCount)}</b>{t("replay.selectedEvidence")}</span><span><b>{number(summary.challengeHitCount)}</b>{t("replay.challengeHits")}</span><span><b>{coverageLabel}</b>{t("replay.coveredObligations")}</span>
+        <span className={summary.proofGapCount ? "check" : "pass"}><b>{number(summary.proofGapCount)}</b>{t("replay.proofGaps")}</span>
+        <span className={summary.worldLeadOutcomeStatus === "settled" ? "pass" : "check"}><b>{text(summary.worldLeadOutcomeStatus)}</b>{t("replay.worldLeadOutcome")}</span>
+        <span className={summary.worldLeadHandoffStatus === "consumed" ? "pass" : "check"}><b>{text(summary.worldLeadHandoffStatus)}</b>{t("replay.nextCaseHandoff")}</span>
+        <span className={summary.worldArcStatus === "completed" ? "pass" : "check"}><b>{text(summary.worldArcProgress)}</b>{t("replay.worldArc")}</span>
+        <span className={summary.worldArcDirectiveStatus === "completed" ? "pass" : summary.worldArcDirectiveStatus === "blocked" ? "check" : ""}><b>{text(summary.worldArcDirectiveStatus)}</b>{t("replay.factionDirective")}</span>
+        <span className={summary.worldPressureCascadeStatus === "consumed" ? "pass" : summary.worldPressureCascadeStatus === "active" ? "check" : ""}><b>{text(summary.worldPressureCascadeStatus)}</b>{t("replay.worldPressure")}</span>
+        <span className={summary.townSocialResponseStatus === "settled" ? "pass" : summary.townSocialResponseStatus === "active" || summary.townSocialResponseStatus === "ready" ? "check" : ""}><b>{text(summary.townSocialResponseStatus)}</b>{t("replay.townReactions")}</span>
+        <span className={summary.investigationOperationsStatus === "settled" ? "pass" : "check"}><b>{text(summary.investigationOperationsProgress)}</b>{t("replay.operations")} / {text(summary.investigationOperationsTime)}</span>
       </div>
       <div className="solvedCaseDebriefSections">
-        <article><span>Player Route</span><b>Seven-step route completed</b><small>Last guided result: {summary.lastStepResult || "accepted"}. Join, Search, Question, Challenge, Select Evidence, Submit, and Review Source are closed.</small></article>
-        <article><span>Evidence Closure</span><b>{summary.selectedEvidenceCount} selected proof clue(s)</b><small>{coverageLabel} proof obligation(s) covered with {summary.proofGapCount} public gap(s) remaining.</small></article>
-        <article><span>Source Confidence</span><b>{summary.sourceEventCount} source events / {summary.memoryCount} memories</b><small>{summary.routeStepCount} certified route step(s) and {summary.challengeHitCount} challenge hit(s) support the accepted theory.</small></article>
-        <article><span>Next Replay Goal</span><b>{summary.fallbackUsed ? "Reduce certified fallback use" : "Try a more manual replay"}</b><small>Replay with fewer guided clicks, choose evidence manually, and use the journal to compare route confidence without exposing hidden truth.</small></article>
-        <article><span>Investigation Operations</span><b>{summary.investigationOperationsStatus} / {summary.investigationOperationsSupport} support</b><small>{summary.investigationOperationsProgress} certified lanes resolved in {summary.investigationOperationsTime}; costs and tempo never changed case proof.</small></article>
-        <article><span>World Lead Outcome</span><b>{summary.worldLeadOutcomeStatus === "settled" ? "bounded effect settled" : summary.worldLeadOutcomeStatus === "active" ? "bounded effect active" : "not used"}</b><small>World state effects stay low-spoiler, reversible, and separate from the certified evidence route.</small></article>
-        <article><span>Next Case Handoff</span><b>{summary.worldLeadHandoffStatus === "ready" ? "follow-up ready" : summary.worldLeadHandoffStatus === "consumed" ? "follow-up carried" : "not used"}</b><small>The one-time queue preference never changes the next case's fair-play route or candidate legality.</small></article>
-        <article><span>Case-Scoped World Arc</span><b>{summary.worldArcStatus === "completed" ? "world line completed" : summary.worldArcStatus === "active" ? "world line active" : "not used"}</b><small>{summary.worldArcProgress} stages recorded through followed leads and accepted theories.</small></article>
-        <article><span>Faction Directive</span><b>{summary.worldArcDirectiveStatus}</b><small>The selected Support or Contain response uses the existing institution and multi-tick action cycle.</small></article>
-        <article><span>World Pressure Cascade</span><b>{summary.worldPressureCascadeStatus}</b><small>Completed world action pressure only influences future candidate ordering and is consumed one layer at a time.</small></article>
-        <article><span>Town Social Response</span><b>{summary.townSocialResponseStatus}</b><small>Named public reactions remain ambient presentation and never enter case proof, memory testimony, or action authority.</small></article>
-        {campaignPacing && <article data-testid="debrief-campaign-pacing"><span>Campaign Pacing</span><b>{campaignPacing.status} / {campaignPacing.value.primarySurface}</b><small>{campaignPacing.safeForecast.whatChanges} {campaignPacing.safeForecast.unchangedAuthority}</small></article>}
+        <article><span>{t("replay.playerRoute")}</span><b>{t("replay.routeCompleted")}</b><small>{t("replay.lastGuidedResult", { result: text(summary.lastStepResult || "accepted") })}</small></article>
+        <article><span>{t("replay.evidenceClosure")}</span><b>{number(summary.selectedEvidenceCount)} {t("replay.selectedEvidence")}</b><small>{coverageLabel} {t("replay.coveredObligations")} · {number(summary.proofGapCount)} {t("replay.proofGaps")}.</small></article>
+        <article><span>{t("replay.sourceConfidence")}</span><b>{number(summary.sourceEventCount)} {t("workspace.sourceEvents")} / {number(summary.memoryCount)} {t("replay.memories")}</b><small>{t("replay.sourceDetail", { steps: number(summary.routeStepCount), hits: number(summary.challengeHitCount) })}</small></article>
+        <article><span>{t("replay.nextGoal")}</span><b>{t(summary.fallbackUsed ? "replay.goal.reduceFallback" : "replay.goal.moreManual")}</b><small>{t("replay.goal.detail")}</small></article>
+        <article><span>{t("replay.operations")}</span><b>{t("replay.operationsSupport", { status: text(summary.investigationOperationsStatus), support: text(summary.investigationOperationsSupport) })}</b><small>{t("replay.operationsDetail", { progress: text(summary.investigationOperationsProgress), time: text(summary.investigationOperationsTime) })}</small></article>
+        <article><span>{t("replay.worldLeadOutcome")}</span><b>{summary.worldLeadOutcomeStatus === "settled" ? t("replay.outcome.settled") : summary.worldLeadOutcomeStatus === "active" ? t("replay.outcome.active") : t("replay.notUsed")}</b><small>{t("replay.outcome.detail")}</small></article>
+        <article><span>{t("replay.nextCaseHandoff")}</span><b>{summary.worldLeadHandoffStatus === "ready" ? t("replay.handoff.ready") : summary.worldLeadHandoffStatus === "consumed" ? t("replay.handoff.carried") : t("replay.notUsed")}</b><small>{t("replay.handoff.detail")}</small></article>
+        <article><span>{t("replay.worldArc")}</span><b>{summary.worldArcStatus === "completed" ? t("replay.arc.completed") : summary.worldArcStatus === "active" ? t("replay.arc.active") : t("replay.notUsed")}</b><small>{t("replay.arc.detail", { progress: text(summary.worldArcProgress) })}</small></article>
+        <article><span>{t("replay.factionDirective")}</span><b>{text(summary.worldArcDirectiveStatus)}</b><small>{t("replay.directive.detail")}</small></article>
+        <article><span>{t("replay.worldPressure")}</span><b>{text(summary.worldPressureCascadeStatus)}</b><small>{t("replay.pressure.detail")}</small></article>
+        <article><span>{t("replay.townReactions")}</span><b>{text(summary.townSocialResponseStatus)}</b><small>{t("replay.reactions.detail")}</small></article>
+        {campaignPacing && <article data-testid="debrief-campaign-pacing"><span>{t("replay.campaignPacing")}</span><b>{text(campaignPacing.status)} / {text(campaignPacing.value.primarySurface)}</b><small>{text(campaignPacing.safeForecast.whatChanges)} {text(campaignPacing.safeForecast.unchangedAuthority)}</small></article>}
       </div>
-      <small className="solvedCaseDebriefBoundary">Low-spoiler solved-case summary only: no hidden truth, raw bodies, internal ids, source ids, public catalog writes, dataset refreshes, or SQLite schema changes.</small>
+      <small className="solvedCaseDebriefBoundary">{t("replay.boundary.solved")}</small>
     </section>
   );
 }
 
 function ReplayGoalCoachPanel({ summary, onStartReplay }: { summary: ReplayGoalCoachSummary; onStartReplay: () => void }) {
+  const { number, t, text } = useAppLocale();
   if (!summary.visible) return null;
   return (
     <section className={`replayGoalCoach ${summary.activeAttempt ? "active" : ""}`} data-testid="replay-goal-coach">
-      <div className="replayGoalCoachHeader"><div><span>Replay Goal Coach</span><strong>{summary.activeAttempt ? "replay attempt active" : "ready for replay practice"}</strong></div><button type="button" className="primaryButton" data-testid="start-replay-attempt" onClick={onStartReplay}>Start Replay Attempt</button></div>
+      <div className="replayGoalCoachHeader"><div><span>{t("replay.goalCoach")}</span><strong>{summary.activeAttempt ? t("replay.attemptActive") : t("replay.readyPractice")}</strong></div><button type="button" className="primaryButton" data-testid="start-replay-attempt" onClick={onStartReplay}>{t("replay.start")}</button></div>
       <div className="replayGoalCoachMetrics">
-        <span><b>{summary.previousGuidedSteps}</b>previous guided steps</span><span className={summary.previousFallbackUsed ? "check" : "pass"}><b>{summary.previousFallbackUsed ? "used" : "not used"}</b>fallback used</span>
-        <span><b>{summary.previousSelectedEvidenceCount}</b>selected evidence</span><span><b>{summary.previousProofGapCount}</b>proof gaps</span>
-        <span className={summary.previousSourceReviewUnlocked ? "pass" : "check"}><b>{summary.previousSourceReviewUnlocked ? "unlocked" : "locked"}</b>source review</span>
-        <span><b>{summary.completedGoalCount}/{summary.totalGoalCount}</b>completed replay goals</span><span><b>{summary.currentStep}</b>current step</span><span><b>{summary.lastResult}</b>last result</span>
+        <span><b>{number(summary.previousGuidedSteps)}</b>{t("replay.previousGuided")}</span><span className={summary.previousFallbackUsed ? "check" : "pass"}><b>{summary.previousFallbackUsed ? t("replay.used") : t("replay.notUsed")}</b>{t("replay.fallbackUsed")}</span>
+        <span><b>{number(summary.previousSelectedEvidenceCount)}</b>{t("replay.selectedEvidence")}</span><span><b>{number(summary.previousProofGapCount)}</b>{t("replay.proofGaps")}</span>
+        <span className={summary.previousSourceReviewUnlocked ? "pass" : "check"}><b>{summary.previousSourceReviewUnlocked ? t("common.unlocked") : t("common.locked")}</b>{t("replay.sourceReview")}</span>
+        <span><b>{number(summary.completedGoalCount)}/{number(summary.totalGoalCount)}</b>{t("replay.completedGoals")}</span><span><b>{text(summary.currentStep)}</b>{t("replay.currentStep")}</span><span><b>{text(summary.lastResult)}</b>{t("replay.lastResult")}</span>
       </div>
-      <div className="replayGoalCoachGoals">{summary.goals.map((goal) => <article key={goal.id} className={goal.status}><span>{goal.status}</span><b>{goal.label}</b><small>{goal.detail}</small></article>)}</div>
-      <small className="replayGoalCoachBoundary">Session-local replay practice only: no hidden truth, raw bodies, internal ids, source ids, public catalog writes, dataset refreshes, or SQLite schema changes.</small>
+      <div className="replayGoalCoachGoals">{summary.goals.map((goal) => <article key={goal.id} className={goal.status}><span>{text(goal.status)}</span><b>{text(goal.label)}</b><small>{text(goal.detail)}</small></article>)}</div>
+      <small className="replayGoalCoachBoundary">{t("replay.boundary.goal")}</small>
     </section>
   );
 }
 
 function ReplayPracticeLoopPanel({ summary, campaignPacing }: { summary: ReplayPracticeLoopSummary; campaignPacing?: CampaignPacingViewModel | null }) {
+  const { number, t, text } = useAppLocale();
   if (!summary.visible) return null;
   return (
     <section className={`replayPracticeLoop ${summary.activeAttempt ? "active" : ""}`} data-testid="replay-practice-loop">
-      <div className="replayPracticeLoopHeader"><div><span>Replay Practice Loop</span><strong>{summary.activeAttempt ? `${summary.currentPhaseLabel} / active attempt` : "ready for replay attempt"}</strong></div><b>{summary.nextAction}</b></div>
-      <div className="replayPracticeLoopStages" data-testid="replay-practice-loop-stages">{summary.stages.map((stage) => <span key={stage.id} className={stage.status}><b>{stage.label}</b><small>{stage.status}</small></span>)}</div>
+      <div className="replayPracticeLoopHeader"><div><span>{t("replay.practice")}</span><strong>{summary.activeAttempt ? `${text(summary.currentPhaseLabel)} / ${t("replay.activeAttempt")}` : t("replay.readyAttempt")}</strong></div><b>{text(summary.nextAction)}</b></div>
+      <div className="replayPracticeLoopStages" data-testid="replay-practice-loop-stages">{summary.stages.map((stage) => <span key={stage.id} className={stage.status}><b>{text(stage.label)}</b><small>{text(stage.status)}</small></span>)}</div>
       <div className="replayPracticeLoopMetrics">
-        <span><b>{summary.manualEvidencePickCount}</b>manual evidence picks</span><span><b>{summary.manualTheoryFieldCount}</b>manual theory fields</span>
-        <span className={summary.fallbackEvidencePickCount ? "check" : "pass"}><b>{summary.fallbackEvidencePickCount}</b>fallback evidence picks</span><span className={summary.fallbackTheoryFieldCount ? "check" : "pass"}><b>{summary.fallbackTheoryFieldCount}</b>fallback theory fields</span>
-        <span className={summary.blockedGapCount ? "check" : "pass"}><b>{summary.blockedGapCount}</b>blocked gaps</span><span className={summary.sourceReviewUnlocked ? "pass" : "check"}><b>{summary.sourceReviewUnlocked ? "unlocked" : "locked"}</b>source review</span>
-        <span className={summary.scorecardStatus === "completed" ? "pass" : "check"}><b>{summary.scorecardStatus}</b>scorecard</span>
-        <span className={summary.worldLeadOutcomeStatus === "settled" ? "pass" : summary.worldLeadOutcomeStatus === "active" ? "check" : ""}><b>{summary.worldLeadOutcomeStatus}</b>world lead outcome</span>
-        <span className={summary.worldLeadHandoffStatus === "consumed" ? "pass" : summary.worldLeadHandoffStatus === "ready" ? "check" : ""}><b>{summary.worldLeadHandoffStatus}</b>next-case handoff</span>
-        <span className={summary.worldArcStatus === "completed" ? "pass" : summary.worldArcStatus === "active" ? "check" : ""}><b>{summary.worldArcProgress}</b>world arc</span>
-        <span className={summary.worldArcDirectiveStatus === "completed" ? "pass" : summary.worldArcDirectiveStatus === "blocked" ? "check" : ""}><b>{summary.worldArcDirectiveStatus}</b>faction directive</span>
-        <span className={summary.worldPressureCascadeStatus === "consumed" ? "pass" : summary.worldPressureCascadeStatus === "active" ? "check" : ""}><b>{summary.worldPressureCascadeStatus}</b>world pressure</span>
-        <span className={summary.townSocialResponseStatus === "settled" ? "pass" : summary.townSocialResponseStatus === "active" || summary.townSocialResponseStatus === "ready" ? "check" : ""}><b>{summary.townSocialResponseStatus}</b>town reactions</span>
-        <span className={summary.investigationOperationsStatus === "settled" ? "pass" : "check"}><b>{summary.investigationOperationsProgress}</b>investigation operations</span>
-        {campaignPacing && <span><b>{campaignPacing.status}</b>campaign pacing</span>}
+        <span><b>{number(summary.manualEvidencePickCount)}</b>{t("replay.manualEvidencePicks")}</span><span><b>{number(summary.manualTheoryFieldCount)}</b>{t("replay.manualTheoryFields")}</span>
+        <span className={summary.fallbackEvidencePickCount ? "check" : "pass"}><b>{number(summary.fallbackEvidencePickCount)}</b>{t("replay.fallbackEvidencePicks")}</span><span className={summary.fallbackTheoryFieldCount ? "check" : "pass"}><b>{number(summary.fallbackTheoryFieldCount)}</b>{t("replay.fallbackTheoryFields")}</span>
+        <span className={summary.blockedGapCount ? "check" : "pass"}><b>{number(summary.blockedGapCount)}</b>{t("replay.blockedGaps")}</span><span className={summary.sourceReviewUnlocked ? "pass" : "check"}><b>{summary.sourceReviewUnlocked ? t("common.unlocked") : t("common.locked")}</b>{t("replay.sourceReview")}</span>
+        <span className={summary.scorecardStatus === "completed" ? "pass" : "check"}><b>{text(summary.scorecardStatus)}</b>{t("replay.scorecard")}</span>
+        <span className={summary.worldLeadOutcomeStatus === "settled" ? "pass" : summary.worldLeadOutcomeStatus === "active" ? "check" : ""}><b>{text(summary.worldLeadOutcomeStatus)}</b>{t("replay.worldLeadOutcome")}</span>
+        <span className={summary.worldLeadHandoffStatus === "consumed" ? "pass" : summary.worldLeadHandoffStatus === "ready" ? "check" : ""}><b>{text(summary.worldLeadHandoffStatus)}</b>{t("replay.nextCaseHandoff")}</span>
+        <span className={summary.worldArcStatus === "completed" ? "pass" : summary.worldArcStatus === "active" ? "check" : ""}><b>{text(summary.worldArcProgress)}</b>{t("replay.worldArc")}</span>
+        <span className={summary.worldArcDirectiveStatus === "completed" ? "pass" : summary.worldArcDirectiveStatus === "blocked" ? "check" : ""}><b>{text(summary.worldArcDirectiveStatus)}</b>{t("replay.factionDirective")}</span>
+        <span className={summary.worldPressureCascadeStatus === "consumed" ? "pass" : summary.worldPressureCascadeStatus === "active" ? "check" : ""}><b>{text(summary.worldPressureCascadeStatus)}</b>{t("replay.worldPressure")}</span>
+        <span className={summary.townSocialResponseStatus === "settled" ? "pass" : summary.townSocialResponseStatus === "active" || summary.townSocialResponseStatus === "ready" ? "check" : ""}><b>{text(summary.townSocialResponseStatus)}</b>{t("replay.townReactions")}</span>
+        <span className={summary.investigationOperationsStatus === "settled" ? "pass" : "check"}><b>{text(summary.investigationOperationsProgress)}</b>{t("replay.operations")}</span>
+        {campaignPacing && <span><b>{text(campaignPacing.status)}</b>{t("replay.campaignPacing")}</span>}
       </div>
-      <small className="replayPracticeLoopBoundary">Manual First practice loop only: aggregate counts, phase labels, and next action. No player text, hidden truth, raw bodies, internal ids, source ids, public catalog writes, dataset refreshes, or runtime scoring changes.</small>
+      <small className="replayPracticeLoopBoundary">{t("replay.boundary.loop")}</small>
     </section>
   );
 }
 
 function ManualEvidenceDrillPanel({ summary, onToggleEvidence }: { summary: ManualEvidenceDrillSummary; onToggleEvidence: (evidenceId: string) => void }) {
+  const { number, t, text } = useAppLocale();
   if (!summary.visible) return null;
   const safeLabel = (label: string, fallback: string) => /\b(?:npc|evidence|event|source|ev)-[a-z0-9-]*\d[a-z0-9-]*\b/i.test(label) ? fallback : label;
   return (
     <section className="manualEvidenceDrill" data-testid="manual-evidence-drill">
-      <div className="manualEvidenceDrillHeader"><div><span>Manual Evidence Drill</span><strong>{summary.readyForSubmit ? "manual picks ready for submit" : "manual pick first"}</strong></div><b>{summary.manualPickCount} manual pick(s)</b></div>
-      <div className="manualEvidenceDrillMetrics"><span><b>{summary.selectedEvidenceCount}</b>selected evidence</span><span><b>{summary.routeEvidenceTargetCount}</b>route target count</span><span><b>{summary.manualPickCount}</b>manual picks</span><span className={summary.remainingProofSlots ? "check" : "pass"}><b>{summary.remainingProofSlots}</b>remaining proof slots</span><span className={summary.readyForSubmit ? "pass" : "check"}><b>{summary.readyForSubmit ? "ready" : "not ready"}</b>ready for submit</span></div>
+      <div className="manualEvidenceDrillHeader"><div><span>{t("replay.manualEvidence")}</span><strong>{summary.readyForSubmit ? t("replay.manualPicksReady") : t("replay.manualPickFirst")}</strong></div><b>{number(summary.manualPickCount)} {t("replay.manualPicks")}</b></div>
+      <div className="manualEvidenceDrillMetrics"><span><b>{number(summary.selectedEvidenceCount)}</b>{t("replay.selectedEvidence")}</span><span><b>{number(summary.routeEvidenceTargetCount)}</b>{t("replay.routeTarget")}</span><span><b>{number(summary.manualPickCount)}</b>{t("replay.manualPicks")}</span><span className={summary.remainingProofSlots ? "check" : "pass"}><b>{number(summary.remainingProofSlots)}</b>{t("replay.remainingSlots")}</span><span className={summary.readyForSubmit ? "pass" : "check"}><b>{summary.readyForSubmit ? t("common.ready") : t("replay.notReady")}</b>{t("replay.readySubmit")}</span></div>
       <div className="manualEvidenceDrillCandidates" data-testid="manual-evidence-drill-candidates">
         {summary.candidates.map((candidate) => (
           <article key={candidate.evidenceId} className={candidate.selected ? "selected" : ""}>
-            <span>{candidate.selected ? "selected" : "available"}</span><b>{candidate.title}</b><small>{candidate.locationLabel}{candidate.sourceLabel ? ` / ${candidate.sourceLabel}` : ""}</small>
+            <span>{candidate.selected ? t("common.selected") : t("replay.available")}</span><b>{text(candidate.title)}</b><small>{text(candidate.locationLabel)}{candidate.sourceLabel ? ` / ${text(candidate.sourceLabel)}` : ""}</small>
             <div className="manualEvidenceDrillTags">
-              {candidate.supports.slice(0, 2).map((label, index) => <em key={`s:${candidate.evidenceId}:${index}`}>supports: {safeLabel(label, `proof lane ${index + 1}`)}</em>)}
-              {candidate.contradicts.slice(0, 2).map((label, index) => <em key={`c:${candidate.evidenceId}:${index}`}>contradicts: {safeLabel(label, `testimony lane ${index + 1}`)}</em>)}
-              {!candidate.supports.length && !candidate.contradicts.length && <em>route evidence candidate</em>}
+              {candidate.supports.slice(0, 2).map((label, index) => <em key={`s:${candidate.evidenceId}:${index}`}>{t("replay.supports")}: {text(safeLabel(label, `proof lane ${index + 1}`))}</em>)}
+              {candidate.contradicts.slice(0, 2).map((label, index) => <em key={`c:${candidate.evidenceId}:${index}`}>{t("replay.contradicts")}: {text(safeLabel(label, `testimony lane ${index + 1}`))}</em>)}
+              {!candidate.supports.length && !candidate.contradicts.length && <em>{t("replay.routeCandidate")}</em>}
             </div>
-            <button type="button" className={candidate.selected ? "secondaryButton" : "primaryButton"} data-testid={candidate.selected ? "manual-evidence-remove" : "manual-evidence-add"} onClick={() => onToggleEvidence(candidate.evidenceId)}>{candidate.selected ? "Remove from Theory" : "Add to Theory"}</button>
+            <button type="button" className={candidate.selected ? "secondaryButton" : "primaryButton"} data-testid={candidate.selected ? "manual-evidence-remove" : "manual-evidence-add"} onClick={() => onToggleEvidence(candidate.evidenceId)}>{candidate.selected ? t("workspace.removeTheory") : t("workspace.addTheory")}</button>
           </article>
         ))}
       </div>
-      <small className="manualEvidenceDrillBoundary">Manual pick first: browser/session-local theory evidence only. No hidden truth, raw bodies, internal ids, source ids, public catalog writes, dataset refreshes, SQLite schema changes, or runtime scoring changes.</small>
+      <small className="manualEvidenceDrillBoundary">{t("replay.boundary.evidence")}</small>
     </section>
   );
 }
 
 function ManualTheoryDrillPanel({ summary, onFieldChange, onApproveFallback }: { summary: ManualTheoryDrillSummary; onFieldChange: (field: "culpritId" | "motive" | "method", value: string) => void; onApproveFallback: () => void }) {
+  const { number, t, text } = useAppLocale();
   if (!summary.visible) return null;
-  const fallbackLabel = summary.blockedGapCount ? "Use Explicit Fallback for Unresolved Fields" : "Use Explicit Fallback for Remaining Fields";
+  const fallbackLabel = summary.blockedGapCount ? t("replay.fallbackUnresolved") : t("replay.fallbackRemaining");
   return (
     <section className="manualTheoryDrill" data-testid="manual-theory-drill">
-      <div className="manualTheoryDrillHeader"><div><span>Manual Theory Drill</span><strong>{summary.readyForSubmit ? "manual theory ready" : summary.fallbackApproved ? "certified fallback approved" : "manual theory first"}</strong></div><b>{summary.manualFieldCount}/3 manual field(s)</b></div>
-      <div className="manualTheoryDrillMetrics"><span><b>{summary.manualFieldCount}</b>manual fields</span><span className={summary.remainingFieldCount ? "check" : "pass"}><b>{summary.remainingFieldCount}</b>remaining fields</span><span className={summary.fallbackFieldCount ? "check" : "pass"}><b>{summary.fallbackFieldCount}</b>fallback fields</span><span className={summary.blockedGapCount ? "check" : "pass"}><b>{summary.blockedGapCount}</b>blocked gaps</span><span className={summary.evidenceReady ? "pass" : "check"}><b>{summary.evidenceReady ? "ready" : "not ready"}</b>evidence ready</span><span className={summary.readyForSubmit || summary.fallbackApproved ? "pass" : "check"}><b>{summary.readyForSubmit || summary.fallbackApproved ? "ready" : "not ready"}</b>ready for submit</span></div>
+      <div className="manualTheoryDrillHeader"><div><span>{t("replay.manualTheory")}</span><strong>{summary.readyForSubmit ? t("replay.manualTheoryReady") : summary.fallbackApproved ? t("replay.fallbackApproved") : t("replay.manualTheoryFirst")}</strong></div><b>{number(summary.manualFieldCount)}/3 {t("replay.manualFields")}</b></div>
+      <div className="manualTheoryDrillMetrics"><span><b>{number(summary.manualFieldCount)}</b>{t("replay.manualFields")}</span><span className={summary.remainingFieldCount ? "check" : "pass"}><b>{number(summary.remainingFieldCount)}</b>{t("replay.remainingFields")}</span><span className={summary.fallbackFieldCount ? "check" : "pass"}><b>{number(summary.fallbackFieldCount)}</b>{t("replay.fallbackTheoryFields")}</span><span className={summary.blockedGapCount ? "check" : "pass"}><b>{number(summary.blockedGapCount)}</b>{t("replay.blockedGaps")}</span><span className={summary.evidenceReady ? "pass" : "check"}><b>{summary.evidenceReady ? t("common.ready") : t("replay.notReady")}</b>{t("replay.evidenceReady")}</span><span className={summary.readyForSubmit || summary.fallbackApproved ? "pass" : "check"}><b>{summary.readyForSubmit || summary.fallbackApproved ? t("common.ready") : t("replay.notReady")}</b>{t("replay.readySubmit")}</span></div>
       <div className="manualTheoryDrillForm">
-        <label>Suspect hypothesis<select data-testid="manual-theory-culprit" value={summary.selectedCulpritId} onChange={(event) => onFieldChange("culpritId", event.target.value)}><option value="">Choose a suspect</option>{summary.suspectOptions.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}</select></label>
-        <label>Motive hypothesis<textarea data-testid="manual-theory-motive" placeholder="Explain the pressure or conflict supported by discovered clues." value={summary.motiveText} onChange={(event) => onFieldChange("motive", event.target.value)} /></label>
-        <label>Method hypothesis<textarea data-testid="manual-theory-method" placeholder="Explain the means and scene mechanism supported by discovered clues." value={summary.methodText} onChange={(event) => onFieldChange("method", event.target.value)} /></label>
+        <label>{t("workspace.suspectHypothesis")}<select name="manual-theory-suspect" autoComplete="off" data-testid="manual-theory-culprit" value={summary.selectedCulpritId} onChange={(event) => onFieldChange("culpritId", event.target.value)}><option value="">{t("workspace.chooseSuspect")}</option>{summary.suspectOptions.map((option) => <option key={option.id} value={option.id}>{text(option.label)}</option>)}</select></label>
+        <label>{t("workspace.motiveHypothesis")}<textarea name="manual-theory-motive" autoComplete="off" data-testid="manual-theory-motive" placeholder={t("workspace.motivePlaceholder")} value={summary.motiveText} onChange={(event) => onFieldChange("motive", event.target.value)} /></label>
+        <label>{t("workspace.methodHypothesis")}<textarea name="manual-theory-method" autoComplete="off" data-testid="manual-theory-method" placeholder={t("workspace.methodPlaceholder")} value={summary.methodText} onChange={(event) => onFieldChange("method", event.target.value)} /></label>
       </div>
-      <div className="manualTheoryDrillPrompts" data-testid="manual-theory-evidence-prompts">{summary.evidencePrompts.map((prompt, index) => <article key={`${prompt.title}:${index}`}><span>discovered clue</span><b>{prompt.title}</b><small>{prompt.detail}</small><div>{prompt.supportLabels.map((label, labelIndex) => <em key={`${prompt.title}:${labelIndex}`}>{label}</em>)}</div></article>)}</div>
-      <button type="button" className="secondaryButton" data-testid="manual-theory-fallback" onClick={onApproveFallback} disabled={summary.fallbackApproved || (!summary.remainingFieldCount && !summary.blockedGapCount)}>{summary.fallbackApproved ? "Explicit Fallback Approved" : fallbackLabel}</button>
-      <small className="manualTheoryDrillBoundary">Evidence-guided free text only. Certified values stay internal and are never copied into visible fields. No hidden truth, raw bodies, internal ids, source ids, public writes, dataset refreshes, or runtime scoring changes.</small>
+      <div className="manualTheoryDrillPrompts" data-testid="manual-theory-evidence-prompts">{summary.evidencePrompts.map((prompt, index) => <article key={`${prompt.title}:${index}`}><span>{t("replay.discoveredClue")}</span><b>{text(prompt.title)}</b><small>{text(prompt.detail)}</small><div>{prompt.supportLabels.map((label, labelIndex) => <em key={`${prompt.title}:${labelIndex}`}>{text(label)}</em>)}</div></article>)}</div>
+      <button type="button" className="secondaryButton" data-testid="manual-theory-fallback" onClick={onApproveFallback} disabled={summary.fallbackApproved || (!summary.remainingFieldCount && !summary.blockedGapCount)}>{summary.fallbackApproved ? t("replay.explicitApproved") : fallbackLabel}</button>
+      <small className="manualTheoryDrillBoundary">{t("replay.boundary.theory")}</small>
     </section>
   );
 }
 
 function ReplayAttemptScorecardPanel({ summary }: { summary: ReplayAttemptScorecardSummary }) {
+  const { number, t, text } = useAppLocale();
   if (!summary.visible) return null;
   return (
     <section className={`replayAttemptScorecard ${summary.status}`} data-testid="replay-attempt-scorecard">
-      <div className="replayAttemptScorecardHeader"><div><span>Replay Attempt Scorecard</span><strong>{summary.status === "completed" ? "completed replay delta" : "pending replay delta"}</strong></div><b>{summary.activeAttempt ? "attempt active" : "waiting for attempt"}</b></div>
+      <div className="replayAttemptScorecardHeader"><div><span>{t("replay.scorecard")}</span><strong>{summary.status === "completed" ? t("replay.completedDelta") : t("replay.pendingDelta")}</strong></div><b>{summary.activeAttempt ? t("replay.activeAttempt") : t("replay.waitingAttempt")}</b></div>
       <div className="replayAttemptScorecardMetrics">
-        <span><b>{summary.currentStep}</b>current step</span><span><b>{summary.completedGuidedSteps}</b>guided steps</span><span className={summary.fallbackUsed ? "check" : "pass"}><b>{summary.fallbackUsed ? "used" : "not used"}</b>fallback</span><span><b>{summary.selectedEvidenceCount}</b>selected evidence</span><span><b>{summary.manualEvidencePickCount}</b>manual picks</span>
-        <span className={summary.fallbackEvidencePickCount ? "check" : "pass"}><b>{summary.fallbackEvidencePickCount}</b>fallback picks</span><span><b>{summary.manualTheoryFieldCount}</b>manual theory fields</span><span className={summary.fallbackTheoryFieldCount ? "check" : "pass"}><b>{summary.fallbackTheoryFieldCount}</b>fallback theory fields</span><span className={summary.blockedTheoryGapCount ? "check" : "pass"}><b>{summary.blockedTheoryGapCount}</b>blocked theory gaps</span><span><b>{summary.proofGapCount}</b>proof gaps</span>
-        <span className={summary.sourceReviewUnlocked ? "pass" : "check"}><b>{summary.sourceReviewUnlocked ? "unlocked" : "locked"}</b>source review</span><span className={summary.worldLeadOutcomeStatus === "settled" ? "pass" : summary.worldLeadOutcomeStatus === "active" ? "check" : ""}><b>{summary.worldLeadOutcomeStatus}</b>world lead outcome</span><span className={summary.worldLeadHandoffStatus === "consumed" ? "pass" : summary.worldLeadHandoffStatus === "ready" ? "check" : ""}><b>{summary.worldLeadHandoffStatus}</b>next-case handoff</span><span className={summary.worldArcStatus === "completed" ? "pass" : summary.worldArcStatus === "active" ? "check" : ""}><b>{summary.worldArcProgress}</b>world arc</span><span className={summary.worldArcDirectiveStatus === "completed" ? "pass" : summary.worldArcDirectiveStatus === "blocked" ? "check" : ""}><b>{summary.worldArcDirectiveStatus}</b>faction directive</span><span className={summary.worldPressureCascadeStatus === "consumed" ? "pass" : summary.worldPressureCascadeStatus === "active" ? "check" : ""}><b>{summary.worldPressureCascadeStatus}</b>world pressure</span><span className={summary.townSocialResponseStatus === "settled" ? "pass" : summary.townSocialResponseStatus === "active" || summary.townSocialResponseStatus === "ready" ? "check" : ""}><b>{summary.townSocialResponseStatus}</b>town reactions</span><span className={summary.investigationOperationsStatus === "settled" ? "pass" : "check"}><b>{summary.investigationOperationsProgress}</b>investigation operations</span><span><b>{summary.completedReplayGoals}/{summary.totalReplayGoals}</b>replay goals</span><span><b>{summary.lastResult}</b>last result</span>
+        <span><b>{text(summary.currentStep)}</b>{t("replay.currentStep")}</span><span><b>{number(summary.completedGuidedSteps)}</b>{t("replay.guidedSteps")}</span><span className={summary.fallbackUsed ? "check" : "pass"}><b>{summary.fallbackUsed ? t("replay.used") : t("replay.notUsed")}</b>{t("replay.fallback")}</span><span><b>{number(summary.selectedEvidenceCount)}</b>{t("replay.selectedEvidence")}</span><span><b>{number(summary.manualEvidencePickCount)}</b>{t("replay.manualPicks")}</span>
+        <span className={summary.fallbackEvidencePickCount ? "check" : "pass"}><b>{number(summary.fallbackEvidencePickCount)}</b>{t("replay.fallbackEvidencePicks")}</span><span><b>{number(summary.manualTheoryFieldCount)}</b>{t("replay.manualTheoryFields")}</span><span className={summary.fallbackTheoryFieldCount ? "check" : "pass"}><b>{number(summary.fallbackTheoryFieldCount)}</b>{t("replay.fallbackTheoryFields")}</span><span className={summary.blockedTheoryGapCount ? "check" : "pass"}><b>{number(summary.blockedTheoryGapCount)}</b>{t("replay.blockedGaps")}</span><span><b>{number(summary.proofGapCount)}</b>{t("replay.proofGaps")}</span>
+        <span className={summary.sourceReviewUnlocked ? "pass" : "check"}><b>{summary.sourceReviewUnlocked ? t("common.unlocked") : t("common.locked")}</b>{t("replay.sourceReview")}</span><span className={summary.worldLeadOutcomeStatus === "settled" ? "pass" : summary.worldLeadOutcomeStatus === "active" ? "check" : ""}><b>{text(summary.worldLeadOutcomeStatus)}</b>{t("replay.worldLeadOutcome")}</span><span className={summary.worldLeadHandoffStatus === "consumed" ? "pass" : summary.worldLeadHandoffStatus === "ready" ? "check" : ""}><b>{text(summary.worldLeadHandoffStatus)}</b>{t("replay.nextCaseHandoff")}</span><span className={summary.worldArcStatus === "completed" ? "pass" : summary.worldArcStatus === "active" ? "check" : ""}><b>{text(summary.worldArcProgress)}</b>{t("replay.worldArc")}</span><span className={summary.worldArcDirectiveStatus === "completed" ? "pass" : summary.worldArcDirectiveStatus === "blocked" ? "check" : ""}><b>{text(summary.worldArcDirectiveStatus)}</b>{t("replay.factionDirective")}</span><span className={summary.worldPressureCascadeStatus === "consumed" ? "pass" : summary.worldPressureCascadeStatus === "active" ? "check" : ""}><b>{text(summary.worldPressureCascadeStatus)}</b>{t("replay.worldPressure")}</span><span className={summary.townSocialResponseStatus === "settled" ? "pass" : summary.townSocialResponseStatus === "active" || summary.townSocialResponseStatus === "ready" ? "check" : ""}><b>{text(summary.townSocialResponseStatus)}</b>{t("replay.townReactions")}</span><span className={summary.investigationOperationsStatus === "settled" ? "pass" : "check"}><b>{text(summary.investigationOperationsProgress)}</b>{t("replay.operations")}</span><span><b>{number(summary.completedReplayGoals)}/{number(summary.totalReplayGoals)}</b>{t("replay.replayGoals")}</span><span><b>{text(summary.lastResult)}</b>{t("replay.lastResult")}</span>
       </div>
-      <div className="replayAttemptScorecardRows">{summary.rows.map((row) => <article key={row.id} className={row.status}><span>{row.status}</span><b>{row.label}</b><small>Previous: {row.previous}</small><small>Current: {row.current}</small><em>{row.detail}</em></article>)}</div>
-      <small className="replayAttemptScorecardBoundary">Descriptive session-local delta only: no score, no pass gate, no hidden truth, raw bodies, internal ids, source ids, public catalog writes, dataset refreshes, or runtime scoring changes.</small>
+      <div className="replayAttemptScorecardRows">{summary.rows.map((row) => <article key={row.id} className={row.status}><span>{text(row.status)}</span><b>{text(row.label)}</b><small>{t("replay.previous")}: {text(row.previous)}</small><small>{t("replay.current")}: {text(row.current)}</small><em>{text(row.detail)}</em></article>)}</div>
+      <small className="replayAttemptScorecardBoundary">{t("replay.boundary.scorecard")}</small>
     </section>
   );
 }
@@ -169,8 +176,9 @@ export function InvestigationDebriefReplaySurface({
   replayAttemptScorecard?: ReplayAttemptScorecardSummary | null;
   startReplayGoalAttempt?: () => void;
 }) {
+  const { t } = useAppLocale();
   return (
-    <CommandDeckCollapsible enabled={commandDeckMode} title="Debrief and replay">
+    <CommandDeckCollapsible enabled={commandDeckMode} title={t("replay.debriefReplay")}>
       {solvedCaseDebrief && <SolvedCaseDebriefPanel summary={solvedCaseDebrief} campaignPacing={campaignPacing} />}
       {replayPracticeLoop && <ReplayPracticeLoopPanel summary={replayPracticeLoop} campaignPacing={campaignPacing} />}
       {replayGoalCoach && startReplayGoalAttempt && <ReplayGoalCoachPanel summary={replayGoalCoach} onStartReplay={startReplayGoalAttempt} />}

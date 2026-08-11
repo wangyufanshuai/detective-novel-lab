@@ -1,3 +1,5 @@
+"use client";
+
 import { memo, type RefObject } from "react";
 import type {
   StrategicCommandAction,
@@ -5,9 +7,11 @@ import type {
   StrategicResourceRibbonItem
 } from "@/app/campaign/strategic-command-model";
 import type { StrategicPacingViewModel } from "@/app/campaign/strategic-pacing-model";
+import { useAppLocale } from "@/app/localization/locale-context";
 import styles from "./StrategicCommandSurfaces.module.css";
 
 function ResourceItem({ item, core }: { item: StrategicResourceRibbonItem; core: boolean }) {
+  const { text } = useAppLocale();
   return (
     <details
       className={styles.resourceItem}
@@ -16,11 +20,11 @@ function ResourceItem({ item, core }: { item: StrategicResourceRibbonItem; core:
       data-resource-core={core ? "true" : "false"}
     >
       <summary>
-        <small>{item.label}</small>
-        <b>{item.value}</b>
-        <span>{item.trend}</span>
+        <small>{text(item.label)}</small>
+        <b>{text(item.value)}</b>
+        <span>{text(item.trend)}</span>
       </summary>
-      <p>{item.detail}</p>
+      <p>{text(item.detail)}</p>
     </details>
   );
 }
@@ -31,8 +35,9 @@ export const StrategicResourceRibbon = memo(function StrategicResourceRibbon({ i
   onPanelToggle: () => void;
   triggerRef: RefObject<HTMLButtonElement | null>;
 }) {
+  const { number, t, text } = useAppLocale();
   return (
-    <nav className={styles.resourceRibbon} data-testid="strategic-resource-ribbon" aria-label="Strategic resources">
+    <nav className={styles.resourceRibbon} data-testid="strategic-resource-ribbon" aria-label={t("command.resourcesAria")}>
       {items.map((item, index) => <ResourceItem key={item.kind} item={item} core={index < 4} />)}
       <button
         ref={triggerRef}
@@ -43,22 +48,22 @@ export const StrategicResourceRibbon = memo(function StrategicResourceRibbon({ i
         aria-controls="strategic-all-resources"
         onClick={onPanelToggle}
       >
-        <span>All Resources</span><b>{items.length}</b>
+        <span>{t("command.resources")}</span><b>{number(items.length)}</b>
       </button>
       <section
         id="strategic-all-resources"
         className={`${styles.resourceSheet} ${panelOpen ? styles.panelOpen : ""}`}
         data-testid="strategic-resource-sheet"
-        aria-label="All strategic resources"
+        aria-label={t("command.resourcesAllAria")}
         aria-hidden={!panelOpen}
       >
-        <header><span>All Resources</span><button type="button" onClick={onPanelToggle}>Close</button></header>
+        <header><span>{t("command.resources")}</span><button type="button" onClick={onPanelToggle}>{t("common.close")}</button></header>
         <div>
           {items.map((item) => (
             <article key={item.kind} data-resource-tone={item.tone}>
-              <span><small>{item.label}</small><b>{item.value}</b></span>
-              <strong>{item.trend}</strong>
-              <p>{item.detail}</p>
+              <span><small>{text(item.label)}</small><b>{text(item.value)}</b></span>
+              <strong>{text(item.trend)}</strong>
+              <p>{text(item.detail)}</p>
             </article>
           ))}
         </div>
@@ -76,10 +81,12 @@ function QueueGroup({ label, actions, primary, offset, activeIndex, onActiveInde
   onActiveIndexChange: (index: number) => void;
   onNavigate: (delta: number) => void;
 }) {
+  const { number, t, text } = useAppLocale();
+  const groupLabel = t(`command.queue.${label.toLowerCase()}` as "command.queue.now" | "command.queue.soon" | "command.queue.later");
   if (!actions.length) return null;
   return (
     <section className={styles.queueGroup} data-queue-group={label.toLowerCase()}>
-      <h3>{label}<span>{actions.length}</span></h3>
+      <h3>{groupLabel}<span>{number(actions.length)}</span></h3>
       <ol>
         {actions.map((decision, localIndex) => {
           const index = offset + localIndex;
@@ -111,8 +118,8 @@ function QueueGroup({ label, actions, primary, offset, activeIndex, onActiveInde
                 }}
               >
                 <span aria-hidden="true">{decision.priority}</span>
-                <div><strong>{decision.label}</strong><small>{decision.disabledReason || decision.detail}</small></div>
-                <b>{decision.kind === primary?.kind ? "CURRENT" : decision.enabled ? "READY" : "HELD"}</b>
+                <div><strong>{text(decision.label)}</strong><small>{text(decision.disabledReason || decision.detail)}</small></div>
+                <b>{decision.kind === primary?.kind ? t("command.queue.current") : decision.enabled ? t("command.queue.ready") : t("command.queue.held")}</b>
               </button>
             </li>
           );
@@ -132,6 +139,7 @@ export const StrategicDecisionQueue = memo(function StrategicDecisionQueue({ com
   onActiveIndexChange: (index: number) => void;
   onNavigate: (delta: number) => void;
 }) {
+  const { number, t } = useAppLocale();
   const count = pacing.queueGroups.now.length + pacing.queueGroups.soon.length + pacing.queueGroups.later.length;
   const queueState = command.runtimeMode === "static-demo" ? "readonly" : count ? "active" : "empty";
   return (
@@ -145,19 +153,19 @@ export const StrategicDecisionQueue = memo(function StrategicDecisionQueue({ com
         aria-controls="strategic-queue-body"
         onClick={onPanelToggle}
       >
-        <span>Decision Queue</span><strong>{command.runtimeMode === "static-demo" ? "SERVER ONLY" : `${count} OPEN`}</strong><b>{panelOpen ? "Close" : "Open"}</b>
+        <span>{t("command.queue")}</span><strong>{command.runtimeMode === "static-demo" ? t("command.serverOnly") : `${number(count)} ${t("command.queue.open")}`}</strong><b>{panelOpen ? t("common.close") : t("common.open")}</b>
       </button>
       <div id="strategic-queue-body" className={styles.queueBody}>
-        <div className={styles.sectionHeading}><span>Decision Queue</span><b>{command.runtimeMode === "static-demo" ? "SERVER ONLY" : `${count} OPEN`}</b></div>
+        <div className={styles.sectionHeading}><span>{t("command.queue")}</span><b>{command.runtimeMode === "static-demo" ? t("command.serverOnly") : `${number(count)} ${t("command.queue.open")}`}</b></div>
         {command.runtimeMode === "static-demo" ? (
-          <p>Static Runtime keeps the certified route read-only and creates no persistent world decision queue.</p>
+          <p>{t("command.queue.readonly")}</p>
         ) : count ? (
           <>
             <QueueGroup label="Now" actions={pacing.queueGroups.now} primary={pacing.primaryAction} offset={0} activeIndex={activeIndex} onActiveIndexChange={onActiveIndexChange} onNavigate={onNavigate} />
             <QueueGroup label="Soon" actions={pacing.queueGroups.soon} primary={pacing.primaryAction} offset={pacing.queueGroups.now.length} activeIndex={activeIndex} onActiveIndexChange={onActiveIndexChange} onNavigate={onNavigate} />
             <QueueGroup label="Later" actions={pacing.queueGroups.later} primary={pacing.primaryAction} offset={pacing.queueGroups.now.length + pacing.queueGroups.soon.length} activeIndex={activeIndex} onActiveIndexChange={onActiveIndexChange} onNavigate={onNavigate} />
           </>
-        ) : <p>No Server decision is waiting. Continue the current public objective.</p>}
+        ) : <p>{t("command.noDecision")}</p>}
       </div>
     </section>
   );
@@ -169,6 +177,7 @@ function ActionButton({ action, primary, resolving, onAction }: {
   resolving: boolean;
   onAction?: (action: StrategicCommandAction) => void | Promise<void>;
 }) {
+  const { t, text } = useAppLocale();
   return (
     <button
       type="button"
@@ -179,12 +188,12 @@ function ActionButton({ action, primary, resolving, onAction }: {
       disabled={!action.enabled || !onAction || resolving}
       aria-busy={primary && resolving ? "true" : undefined}
       aria-keyshortcuts={primary ? "Enter Space" : undefined}
-      title={action.disabledReason || action.detail}
+      title={text(action.disabledReason || action.detail)}
       onClick={() => void onAction?.(action)}
     >
-      <span>{primary ? resolving ? "RESOLVING" : "02 / CURRENT ACTION" : `P${action.priority}`}</span>
-      <strong>{action.label}</strong>
-      <small>{action.disabledReason || action.detail}</small>
+      <span>{primary ? resolving ? t("common.resolving") : `02 / ${t("command.currentAction")}` : `P${action.priority}`}</span>
+      <strong>{text(action.label)}</strong>
+      <small>{text(action.disabledReason || action.detail)}</small>
     </button>
   );
 }
@@ -195,6 +204,7 @@ export const StrategicActionBar = memo(function StrategicActionBar({ command, pa
   compact?: boolean;
   onAction?: (action: StrategicCommandAction) => void | Promise<void>;
 }) {
+  const { t, text } = useAppLocale();
   const primary = pacing.primaryAction;
   const secondary = pacing.secondaryActions;
   const advanceAction = pacing.advanceState.action;
@@ -210,18 +220,18 @@ export const StrategicActionBar = memo(function StrategicActionBar({ command, pa
       data-action-lifecycle={pacing.actionLifecycle?.state || "idle"}
       data-pacing-phase={pacing.phase}
     >
-      <section className={styles.actionContext} aria-label="Current action forecast">
-        <span><small>BENEFIT</small><b>{pacing.safeForecast.immediateBenefit}</b></span>
-        <span><small>COST / BOUNDARY</small><b>{pacing.safeForecast.visibleCost}</b></span>
+      <section className={styles.actionContext} aria-label={t("command.actionForecast")}>
+        <span><small>{t("command.benefit")}</small><b>{text(pacing.safeForecast.immediateBenefit)}</b></span>
+        <span><small>{t("command.costBoundary")}</small><b>{text(pacing.safeForecast.visibleCost)}</b></span>
       </section>
-      <div className={styles.actionButtons} aria-label="Strategic commands">
+      <div className={styles.actionButtons} aria-label={t("command.commands")}>
         <div className={styles.secondaryActions}>
           {secondary.map((action) => <ActionButton key={action.kind} action={action} resolving={resolving} onAction={onAction} />)}
           {!advanceAlreadyVisible && advanceAction && !advanceAction.enabled ? <ActionButton action={advanceAction} resolving={resolving} onAction={onAction} /> : null}
         </div>
         {primary
           ? <ActionButton action={primary} primary resolving={resolving} onAction={onAction} />
-          : <div className={styles.readonlyAction}><span>02 / CURRENT ACTION</span><strong>{pacing.advanceState.label}</strong><small>{pacing.advanceState.detail}</small></div>}
+          : <div className={styles.readonlyAction}><span>02 / {t("command.currentAction")}</span><strong>{text(pacing.advanceState.label)}</strong><small>{text(pacing.advanceState.detail)}</small></div>}
       </div>
     </footer>
   );

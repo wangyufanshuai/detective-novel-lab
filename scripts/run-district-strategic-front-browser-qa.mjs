@@ -76,7 +76,7 @@ async function openPage(browser, width, runtime = "server") {
     const pathname = new URL(request.url()).pathname;
     if (pathname.startsWith("/api/")) requests.push({ method: request.method(), pathname });
   });
-  await page.goto(`${baseUrl}/?runtime=${runtime}`, { waitUntil: "domcontentloaded", timeout: 30_000 });
+  await page.goto(`${baseUrl}/?runtime=${runtime}&lang=en-US`, { waitUntil: "domcontentloaded", timeout: 30_000 });
   await page.getByTestId("district-fronts-toggle").waitFor({ state: "visible", timeout: 30_000 });
   if (runtime === "static") {
     await page.waitForFunction(() => document.querySelector("[data-testid='district-strategic-fronts']")?.getAttribute("data-front-status") === "readonly", undefined, { timeout: 10_000 });
@@ -97,7 +97,7 @@ async function openPage(browser, width, runtime = "server") {
   await page.waitForTimeout(250);
   const encounter = page.getByTestId("character-encounter");
   if (await encounter.isVisible().catch(() => false)) {
-    await page.getByRole("button", { name: "Close character encounter" }).click();
+    await page.getByTestId("character-encounter-close").click();
     await encounter.waitFor({ state: "detached", timeout: 10_000 }).catch(() => undefined);
   }
   const shell = page.getByTestId("command-deck-shell");
@@ -174,13 +174,14 @@ try {
       const institution = page.locator("[data-testid='district-front-option'][data-front-kind='institution']");
       if (await institution.count()) {
         const location = await institution.getAttribute("data-front-location");
+        const visibleLocation = (await institution.locator("small").innerText()).trim();
         const lens = await institution.getAttribute("data-front-lens");
         await institution.click();
         check(await page.getByTestId("command-deck-shell").getAttribute("data-active-front") === "institution", "Selecting Institution Front did not update the active front.");
         check(await page.getByTestId("command-deck-shell").getAttribute("data-map-lens") === lens, "Selecting Institution Front did not reuse its existing map lens.");
         check(await page.getByTestId("district-front-detail").getAttribute("data-front-location") === location, "Selected front detail did not retain its public district label.");
         const selectedTileTitle = await page.locator("[data-testid='pixel-map'] .mapTile.selected").getAttribute("title");
-        check(selectedTileTitle === location, "Selecting Institution Front did not focus its public map district.");
+        check(selectedTileTitle === visibleLocation, "Selecting Institution Front did not focus its localized public map district.");
         await institution.focus();
         await page.keyboard.press("ArrowRight");
         check(await page.getByTestId("command-deck-shell").getAttribute("data-active-front") === "pressure", "ArrowRight did not move to the next bounded front.");

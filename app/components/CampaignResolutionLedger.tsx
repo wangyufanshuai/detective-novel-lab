@@ -5,6 +5,8 @@ import type {
   CampaignResolutionLedger,
   CampaignResolutionLedgerEntry
 } from "@/app/campaign/campaign-resolution-ledger-model";
+import { useAppLocale } from "@/app/localization/locale-context";
+import type { LocaleMessageKey } from "@/app/localization/locale-catalog";
 import styles from "./CampaignResolutionLedger.module.css";
 
 const ResolutionLedgerContext = createContext<CampaignResolutionLedger | null>(null);
@@ -22,12 +24,12 @@ export function useCampaignResolutionLedgerContext() {
 
 const CHAIN_FIELDS: ReadonlyArray<{
   key: keyof CampaignResolutionLedgerEntry["chain"];
-  label: string;
+  messageKey: LocaleMessageKey;
 }> = [
-  { key: "result", label: "Result" },
-  { key: "worldChange", label: "World Change" },
-  { key: "objectiveProgress", label: "Objective Progress" },
-  { key: "nextAction", label: "Next Action" }
+  { key: "result", messageKey: "ledger.result" },
+  { key: "worldChange", messageKey: "ledger.worldChange" },
+  { key: "objectiveProgress", messageKey: "ledger.objectiveProgress" },
+  { key: "nextAction", messageKey: "ledger.nextAction" }
 ];
 
 export function CampaignResolutionChain({ entry, testId, mode = "latest", activeField, ariaLive }: {
@@ -37,6 +39,7 @@ export function CampaignResolutionChain({ entry, testId, mode = "latest", active
   activeField?: keyof CampaignResolutionLedgerEntry["chain"];
   ariaLive?: "polite" | "assertive";
 }) {
+  const { number, t, text } = useAppLocale();
   return (
     <article
       className={`${styles.entry} ${styles[mode]}`}
@@ -46,13 +49,13 @@ export function CampaignResolutionChain({ entry, testId, mode = "latest", active
       data-resolution-tone={entry.tone}
       data-feedback-state={entry.status}
       data-feedback-tone={entry.tone}
-      aria-label={`${entry.actionLabel} resolution`}
+      aria-label={t("ledger.aria", { action: text(entry.actionLabel) })}
       aria-live={ariaLive}
     >
       <header className={styles.entryHeader}>
-        <span>{mode === "history" ? "Recorded resolution" : mode === "theatre" ? "Canonical resolution" : "Latest resolution"}</span>
-        <strong>{entry.actionLabel}</strong>
-        <b>{entry.status}</b>
+        <span>{mode === "history" ? t("ledger.recorded") : mode === "theatre" ? t("ledger.canonical") : t("ledger.latest")}</span>
+        <strong>{text(entry.actionLabel)}</strong>
+        <b>{text(entry.status)}</b>
       </header>
       {CHAIN_FIELDS.map((field, index) => (
         <span
@@ -61,12 +64,12 @@ export function CampaignResolutionChain({ entry, testId, mode = "latest", active
           data-resolution-field={field.key}
           data-active={field.key === activeField ? "true" : undefined}
         >
-          <i aria-hidden="true">{String(index + 1).padStart(2, "0")}</i>
-          <small>{field.label}</small>
-          <b>{entry.chain[field.key]}</b>
+          <i aria-hidden="true">{number(index + 1).padStart(2, "0")}</i>
+          <small>{t(field.messageKey)}</small>
+          <b>{text(entry.chain[field.key])}</b>
         </span>
       ))}
-      <footer>{entry.authorityNote}</footer>
+      <footer>{text(entry.authorityNote)}</footer>
     </article>
   );
 }
@@ -84,6 +87,7 @@ export function CampaignResolutionLatest({ ledger }: { ledger: CampaignResolutio
 
 export function CampaignResolutionJournal() {
   const ledger = useCampaignResolutionLedgerContext();
+  const { number, t } = useAppLocale();
   if (!ledger) return null;
   return (
     <section
@@ -91,17 +95,17 @@ export function CampaignResolutionJournal() {
       data-testid="campaign-resolution-ledger"
       data-ledger-status={ledger.status}
       data-ledger-count={ledger.entryCount}
-      aria-label="Campaign resolution ledger"
+      aria-label={t("ledger.title")}
     >
       <header className={styles.journalHeader}>
-        <div><span>Campaign Resolution Ledger</span><strong>Result → World Change → Objective Progress → Next Action</strong></div>
-        <b>{ledger.entryCount}/{ledger.maxEntries}</b>
+        <div><span>{t("ledger.title")}</span><strong>{t("ledger.chain")}</strong></div>
+        <b>{number(ledger.entryCount)}/{number(ledger.maxEntries)}</b>
       </header>
       <div className={styles.history}>
         {ledger.entries.length ? ledger.entries.map((entry) => (
           <CampaignResolutionChain key={entry.signature} entry={entry} testId="campaign-resolution-entry" mode="history" />
         )) : (
-          <p>No completed action is recorded yet. The Ledger derives only from this browser session&apos;s existing safe state.</p>
+          <p>{t("ledger.empty")}</p>
         )}
       </div>
     </section>

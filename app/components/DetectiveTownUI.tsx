@@ -23,7 +23,8 @@ import {
   Users,
   X
 } from "lucide-react";
-import { memo, useRef, useState, type PointerEvent, type ReactNode } from "react";
+import { memo, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
+import { useAppLocale } from "@/app/localization/locale-context";
 import { BenchmarkSeedTable, CurrentExperimentPanel, DatasetPackagePanel, PublicReviewCatalogPanel, ReplayDatasetCatalogPanel, ReviewExportActions, RunCatalogPanel, ScenarioPackPanel, ScenarioPresetEditor, ScenarioRunHistory, WorldPackageCatalogPanel } from "@/app/components/ReviewModePanels";
 import { TownRuleStatePanel } from "@/app/components/TownRuleStatePanel";
 import { CommandDeckCollapsible, CommandDeckShell } from "@/app/components/CommandDeckShell";
@@ -436,17 +437,18 @@ export function InspectorRail({
   tabs: { id: InspectorTabId; label: string; content: ReactNode }[];
   summary: { title: string; detail: string; tone?: string };
 }) {
+  const { t, text } = useAppLocale();
   const current = tabs.find((tab) => tab.id === activeTab) || tabs[0];
   return (
     <aside className="inspectorRail" data-testid="inspector-rail">
-      <nav className="inspectorTabs" aria-label="Inspector">
+      <nav className="inspectorTabs" aria-label={t("control.inspector")}>
         {tabs.map((tab) => (
-          <button key={tab.id} className={tab.id === current.id ? "active" : ""} onClick={() => setActiveTab(tab.id)}>{tab.label}</button>
+          <button type="button" key={tab.id} className={tab.id === current.id ? "active" : ""} aria-current={tab.id === current.id ? "page" : undefined} onClick={() => setActiveTab(tab.id)}>{text(tab.label)}</button>
         ))}
       </nav>
       <section className={`inspectorSummary ${summary.tone || ""}`} data-testid="inspector-summary">
-        <strong>{summary.title}</strong>
-        <span>{summary.detail}</span>
+        <strong>{text(summary.title)}</strong>
+        <span>{text(summary.detail)}</span>
       </section>
       <div className="inspectorContent">{current.content}</div>
     </aside>
@@ -454,27 +456,28 @@ export function InspectorRail({
 }
 
 export function EventLogPanel({ events, highlightedEventId, onSelect }: { events: WorldEvent[]; highlightedEventId: string; onSelect: (event: WorldEvent) => void }) {
+  const { number, t, text } = useAppLocale();
   const primaryEvents = events.slice(0, 5);
   const moreEvents = events.slice(5);
   return (
     <section className="eventPanel">
-      <h2><Clock size={16} /> WorldEvent Log</h2>
+      <h2><Clock size={16} aria-hidden="true" /> {t("control.eventLog")}</h2>
       <div className="eventList">
         {primaryEvents.map((event) => (
-          <button key={event.id} className={`eventRow ${event.id === highlightedEventId ? "selected" : ""}`} onClick={() => onSelect(event)}>
-            <time>第{event.day}日 {event.time}</time>
-            <strong>{event.publicSummary}</strong>
-            <span>{event.type} / {event.locationId}</span>
+          <button type="button" key={event.id} className={`eventRow ${event.id === highlightedEventId ? "selected" : ""}`} onClick={() => onSelect(event)}>
+            <time>{t("control.day", { day: number(event.day) })} {event.time}</time>
+            <strong>{text(event.publicSummary)}</strong>
+            <span>{text(event.type)}</span>
           </button>
         ))}
         {!!moreEvents.length && (
           <details className="eventMore">
-            <summary>查看其余 {moreEvents.length} 条事件</summary>
+            <summary>{t("control.moreEvents", { count: number(moreEvents.length) })}</summary>
             {moreEvents.map((event) => (
-              <button key={event.id} className={`eventRow ${event.id === highlightedEventId ? "selected" : ""}`} onClick={() => onSelect(event)}>
-                <time>第{event.day}日 {event.time}</time>
-                <strong>{event.publicSummary}</strong>
-                <span>{event.type} / {event.locationId}</span>
+              <button type="button" key={event.id} className={`eventRow ${event.id === highlightedEventId ? "selected" : ""}`} onClick={() => onSelect(event)}>
+                <time>{t("control.day", { day: number(event.day) })} {event.time}</time>
+                <strong>{text(event.publicSummary)}</strong>
+                <span>{text(event.type)}</span>
               </button>
             ))}
           </details>
@@ -855,22 +858,67 @@ export function OnboardingOverlay({
   onSelectTask: (task: GuidedTask) => void;
   onDismiss: () => void;
 }) {
-  if (!open) return null;
+  const { t, text } = useAppLocale();
+  const cardRef = useRef<HTMLDivElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
   const current = tasks.find((task) => task.state === "current") || tasks[tasks.length - 1];
+
+  useEffect(() => {
+    if (!open || !current) return;
+    restoreFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const modalRoot = cardRef.current?.closest<HTMLElement>("[data-testid='onboarding-overlay']");
+    const inertedSiblings = Array.from(modalRoot?.parentElement?.children || [])
+      .filter((item): item is HTMLElement => item instanceof HTMLElement && item !== modalRoot && !item.inert);
+    for (const sibling of inertedSiblings) sibling.inert = true;
+    const frame = window.requestAnimationFrame(() => headingRef.current?.focus());
+    return () => {
+      window.cancelAnimationFrame(frame);
+      for (const sibling of inertedSiblings) sibling.inert = false;
+      const target = restoreFocusRef.current;
+      if (target?.isConnected) window.requestAnimationFrame(() => target.focus());
+    };
+  }, [current?.id, open]);
+
+  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      onDismiss();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const focusable = Array.from(cardRef.current?.querySelectorAll<HTMLElement>("button:not([disabled]), a[href], [tabindex]:not([tabindex='-1'])") || []);
+    if (!focusable.length) {
+      event.preventDefault();
+      headingRef.current?.focus();
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
+  if (!open || !current) return null;
   return (
-    <section className="onboardingOverlay" data-testid="onboarding-overlay" aria-label="First case onboarding">
-      <div className="onboardingCard">
-        <button className="iconButton closeButton" type="button" onClick={onDismiss} aria-label="关闭引导"><X size={16} /></button>
-        <span className="eyebrow">任务提示</span>
-        <h2>当前目标：{current.title}</h2>
-        <p>{current.detail}</p>
+    <section className="onboardingOverlay" data-testid="onboarding-overlay">
+      <div ref={cardRef} className="onboardingCard" role="dialog" aria-modal="true" aria-labelledby="onboarding-title" aria-describedby="onboarding-detail" onKeyDown={handleKeyDown}>
+        <button className="iconButton closeButton" type="button" onClick={onDismiss} aria-label={t("onboarding.close")}><X size={16} aria-hidden="true" /></button>
+        <span className="eyebrow">{t("onboarding.eyebrow")}</span>
+        <h2 id="onboarding-title" ref={headingRef} tabIndex={-1}>{t("onboarding.current", { title: text(current.title) })}</h2>
+        <p id="onboarding-detail">{text(current.detail)}</p>
         <div className="onboardingCurrent">
-          <strong>{current.title}</strong>
-          <span>点击任务会高亮地图或右侧面板中的目标区域。</span>
+          <strong>{text(current.title)}</strong>
+          <span>{t("onboarding.detail")}</span>
         </div>
         <div className="onboardingActions">
-          <button className="primaryButton" type="button" onClick={() => onSelectTask(current)}>开始当前步骤</button>
-          <button className="secondaryButton" type="button" onClick={onDismiss}>先自己探索</button>
+          <button className="primaryButton" type="button" onClick={() => onSelectTask(current)}>{t("onboarding.start")}</button>
+          <button className="secondaryButton" type="button" onClick={onDismiss}>{t("onboarding.explore")}</button>
         </div>
       </div>
     </section>

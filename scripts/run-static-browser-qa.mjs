@@ -329,7 +329,7 @@ async function verifyStaticPage(page, baseUrl) {
   });
   page.on("pageerror", (error) => pageErrors.push(error.message));
 
-  await page.goto(`${baseUrl}/?runtime=static`, { waitUntil: "load" });
+  await page.goto(`${baseUrl}/?runtime=static&lang=en-US`, { waitUntil: "load" });
   await keepCommandDeckSectionsOpen(page);
   await dismissCommandDeckOnboarding(page);
   await page.getByTestId("playable-investigation-path").waitFor({ state: "visible", timeout: 30000 });
@@ -442,7 +442,7 @@ async function verifyStaticPage(page, baseUrl) {
   const guidedManualTextAfterManualDrill = await page.getByTestId("guided-manual-run").innerText();
   const staticManualTheoryReplay = await completeManualTheoryReplay(page);
   const replayAttemptScorecardTextCompleted = await page.getByTestId("replay-attempt-scorecard").innerText();
-  await page.getByRole("button", { name: "持续小镇" }).click();
+  await page.getByTestId("open-persistent-town").click();
   await page.getByRole("heading", { name: "Public Review Snapshot" }).waitFor({ state: "visible", timeout: 30000 });
   await page.getByText("Reviewer Home", { exact: true }).first().waitFor({ state: "visible", timeout: 30000 });
   await page.getByText("Reviewer Main Path", { exact: true }).first().waitFor({ state: "visible", timeout: 30000 });
@@ -670,7 +670,7 @@ async function verifyStaticPage(page, baseUrl) {
     && /unresolved theory field/i.test(staticManualTheoryReplay.guidedStepJournalTextAfterManualTheoryFallback);
   summary.hasManualTheoryDrillScorecardSignal = /manual theory fields/i.test(replayAttemptScorecardTextCompleted)
     && /fallback theory fields/i.test(replayAttemptScorecardTextCompleted)
-    && /blocked theory gaps/i.test(replayAttemptScorecardTextCompleted);
+    && /blocked(?: theory)? gaps/i.test(replayAttemptScorecardTextCompleted);
   summary.hasManualTheoryDrillNoRawIds = !/\bnpc-\d+\b|\bev-[a-z0-9-]+\b|\b(?:evidence|event|source)-[a-z0-9-]*\d[a-z0-9-]*\b/i.test(`${staticManualTheoryReplay.manualTheoryDrillTextBeforeFill}\n${staticManualTheoryReplay.manualTheoryDrillTextAfterFill}\n${staticManualTheoryReplay.manualTheoryDrillTextAfterBlockedSubmit}\n${staticManualTheoryReplay.manualTheoryDrillTextAfterFallback}\n${staticManualTheoryReplay.guidedStepJournalTextAfterManualTheoryFallback}\n${staticManualTheoryReplay.replayAttemptScorecardTextAfterManualTheoryFallback}`);
   summary.hasReplayAttemptScorecard = /replay attempt scorecard/i.test(replayAttemptScorecardTextBeforeAttempt);
   summary.hasReplayAttemptScorecardPending = /pending replay delta/i.test(replayAttemptScorecardTextPending) && /current step/i.test(replayAttemptScorecardTextPending);
@@ -712,7 +712,7 @@ async function verifyStaticPage(page, baseUrl) {
   if (pageErrors.length) failures.push(`Page errors: ${pageErrors.join(" | ")}`);
   if (summary.scrollWidth > summary.clientWidth + 1 || summary.bodyWidth > summary.clientWidth + 1) failures.push("Desktop viewport has page-level horizontal overflow.");
 
-  await page.goto(`${baseUrl}/?runtime=static`, { waitUntil: "load" });
+  await page.goto(`${baseUrl}/?runtime=static&lang=en-US`, { waitUntil: "load" });
   await keepCommandDeckSectionsOpen(page);
   await dismissCommandDeckOnboarding(page);
   await page.getByTestId("open-authoring").click();
@@ -848,7 +848,7 @@ async function verifyStaticPage(page, baseUrl) {
 
 async function verifyMobile(page, baseUrl) {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto(`${baseUrl}/?runtime=static`, { waitUntil: "load" });
+  await page.goto(`${baseUrl}/?runtime=static&lang=en-US`, { waitUntil: "load" });
   await keepCommandDeckSectionsOpen(page);
   await dismissCommandDeckOnboarding(page);
   await page.getByTestId("playable-investigation-path").waitFor({ state: "visible", timeout: 30000 });
@@ -866,7 +866,7 @@ async function verifyMobile(page, baseUrl) {
   await page.getByTestId("source-review-unlock").waitFor({ state: "visible", timeout: 30000 });
   await page.getByText("Source Review Unlock", { exact: true }).first().waitFor({ state: "visible", timeout: 30000 });
   const sourceReviewTextBeforeReview = await page.getByTestId("source-review-unlock").innerText();
-  await page.getByRole("button", { name: "持续小镇" }).click();
+  await page.getByTestId("open-persistent-town").click();
   await page.getByRole("heading", { name: "Public Review Snapshot" }).waitFor({ state: "visible", timeout: 30000 });
   await page.getByText("Reviewer Home", { exact: true }).first().waitFor({ state: "visible", timeout: 30000 });
   await page.getByText("Reviewer Main Path", { exact: true }).first().waitFor({ state: "visible", timeout: 30000 });
@@ -1032,7 +1032,7 @@ async function verifyMobile(page, baseUrl) {
 
 async function verifyServerRuntime(page, baseUrl) {
   await page.setViewportSize({ width: 1280, height: 720 });
-  await page.goto(`${baseUrl}/?runtime=server`, { waitUntil: "load" });
+  await page.goto(`${baseUrl}/?runtime=server&lang=en-US`, { waitUntil: "load" });
   const campaignFrontDoor = page.getByTestId("campaign-front-door");
   if (await campaignFrontDoor.getByTestId("campaign-front-door-dismiss").count()) {
     await campaignFrontDoor.getByTestId("campaign-front-door-dismiss").click();
@@ -1054,7 +1054,7 @@ async function verifyServerRuntime(page, baseUrl) {
     }, { timeout: 60000 }),
     page.getByRole("button", { name: /Reset \/ Create Town/i }).click()
   ]);
-  await page.getByRole("button", { name: "持续小镇" }).click();
+  await page.getByTestId("open-persistent-town").click();
   await page.getByRole("heading", { name: "Dataset Package" }).waitFor({ state: "visible", timeout: 30000 });
   await page.waitForTimeout(1000);
   const serverCatalogText = await page.locator("body").innerText();
@@ -1082,7 +1082,10 @@ async function verifyServerRuntime(page, baseUrl) {
   await page.getByText(/source-backed route/i).first().waitFor({ state: "visible", timeout: 30000 });
   await page.getByText(/covered obligations/i).first().waitFor({ state: "visible", timeout: 30000 });
   await page.getByTestId("guided-manual-run").waitFor({ state: "visible", timeout: 30000 });
-  await page.getByTestId("run-next-guided-step").click();
+  await Promise.all([
+    page.waitForResponse((response) => response.url().includes("/api/players/join") && response.request().method() === "POST" && response.ok(), { timeout: 30000 }),
+    page.getByTestId("run-next-guided-step").click()
+  ]);
   const serverTransitionPresentation = await waitForGuidedStepIdle(page);
   await page.getByTestId("world-lead-panel").waitFor({ state: "visible", timeout: 30000 });
   await page.getByTestId("world-campaign-current-action").waitFor({ state: "visible", timeout: 30000 });
@@ -1230,7 +1233,7 @@ async function verifyServerRuntime(page, baseUrl) {
   const serverGuidedManualTextAfterManualDrill = await page.getByTestId("guided-manual-run").innerText();
   const serverManualTheoryReplay = await completeManualTheoryReplay(page);
   const serverReplayAttemptScorecardTextCompleted = await page.getByTestId("replay-attempt-scorecard").innerText();
-  await page.getByRole("button", { name: "持续小镇" }).click();
+  await page.getByTestId("open-persistent-town").click();
   await page.getByTestId("persistent-command-center").waitFor({ state: "visible", timeout: 30000 });
   await page.getByTestId("situation-campaign-pacing").waitFor({ state: "visible", timeout: 30000 });
   const serverSituationCampaignPacingText = await page.getByTestId("situation-campaign-pacing").innerText();
@@ -1557,7 +1560,7 @@ async function verifyServerRuntime(page, baseUrl) {
     && /unresolved theory field/i.test(serverManualTheoryReplay.guidedStepJournalTextAfterManualTheoryFallback);
   summary.hasServerManualTheoryDrillScorecardSignal = /manual theory fields/i.test(serverReplayAttemptScorecardTextCompleted)
     && /fallback theory fields/i.test(serverReplayAttemptScorecardTextCompleted)
-    && /blocked theory gaps/i.test(serverReplayAttemptScorecardTextCompleted);
+    && /blocked(?: theory)? gaps/i.test(serverReplayAttemptScorecardTextCompleted);
   summary.hasServerManualTheoryDrillNoRawIds = !/\bnpc-\d+\b|\bev-[a-z0-9-]+\b|\b(?:evidence|event|source)-[a-z0-9-]*\d[a-z0-9-]*\b/i.test(`${serverManualTheoryReplay.manualTheoryDrillTextBeforeFill}\n${serverManualTheoryReplay.manualTheoryDrillTextAfterFill}\n${serverManualTheoryReplay.manualTheoryDrillTextAfterBlockedSubmit}\n${serverManualTheoryReplay.manualTheoryDrillTextAfterFallback}\n${serverManualTheoryReplay.guidedStepJournalTextAfterManualTheoryFallback}\n${serverManualTheoryReplay.replayAttemptScorecardTextAfterManualTheoryFallback}`);
   summary.hasServerReplayAttemptScorecard = /replay attempt scorecard/i.test(serverReplayAttemptScorecardTextBeforeAttempt);
   summary.hasServerReplayAttemptScorecardPending = /pending replay delta/i.test(serverReplayAttemptScorecardTextPending) && /current step/i.test(serverReplayAttemptScorecardTextPending);

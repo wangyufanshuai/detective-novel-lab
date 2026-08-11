@@ -40,6 +40,7 @@ DeepSeek is used only for NPC surface dialogue and optional solution prose. It d
 - v9.3 adds the **Command Resolution & Consequence Ledger**: Result -> World Change -> Objective Progress -> Next Action is now one canonical four-stage chain shared by Latest Resolution, Transition Theatre, and Guided Journal. History reuses existing session-local safe outcomes, is deduplicated and capped at six entries, and adds no endpoint, runtime state, event, tick, storage key, ranking modifier, or proof card.
 - v9.4 adds the **Final Detective Workspace**: Current Objective, Evidence, Testimony, Contradictions, Theory, Recovery, Source Review, and the v9.3 Resolution Ledger now form one investigation theatre with one Current Task and one primary action. Map, Command Deck, Guided Manual Run, and direct investigation continue through the same certified adapter. Desktop uses a three-column case-files theatre; narrow containers use one-column progressive disclosure. Static uses the same public-safe local projection with zero `/api/*`; no case or world authority changed.
 - v9.5 completes **Campaign Content Completion**: Midnight Chorus adds a fourth Campaign, Public Reckoning and Backstage Compact routes, a real theatre/market/night-watch WorldPackage, six new authored treatments, and two new Finale families. The catalog now contains four Campaigns, eight routes, and 24 treatments while every route remains exactly three cases. Content changes only future candidate preference and safe presentation; truth, evidence membership/coverage, Route Certificate, judgement, candidate validity, NPC legal actions, and world authority remain unchanged. The 24-case production gate, Front Door, Pacing, API smoke, 24-seed fairness, Static zero API, privacy, performance, and protected-public checks remain required evidence. v6.2 is still instrumentation ready, not Human Gate passed.
+- v9.6 completes **Accessibility, Localization & Save Hardening** for the release baseline: typed Chinese/English presentation, semantic keyboard map controls, modal/drawer focus ownership, axe gates, versioned Continue recovery, Strict Mode bootstrap de-duplication, staged Campaign launch, runtime normalization, and public-safe client failures. It adds no endpoint, world mechanic, proof card, or protected public artifact. Automated checks remain distinct from the v6.2 Human Gate, which is still instrumentation ready.
 - Project-level v3.6/v3.7 assessment and roadmap: [docs/project-level-report.md](docs/project-level-report.md).
 
 ## Try In 3 Modes
@@ -845,9 +846,26 @@ npm.cmd run qa:campaign-study -- --json
 npm.cmd run qa:static-browser -- --json
 ```
 
+## v9.6 Accessibility, Localization & Save Hardening
+
+v9.6 is a release-hardening pass over the existing four-Campaign, eight-route, 24-treatment product. It adds a typed `zh-CN | en-US` catalog and locale-only browser preference; localizes the Front Door, Command Deck, Map, Campaign Journey, Final Detective Workspace, Recovery, Source Review, Resolution Ledger, Transition Theatre, Debrief, Replay, Character Encounter, District Fronts, Inspector, and primary settings without using internal IDs as translation keys. Locale changes are request-free and do not enter world, session, case, Study, or authoring state.
+
+Keyboard and WCAG-oriented changes include a localized skip link, visible `:focus-visible`, reduced-motion behavior, modal focus trap/restore for Front Door and onboarding, inert compact drawers with an always-reachable trigger, semantic map location/marker/actor buttons, one application main landmark, named form controls, and 44px non-map touch targets. Automated axe coverage requires zero serious/critical violations across both locales and Static/Server primary paths at 320/390/768/1440, including a 200% text-resize sample. These are automated engineering checks, not human usability evidence.
+
+Save recovery keeps the existing `detective-town-launch-v1` key but versions and bounds its `{ worldId, sessionId }` pointer, migrates legacy values, rejects corrupt values, and clears proven-stale Continue pointers. A Server-tab bootstrap pointer lives only in session storage, preventing Strict Mode/remount world duplication without creating a false Campaign Continue. Campaign creation is staged until route-integrity extraction succeeds, optimistic Join rolls back on failure, duplicate main actions are synchronously guarded, Persistent Town JSON is normalized without adding ticks/events, and client surfaces no longer render raw exception messages.
+
+Static resolves before Server bootstrap, never reads Server saves, initializes no Study recorder, writes no Server/Study storage, and requests zero `/api/*`. No endpoint, API payload, content/public schema, world rule, event, tick, candidate modifier, proof card, or protected public artifact is added. v6.2 remains **instrumentation ready**, not Human Gate passed; axe, keyboard, recovery, and browser automation cannot replace the prescribed human sessions.
+
+```powershell
+npm.cmd run test:localization
+npm.cmd run test:accessibility
+npm.cmd run test:save-recovery
+npm.cmd run qa:accessibility-bilingual -- --json
+```
+
 ## Roadmap
 
 - v9.4 Final Detective Workspace: consolidate evidence, testimony, contradictions, theory, Recovery, and Source Review.
 - v9.5 Campaign Content Completion: reach four Campaign families, eight routes, and 24 authored treatments using existing authority.
-- v9.6 Accessibility, localization, save recovery, mobile, and performance hardening.
+- v9.6 Accessibility, localization, save recovery, mobile, and performance hardening (implementation complete pending the final full regression sweep).
 - v9.7 Release Candidate freeze, followed by the automation-validated v10.0 release.

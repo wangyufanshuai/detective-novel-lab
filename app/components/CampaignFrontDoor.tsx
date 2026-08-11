@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef, type KeyboardEvent } from "react";
 import type { CampaignFrontDoorCard } from "@/app/campaign/campaign-front-door-model";
+import { useAppLocale } from "@/app/localization/locale-context";
 import styles from "./CampaignFrontDoor.module.css";
 
 function CampaignCard({ card, ordinal, selected, selectedRouteIndex, interactive, onSelect }: {
@@ -12,25 +13,26 @@ function CampaignCard({ card, ordinal, selected, selectedRouteIndex, interactive
   interactive: boolean;
   onSelect?: () => void;
 }) {
+  const { number, t, text } = useAppLocale();
   const route = card.routes[selectedRouteIndex] || card.routes[0];
   const content = (
     <>
-      <div className={styles.cardTopline}><span>Campaign {ordinal}</span><b>{selected ? "Selected" : "Two routes"}</b></div>
-      <h3>{card.label}</h3>
-      <p className={styles.theme}>{card.investigationTheme}</p>
-      <div className={styles.routeRail} aria-label={`${card.label} authored routes`}>
-        {card.routes.map((item, index) => <span key={item.label} data-active={index === selectedRouteIndex}><b>{item.label}</b><small>{index === 0 ? "Original route" : "Counter route"}</small></span>)}
+      <div className={styles.cardTopline}><span>{t("front.campaign", { ordinal: number(ordinal) })}</span><b>{selected ? t("common.selected") : t("front.routes.count")}</b></div>
+      <h3>{text(card.label)}</h3>
+      <p className={styles.theme}>{text(card.investigationTheme)}</p>
+      <div className={styles.routeRail} aria-label={`${text(card.label)} ${t("front.authoredRoute")}`}>
+        {card.routes.map((item, index) => <span key={item.label} data-active={index === selectedRouteIndex}><b>{text(item.label)}</b><small>{index === 0 ? t("front.route.original") : t("front.route.counter")}</small></span>)}
       </div>
       <dl>
-        <div><dt>Public surface</dt><dd>{route.primarySurfaceLabel}</dd></div>
-        <div><dt>Evidence style</dt><dd>{route.evidenceStyleLabel}</dd></div>
-        <div><dt>World pressure</dt><dd>{route.pressureLabel}</dd></div>
+        <div><dt>{t("front.publicSurface")}</dt><dd>{text(route.primarySurfaceLabel)}</dd></div>
+        <div><dt>{t("front.evidenceStyle")}</dt><dd>{text(route.evidenceStyleLabel)}</dd></div>
+        <div><dt>{t("front.worldPressure")}</dt><dd>{text(route.pressureLabel)}</dd></div>
       </dl>
-      <ol className={styles.chapterRail} aria-label={`${card.label} ${route.label} chapter structure`}>
-        {route.chapterLabels.map((chapter, index) => <li key={chapter}><span>{index + 1}</span><b>{chapter}</b></li>)}
+      <ol className={styles.chapterRail} aria-label={`${text(card.label)} ${text(route.label)} ${t("front.authoredRoute")}`}>
+        {route.chapterLabels.map((chapter, index) => <li key={chapter}><span>{number(index + 1)}</span><b>{text(chapter)}</b></li>)}
       </ol>
-      <div className={styles.finale}><span>Finale</span><strong>{route.finaleLabel}</strong></div>
-      <small>{route.replayContrast}</small>
+      <div className={styles.finale}><span>{t("front.finale")}</span><strong>{text(route.finaleLabel)}</strong></div>
+      <small>{text(route.replayContrast)}</small>
     </>
   );
   if (!interactive) return <article className={styles.card} data-testid="campaign-front-door-card">{content}</article>;
@@ -77,15 +79,60 @@ export function CampaignFrontDoor({
   onDismiss?: () => void;
 }) {
   const routeChoiceRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
+  const { t, text } = useAppLocale();
+
+  useEffect(() => {
+    if (runtimeMode !== "server" || !open) return;
+    restoreFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const modalRoot = stageRef.current?.closest<HTMLElement>("[data-testid='campaign-front-door']");
+    const inertedSiblings = Array.from(modalRoot?.parentElement?.children || [])
+      .filter((item): item is HTMLElement => item instanceof HTMLElement && item !== modalRoot && !item.inert);
+    for (const sibling of inertedSiblings) sibling.inert = true;
+    const frame = window.requestAnimationFrame(() => headingRef.current?.focus());
+    return () => {
+      window.cancelAnimationFrame(frame);
+      for (const sibling of inertedSiblings) sibling.inert = false;
+      const target = restoreFocusRef.current;
+      if (target?.isConnected) window.requestAnimationFrame(() => target.focus());
+    };
+  }, [open, runtimeMode]);
+
+  function handleDialogKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === "Escape" && !busy) {
+      event.preventDefault();
+      onDismiss?.();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const focusable = Array.from(stageRef.current?.querySelectorAll<HTMLElement>("button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])") || []);
+    if (!focusable.length) {
+      event.preventDefault();
+      headingRef.current?.focus();
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
   function selectCampaign(index: number) {
     onSelect?.(index);
     if (window.matchMedia("(max-width: 900px)").matches) requestAnimationFrame(() => routeChoiceRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }
   if (runtimeMode === "static-demo") {
     return (
-      <section className={styles.preview} data-testid="campaign-front-door" aria-label="Three read-only Campaign previews">
-        <div className={styles.previewHeader}><span>Three Campaign previews</span><b>Server-only route choice / start / continue</b></div>
-        <div className={styles.previewBoundary}>Static keeps both authored routes read-only. It does not select a route, persist a choice, or request `/api/*`.</div>
+      <section className={styles.preview} data-testid="campaign-front-door" aria-label={t("front.aria.preview")}>
+        <div className={styles.previewHeader}><span>{t("front.preview.label")}</span><b>{t("front.preview.boundary")}</b></div>
+        <div className={styles.previewBoundary}>{t("front.preview.detail")}</div>
         <div className={styles.cards}>
           {cards.map((card, index) => <CampaignCard key={card.label} card={card} ordinal={index + 1} selected={false} selectedRouteIndex={0} interactive={false} />)}
         </div>
@@ -96,11 +143,11 @@ export function CampaignFrontDoor({
   const selected = cards[selectedIndex] || cards[0];
   const selectedRoute = selected?.routes[selectedRouteIndex] || selected?.routes[0];
   return (
-    <section className={styles.backdrop} data-testid="campaign-front-door" aria-label="Campaign front door">
-      <div className={styles.stage}>
+    <section className={styles.backdrop} data-testid="campaign-front-door">
+      <div ref={stageRef} className={styles.stage} role="dialog" aria-modal="true" aria-labelledby="campaign-front-door-title" aria-describedby="campaign-front-door-description" onKeyDown={handleDialogKeyDown}>
         <header>
-          <div><span className={styles.eyebrow}>Detective Town / Campaign Desk</span><h2>Choose the pressure and authored route for your next three cases</h2></div>
-          <p>Every route uses the same certified investigation authority. Your choice changes authored context, case-family preference, and replay contrast, never an extracted case truth.</p>
+          <div><span className={styles.eyebrow}>{t("front.desk")}</span><h2 id="campaign-front-door-title" ref={headingRef} tabIndex={-1}>{t("front.title")}</h2></div>
+          <p id="campaign-front-door-description">{t("front.detail")}</p>
         </header>
         <div className={styles.cards}>
           {cards.map((card, index) => (
@@ -108,17 +155,17 @@ export function CampaignFrontDoor({
           ))}
         </div>
         {selected && <div ref={routeChoiceRef} className={styles.routeChoice} data-testid="campaign-front-door-route-choice">
-          <div><span>Authored route</span><b>{selectedRoute?.label || "Route unavailable"}</b><small>{selectedRoute?.strategyLabel}</small></div>
-          <div role="group" aria-label={`${selected.label} route choice`}>
-            {selected.routes.map((route, index) => <button type="button" key={route.label} data-testid="campaign-front-door-route" aria-pressed={index === selectedRouteIndex} onClick={() => onSelectRoute?.(index)} disabled={busy}><b>{route.label}</b><small>{index === 0 ? "Original three-case route" : "Counter-route replay"}</small></button>)}
+          <div><span>{t("front.authoredRoute")}</span><b>{selectedRoute ? text(selectedRoute.label) : t("front.routeUnavailable")}</b><small>{selectedRoute ? text(selectedRoute.strategyLabel) : ""}</small></div>
+          <div role="group" aria-label={`${text(selected.label)} ${t("front.authoredRoute")}`}>
+            {selected.routes.map((route, index) => <button type="button" key={route.label} data-testid="campaign-front-door-route" aria-pressed={index === selectedRouteIndex} onClick={() => onSelectRoute?.(index)} disabled={busy}><b>{text(route.label)}</b><small>{index === 0 ? t("front.route.original.long") : t("front.route.counter.long")}</small></button>)}
           </div>
         </div>}
         <footer>
-          <div className={styles.selectionSummary}><span>Selected campaign / route</span><b>{selected && selectedRoute ? `${selected.label} / ${selectedRoute.label}` : "Campaign unavailable"}</b><small role="status" aria-live="polite">{status}</small></div>
+          <div className={styles.selectionSummary}><span>{t("front.selection")}</span><b>{selected && selectedRoute ? `${text(selected.label)} / ${text(selectedRoute.label)}` : t("front.campaignUnavailable")}</b><small role="status" aria-live="polite">{text(status)}</small></div>
           <div className={styles.actions}>
-            {canContinue ? <button type="button" data-testid="campaign-front-door-continue" onClick={onContinue} disabled={busy}>Continue saved Campaign</button> : null}
-            <button type="button" data-testid="campaign-front-door-dismiss" onClick={onDismiss} disabled={busy}>Return to current map</button>
-            <button type="button" className={styles.primary} data-testid="campaign-front-door-start" data-campaign-primary="true" onClick={onStart} disabled={busy || !selected || !selectedRoute}>{busy ? "Preparing campaign…" : "Start selected Campaign"}</button>
+            {canContinue ? <button type="button" data-testid="campaign-front-door-continue" onClick={onContinue} disabled={busy}>{t("front.continueSaved")}</button> : null}
+            <button type="button" data-testid="campaign-front-door-dismiss" onClick={onDismiss} disabled={busy}>{t("front.returnMap")}</button>
+            <button type="button" className={styles.primary} data-testid="campaign-front-door-start" data-campaign-primary="true" onClick={onStart} disabled={busy || !selected || !selectedRoute}>{busy ? t("front.preparing") : t("front.start")}</button>
           </div>
         </footer>
       </div>

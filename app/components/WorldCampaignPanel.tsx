@@ -24,6 +24,7 @@ import type {
   WorldPressureCascadeSummary
 } from "@/app/campaign/world-campaign-types";
 import type { PlayerSession, WorldLeadFocus } from "@/lib/engine";
+import { useAppLocale } from "@/app/localization/locale-context";
 import { CampaignJourneySurface } from "./CampaignJourneySurfaces";
 import { StaticWorldCampaignBoundary } from "./StaticWorldCampaignBoundary";
 import {
@@ -102,6 +103,7 @@ export function WorldCampaignPanel({
   onDirectiveDecision, onResourceCommitmentDecision, onWorldEventOfferDecision,
   onCampaignRecoveryDecision, onInvestigatorHeadquartersDecision, busy
 }: WorldCampaignPanelProps) {
+  const { number, t, text } = useAppLocale();
   if (!session && runtimeMode === "static-demo") return null;
   if (!session && runtimeMode === "server" && !(handoff || arc || directive || pressure || worldEventOffer || investigatorProgression || campaignRecovery || investigatorHeadquarters || arcConvergence || campaignSession || townSocialResponse)) return null;
   if (runtimeMode === "static-demo") return <StaticWorldCampaignBoundary />;
@@ -111,50 +113,50 @@ export function WorldCampaignPanel({
   const surfaces: Array<{ key: string; label: string; node: ReactNode }> = [
     {
       key: "campaign",
-      label: "Campaign journey",
+      label: t("world.campaignJourney"),
       node: campaignSession ? <CampaignJourneySurface summary={campaignSession} debrief={campaignFinaleDebrief} pacing={campaignPacing} /> : null
     },
-    { key: "social", label: "Town reactions", node: townSocialResponse ? <TownSocialResponsePanel summary={townSocialResponse} /> : null },
-    { key: "influence", label: "Influence budget", node: influenceBudget ? <WorldInfluenceBudgetPanel summary={influenceBudget} /> : null },
-    { key: "faction", label: "Faction relationship", node: factionRelationship ? <FactionRelationshipPanel summary={factionRelationship} /> : null },
-    { key: "offer", label: "World opportunity", node: worldEventOffer ? <WorldEventOfferPanel summary={worldEventOffer} onDecision={onWorldEventOfferDecision} busy={busy} /> : null },
-    { key: "recovery", label: "Campaign recovery", node: campaignRecovery ? <CampaignRecoveryPanel summary={campaignRecovery} onDecision={onCampaignRecoveryDecision} busy={busy} /> : null },
-    { key: "headquarters", label: "Investigator Headquarters", node: investigatorHeadquarters ? <InvestigatorHeadquartersPanel summary={investigatorHeadquarters} onDecision={onInvestigatorHeadquartersDecision} busy={busy} /> : null },
-    { key: "progression", label: "Investigator progression", node: investigatorProgression ? <InvestigatorProgressionPanel summary={investigatorProgression} /> : null },
-    { key: "convergence", label: "Arc convergence", node: arcConvergence ? <ArcConvergencePanel summary={arcConvergence} /> : null },
-    { key: "operations", label: "Investigation operations", node: playerResourceCommitment ? <InvestigationOperationsPanel summary={playerResourceCommitment} onDecision={session ? onResourceCommitmentDecision : undefined} busy={busy} /> : null },
-    { key: "arc", label: "World arc", node: arc ? <WorldArcProgress summary={arc} /> : null },
-    { key: "directive", label: "Faction directive", node: directive ? <WorldArcDirectivePanel summary={directive} onDecision={onDirectiveDecision} busy={busy} /> : null },
+    { key: "social", label: t("world.townReactions"), node: townSocialResponse ? <TownSocialResponsePanel summary={townSocialResponse} /> : null },
+    { key: "influence", label: t("world.influenceBudget"), node: influenceBudget ? <WorldInfluenceBudgetPanel summary={influenceBudget} /> : null },
+    { key: "faction", label: t("world.factionRelationship"), node: factionRelationship ? <FactionRelationshipPanel summary={factionRelationship} /> : null },
+    { key: "offer", label: t("world.opportunity"), node: worldEventOffer ? <WorldEventOfferPanel summary={worldEventOffer} onDecision={onWorldEventOfferDecision} busy={busy} /> : null },
+    { key: "recovery", label: t("world.recovery"), node: campaignRecovery ? <CampaignRecoveryPanel summary={campaignRecovery} onDecision={onCampaignRecoveryDecision} busy={busy} /> : null },
+    { key: "headquarters", label: t("world.headquarters"), node: investigatorHeadquarters ? <InvestigatorHeadquartersPanel summary={investigatorHeadquarters} onDecision={onInvestigatorHeadquartersDecision} busy={busy} /> : null },
+    { key: "progression", label: t("world.progression"), node: investigatorProgression ? <InvestigatorProgressionPanel summary={investigatorProgression} /> : null },
+    { key: "convergence", label: t("world.convergence"), node: arcConvergence ? <ArcConvergencePanel summary={arcConvergence} /> : null },
+    { key: "operations", label: t("world.operations"), node: playerResourceCommitment ? <InvestigationOperationsPanel summary={playerResourceCommitment} onDecision={session ? onResourceCommitmentDecision : undefined} busy={busy} /> : null },
+    { key: "arc", label: t("world.arc"), node: arc ? <WorldArcProgress summary={arc} /> : null },
+    { key: "directive", label: t("world.directive"), node: directive ? <WorldArcDirectivePanel summary={directive} onDecision={onDirectiveDecision} busy={busy} /> : null },
     {
       key: "pressure",
-      label: "World pressure",
+      label: t("world.pressure"),
       node: pressure ? <WorldPressureCascadePanel summary={pressure} /> : null
     },
     {
       key: "outcome",
-      label: "World lead outcome",
+      label: t("world.outcome"),
       node: outcome ? <div className={`worldLeadOutcome ${outcome.status}`} data-testid="world-lead-outcome">
-        <span><b>{outcome.status}</b>world effect</span><small>{outcome.benefitLabel}</small><small>{outcome.costLabel}</small><em>{outcome.nextAction}</em>
+        <span><b>{text(outcome.status)}</b>{t("world.effect")}</span><small>{text(outcome.benefitLabel)}</small><small>{text(outcome.costLabel)}</small><em>{text(outcome.nextAction)}</em>
       </div> : null
     },
     {
       key: "handoff",
-      label: "Next-case handoff",
+      label: t("world.handoff"),
       node: handoff ? <div className={`worldLeadHandoff ${handoff.status}`} data-testid="world-lead-handoff">
-        <span><b>{handoff.status}</b>{handoff.label}</span><small>{handoff.nextAction}</small>
+        <span><b>{text(handoff.status)}</b>{text(handoff.label)}</span><small>{text(handoff.nextAction)}</small>
       </div> : null
     },
     {
       key: "lead",
-      label: "World lead choice",
+      label: t("world.leadChoice"),
       node: summary ? <>
         <div className="worldLeadMetrics">
-          <span><b>{summary.focus}</b>preferred route step</span>
-          <span><b>{summary.status === "followed" ? "active" : summary.status === "resolved" ? "complete" : "optional"}</b>lead status</span>
+          <span><b>{text(summary.focus)}</b>{t("world.preferredStep")}</span>
+          <span><b>{text(summary.status === "followed" ? "active" : summary.status === "resolved" ? "complete" : "optional")}</b>{t("world.leadStatus")}</span>
         </div>
         {pending && onDecision && <div className="worldLeadActions">
-          <button type="button" className="primaryButton" data-testid="world-lead-follow" onClick={() => onDecision("follow")} disabled={busy}>Follow World Lead</button>
-          <button type="button" data-testid="world-lead-skip" onClick={() => onDecision("skip")} disabled={busy}>Keep Certified Route</button>
+          <button type="button" className="primaryButton" data-testid="world-lead-follow" onClick={() => onDecision("follow")} disabled={busy}>{t("world.follow")}</button>
+          <button type="button" data-testid="world-lead-skip" onClick={() => onDecision("skip")} disabled={busy}>{t("world.keepRoute")}</button>
         </div>}
       </> : null
     }
@@ -164,18 +166,18 @@ export function WorldCampaignPanel({
   return (
     <section className={`worldLeadPanel ${summary?.status || "handoffOnly"}`} data-testid="world-lead-panel">
       <div className="worldLeadHeader">
-        <div><span>World Lead</span><strong>{session ? "Case & World Consequence" : "Next Case World Context"}</strong></div>
-        <b>{summary?.status || handoff?.status || arc?.status || action.status}</b>
+        <div><span>{t("world.lead")}</span><strong>{session ? t("world.caseConsequence") : t("world.nextCaseContext")}</strong></div>
+        <b>{text(summary?.status || handoff?.status || arc?.status || action.status)}</b>
       </div>
       <div className={`worldCampaignCurrentAction ${action.status}`} data-testid="world-campaign-current-action" data-command-brief-layer="context">
-        <span>Campaign priority</span><b>{commandBrief?.primaryAction?.label || action.label}</b><small>{commandBrief?.whyNow || action.detail}</small>
+        <span>{t("world.campaignPriority")}</span><b>{text(commandBrief?.primaryAction?.label || action.label)}</b><small>{text(commandBrief?.whyNow || action.detail)}</small>
       </div>
       <div className="worldCampaignFocus" data-testid="world-campaign-focus" data-focus-surface={focusedEntry?.key || "overview"}>
-        <span className="worldCampaignFocusLabel">Focused world context</span>
-        {focusedEntry?.node || <small>Continue the certified investigation path; optional world context is archived below.</small>}
+        <span className="worldCampaignFocusLabel">{t("world.focusedContext")}</span>
+        {focusedEntry?.node || <small>{t("world.continueCertified")}</small>}
       </div>
       {archivedEntries.length > 0 && <details className="worldCampaignArchive" data-testid="world-campaign-archive">
-        <summary>Other campaign context <b>{archivedEntries.length}</b></summary>
+        <summary>{t("world.otherContext")} <b>{number(archivedEntries.length)}</b></summary>
         <div className="worldCampaignArchiveList">
           {archivedEntries.map((entry) => <section key={entry.key} data-testid={`world-campaign-archive-${entry.key}`}>
             <h3>{entry.label}</h3>
@@ -183,7 +185,7 @@ export function WorldCampaignPanel({
           </section>)}
         </div>
       </details>}
-      <em>{session ? "No hidden truth, raw ids, evidence bodies, or route coverage are changed." : "Choose any legal candidate; this one-time preference never changes candidate legality or the certified route."}</em>
+      <em>{session ? t("world.caseBoundary") : t("world.nextCaseBoundary")}</em>
     </section>
   );
 }

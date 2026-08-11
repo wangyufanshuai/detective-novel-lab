@@ -7,6 +7,7 @@ import type { useReplayController } from "@/app/controllers/useReplayController"
 import type { useCampaignComprehensionStudy } from "@/app/hooks/useCampaignComprehensionStudy";
 import type { GuidedManualStepKind, GuidedStepJournalEntry } from "@/app/campaign/replay-practice-model";
 import { postV1 } from "@/app/lib/client-runtime";
+import { useAppLocale } from "@/app/localization/locale-context";
 import type {
   ArcConvergencePublicSummary,
   CampaignFinaleDebriefPublicSummary,
@@ -40,6 +41,7 @@ type CampaignWorldChoiceActionsInput = {
 
 /** Zero-tick campaign choice adapters; every write still uses the existing runtime step endpoint. */
 export function useCampaignWorldChoiceActions({ investigation, campaign, town, replay, campaignStudy, appendJournal }: CampaignWorldChoiceActionsInput) {
+  const { t } = useAppLocale();
   const { world, setWorld, session, runtimeMode, setBusy, setStatus } = investigation;
   const { setTownRuntime, setTownQueue } = town;
   const { replayGoalAttempt } = replay;
@@ -83,8 +85,8 @@ export function useCampaignWorldChoiceActions({ investigation, campaign, town, r
         nextAction: data.investigatorHeadquarters.nextAction
       });
       setStatus(`Headquarters prepared: ${data.investigatorHeadquarters.choiceLabel || choice}. Extract any legal next case when ready.`);
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to prepare Investigator Headquarters.");
+    } catch {
+      setStatus(t("error.generic"));
     } finally {
       setBusy(false);
     }
@@ -137,8 +139,8 @@ export function useCampaignWorldChoiceActions({ investigation, campaign, town, r
           : data.worldLeadOutcome ? "World lead resolved. A bounded world effect is active for this case." : "World lead resolved after its eligible certified step.");
       if (action !== "resolve") campaignStudy.recordWorldChoice("world-lead");
       return data.worldLead;
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to update world lead.");
+    } catch {
+      setStatus(t("error.generic"));
       return undefined;
     } finally { setBusy(false); }
   }
@@ -168,8 +170,8 @@ export function useCampaignWorldChoiceActions({ investigation, campaign, town, r
       });
       setStatus(choice === "defer" ? "Faction directive deferred. The response remains open." : `Faction directive ${choice} scheduled for the next legal institution cycle.`);
       campaignStudy.recordWorldChoice("faction-directive");
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to update faction directive.");
+    } catch {
+      setStatus(t("error.generic"));
     } finally { setBusy(false); }
   }
 
@@ -197,8 +199,8 @@ export function useCampaignWorldChoiceActions({ investigation, campaign, town, r
       });
       setStatus(allocations.length ? `Investigation Operations plan confirmed with ${allocations.length} supported lane(s).` : "Manual First plan confirmed. The certified route remains available without a reserve.");
       campaignStudy.recordWorldChoice("resource-commitment");
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to update case resource commitment.");
+    } catch {
+      setStatus(t("error.generic"));
     } finally { setBusy(false); }
   }
 
@@ -222,8 +224,8 @@ export function useCampaignWorldChoiceActions({ investigation, campaign, town, r
       });
       setStatus(choice === "accept" ? "World opportunity accepted for the next legal institution cycle." : "World opportunity declined without a hidden penalty.");
       campaignStudy.recordWorldChoice("world-event-offer");
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to update world opportunity.");
+    } catch {
+      setStatus(t("error.generic"));
     } finally { setBusy(false); }
   }
 
@@ -270,8 +272,8 @@ export function useCampaignWorldChoiceActions({ investigation, campaign, town, r
       setStatus(choice === "defer" ? "Recovery deferred; the certified case path remains available." : data.campaignRecovery.progressLabel);
       if (choice !== "defer") campaignStudy.recordRecoveryStarted();
       else campaignStudy.recordWorldChoice("campaign-recovery");
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to update campaign recovery.");
+    } catch {
+      setStatus(t("error.generic"));
     } finally { setBusy(false); }
   }
 

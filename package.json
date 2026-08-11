@@ -35,6 +35,9 @@
     "test:presentation-ui": "node scripts/run-presentation-feedback-tests.mjs",
     "test:controller-contracts": "node scripts/run-controller-contract-tests.mjs",
     "test:world-session-boundaries": "node scripts/run-world-session-boundary-tests.mjs",
+    "test:localization": "node scripts/run-localization-tests.mjs",
+    "test:save-recovery": "node scripts/run-save-recovery-tests.mjs",
+    "test:accessibility": "node scripts/run-accessibility-contract-tests.mjs",
     "test:campaign-front-door": "node scripts/run-campaign-front-door-tests.mjs",
     "test:authored-campaign-cases": "node scripts/run-authored-campaign-case-tests.mjs",
     "test:investigation-operations": "node scripts/run-investigation-operations-tests.mjs",
@@ -95,6 +98,7 @@
     "qa:investigator-headquarters": "node scripts/run-investigator-headquarters-browser-qa.mjs",
     "qa:campaign-front-door": "node scripts/run-campaign-front-door-browser-qa.mjs",
     "qa:campaign-study": "node scripts/run-campaign-comprehension-browser-qa.mjs",
+    "qa:accessibility-bilingual": "node scripts/run-bilingual-accessibility-browser-qa.mjs",
     "qa:release-local": "node scripts/run-release-local-qa.mjs",
     "test:replay-audit": "node scripts/run-replay-audit-tests.mjs",
     "backup:sqlite": "node scripts/backup-sqlite.mjs"
@@ -112,6 +116,7 @@
     "typescript": "^5.9.3"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
     "@playwright/test": "^1.60.0",
     "@types/better-sqlite3": "^7.6.13"
   }

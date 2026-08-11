@@ -5,14 +5,15 @@ import path from "node:path";
 const root = process.cwd();
 const read = (file) => fs.readFile(path.join(root, file), "utf8");
 
-const [page, worldSession, readQueries, launch, transient, choices, lifecycle] = await Promise.all([
+const [page, worldSession, readQueries, launch, transient, choices, lifecycle, persistence] = await Promise.all([
   read("app/page.tsx"),
   read("app/hooks/useWorldSessionActions.ts"),
   read("app/hooks/useInvestigationReadQueries.ts"),
   read("app/hooks/useCampaignLaunchActions.ts"),
   read("app/hooks/useWorkspaceLifecycleEffects.ts"),
   read("app/hooks/useCampaignWorldChoiceActions.ts"),
-  read("app/hooks/usePersistentTownLifecycle.ts")
+  read("app/hooks/usePersistentTownLifecycle.ts"),
+  read("app/lib/world-session-persistence.ts")
 ]);
 
 for (const method of ["persist", "hydrateStatic", "currentStaticState", "hydrateCase", "createWorld", "loadWorld", "tickWorld", "switchRuntime", "switchCaseTemplate"]) {
@@ -41,13 +42,20 @@ assert.equal(/\b(fetch|postJson|postV1|getV1)\s*\(/.test(page), false, "root pag
 for (const source of [transient]) {
   assert.equal(/\/api\/|\b(fetch|postJson|postV1|getV1)\s*\(/.test(source), false, "request-free lifecycle boundary has no request authority");
 }
-assert.match(worldSession, /detective-town-launch-v1/);
+assert.match(persistence, /detective-town-launch-v1/);
+assert.match(persistence, /WORLD_BOOTSTRAP_STORAGE_KEY = "detective-town-bootstrap-v1"/);
+assert.match(worldSession, /normalizeWorldSessionPointer/);
+assert.match(worldSession, /serializeWorldSessionPointer/);
 assert.match(worldSession, /initialized\.current/);
 const runtimeGuard = worldSession.indexOf("const selectedRuntime = resolveRuntimeMode()");
 const staticBranch = worldSession.indexOf('if (selectedRuntime === "static-demo")', runtimeGuard);
 const liveEvalCall = worldSession.indexOf("loadLatestLiveEval()", runtimeGuard);
 const bootstrapCreate = worldSession.indexOf('createWorld("server"', runtimeGuard);
 assert.ok(runtimeGuard >= 0 && staticBranch > runtimeGuard && liveEvalCall > staticBranch && bootstrapCreate > liveEvalCall, "bootstrap resolves runtime and preserves Static guard before Server requests");
+const bootstrapRead = worldSession.indexOf("sessionStorage.getItem(WORLD_BOOTSTRAP_STORAGE_KEY)", runtimeGuard);
+assert.ok(bootstrapRead > staticBranch, "Static returns before the Server bootstrap pointer is read");
+assert.match(worldSession, /sessionStorage\.setItem\(WORLD_BOOTSTRAP_STORAGE_KEY, "pending"\)/, "bootstrap claims a synchronous pending sentinel before world creation");
+assert.doesNotMatch(worldSession, /localStorage\.(?:getItem|setItem|removeItem)\(WORLD_BOOTSTRAP_STORAGE_KEY\)/, "temporary bootstrap state never enters durable Continue storage");
 
 const launchOrder = [
   'createWorld("server"',
@@ -60,6 +68,8 @@ const launchOrder = [
 ].map((needle) => launch.indexOf(needle));
 assert.equal(launchOrder.every((index) => index >= 0), true, "Campaign launch contains every bounded phase");
 for (let index = 1; index < launchOrder.length; index += 1) assert.ok(launchOrder[index] > launchOrder[index - 1], "Campaign launch phase order remains stable");
+assert.match(launch, /createWorld\("server", \{ saveAsContinue: false, campaignReady: true, applyToClient: false \}\)/, "Campaign creation remains staged until route-integrity extraction succeeds");
+assert.doesNotMatch(launch, /\bset(?:World|Events|TownRuntime|TownQueue)\s*\(/, "Campaign launch does not apply intermediate server state to the player workspace");
 assert.match(launch, /if \(!loaded\) throw/);
 assert.match(choices, /steps: 0/);
 assert.match(choices, /investigatorHeadquartersDecision/);
@@ -80,5 +90,5 @@ for (const [file, maximum] of budgets) {
 console.log(JSON.stringify({
   ok: true,
   suite: "world-session-boundaries",
-  checks: ["adapter-surface", "request-ownership", "root-composition", "static-guard", "bootstrap-idempotence", "campaign-order", "headquarters-zero-tick", "lifecycle-readonly", "line-budgets"]
+  checks: ["adapter-surface", "request-ownership", "root-composition", "static-guard", "bootstrap-idempotence", "campaign-staging", "campaign-order", "headquarters-zero-tick", "lifecycle-readonly", "line-budgets"]
 }));

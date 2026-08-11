@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useInspectorSelection } from "@/app/hooks/useInspectorSelection";
 import type { SelectionHighlight } from "@/app/hooks/useGuidedOnboarding";
 import type { InvestigationToast } from "@/app/components/DetectiveTownUI";
+import { useAppLocale } from "@/app/localization/locale-context";
 import type {
   CaseFromLog,
   CaseLogicReport,
@@ -43,6 +44,7 @@ export type CaseMode = "premium" | "generated";
 
 /** Owns player-facing case/session/selection state while certified actions stay unchanged. */
 export function useInvestigationController(initialProgress: InvestigationProgress) {
+  const { locale, t } = useAppLocale();
   const [world, setWorld] = useState<WorldState | null>(null);
   const [events, setEvents] = useState<WorldEvent[]>([]);
   const [activeCase, setActiveCase] = useState<CaseFromLog | null>(null);
@@ -55,15 +57,15 @@ export function useInvestigationController(initialProgress: InvestigationProgres
   const [caseTemplateId, setCaseTemplateId] = useState<CaseTemplateId>("archive-blunt");
   const [caseArchetype, setCaseArchetype] = useState<MurderArchetype | "auto">("auto");
   const [mode, setMode] = useState<WorldMode>("showcase");
-  const [playerName, setPlayerName] = useState("调查员");
+  const [playerName, setPlayerName] = useState("Investigator");
   const [timeValue, setTimeValue] = useState(21 * 60 + 30);
   const [selectedSceneId, setSelectedSceneId] = useState("");
   const [selectedCharacterId, setSelectedCharacterId] = useState("");
   const [selectedEvidenceId, setSelectedEvidenceId] = useState("");
   const [highlightedEventId, setHighlightedEventId] = useState("");
-  const [question, setQuestion] = useState("案发窗口你在哪里？你记得哪些异常？");
+  const [question, setQuestion] = useState("Where were you during the incident window, and what did you notice?");
   const [theory, setTheory] = useState<PlayerTheory>({ culpritId: "", motive: "", method: "", evidenceIds: [] });
-  const [status, setStatus] = useState("已载入 8 NPC / 24h Detective Town。先观察时间线，再搜索地点和询问 NPC。");
+  const [status, setStatus] = useState("Loaded the deterministic Detective Town. Observe the timeline, then search locations and question NPCs.");
   const [revealText, setRevealText] = useState("");
   const [lastAiSafety, setLastAiSafety] = useState<AiSafetyState | null>(null);
   const [latestLiveEval, setLatestLiveEval] = useState<DeepSeekLiveEvalReport | null>(null);
@@ -82,6 +84,12 @@ export function useInvestigationController(initialProgress: InvestigationProgres
   const [hoveredLocationId, setHoveredLocationId] = useState("");
   const [toasts, setToasts] = useState<InvestigationToast[]>([]);
   const inspector = useInspectorSelection("investigation");
+
+  useEffect(() => {
+    setPlayerName((current) => current === "Investigator" || current === "调查员" ? t("control.defaultPlayerName") : current);
+    setQuestion((current) => current === "Where were you during the incident window, and what did you notice?" || current === "案发时段你在哪里？你注意到了哪些异常？" ? t("workspace.defaultQuestion") : current);
+    setStatus((current) => current === "Loaded the deterministic Detective Town. Observe the timeline, then search locations and question NPCs." || current === "已载入确定性侦探小镇。请先观察时间线，再搜索地点并询问 NPC。" ? t("status.ready") : current);
+  }, [locale, t]);
 
   function pushToast(toast: Omit<InvestigationToast, "id">) {
     const id = `toast:${Date.now()}:${Math.random().toString(16).slice(2)}`;

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useAppLocale } from "@/app/localization/locale-context";
 import type {
   ArcConvergencePublicSummary,
   CampaignFinaleDebriefPublicSummary,
@@ -23,11 +24,12 @@ import type {
 
 /** Owns the public-safe campaign lifecycle state consumed by the player surfaces. */
 export function useCampaignController() {
+  const { locale, t } = useAppLocale();
   const [frontDoorOpen, setFrontDoorOpen] = useState(true);
   const [frontDoorSelection, setFrontDoorSelection] = useState(0);
   const [frontDoorRouteSelection, setFrontDoorRouteSelection] = useState(0);
   const [frontDoorBusy, setFrontDoorBusy] = useState(false);
-  const [frontDoorStatus, setFrontDoorStatus] = useState("Choose one three-case campaign, then start a clean local town.");
+  const [frontDoorStatus, setFrontDoorStatus] = useState("Choose one three-case Campaign, then start a clean local town.");
   const [continueWorldId, setContinueWorldId] = useState("");
   const [continueSessionId, setContinueSessionId] = useState("");
   const [worldLead, setWorldLead] = useState<WorldLeadPublicSummary | null>(null);
@@ -47,6 +49,10 @@ export function useCampaignController() {
   const [campaignSession, setCampaignSession] = useState<CampaignSessionPublicSummary | null>(null);
   const [campaignFinaleDebrief, setCampaignFinaleDebrief] = useState<CampaignFinaleDebriefPublicSummary | null>(null);
   const [townSocialResponse, setTownSocialResponse] = useState<TownSocialResponsePublicSummary | null>(null);
+
+  useEffect(() => {
+    setFrontDoorStatus((current) => current === "Choose one three-case Campaign, then start a clean local town." || current === "请选择一个三案 Campaign，然后开始干净的本地小镇。" ? t("front.status.choose") : current);
+  }, [locale, t]);
 
   return {
     frontDoorOpen, setFrontDoorOpen,

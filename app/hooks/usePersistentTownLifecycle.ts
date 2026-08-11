@@ -5,6 +5,7 @@ import type { useInvestigationController } from "@/app/controllers/useInvestigat
 import type { useReviewController } from "@/app/controllers/useReviewController";
 import type { useTownRuntimeController } from "@/app/controllers/useTownRuntimeController";
 import { getV1, postV1 } from "@/app/lib/client-runtime";
+import { useAppLocale } from "@/app/localization/locale-context";
 import type { GuidedStepJournalEntry } from "@/app/campaign/replay-practice-model";
 import type {
   ArcConvergencePublicSummary,
@@ -79,6 +80,7 @@ export function usePersistentTownLifecycle({
   appendGuidedStepJournal,
   hydrateCase
 }: UsePersistentTownLifecycleInput) {
+  const { t } = useAppLocale();
   const {
     world,
     setWorld,
@@ -261,7 +263,7 @@ export function usePersistentTownLifecycle({
 
   useEffect(() => {
     if (appMode !== "persistent-town" || runtimeMode === "static-demo" || !world?.id) return;
-    void refreshTownRuntime(world.id, selectedCharacterId).catch((error) => setStatus(error instanceof Error ? error.message : "Failed to refresh persistent town"));
+    void refreshTownRuntime(world.id, selectedCharacterId).catch(() => setStatus(t("error.load")));
     // Refresh is the lifecycle boundary; keep the same dependency shape as the former page effect.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appMode, runtimeMode, selectedCharacterId, world?.id]);
@@ -304,8 +306,8 @@ export function usePersistentTownLifecycle({
       setStatus("Persistent Agent Town started. NPC decisions are now writing WorldEvents.");
       campaignStudy.recordMeaningfulAction();
       await refreshTownRuntime(data.world.id);
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to start Persistent Agent Town");
+    } catch {
+      setStatus(t("error.generic"));
     } finally {
       setTownRuntimeBusy(false);
     }
@@ -318,8 +320,8 @@ export function usePersistentTownLifecycle({
       const data = await postV1<{ runtime: PersistentTownRuntime }>("/api/v1/command/town/runtime/pause", { worldId: world.id });
       setTownRuntime(data.runtime);
       setStatus("Persistent Agent Town paused.");
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to pause runtime");
+    } catch {
+      setStatus(t("error.generic"));
     } finally {
       setTownRuntimeBusy(false);
     }
@@ -406,8 +408,8 @@ export function usePersistentTownLifecycle({
       setStatus(`Persistent tick ${data.runtime.tick}: ${data.events.length} WorldEvents added, ${data.queue.candidates.length} candidates in queue.`);
       campaignStudy.recordMeaningfulAction();
       await refreshTownRuntime(data.world.id);
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to step runtime");
+    } catch {
+      setStatus(t("error.tick"));
     } finally {
       setTownRuntimeBusy(false);
     }
@@ -427,8 +429,8 @@ export function usePersistentTownLifecycle({
       setPlayerResourceCommitment(null);
       setSelectedAgentCandidates([]);
       setStatus("Persistent Agent Town runtime reset.");
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to reset runtime");
+    } catch {
+      setStatus(t("error.generic"));
     } finally {
       setTownRuntimeBusy(false);
     }
@@ -443,8 +445,8 @@ export function usePersistentTownLifecycle({
       setWorld(data.world);
       setStatus(kind === "action-bias" ? `Director action bias applied: ${String(value)} will influence the selected NPC next tick.` : "Counterfactual resource intervention applied to selected NPC.");
       await refreshTownRuntime(data.world.id);
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to apply intervention");
+    } catch {
+      setStatus(t("error.generic"));
     } finally {
       setTownRuntimeBusy(false);
     }
@@ -498,8 +500,8 @@ export function usePersistentTownLifecycle({
       campaignStudy.recordMeaningfulAction();
       if (finaleStudyChoiceReady) campaignStudy.recordWorldChoice("finale-case");
       return true;
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to extract playable case");
+    } catch {
+      setStatus(t("error.generic"));
       return false;
     } finally {
       setTownRuntimeBusy(false);

@@ -682,8 +682,8 @@ function importAuthoringJson() {
       throw new Error("JSON must be an AuthoringDraft or a standalone DeductionCase.");
     }
     setAuthoringStatus("Import complete. Draft was loaded and saved to the browser-local Case Gallery.");
-  } catch (error) {
-    setAuthoringStatus(error instanceof Error ? error.message : "Import failed: invalid JSON.");
+  } catch {
+    setAuthoringStatus("Import failed safely. Check the JSON structure and retry.");
   }
 }
 

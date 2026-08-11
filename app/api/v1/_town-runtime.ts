@@ -45,6 +45,7 @@ import {
   createWorldFromScenarioPack,
   createRunJob,
   createPersistentTownRuntime,
+  normalizePersistentTownRuntime,
   deriveWorldSystemRuntimeHints,
   deriveTownSocialResponseDirectionFromDeltas,
   compareRuns,
@@ -200,25 +201,37 @@ export function loadRuntimeWorld(worldId: string) {
   const world = worldRepository.getWorld(worldId) as RuntimeWorld | null;
   if (!world) return null;
   const events = worldRepository.getEvents(worldId);
-  if (!world.persistentRuntime) {
-    world.persistentRuntime = createRuntimeForWorld(world, events);
+  const existingRuntime = world.persistentRuntime;
+  const needsNormalization = !existingRuntime
+    || existingRuntime.worldId !== world.id
+    || !Array.isArray(existingRuntime.agentStates)
+    || !Array.isArray(existingRuntime.candidates)
+    || !Array.isArray(existingRuntime.decisionTraces)
+    || !existingRuntime.caseLifecycle
+    || !Array.isArray(existingRuntime.pressureLedger)
+    || !Array.isArray(existingRuntime.townSocialResponses?.items);
+  if (needsNormalization) {
+    world.persistentRuntime = normalizePersistentTownRuntime(world, events, existingRuntime);
+    ensureRuntimeWorldSystemHints(world.persistentRuntime);
     worldRepository.saveWorld(world);
-  } else {
-    const activeCandidate = world.persistentRuntime.candidates.find((candidate) => candidate.caseId === world.activeCaseId);
-    const previousHintsCaseType = world.persistentRuntime.worldSystemHints?.source?.caseTypeId;
-    const previousArcLine = world.persistentRuntime.worldArcProgress?.currentLineId;
-    ensureRuntimeWorldSystemHints(world.persistentRuntime, activeCandidate?.caseType, activeCandidate?.caseId);
-    if (!world.persistentRuntime.townSocialResponseSummary) {
-      world.persistentRuntime.townSocialResponseSummary = toTownSocialResponsePublicSummary(world, world.persistentRuntime);
+  }
+  const runtime = world.persistentRuntime as PersistentTownRuntime;
+  if (!needsNormalization) {
+    const activeCandidate = runtime.candidates.find((candidate) => candidate.caseId === world.activeCaseId);
+    const previousHintsCaseType = runtime.worldSystemHints?.source?.caseTypeId;
+    const previousArcLine = runtime.worldArcProgress?.currentLineId;
+    ensureRuntimeWorldSystemHints(runtime, activeCandidate?.caseType, activeCandidate?.caseId);
+    if (!runtime.townSocialResponseSummary) {
+      runtime.townSocialResponseSummary = toTownSocialResponsePublicSummary(world, runtime);
     }
     if (
-      previousHintsCaseType !== world.persistentRuntime.worldSystemHints?.source?.caseTypeId ||
-      previousArcLine !== world.persistentRuntime.worldArcProgress?.currentLineId
+      previousHintsCaseType !== runtime.worldSystemHints?.source?.caseTypeId ||
+      previousArcLine !== runtime.worldArcProgress?.currentLineId
     ) {
       worldRepository.saveWorld(world);
     }
   }
-  return { world, events, runtime: world.persistentRuntime };
+  return { world, events, runtime };
 }
 
 export function persistRuntimeWorld(world: RuntimeWorld, eventsToAdd: WorldEvent[] = []) {

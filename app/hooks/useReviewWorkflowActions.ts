@@ -87,8 +87,8 @@ export function useReviewWorkflowActions({ investigation, town, review, lifecycl
       setScenarioRuns(data.runs);
       setSelectedScenarioPresetId(data.preset.id);
       setStatus(`Scenario preset ${data.preset.name} saved.`);
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to save scenario preset");
+    } catch {
+      setStatus("Failed to save scenario preset safely. Retry the same review action.");
     } finally {
       setReviewBusy(false);
     }
@@ -103,8 +103,8 @@ export function useReviewWorkflowActions({ investigation, town, review, lifecycl
       setScenarioRuns(data.runs);
       setSelectedScenarioPresetId(data.presets[0]?.id || "");
       setStatus(`Scenario preset ${presetId} deleted.`);
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to delete scenario preset");
+    } catch {
+      setStatus("Failed to delete scenario preset safely. Retry the same review action.");
     } finally {
       setReviewBusy(false);
     }
@@ -122,8 +122,8 @@ export function useReviewWorkflowActions({ investigation, town, review, lifecycl
       downloadTextFile(data.fileName, JSON.stringify(data.pack, null, 2), "application/json;charset=utf-8");
       setStatus(`ScenarioPack exported: ${data.pack.manifest.name}.`);
       await loadScenarioPacks(world.id).catch(() => undefined);
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to export ScenarioPack");
+    } catch {
+      setStatus("Failed to export ScenarioPack safely. Retry the same review action.");
     } finally {
       setReviewBusy(false);
     }
@@ -136,8 +136,8 @@ export function useReviewWorkflowActions({ investigation, town, review, lifecycl
     try {
       const data = await postV1<{ validation: { ok: boolean; errors: string[]; warnings: string[] } }>("/api/v1/command/town/scenario-pack/validate", { pack });
       setStatus(data.validation.ok ? `ScenarioPack ${pack.manifest.id} is valid.` : `ScenarioPack ${pack.manifest.id} failed validation: ${data.validation.errors.join("; ")}`);
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to validate ScenarioPack");
+    } catch {
+      setStatus("Failed to validate ScenarioPack safely. Retry the same review action.");
     } finally {
       setReviewBusy(false);
     }
@@ -152,8 +152,8 @@ export function useReviewWorkflowActions({ investigation, town, review, lifecycl
       const data = await getV1<{ bundle: unknown; fileName: string }>(`/api/v1/query/town/runs/${encodeURIComponent(runId)}/replay-bundle?worldId=${encodeURIComponent(world.id)}`);
       downloadTextFile(data.fileName, JSON.stringify(data.bundle, null, 2), "application/json;charset=utf-8");
       setStatus(`Replay bundle exported for ${runId}.`);
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to export replay bundle");
+    } catch {
+      setStatus("Failed to export the replay bundle safely. Retry the same review action.");
     } finally {
       setReviewBusy(false);
     }
@@ -181,8 +181,8 @@ export function useReviewWorkflowActions({ investigation, town, review, lifecycl
         setEvents([]);
         await refreshTownRuntime(branchState.world.id).catch(() => undefined);
       } else await refreshTownRuntime(world.id).catch(() => undefined);
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : `Failed to start ${kind} job`);
+    } catch {
+      setStatus(`Failed to start the ${kind} job safely. Retry the same review action.`);
     } finally {
       setReviewBusy(false);
     }
@@ -196,8 +196,8 @@ export function useReviewWorkflowActions({ investigation, town, review, lifecycl
       const data = await postV1<{ job: RunJob }>("/api/v1/command/town/run-job/cancel", { worldId: targetJob?.worldId || world.id, jobId });
       setRunJobs((current) => current.map((job) => job.id === data.job.id ? data.job : job));
       setStatus(`Run job cancelled: ${jobId}.`);
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to cancel run job");
+    } catch {
+      setStatus("Failed to cancel the run job safely. Refresh its status before retrying.");
     } finally {
       setReviewBusy(false);
     }
@@ -221,8 +221,8 @@ export function useReviewWorkflowActions({ investigation, town, review, lifecycl
             setStatus(`${data.job.kind} job completed: ${data.job.runId || data.job.id}.`);
             await refreshTownRuntime(jobWorldId, selectedCharacterId, data.job.runId || data.job.resultRunId || scenarioRun?.id, true).catch(() => undefined);
           }
-        } catch (error) {
-          if (!cancelled) setStatus(error instanceof Error ? error.message : "Failed to advance run job");
+        } catch {
+          if (!cancelled) setStatus("Failed to advance the run job safely. Refresh its status before retrying.");
         }
       })();
     }, 900);
@@ -250,8 +250,8 @@ export function useReviewWorkflowActions({ investigation, town, review, lifecycl
       if (!navigator.clipboard?.writeText) throw new Error("Clipboard is not available in this browser.");
       await navigator.clipboard.writeText(data.content);
       setStatus(`Review bundle JSON copied for ${scenarioRun?.name || "scenario"}.`);
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to copy review JSON");
+    } catch {
+      setStatus("Failed to copy review JSON. The review state remains unchanged.");
     } finally { setReviewBusy(false); }
   }
 
@@ -262,8 +262,8 @@ export function useReviewWorkflowActions({ investigation, town, review, lifecycl
       if (!data) return;
       downloadTextFile(data.fileName, data.content, format === "markdown" ? "text/markdown;charset=utf-8" : "application/json;charset=utf-8");
       setStatus(`${format === "markdown" ? "Markdown" : "Review bundle"} exported for ${scenarioRun?.name || "scenario"}.`);
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : `Failed to export ${format}`);
+    } catch {
+      setStatus(`Failed to export ${format} safely. Retry the same review action.`);
     } finally { setReviewBusy(false); }
   }
 
@@ -301,8 +301,8 @@ export function useReviewWorkflowActions({ investigation, town, review, lifecycl
       setEvents((items) => [...items, ...data.events.filter((event) => !items.some((existing) => existing.id === event.id))]);
       setStatus(`Scenario ${data.run.status}: ${data.report.summary}`);
       await refreshTownRuntime(data.world.id, selectedCharacterId, data.run.id, true);
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to run scenario");
+    } catch {
+      setStatus("Failed to run the scenario safely. The last confirmed review state remains available.");
     } finally { setTownRuntimeBusy(false); }
   }
 
@@ -317,8 +317,8 @@ export function useReviewWorkflowActions({ investigation, town, review, lifecycl
       setTimeValue(timeToMinutes(data.runtime.currentTime));
       setStatus(`Rolled back runtime to ${data.snapshot.label} at tick ${data.snapshot.tick}.`);
       await refreshTownRuntime(data.world.id);
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to roll back snapshot");
+    } catch {
+      setStatus("Failed to roll back the snapshot safely. The current runtime remains unchanged.");
     } finally { setTownRuntimeBusy(false); }
   }
 

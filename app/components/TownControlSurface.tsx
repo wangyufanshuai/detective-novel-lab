@@ -106,6 +106,7 @@ import type {
 import type { SuggestedAction } from "@/app/hooks/useDetectiveTownRuntime";
 import type { EvidenceImpact } from "@/app/hooks/useInvestigationActions";
 import type { GuidedTask, SelectionHighlight } from "@/app/hooks/useGuidedOnboarding";
+import { useAppLocale } from "@/app/localization/locale-context";
 
 export type InspectorTabId = "events" | "investigation" | "logic" | "agent" | "people" | "developer";
 
@@ -441,13 +442,14 @@ export function PlayShell({
 }
 
 export function ToastStack({ toasts, onDismiss }: { toasts: InvestigationToast[]; onDismiss: (id: string) => void }) {
+  const { text } = useAppLocale();
   if (!toasts.length) return null;
   return (
-    <section className="toastStack" data-testid="toast-stack" aria-live="polite">
+    <section className="toastStack" data-testid="toast-stack">
       {toasts.map((toast) => (
         <button key={toast.id} type="button" className={`investigationToast ${toast.tone}`} onClick={() => onDismiss(toast.id)}>
-          <strong>{toast.title}</strong>
-          <span>{toast.detail}</span>
+          <strong>{text(toast.title)}</strong>
+          <span>{text(toast.detail)}</span>
         </button>
       ))}
     </section>
@@ -455,12 +457,13 @@ export function ToastStack({ toasts, onDismiss }: { toasts: InvestigationToast[]
 }
 
 export function InvestigationStageBar({ stages }: { stages: InvestigationStage[] }) {
+  const { number, t, text } = useAppLocale();
   return (
-    <nav className="stageProgressBar" data-testid="investigation-stage-bar" aria-label="调查阶段">
+    <nav className="stageProgressBar" data-testid="investigation-stage-bar" aria-label={t("workspace.progress")} tabIndex={0}>
       {stages.map((stage, index) => (
-        <span key={stage.id} className={`${stage.complete ? "complete" : ""} ${stage.current ? "current" : ""}`} title={stage.detail}>
-          <b>{stage.complete ? "✓" : index + 1}</b>
-          {stage.label}
+        <span key={stage.id} className={`${stage.complete ? "complete" : ""} ${stage.current ? "current" : ""}`} title={text(stage.detail)}>
+          <b>{stage.complete ? "✓" : number(index + 1)}</b>
+          {text(stage.label)}
         </span>
       ))}
     </nav>
@@ -546,62 +549,63 @@ export function ControlRail({
   openPersistentTown: () => void;
   switchRuntime: (value: RuntimeMode) => void;
 }) {
+  const { number, t, text } = useAppLocale();
   const steps: [string, boolean][] = [
-    ["观察案发", progress.observedCrimeWindow],
-    ["加入调查", progress.joinedInvestigation],
-    ["发现证据", progress.discoveredEvidence],
-    ["质询证词", progress.challengedTestimony],
-    ["提交推理", progress.submittedTheory],
-    ["破解案件", progress.solvedCase]
+    [t("control.observeCrime"), progress.observedCrimeWindow],
+    [t("control.join"), progress.joinedInvestigation],
+    [t("control.discover"), progress.discoveredEvidence],
+    [t("control.challenge"), progress.challengedTestimony],
+    [t("control.submit"), progress.submittedTheory],
+    [t("control.solve"), progress.solvedCase]
   ];
   const activeTemplate = caseTemplates.find((item) => item.id === caseTemplateId);
 
   return (
     <aside className="controlRail">
       <div className="brandBlock">
-        <div className="brandIcon"><MapIcon size={24} /></div>
+        <div className="brandIcon"><MapIcon size={24} aria-hidden="true" /></div>
         <div>
           <p>Detective Town</p>
-          <h1>推理小镇</h1>
+          <h1>{t("control.brand")}</h1>
         </div>
       </div>
 
       <div className="modeSwitch">
-        <button className="active">Play</button>
-        <button data-testid="open-campaign-front-door" onClick={openCampaignFrontDoor}><BookOpen size={14} /> Campaigns</button>
-        <button data-testid="open-authoring" onClick={openAuthoring}>Authoring</button>
-        <button data-testid="open-world-graph" onClick={openWorldGraph}><Network size={14} /> Living World Lab</button>
-        <button data-testid="open-persistent-town" onClick={openPersistentTown}><Clock size={14} /> 持续小镇</button>
+        <button type="button" className="active" aria-current="page">{t("control.play")}</button>
+        <button type="button" data-testid="open-campaign-front-door" onClick={openCampaignFrontDoor}><BookOpen size={14} aria-hidden="true" /> {t("control.campaigns")}</button>
+        <button type="button" data-testid="open-authoring" onClick={openAuthoring}>{t("control.authoring")}</button>
+        <button type="button" data-testid="open-world-graph" onClick={openWorldGraph}><Network size={14} aria-hidden="true" /> {t("control.worldLab")}</button>
+        <button type="button" data-testid="open-persistent-town" onClick={openPersistentTown}><Clock size={14} aria-hidden="true" /> {t("control.persistentTown")}</button>
       </div>
 
       <section className="hudPanel currentCasePanel">
         <div className="panelHeaderLine">
-          <span className="eyebrow">{worldName}</span>
-          <BookOpen size={15} />
+          <span className="eyebrow">{text(worldName)}</span>
+          <BookOpen size={15} aria-hidden="true" />
         </div>
-        <h2>{caseTitle}</h2>
-        <p>{caseSubtitle}</p>
-        <div className="templateChip">{activeTemplate?.title || caseTemplateId}</div>
+        <h2>{text(caseTitle)}</h2>
+        <p>{text(caseSubtitle)}</p>
+        <div className="templateChip">{activeTemplate?.title ? text(activeTemplate.title) : t("common.unavailable")}</div>
       </section>
 
       <section className="hudPanel nextActionPanel" data-testid="suggested-action">
-        <span className="eyebrow">当前建议行动 / {suggestedAction.phase}</span>
-        <h2>{suggestedAction.title}</h2>
-        <p>{suggestedAction.detail}</p>
-        <button className="secondaryButton full" onClick={onSuggestedAction}>前往处理</button>
+        <span className="eyebrow">{t("control.suggested")} / {text(suggestedAction.phase)}</span>
+        <h2>{text(suggestedAction.title)}</h2>
+        <p>{text(suggestedAction.detail)}</p>
+        <button type="button" className="secondaryButton full" onClick={onSuggestedAction}>{t("control.go")}</button>
       </section>
 
       <section className="hudPanel guidedTaskPanel" data-testid="guided-task-list">
         <div className="panelHeaderLine">
-          <span className="eyebrow">First Case Guide</span>
-          <button className="linkButton" type="button" onClick={reopenOnboarding}><HelpCircle size={14} /> 帮助</button>
+          <span className="eyebrow">{t("control.firstGuide")}</span>
+          <button className="linkButton" type="button" onClick={reopenOnboarding}><HelpCircle size={14} aria-hidden="true" /> {t("control.help")}</button>
         </div>
         <div className="guidedTaskList">
           {guidedTasks.map((task, index) => (
             <button key={task.id} type="button" className={`guidedTask ${task.state}`} onClick={() => onGuidedTaskSelect(task)}>
-              <span>{task.state === "complete" ? "✓" : index + 1}</span>
-              <strong>{task.title}</strong>
-              <small>{task.detail}</small>
+              <span>{task.state === "complete" ? "✓" : number(index + 1)}</span>
+              <strong>{text(task.title)}</strong>
+              <small>{text(task.detail)}</small>
             </button>
           ))}
         </div>
@@ -610,73 +614,73 @@ export function ControlRail({
       <section className="progressPanel" data-testid="investigation-progress">
         {steps.map(([label, done], index) => (
           <div className={done ? "done" : ""} key={label}>
-            <span>{done ? "✓" : index + 1}</span><strong>{label}</strong>
+            <span>{done ? "✓" : number(index + 1)}</span><strong>{label}</strong>
           </div>
         ))}
       </section>
 
       <section className="hudPanel">
-        <h2>调查员</h2>
-        <label>玩家名<input value={playerName} onChange={(event) => setPlayerName(event.target.value)} /></label>
-        <button className="secondaryButton full" onClick={joinCase} disabled={busy}><Users size={16} /> 加入调查</button>
-        <button className="secondaryButton full" onClick={tickWorld} disabled={busy || runtimeMode === "static-demo"}><Clock size={16} /> 推进小镇</button>
+        <h2>{t("control.investigator")}</h2>
+        <label>{t("control.playerName")}<input name="player-name" autoComplete="nickname" value={playerName} onChange={(event) => setPlayerName(event.target.value)} /></label>
+        <button type="button" className="secondaryButton full" onClick={joinCase} disabled={busy}><Users size={16} aria-hidden="true" /> {t("control.join")}</button>
+        <button type="button" className="secondaryButton full" onClick={tickWorld} disabled={busy || runtimeMode === "static-demo"}><Clock size={16} aria-hidden="true" /> {t("control.advanceTown")}</button>
       </section>
 
       <section className="metricGrid metricsPanel">
-        <div><strong>{metrics.quality}</strong><small>Quality</small></div>
-        <div><strong>{metrics.unique ? "Yes" : "No"}</strong><small>Unique</small></div>
-        <div><strong>{metrics.logic}</strong><small>Logic</small></div>
-        <div><strong>{metrics.misdirect}</strong><small>Misdirect</small></div>
-        <div><strong>{metrics.evidence}</strong><small>Evidence</small></div>
-        <div><strong>{metrics.aiEval}</strong><small>AI Eval</small></div>
+        <div><strong>{number(metrics.quality)}</strong><small>{t("control.metric.quality")}</small></div>
+        <div><strong>{metrics.unique ? t("control.yes") : t("control.no")}</strong><small>{t("control.metric.unique")}</small></div>
+        <div><strong>{number(metrics.logic)}</strong><small>{t("control.metric.logic")}</small></div>
+        <div><strong>{number(metrics.misdirect)}</strong><small>{t("control.metric.misdirect")}</small></div>
+        <div><strong>{metrics.evidence}</strong><small>{t("control.metric.evidence")}</small></div>
+        <div><strong>{metrics.aiEval}</strong><small>{t("control.metric.aiEval")}</small></div>
       </section>
 
       <details className="settingsDrawer hudPanel">
-        <summary>世界设置 <ChevronDown size={15} /></summary>
-        <label>Runtime
-          <select data-testid="runtime-mode" value={runtimeMode} onChange={(event) => switchRuntime(event.target.value as RuntimeMode)}>
-            <option value="static-demo">Static Demo</option>
-            <option value="server">Server / DeepSeek</option>
+        <summary>{t("control.settings")} <ChevronDown size={15} aria-hidden="true" /></summary>
+        <label>{t("control.runtime")}
+          <select name="runtime-mode" autoComplete="off" data-testid="runtime-mode" value={runtimeMode} onChange={(event) => switchRuntime(event.target.value as RuntimeMode)}>
+            <option value="static-demo">{t("control.runtime.static")}</option>
+            <option value="server">{t("control.runtime.server")}</option>
           </select>
         </label>
-        <label>Seed<input value={seedInput} onChange={(event) => setSeedInput(event.target.value)} /></label>
-        <label>Case Mode
-          <select value={caseMode} onChange={(event) => setCaseMode(event.target.value as CaseMode)} disabled={mode === "advanced"}>
-            <option value="premium">Premium hard case</option>
-            <option value="generated">Generated case</option>
+        <label>{t("control.seed")}<input name="world-seed" autoComplete="off" spellCheck={false} value={seedInput} onChange={(event) => setSeedInput(event.target.value)} /></label>
+        <label>{t("control.caseMode")}
+          <select name="case-mode" autoComplete="off" value={caseMode} onChange={(event) => setCaseMode(event.target.value as CaseMode)} disabled={mode === "advanced"}>
+            <option value="premium">{t("control.caseMode.premium")}</option>
+            <option value="generated">{t("control.caseMode.generated")}</option>
           </select>
         </label>
-        <label>Case Library
-          <select data-testid="case-template-select" value={caseTemplateId} onChange={(event) => switchCaseTemplate(event.target.value as CaseTemplateId)} disabled={mode === "advanced" || caseMode !== "premium"}>
-            {caseTemplates.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
+        <label>{t("control.caseLibrary")}
+          <select name="case-template" autoComplete="off" data-testid="case-template-select" value={caseTemplateId} onChange={(event) => switchCaseTemplate(event.target.value as CaseTemplateId)} disabled={mode === "advanced" || caseMode !== "premium"}>
+            {caseTemplates.map((item) => <option key={item.id} value={item.id}>{text(item.title)}</option>)}
           </select>
         </label>
         {activeTemplate && (
           <div className="caseLibraryMeta" data-testid="case-library-meta">
-            <span>{caseTemplates.length} premium templates</span>
-            <span>{activeTemplate.archetype} case</span>
-            <small>{activeTemplate.description}</small>
+            <span>{number(caseTemplates.length)} {t("control.premiumTemplates")}</span>
+            <span>{text(activeTemplate.archetype)} {t("control.case")}</span>
+            <small>{text(activeTemplate.description || "")}</small>
           </div>
         )}
-        <label>案件类型
-          <select value={caseArchetype} onChange={(event) => setCaseArchetype(event.target.value as MurderArchetype | "auto")}>
-            {archetypeOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+        <label>{t("control.caseType")}
+          <select name="case-archetype" autoComplete="off" value={caseArchetype} onChange={(event) => setCaseArchetype(event.target.value as MurderArchetype | "auto")}>
+            {archetypeOptions.map((item) => <option key={item.value} value={item.value}>{text(item.label)}</option>)}
           </select>
         </label>
-        <label>模式
-          <select value={mode} onChange={(event) => setMode(event.target.value as WorldMode)}>
-            <option value="showcase">Showcase：8 NPC / 24h</option>
-            <option value="advanced">Advanced：30 NPC / 多日</option>
+        <label>{t("control.mode")}
+          <select name="world-mode" autoComplete="off" value={mode} onChange={(event) => setMode(event.target.value as WorldMode)}>
+            <option value="showcase">{t("control.mode.showcase")}</option>
+            <option value="advanced">{t("control.mode.advanced")}</option>
           </select>
         </label>
-        <button className="primaryButton full" onClick={createWorld} disabled={busy}>{busy ? <Loader2 className="spin" size={16} /> : <Play size={16} />} Reset / Create Town</button>
+        <button type="button" className="primaryButton full" onClick={createWorld} disabled={busy}>{busy ? <Loader2 className="spin" size={16} aria-hidden="true" /> : <Play size={16} aria-hidden="true" />} {t("control.resetTown")}</button>
         <div className="inputLine" hidden={runtimeMode === "static-demo"}>
-          <input value={worldIdInput} onChange={(event) => setWorldIdInput(event.target.value)} placeholder="world id" />
-          <button className="iconButton" onClick={loadWorld} disabled={busy}><Search size={16} /></button>
+          <input name="world-id" autoComplete="off" spellCheck={false} value={worldIdInput} onChange={(event) => setWorldIdInput(event.target.value)} placeholder={t("control.worldPlaceholder")} />
+          <button type="button" className="iconButton" aria-label={t("control.loadWorld")} title={t("control.loadWorld")} onClick={loadWorld} disabled={busy}><Search size={16} aria-hidden="true" /></button>
         </div>
       </details>
 
-      <div className="statusBox" data-testid="status-line"><AlertTriangle size={16} /><span>{status}</span></div>
+      <div className="statusBox" data-testid="status-line" role="status"><AlertTriangle size={16} aria-hidden="true" /><span>{text(status)}</span></div>
     </aside>
   );
 }

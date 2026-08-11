@@ -5,6 +5,7 @@ import { hasContradictionHit, useInvestigationView } from "@/app/hooks/useInvest
 import type { useInvestigationController } from "@/app/controllers/useInvestigationController";
 import type { useTownRuntimeController } from "@/app/controllers/useTownRuntimeController";
 import type { GapCard, GraphNodeExplanation, InvestigationStage, SuspectExplanation } from "@/app/components/DetectiveTownUI";
+import { useAppLocale } from "@/app/localization/locale-context";
 import type { WorldEvent } from "@/lib/engine";
 
 type InvestigationWorkspacePresentationInput = {
@@ -14,6 +15,7 @@ type InvestigationWorkspacePresentationInput = {
 
 /** Request-free presentation derivations shared by the map, Inspector, and certified workspace. */
 export function useInvestigationWorkspacePresentation({ investigation, town }: InvestigationWorkspacePresentationInput) {
+  const { locale, number, t, text } = useAppLocale();
   const {
     world, events, activeCase, session, snapshot, selectedSceneId, selectedCharacterId, selectedEvidenceId,
     highlightedEventId, theory, revealText, progress, selectedGraphNode, suspectBoard, hoveredLocationId, inspectorTab
@@ -79,13 +81,13 @@ export function useInvestigationWorkspacePresentation({ investigation, town }: I
       reveal: Boolean(revealText)
     };
     const defs = [
-      { id: "observe", label: "Observe scene", detail: "Review the crime window and event log." },
-      { id: "search", label: "Search evidence", detail: "Click locations or evidence markers." },
-      { id: "question", label: "Question witness", detail: "Choose an NPC and ask a focused question." },
-      { id: "challenge", label: "Challenge contradiction", detail: "Use discovered evidence to test testimony." },
-      { id: "organize", label: "Organize theory", detail: "Pick the key evidence chain." },
-      { id: "submit", label: "Submit conclusion", detail: "Name the culprit, motive, and method." },
-      { id: "reveal", label: "Review solution", detail: "Inspect the final plot nodes and answer." }
+      { id: "observe", label: t("stage.observe.label"), detail: t("stage.observe.detail") },
+      { id: "search", label: t("stage.search.label"), detail: t("stage.search.detail") },
+      { id: "question", label: t("stage.question.label"), detail: t("stage.question.detail") },
+      { id: "challenge", label: t("stage.challenge.label"), detail: t("stage.challenge.detail") },
+      { id: "organize", label: t("stage.organize.label"), detail: t("stage.organize.detail") },
+      { id: "submit", label: t("stage.submit.label"), detail: t("stage.submit.detail") },
+      { id: "reveal", label: t("stage.reveal.label"), detail: t("stage.reveal.detail") }
     ];
     const firstPending = defs.find((item) => !completeMap[item.id as keyof typeof completeMap])?.id;
     return defs.map((item) => ({
@@ -93,7 +95,7 @@ export function useInvestigationWorkspacePresentation({ investigation, town }: I
       complete: completeMap[item.id as keyof typeof completeMap],
       current: item.id === firstPending || (!firstPending && item.id === "reveal")
     }));
-  }, [discoveredEvidence.length, progress, revealText, session?.interrogationLog.length, session?.judgement]);
+  }, [discoveredEvidence.length, locale, progress, revealText, session?.interrogationLog.length, session?.judgement, t]);
   const visibleEvents = useMemo(() => snapshot?.visibleEvents || events.slice(-30).reverse(), [events, snapshot?.visibleEvents]);
   const selectedEvent = useMemo(() => events.find((event) => event.id === highlightedEventId), [events, highlightedEventId]);
   const selectedEvidence = useMemo(
@@ -116,14 +118,14 @@ export function useInvestigationWorkspacePresentation({ investigation, town }: I
     const recent = visibleEvents.find((event) => event.locationId === locationId);
     return {
       locationId,
-      name: tile.locationName || locationId,
+      name: tile.locationName || t("map.publicLocation"),
       terrain: tile.terrain,
       searchable: Boolean(tile.searchable),
       discovered: tile.discoveredEvidenceCount || 0,
       total: tile.evidenceCount || 0,
       recentEvent: recent ? `${recent.time} ${recent.publicSummary}` : undefined
     };
-  }, [hoveredLocationId, selectedSceneId, snapshot?.tiles, visibleEvents]);
+  }, [hoveredLocationId, locale, selectedSceneId, snapshot?.tiles, t, visibleEvents]);
   const selectedAgent = useMemo(
     () => town.townRuntime?.agentStates.find((agent) => agent.npcId === selectedCharacterId) || null,
     [selectedCharacterId, town.townRuntime?.agentStates]
@@ -131,45 +133,45 @@ export function useInvestigationWorkspacePresentation({ investigation, town }: I
   const graphExplanation: GraphNodeExplanation | null = useMemo(() => {
     if (!selectedGraphNode || !deductionCase) return null;
     const node = selectedGraphNode;
-    const discoveredTitles = node.evidenceIds.filter((id) => discovered.has(id)).map((id) => evidenceTitleById.get(id) || id);
+    const discoveredTitles = node.evidenceIds.filter((id) => discovered.has(id)).map((id) => text(evidenceTitleById.get(id) || t("logic.discoveredClue")));
     const hiddenCount = node.evidenceIds.filter((id) => !discovered.has(id)).length;
     const sourceEvents = node.eventIds.map((id) => eventById.get(id)).filter((event): event is WorldEvent => Boolean(event));
-    const names = node.characterIds.map((id) => characterById.get(id)?.name || id);
+    const names = node.characterIds.map((id) => text(characterById.get(id)?.name || t("logic.publicActor")));
     const source = sourceEvents.length
-      ? `Source events: ${sourceEvents.map((event) => `${event.time} ${event.publicSummary}`).join(" / ")}`
-      : "Source: current case structure and local rule validation.";
+      ? t("logic.sourceEvents", { events: sourceEvents.map((event) => `${event.time} ${text(event.publicSummary)}`).join(" / ") })
+      : t("logic.sourceFallback");
     if (hiddenCount > 0 && node.type !== "conclusion") {
       return {
         node,
-        title: "Undiscovered deduction node",
-        status: "LOCKED / strict no-spoiler",
-        body: "This node requires the player to find the matching evidence first. The system will not reveal evidence titles, meanings, or final conclusions early.",
+        title: t("logic.lockedTitle"),
+        status: t("logic.lockedStatus"),
+        body: t("logic.lockedBody"),
         source,
         references: discoveredTitles,
         spoilerSafe: false
       };
     }
     const typeLabel: Record<string, string> = {
-      evidence: "Evidence established",
-      event: "World event source",
-      testimony: "Testimony contradiction",
-      elimination: "Suspect excluded",
-      conclusion: "Unique conclusion"
+      evidence: t("logic.type.evidence"),
+      event: t("logic.type.event"),
+      testimony: t("logic.type.testimony"),
+      elimination: t("logic.type.elimination"),
+      conclusion: t("logic.type.conclusion")
     };
     return {
       node,
       title: node.label,
       status: typeLabel[node.type] || node.type,
-      body: node.detail || "This node is supported by discovered evidence and local rule chains.",
+      body: node.detail ? text(node.detail) : t("logic.supportedBody"),
       source,
       references: [...discoveredTitles, ...names].slice(0, 6),
       spoilerSafe: true
     };
-  }, [characterById, deductionCase, discovered, eventById, evidenceTitleById, selectedGraphNode]);
+  }, [characterById, deductionCase, discovered, eventById, evidenceTitleById, locale, selectedGraphNode, t, text]);
   const suspectExplanations = useMemo(() => {
     const result = new Map<string, SuspectExplanation>();
     for (const row of suspectBoard) {
-      const visibleEvidence = row.exclusionEvidenceIds.filter((id) => discovered.has(id)).map((id) => evidenceTitleById.get(id) || id);
+      const visibleEvidence = row.exclusionEvidenceIds.filter((id) => discovered.has(id)).map((id) => text(evidenceTitleById.get(id) || t("logic.discoveredClue")));
       const lockedEvidenceCount = row.exclusionEvidenceIds.filter((id) => !discovered.has(id)).length;
       const sourceEventLabels = row.sourceEventIds
         .map((id) => eventById.get(id))
@@ -178,12 +180,12 @@ export function useInvestigationWorkspacePresentation({ investigation, town }: I
         .map((event) => `${event.time} ${event.publicSummary}`);
       const solved = Boolean(session?.judgement?.accepted);
       const isCulprit = row.status === "culprit";
-      const statusLabel = isCulprit ? (solved ? "Final culprit" : "Hidden until solved") : row.status === "red_herring" ? "Strong red herring" : "Excluded candidate";
+      const statusLabel = isCulprit ? (solved ? t("suspect.final") : t("suspect.hidden")) : row.status === "red_herring" ? t("suspect.redHerring") : t("suspect.excluded");
       const exclusionStatus = isCulprit
-        ? (solved ? "Motive, means, opportunity, and key evidence chain remain intact." : "Requires the full evidence chain. The true culprit stays hidden until the case is solved.")
+        ? (solved ? t("suspect.intact") : t("suspect.requiresFull"))
         : visibleEvidence.length
-          ? `Excluded by ${visibleEvidence.join(", ")}.`
-          : "Still needs exclusion evidence; hidden evidence titles are not leaked.";
+          ? t("suspect.excludedBy", { evidence: visibleEvidence.join(", ") })
+          : t("suspect.needsExclusion");
       result.set(row.characterId, {
         characterId: row.characterId,
         name: row.name,
@@ -200,7 +202,7 @@ export function useInvestigationWorkspacePresentation({ investigation, town }: I
       });
     }
     return result;
-  }, [discovered, eventById, evidenceTitleById, session?.judgement?.accepted, suspectBoard]);
+  }, [discovered, eventById, evidenceTitleById, locale, session?.judgement?.accepted, suspectBoard, t, text]);
   const gapCards: GapCard[] = useMemo(() => {
     const mapTarget = (label: string): GapCard["target"] => {
       if (/culprit|suspect/i.test(label)) return "suspects";
@@ -220,53 +222,57 @@ export function useInvestigationWorkspacePresentation({ investigation, town }: I
     return judgementGaps.map((label) => {
       const target = mapTarget(label);
       const detail: Record<GapCard["target"], string> = {
-        suspects: "Review the suspect matrix and confirm who still has motive, means, and opportunity.",
-        motive: "Return to the theory form and add a motive supported by discovered evidence.",
-        method: "Return to the theory form and describe the tool, action, and disguise.",
-        evidence: "Review discovered evidence and pick the key clues that form a chain.",
-        exclusion: "Check the Suspect Board and confirm excluded suspects have exclusion evidence.",
-        logic: "Open the deduction graph and close the gap from evidence to conclusion."
+        suspects: t("gap.suspects"),
+        motive: t("gap.motive"),
+        method: t("gap.method"),
+        evidence: t("gap.evidence"),
+        exclusion: t("gap.exclusion"),
+        logic: t("gap.logic")
       };
       return { id: `gap:${label}`, label, detail: detail[target], target };
     });
-  }, [judgementGaps, session?.judgement?.proofCoverage?.gaps]);
+  }, [judgementGaps, locale, session?.judgement?.proofCoverage?.gaps, t]);
   const nextStepAdvice = useMemo(() => {
     if (!session?.judgement || session.judgement.accepted) return "";
     if (discoveredEvidence.length > 0 && !progress.challengedTestimony) {
-      return `First present "${discoveredEvidence[0].title}" to a relevant NPC and check whether testimony conflicts.`;
+      return t("advice.challenge", { evidence: text(discoveredEvidence[0].title) });
     }
     if (discoveredEvidence.length > 0) {
-      return `Choose from the ${discoveredEvidence.length} discovered clues and connect motive, method, and opportunity.`;
+      return t("advice.connect", { count: number(discoveredEvidence.length) });
     }
-    return selectedScene ? `Keep searching ${selectedScene.name} and build the first evidence chain.` : "Click a searchable map location and find the first clue.";
-  }, [discoveredEvidence, progress.challengedTestimony, selectedScene, session?.judgement]);
+    return selectedScene ? t("advice.search", { location: text(selectedScene.name) }) : t("advice.firstClue");
+  }, [discoveredEvidence, locale, number, progress.challengedTestimony, selectedScene, session?.judgement, t, text]);
   const solutionChain = useMemo(() => {
     if (!session?.judgement?.accepted || !deductionCase) return [];
-    const selectedTitles = theory.evidenceIds.filter((id) => discovered.has(id)).map((id) => evidenceTitleById.get(id) || id);
+    const selectedTitles = theory.evidenceIds.filter((id) => discovered.has(id)).map((id) => text(evidenceTitleById.get(id) || t("logic.discoveredClue")));
     const eliminatedCount = suspectBoard.filter((row) => row.status !== "culprit").length;
     return [
-      selectedTitles.length ? `Player submitted ${selectedTitles.length} discovered clues: ${selectedTitles.slice(0, 4).join(", ")}${selectedTitles.length > 4 ? " etc." : ""}.` : "The submitted evidence chain passed local rule validation.",
-      "The evidence supports motive, method, opportunity, or a testimony contradiction and forms a reviewable reasoning chain.",
-      `Suspect Board excludes ${eliminatedCount} non-culprit candidates through discovered or validated exclusion chains.`,
-      "Only the remaining candidate with intact motive, means, opportunity, and no counter-evidence appears in the final conclusion node."
+      selectedTitles.length ? t("solution.selected", { count: number(selectedTitles.length), clues: selectedTitles.slice(0, 4).join(", "), suffix: selectedTitles.length > 4 ? t("solution.more") : "" }) : t("solution.validated"),
+      t("solution.reasoning"),
+      t("solution.exclusions", { count: number(eliminatedCount) }),
+      t("solution.remaining")
     ];
-  }, [deductionCase, discovered, evidenceTitleById, session?.judgement?.accepted, suspectBoard, theory.evidenceIds]);
+  }, [deductionCase, discovered, evidenceTitleById, locale, number, session?.judgement?.accepted, suspectBoard, t, text, theory.evidenceIds]);
   const inspectorSummary = useMemo(() => {
     if (inspectorTab === "events") {
+      const publicLocation = selectedEvent ? world?.locations.find((location) => location.id === selectedEvent.locationId)?.name : undefined;
       return selectedEvent
-        ? { title: `${selectedEvent.time} / ${selectedEvent.locationId}`, detail: selectedEvent.publicSummary, tone: "event" }
-        : { title: "Event log", detail: "Select an event to highlight map location and time.", tone: "event" };
+        ? { title: `${selectedEvent.time} / ${text(publicLocation || t("map.publicLocation"))}`, detail: text(selectedEvent.publicSummary), tone: "event" }
+        : { title: t("inspector.eventLog"), detail: t("inspector.eventDetail"), tone: "event" };
     }
     if (inspectorTab === "investigation") {
-      if (selectedEvidence) return { title: `Evidence: ${selectedEvidence.title}`, detail: "Review use hints and present it to NPCs when needed.", tone: "evidence" };
-      if (selectedCharacter) return { title: `NPC: ${selectedCharacter.name}`, detail: selectedCharacter.role, tone: "person" };
-      return { title: `Location: ${selectedScene?.name || "None selected"}`, detail: "Search locations, question NPCs, and submit theory.", tone: "investigation" };
+      if (selectedEvidence) return { title: t("inspector.evidence", { title: text(selectedEvidence.title) }), detail: t("inspector.evidenceDetail"), tone: "evidence" };
+      if (selectedCharacter) return { title: t("inspector.npc", { name: text(selectedCharacter.name) }), detail: text(selectedCharacter.role), tone: "person" };
+      return { title: t("inspector.location", { name: selectedScene ? text(selectedScene.name) : t("inspector.none") }), detail: t("inspector.investigationDetail"), tone: "investigation" };
     }
-    if (inspectorTab === "logic") return { title: "Case logic", detail: "Deduction graph, causal chain, and answer review unlock after correct reasoning.", tone: "logic" };
-    if (inspectorTab === "agent") return { title: "Persistent Agent Town", detail: selectedAgent ? `${selectedAgent.currentGoal} / ${selectedAgent.locationId}` : "Inspect NPC goals, action scores, and case candidates.", tone: "logic" };
-    if (inspectorTab === "people") return { title: "Suspect matrix", detail: "Review motive, means, opportunity, and exclusion evidence.", tone: "people" };
-    return { title: "Developer API", detail: "Inspect Agent API, worldId, caseId, and sessionId.", tone: "developer" };
-  }, [inspectorTab, selectedAgent, selectedCharacter, selectedEvent, selectedEvidence, selectedScene?.name]);
+    if (inspectorTab === "logic") return { title: t("inspector.caseLogic"), detail: t("inspector.logicDetail"), tone: "logic" };
+    if (inspectorTab === "agent") {
+      const publicLocation = selectedAgent ? world?.locations.find((location) => location.id === selectedAgent.locationId)?.name : undefined;
+      return { title: t("inspector.persistentTown"), detail: selectedAgent ? `${text(selectedAgent.currentGoal)} / ${text(publicLocation || t("map.publicLocation"))}` : t("inspector.agentDetail"), tone: "logic" };
+    }
+    if (inspectorTab === "people") return { title: t("inspector.people"), detail: t("inspector.peopleDetail"), tone: "people" };
+    return { title: t("inspector.developer"), detail: t("inspector.developerDetail"), tone: "developer" };
+  }, [inspectorTab, locale, selectedAgent, selectedCharacter, selectedEvent, selectedEvidence, selectedScene, t, text, world?.locations]);
 
   return {
     deductionCase, scenes, characters, discovered, selectedScene, selectedCharacter, sceneEvidence, discoveredEvidence,

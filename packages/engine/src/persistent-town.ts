@@ -3493,9 +3493,9 @@ export function deriveWorldArcCasePriorityBonus(runtime: PersistentTownRuntime |
 export function createPersistentTownRuntime(
   world: WorldState,
   events: WorldEvent[] = [],
-  options: Partial<Pick<PersistentTownRuntime, "tickIntervalMinutes" | "maxTicks" | "worldSystemHints">> = {}
+  options: Partial<Pick<PersistentTownRuntime, "tickIntervalMinutes" | "maxTicks" | "worldSystemHints">> & { now?: string } = {}
 ): PersistentTownRuntime {
-  const now = new Date().toISOString();
+  const now = options.now || new Date().toISOString();
   const runtime: PersistentTownRuntime = {
     id: `runtime-${world.id}`,
     worldId: world.id,
@@ -3581,6 +3581,122 @@ export function createPersistentTownRuntime(
   runtime.campaignRecoverySummary = toCampaignRecoveryPublicSummary(runtime);
   refreshArcConvergence(runtime);
   ensureCampaignSession(runtime);
+  refreshCampaignSession(runtime);
+  refreshTownSocialResponseSummary(world, runtime);
+  return runtime;
+}
+
+const PERSISTENT_RUNTIME_STATUSES = new Set<PersistentTownRuntimeStatus>(["paused", "running", "completed", "blocked"]);
+
+function runtimeRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
+}
+
+function runtimeArray<T>(value: unknown, fallback: T[]): T[] {
+  return Array.isArray(value) ? value as T[] : fallback;
+}
+
+function runtimeNumber(value: unknown, fallback: number, minimum = 0) {
+  return typeof value === "number" && Number.isFinite(value) ? Math.max(minimum, Math.floor(value)) : fallback;
+}
+
+function runtimeText(value: unknown, fallback: string, maximum = 240) {
+  return typeof value === "string" && value.length > 0 && value.length <= maximum ? value : fallback;
+}
+
+/**
+ * Repairs legacy/missing Persistent Town JSON at the repository boundary without
+ * advancing time, generating events, or discarding unknown forward-compatible fields.
+ */
+export function normalizePersistentTownRuntime(
+  world: WorldState,
+  events: WorldEvent[] = [],
+  value: unknown
+): PersistentTownRuntime {
+  const source = runtimeRecord(value) || {};
+  const stableNow = runtimeText(source.updatedAt, world.updatedAt || world.createdAt || "1970-01-01T00:00:00.000Z");
+  const baseline = createPersistentTownRuntime(world, events, {
+    tickIntervalMinutes: runtimeNumber(source.tickIntervalMinutes, 30, 1),
+    maxTicks: runtimeNumber(source.maxTicks, Math.max(48, Math.ceil((world.timelineHours || 24) * 2)), 1),
+    worldSystemHints: runtimeRecord(source.worldSystemHints) ? source.worldSystemHints as WorldSystemRuntimeHints : undefined,
+    now: stableNow
+  });
+  const runtime = { ...baseline, ...source } as PersistentTownRuntime & Record<string, unknown>;
+  runtime.id = runtimeText(source.id, baseline.id);
+  runtime.worldId = world.id;
+  runtime.status = PERSISTENT_RUNTIME_STATUSES.has(source.status as PersistentTownRuntimeStatus)
+    ? source.status as PersistentTownRuntimeStatus
+    : baseline.status;
+  runtime.currentDay = runtimeNumber(source.currentDay, world.day || baseline.currentDay, 1);
+  runtime.currentTime = typeof source.currentTime === "string" && /^\d{2}:\d{2}$/.test(source.currentTime)
+    ? source.currentTime
+    : world.currentTime || baseline.currentTime;
+  runtime.tickIntervalMinutes = runtimeNumber(source.tickIntervalMinutes, baseline.tickIntervalMinutes, 1);
+  runtime.maxTicks = runtimeNumber(source.maxTicks, baseline.maxTicks, 1);
+  runtime.tick = Math.min(runtime.maxTicks, runtimeNumber(source.tick, baseline.tick));
+  runtime.createdAt = runtimeText(source.createdAt, world.createdAt || stableNow);
+  runtime.updatedAt = stableNow;
+
+  runtime.agentStates = runtimeArray(source.agentStates, baseline.agentStates);
+  runtime.decisionTraces = runtimeArray(source.decisionTraces, baseline.decisionTraces);
+  runtime.candidates = runtimeArray(source.candidates, baseline.candidates);
+  runtime.interventions = runtimeArray(source.interventions, baseline.interventions);
+  runtime.reports = runtimeArray(source.reports, baseline.reports);
+  runtime.pressureLedger = runtimeArray(source.pressureLedger, baseline.pressureLedger || []);
+  runtime.eventObservations = runtimeArray(source.eventObservations, baseline.eventObservations || []);
+  runtime.socialProfiles = runtimeArray(source.socialProfiles, baseline.socialProfiles || []);
+  runtime.relationshipLedger = runtimeArray(source.relationshipLedger, baseline.relationshipLedger || []);
+  runtime.locationProfiles = runtimeArray(source.locationProfiles, baseline.locationProfiles || []);
+  runtime.locationLedger = runtimeArray(source.locationLedger, baseline.locationLedger || []);
+  runtime.memoryPropagations = runtimeArray(source.memoryPropagations, baseline.memoryPropagations || []);
+  runtime.consequences = runtimeArray(source.consequences, baseline.consequences || []);
+  runtime.longChainLedger = runtimeArray(source.longChainLedger, baseline.longChainLedger || []);
+  runtime.triggeredCases = runtimeArray(source.triggeredCases, baseline.triggeredCases || []);
+  runtime.simulationPhases = runtimeArray(source.simulationPhases, baseline.simulationPhases || [...TOWN_TICK_PHASES]);
+  runtime.scenarioPresets = runtimeArray(source.scenarioPresets, baseline.scenarioPresets || []);
+  runtime.scenarioPacks = runtimeArray(source.scenarioPacks, baseline.scenarioPacks || []);
+  runtime.mapPacks = runtimeArray(source.mapPacks, baseline.mapPacks || []);
+  runtime.packRegistry = runtimeArray(source.packRegistry, baseline.packRegistry || []);
+  runtime.scenarioRuns = runtimeArray(source.scenarioRuns, baseline.scenarioRuns || []);
+  runtime.runJobs = runtimeArray(source.runJobs, baseline.runJobs || []);
+  runtime.benchmarkRuns = runtimeArray(source.benchmarkRuns, baseline.benchmarkRuns || []);
+  runtime.snapshots = runtimeArray(source.snapshots, baseline.snapshots || []);
+
+  const lifecycle = runtimeRecord(source.caseLifecycle) || {};
+  const baseLifecycle = baseline.caseLifecycle!;
+  runtime.caseLifecycle = {
+    ...baseLifecycle,
+    ...lifecycle,
+    activeCaseIds: runtimeArray(lifecycle.activeCaseIds, baseLifecycle.activeCaseIds),
+    solvedCaseIds: runtimeArray(lifecycle.solvedCaseIds, baseLifecycle.solvedCaseIds),
+    failedCaseIds: runtimeArray(lifecycle.failedCaseIds, baseLifecycle.failedCaseIds),
+    caseCooldownByNpcId: runtimeRecord(lifecycle.caseCooldownByNpcId) as Record<string, number> || baseLifecycle.caseCooldownByNpcId,
+    casePairCooldown: runtimeRecord(lifecycle.casePairCooldown) as Record<string, number> || baseLifecycle.casePairCooldown,
+    caseTypeHistory: runtimeArray(lifecycle.caseTypeHistory, baseLifecycle.caseTypeHistory || []),
+    caseTypeCooldown: runtimeRecord(lifecycle.caseTypeCooldown) as Partial<Record<TownCaseType, number>> || baseLifecycle.caseTypeCooldown,
+    locationCooldown: runtimeRecord(lifecycle.locationCooldown) as Record<string, number> || baseLifecycle.locationCooldown,
+    casePressureByInstitutionId: runtimeRecord(lifecycle.casePressureByInstitutionId) as Record<string, number> || baseLifecycle.casePressureByInstitutionId,
+    nextCaseWeights: runtimeRecord(lifecycle.nextCaseWeights) as Record<string, number> || baseLifecycle.nextCaseWeights,
+    caseTimeline: runtimeArray(lifecycle.caseTimeline, baseLifecycle.caseTimeline || []),
+    caseAftermathLog: runtimeArray(lifecycle.caseAftermathLog, baseLifecycle.caseAftermathLog)
+  };
+
+  runtime.worldLeadDecisions = runtimeRecord(source.worldLeadDecisions) as Record<string, WorldLeadDecision> || baseline.worldLeadDecisions;
+  runtime.playerResourceCommitments = runtimeRecord(source.playerResourceCommitments) as PlayerResourceCommitmentRuntimeState || baseline.playerResourceCommitments;
+  runtime.factionRelationships = runtimeRecord(source.factionRelationships) as FactionRelationshipRuntimeState || baseline.factionRelationships;
+  runtime.worldEventOffers = runtimeRecord(source.worldEventOffers) as WorldEventOfferRuntimeState || baseline.worldEventOffers;
+  runtime.campaignRecoveries = runtimeRecord(source.campaignRecoveries) as CampaignRecoveryRuntimeState || baseline.campaignRecoveries;
+  runtime.investigatorHeadquarters = runtimeRecord(source.investigatorHeadquarters) as InvestigatorHeadquartersRuntimeState || baseline.investigatorHeadquarters;
+  runtime.townSocialResponses = runtimeRecord(source.townSocialResponses) as TownSocialResponseRuntimeState || baseline.townSocialResponses;
+
+  ensureTownRuleRuntimeState(world, runtime);
+  ensureSocialProfiles(world, runtime);
+  ensureLocationProfiles(world, runtime);
+  ensureFactionRelationshipState(runtime);
+  ensureInvestigatorProgression(runtime);
+  ensureInvestigatorHeadquarters(runtime);
+  ensureCampaignSession(runtime);
+  refreshArcConvergence(runtime);
   refreshCampaignSession(runtime);
   refreshTownSocialResponseSummary(world, runtime);
   return runtime;

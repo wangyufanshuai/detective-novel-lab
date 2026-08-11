@@ -40,6 +40,16 @@ async function ensureEncounterVisible(page, encounter, inspectorToggle, label = 
   }
 }
 
+async function closeContextDrawerIfOpen(page) {
+  const toggle = page.getByTestId("command-deck-drawer-toggle");
+  if (!(await toggle.isVisible().catch(() => false))) return;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    if (await toggle.getAttribute("aria-expanded") !== "true") return;
+    await toggle.click({ force: true });
+    await page.waitForTimeout(220);
+  }
+}
+
 function stopServer() {
   if (!server?.pid) return;
   if (process.platform === "win32") spawnSync("taskkill", ["/pid", String(server.pid), "/t", "/f"], { stdio: "ignore" });
@@ -78,7 +88,7 @@ try {
       const resolutionConsistency = [];
       let workspaceLayout = null;
       if (width === 1440) await page.route("**/api/players/join", async (route) => { await new Promise((resolve) => setTimeout(resolve, 500)); await route.continue(); });
-      await page.goto(`${baseUrl}/?runtime=server`, { waitUntil: "networkidle" });
+      await page.goto(`${baseUrl}/?runtime=server&lang=en-US`, { waitUntil: "networkidle" });
       const frontDoor = page.getByTestId("campaign-front-door");
       await frontDoor.waitFor({ state: "visible", timeout: 15_000 });
       const frontDoorCardCount = await frontDoor.getByTestId("campaign-front-door-card").count();
@@ -92,7 +102,7 @@ try {
       if (await encounterActor.count()) {
         await encounterActor.click();
         try {
-          await ensureEncounterVisible(page, page.getByTestId("character-encounter"), page.getByRole("button", { name: /Case files & detail/i }), `${width}px initial actor`);
+          await ensureEncounterVisible(page, page.getByTestId("character-encounter"), page.getByTestId("command-deck-inspector-toggle"), `${width}px initial actor`);
         } catch (error) {
           const actorState = await page.evaluate(() => ({
             selectedCount: document.querySelectorAll(".actor-current").length,
@@ -105,8 +115,9 @@ try {
         if (!/character encounter|public posture|next legal action/i.test(encounterText)) failures.push(`${width}px Character Encounter card is missing its public context sections.`);
         if (await page.getByTestId("character-encounter").locator("[data-encounter-action]").count() > 3) failures.push(`${width}px Character Encounter exposed more than three actions.`);
         if (/\b(?:npc|case|event|source|location|institution|resource|evidence|session|character)-[a-z0-9-]*\d[a-z0-9-]*\b|culpritId|victimId|hiddenTruth|rawBody/i.test(encounterText)) failures.push(`${width}px Character Encounter exposed an internal identifier or hidden case binding.`);
-        await page.getByRole("button", { name: "Close character encounter" }).click();
+        await page.getByTestId("character-encounter-close").click();
       }
+      await closeContextDrawerIfOpen(page);
       await page.evaluate(() => {
         window.__detectiveAudioCues = [];
         window.__detectiveTransitionPhases = [];
@@ -135,7 +146,9 @@ try {
       for (let index = 0; index < await lensButtons.count(); index += 1) {
         const button = lensButtons.nth(index);
         const kind = await button.getAttribute("data-map-lens-kind");
-        await button.click();
+        await closeContextDrawerIfOpen(page);
+        await button.focus();
+        await page.keyboard.press("Enter");
         if (kind) lensKinds.push(kind);
         if (await page.getByTestId("command-deck-shell").getAttribute("data-map-lens") !== kind) failures.push(`${width}px map lens ${kind} did not become active.`);
       }
@@ -152,7 +165,7 @@ try {
         if (!(await drawerToggle.evaluate((node) => node === document.activeElement))) failures.push(`${width}px context drawer did not restore focus after Escape.`);
         await page.waitForTimeout(220);
       }
-      const inspectorDetailToggle = page.getByRole("button", { name: /Case files & detail/i });
+      const inspectorDetailToggle = page.getByTestId("command-deck-inspector-toggle");
       if (await inspectorDetailToggle.getAttribute("aria-expanded") !== "false") failures.push(`${width}px full Inspector detail was not closed by default.`);
       if (width === 1440) {
         await inspectorDetailToggle.click();
@@ -168,9 +181,10 @@ try {
           await inspectorDetailToggle.click();
           await page.waitForFunction(() => document.querySelector("[data-testid='character-encounter']")?.getAttribute("data-posture") !== "busy");
         }
-        const selectableLocation = page.locator("[data-testid='pixel-map'] .mapTile[aria-label]").first();
+        const selectableLocation = page.locator("[data-testid='pixel-map'] .mapTile[data-location-id] .mapTileHitTarget").first();
         if (await selectableLocation.count()) {
-          await selectableLocation.click();
+          await selectableLocation.focus();
+          await page.keyboard.press("Enter");
           currentQaStep = "1440 location context";
           await page.waitForFunction(() => document.querySelector("[data-testid='command-deck-context']")?.getAttribute("data-context-kind") === "location");
           contextKinds.push(await page.getByTestId("command-deck-context").getAttribute("data-context-kind"));
@@ -286,7 +300,7 @@ try {
               await page.waitForTimeout(50);
               await ensureEncounterVisible(page, encounter, inspectorDetailToggle, `1440px post-search actor ${actorIndex}`);
               encounterQuestion = encounter.locator("[data-encounter-action='question']:not([disabled])");
-              if (!(await encounterQuestion.count())) await encounter.getByRole("button", { name: "Close character encounter" }).click();
+              if (!(await encounterQuestion.count())) await encounter.getByTestId("character-encounter-close").click();
             }
             contextKinds.push(await page.getByTestId("command-deck-context").getAttribute("data-context-kind"));
             if (!(await page.getByTestId("command-deck-context").locator("h2").evaluate((node) => node === document.activeElement))) failures.push("1440px context selection did not move focus to the inspector heading.");
@@ -325,7 +339,8 @@ try {
             contextKinds.push("institution");
             await page.locator(".inspectorTabs button").nth(1).click();
             if (await inspectorDetailToggle.getAttribute("aria-expanded") === "true") await inspectorDetailToggle.click();
-            await selectableLocation.click();
+            await selectableLocation.focus();
+            await page.keyboard.press("Enter");
           }
         }
       }
@@ -531,7 +546,7 @@ try {
       const pathname = new URL(request.url()).pathname;
       if (pathname.startsWith("/api/")) apiRequests.push(pathname);
     });
-    await staticPage.goto(`${baseUrl}/?runtime=static&study=1`, { waitUntil: "networkidle" });
+    await staticPage.goto(`${baseUrl}/?runtime=static&study=1&lang=en-US`, { waitUntil: "networkidle" });
     const staticFrontDoor = staticPage.getByTestId("campaign-front-door");
     if (!(await staticFrontDoor.count()) || !(await staticFrontDoor.isVisible())) failures.push("Static runtime did not expose its read-only Campaign preview boundary.");
     const staticFrontDoorDismiss = staticFrontDoor.getByTestId("campaign-front-door-dismiss");
@@ -547,7 +562,7 @@ try {
       await ensureEncounterVisible(
         staticPage,
         staticEncounter,
-        staticPage.getByRole("button", { name: /Case files & detail/i }),
+        staticPage.getByTestId("command-deck-inspector-toggle"),
         "static actor"
       );
       const staticEncounterText = await staticEncounter.innerText();
@@ -556,7 +571,7 @@ try {
     }
     const staticDrawer = staticPage.getByTestId("command-deck-drawer-toggle");
     if (await staticDrawer.isVisible().catch(() => false) && await staticDrawer.getAttribute("aria-expanded") !== "true") await staticDrawer.evaluate((node) => node.click());
-    const staticInspector = staticPage.getByRole("button", { name: /Case files & detail/i });
+    const staticInspector = staticPage.getByTestId("command-deck-inspector-toggle");
     if (await staticInspector.getAttribute("aria-expanded") !== "true") await staticInspector.evaluate((node) => node.click());
     const staticTabs = staticPage.locator(".inspectorTabs button");
     if (await staticTabs.count() > 1) await staticTabs.nth(1).click();

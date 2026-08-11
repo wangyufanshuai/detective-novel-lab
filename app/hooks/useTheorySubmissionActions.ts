@@ -1,9 +1,11 @@
 "use client";
 
+import { useRef } from "react";
 import type { useCampaignController } from "@/app/controllers/useCampaignController";
 import type { useInvestigationController } from "@/app/controllers/useInvestigationController";
 import type { useReplayController } from "@/app/controllers/useReplayController";
 import type { GuidedStepJournalEntry } from "@/app/campaign/replay-practice-model";
+import { useAppLocale } from "@/app/localization/locale-context";
 import { postJson } from "@/app/lib/client-runtime";
 import { submitDemoTheory } from "@/lib/engine";
 import type {
@@ -50,6 +52,8 @@ export function useTheorySubmissionActions({
   recordTheoryResult,
   recordMeaningfulAction
 }: TheorySubmissionActionsInput) {
+  const submitInFlight = useRef(false);
+  const { t } = useAppLocale();
   const {
     session, theory, runtimeMode, world, setTheory, setSession, setBusy, setProgress,
     setInspectorTab, pushToast, setStatus
@@ -81,6 +85,8 @@ export function useTheorySubmissionActions({
       setStatus(next.session.judgement?.accepted ? "Theory accepted. Final conclusion and answer review unlocked." : `Theory rejected: ${next.session.judgement?.missing?.join(", ") || "evidence chain incomplete"}`);
       return next.session.judgement || null;
     }
+    if (submitInFlight.current) return null;
+    submitInFlight.current = true;
     setBusy(true);
     try {
       const data = await postJson<{
@@ -229,10 +235,11 @@ export function useTheorySubmissionActions({
       setStatus(data.judgement?.accepted ? "Theory accepted. Answer review can be generated." : `Theory rejected: ${data.judgement?.missing?.join(", ") || "evidence chain incomplete"}`);
       recordMeaningfulAction();
       return data.judgement || null;
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to submit theory");
+    } catch {
+      setStatus(t("error.submit"));
       return null;
     } finally {
+      submitInFlight.current = false;
       setBusy(false);
     }
   }

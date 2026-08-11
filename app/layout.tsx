@@ -1,4 +1,5 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import { AppLocaleProvider } from "./localization/locale-context";
 import "./globals.css";
 import "./styles/novel-workbench.css";
 import "./styles/authoring.css";
@@ -12,6 +13,8 @@ export const metadata: Metadata = {
   title: "Detective Town",
   description: "A murder mystery engine where cases emerge from simulated NPC lives."
 };
+
+export const viewport: Viewport = { themeColor: "#090d12" };
 
 export default function RootLayout({
   children
@@ -49,12 +52,12 @@ export default function RootLayout({
   `;
 
   return (
-    <html lang="zh-CN">
+    <html lang="en-US" suppressHydrationWarning>
       <head>
         <meta name="google" content="notranslate" />
         <script dangerouslySetInnerHTML={{ __html: extensionErrorGuard }} />
       </head>
-      <body>{children}</body>
+      <body><AppLocaleProvider>{children}</AppLocaleProvider></body>
     </html>
   );
 }

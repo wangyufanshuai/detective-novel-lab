@@ -6,6 +6,7 @@ import type { useReplayController } from "@/app/controllers/useReplayController"
 import type { ReplayPracticeViewModelInput, useReplayPracticeViewModels } from "@/app/hooks/useReplayPracticeViewModels";
 import type { GuidedStepJournalEntry } from "@/app/campaign/replay-practice-model";
 import { postJson } from "@/app/lib/client-runtime";
+import { useAppLocale } from "@/app/localization/locale-context";
 import type { PlayerResourceCommitmentPublicSummary, PlayerSession } from "@/lib/engine";
 
 type ReplaySessionActionsInput = {
@@ -20,6 +21,7 @@ type ReplaySessionActionsInput = {
 
 /** Starts a fresh replay session through the existing local join flow only. */
 export function useReplaySessionActions({ investigation, campaign, replay, replayViews, sourceReviewUnlock, persist }: ReplaySessionActionsInput) {
+  const { t } = useAppLocale();
   const {
     world, activeCase, session, runtimeMode, playerName, setSession, setSessions,
     setProgress, setTheory, setRevealText, setSelectedEvidenceId, setInspectorTab,
@@ -125,9 +127,9 @@ export function useReplaySessionActions({ investigation, campaign, replay, repla
       setReplayGoalAttempt((current) => current ? { ...current, lastResult: "server replay session joined" } : current);
       pushToast({ tone: "info", title: "Server replay attempt started", detail: "A fresh local investigation session is ready." });
       setStatus("Server replay attempt started using the existing local join flow.");
-    } catch (error) {
+    } catch {
       setReplayGoalAttempt((current) => current ? { ...current, lastResult: "replay attempt blocked" } : current);
-      setStatus(error instanceof Error ? error.message : "Failed to start replay attempt");
+      setStatus(t("error.generic"));
     } finally { setBusy(false); }
   }
 

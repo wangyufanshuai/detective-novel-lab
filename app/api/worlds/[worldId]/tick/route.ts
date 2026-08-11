@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
+import { loadRuntimeWorld } from "@/app/api/v1/_town-runtime";
 import { extractCaseFromWorld, simulateWorldTick } from "@/lib/engine";
 import { worldRepository } from "@/lib/world/repository";
 
 export async function POST(_request: Request, context: { params: Promise<{ worldId: string }> }) {
   try {
     const { worldId } = await context.params;
-    const world = worldRepository.getWorld(worldId);
+    const world = loadRuntimeWorld(worldId)?.world || worldRepository.getWorld(worldId);
     if (!world) return NextResponse.json({ ok: false, error: "World not found" }, { status: 404 });
     const previousEvents = worldRepository.getEvents(worldId);
     const tick = simulateWorldTick(world, previousEvents);

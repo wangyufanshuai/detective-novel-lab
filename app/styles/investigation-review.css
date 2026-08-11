@@ -368,12 +368,13 @@
 
 .onboardingOverlay {
   position: fixed;
-  right: 20px;
-  bottom: 20px;
+  inset: 0;
   z-index: 60;
   display: grid;
-  width: min(390px, calc(100vw - 40px));
-  pointer-events: none;
+  place-items: end;
+  padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+  background: rgba(3, 8, 13, 0.48);
+  overscroll-behavior: contain;
 }
 
 .onboardingCard {
@@ -381,10 +382,11 @@
   display: grid;
   gap: 14px;
   width: 100%;
+  max-width: 390px;
   max-height: min(560px, 78vh);
   padding: 18px;
   overflow: auto;
-  pointer-events: auto;
+  overscroll-behavior: contain;
   background:
     linear-gradient(180deg, rgba(18, 29, 40, 0.98), rgba(8, 14, 20, 0.98)),
     radial-gradient(circle at 15% 0%, rgba(255, 224, 106, 0.16), transparent 40%);
@@ -979,9 +981,7 @@
   }
 
   .onboardingOverlay {
-    right: 12px;
-    bottom: 12px;
-    width: calc(100vw - 24px);
+    padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
   }
 
   .onboardingCard {

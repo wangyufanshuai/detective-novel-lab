@@ -4,6 +4,7 @@ import type { useInvestigationController } from "@/app/controllers/useInvestigat
 import type { useReplayController } from "@/app/controllers/useReplayController";
 import type { SelectionHighlight } from "@/app/hooks/useGuidedOnboarding";
 import { postV1 } from "@/app/lib/client-runtime";
+import { useAppLocale } from "@/app/localization/locale-context";
 import { autoSolvePlayableCase } from "@/lib/engine";
 import type { CaseAutoSolveSummary, DeductionCase, DemoRuntimeState, PlayerSession } from "@/lib/engine";
 
@@ -32,6 +33,7 @@ export function useCertifiedPlaythroughActions({
   persist,
   recordTheoryResult
 }: CertifiedPlaythroughActionsInput): CertifiedPlaythroughActionAdapter {
+  const { t } = useAppLocale();
   const {
     runtimeMode, world, activeCase, events, playerName, revealText,
     setTheory, setSession, setSessions, setProgress, setSelectedEvidenceId, setSelectedSceneId,
@@ -146,8 +148,8 @@ export function useCertifiedPlaythroughActions({
         detail: `${data.summary.stepCount} steps / ${data.summary.challengeHitCount} challenge hit(s) / ${data.summary.selectedEvidenceCount} selected evidence.`
       });
       setStatus("Server certified playthrough completed. Auto-player session was persisted and Review Source is unlocked.");
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to run server certified playthrough");
+    } catch {
+      setStatus(t("error.generic"));
     } finally {
       setBusy(false);
     }

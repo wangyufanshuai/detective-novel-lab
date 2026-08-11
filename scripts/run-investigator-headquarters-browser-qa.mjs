@@ -151,7 +151,7 @@ try {
     const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     await context.addInitScript(({ worldId: id, sessionId: sid }) => localStorage.setItem("detective-town-launch-v1", JSON.stringify({ worldId: id, sessionId: sid })), { worldId, sessionId });
     const page = await context.newPage();
-    await page.goto(`${baseUrl}/?runtime=server`, { waitUntil: "networkidle" });
+    await page.goto(`${baseUrl}/?runtime=server&lang=en-US`, { waitUntil: "networkidle" });
     // Server Runtime intentionally opens the Campaign Front Door on first load.
     // The persisted launch record only seeds the Continue action; it does not
     // bypass that player-facing boundary. Restore through the same UI path the

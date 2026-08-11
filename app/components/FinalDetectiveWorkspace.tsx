@@ -9,6 +9,8 @@ import {
 import type { FinalDetectiveWorkspace } from "@/app/campaign/final-detective-workspace-model";
 import type { GapCard, NotebookAction } from "@/app/campaign/investigation-workspace-model";
 import type { CertifiedInvestigationActionAdapter } from "@/app/hooks/useCertifiedInvestigationActions";
+import { useAppLocale } from "@/app/localization/locale-context";
+import type { LocaleMessageKey } from "@/app/localization/locale-catalog";
 import type {
   DeductionCase,
   Evidence,
@@ -42,16 +44,12 @@ export type FinalDetectiveWorkspaceProps = {
   busy: boolean;
 };
 
-const EVIDENCE_ACTION_LABELS = {
-  "focus-source": "Focus source",
-  "prepare-challenge": "Prepare challenge",
-  "add-theory": "Add to theory",
-  "remove-theory": "Remove from theory"
+const EVIDENCE_ACTION_KEYS: Record<"focus-source" | "prepare-challenge" | "add-theory" | "remove-theory", LocaleMessageKey> = {
+  "focus-source": "workspace.focusSource",
+  "prepare-challenge": "workspace.prepareChallenge",
+  "add-theory": "workspace.addTheory",
+  "remove-theory": "workspace.removeTheory"
 } as const;
-
-function statusLabel(value: boolean) {
-  return value ? "complete" : "missing";
-}
 
 export function FinalDetectiveWorkspace({
   model, currentAction, notebookItems, discoveredEvidence, characters, actionAdapter,
@@ -59,6 +57,7 @@ export function FinalDetectiveWorkspace({
   selectedEvidenceId, setSelectedEvidenceId, question, setQuestion, theory, setTheory,
   submitTheory, gapCards, onGapSelect, onCampaignRecoveryStart, busy
 }: FinalDetectiveWorkspaceProps) {
+  const { number, t, text } = useAppLocale();
   const ledger = useCampaignResolutionLedgerContext();
   const sourceReviewRef = useRef<HTMLElement>(null);
   const selectedCharacterIndex = characters.findIndex((item) => item.id === selectedCharacterId);
@@ -118,7 +117,7 @@ export function FinalDetectiveWorkspace({
     focusSourceReview();
   }
 
-  function runEvidenceAction(sourceIndex: number, action: keyof typeof EVIDENCE_ACTION_LABELS) {
+  function runEvidenceAction(sourceIndex: number, action: keyof typeof EVIDENCE_ACTION_KEYS) {
     const item = notebookItems[sourceIndex];
     if (!item) return;
     if (action === "focus-source") onNotebookAction(item, "source");
@@ -132,133 +131,133 @@ export function FinalDetectiveWorkspace({
       data-testid="final-detective-workspace"
       data-workspace-stage={model.stage}
       data-workspace-runtime={model.runtimeMode}
-      aria-label="Final Detective Workspace"
+      aria-label={t("workspace.aria")}
     >
       <header className={styles.objective} data-testid="final-workspace-objective">
-        <div><span>{model.objective.phase} / Current Objective</span><h2>{model.objective.title}</h2><p>{model.objective.detail}</p></div>
-        <b>{model.objective.progressLabel}</b>
-        <nav aria-label="Certified investigation progress">
-          {model.progress.map((item) => <span key={item.key} className={styles[item.state]}><strong>{item.label}</strong><small>{item.metric}</small></span>)}
+        <div><span>{text(model.objective.phase)} / {t("workspace.objective")}</span><h2>{text(model.objective.title)}</h2><p>{text(model.objective.detail)}</p></div>
+        <b>{text(model.objective.progressLabel)}</b>
+        <nav aria-label={t("workspace.progress")}>
+          {model.progress.map((item) => <span key={item.key} className={styles[item.state]}><strong>{text(item.label)}</strong><small>{text(item.metric)}</small></span>)}
         </nav>
       </header>
 
       <section className={styles.currentTask} data-testid="case-intake-next-action">
-        <span>Current Task / {model.stage}</span><strong>{model.currentTask.label}</strong><p>{model.currentTask.detail}</p><b>{model.currentTask.metric}</b>
+        <span>{t("workspace.task")} / {text(model.stage)}</span><strong>{text(model.currentTask.label)}</strong><p>{text(model.currentTask.detail)}</p><b>{text(model.currentTask.metric)}</b>
       </section>
 
       <div className={styles.workspaceGrid} data-testid="final-workspace-active-area">
-        <aside className={styles.intelligence} aria-label="Evidence and testimony">
+        <aside className={styles.intelligence} aria-label={t("workspace.evidenceTestimony")}>
           <section className={styles.pane} data-testid="final-workspace-evidence">
-            <header><div><FileSearch size={16} /><span>Evidence</span></div><b>{model.evidence.discoveredCount}/{model.evidence.totalCount} found · {model.evidence.selectedCount} selected</b></header>
+            <header><div><FileSearch size={16} aria-hidden="true" /><span>{t("workspace.evidence")}</span></div><b>{number(model.evidence.discoveredCount)}/{number(model.evidence.totalCount)} {t("workspace.found")} · {number(model.evidence.selectedCount)} {t("workspace.selected")}</b></header>
             <div className={styles.cardList}>
               {model.evidence.rows.map((item) => (
                 <article key={item.key} className={`${styles.card} ${styles[item.state]} ${item.current ? styles.current : ""}`}>
-                  <span>{item.state} / {item.provenanceLabel}</span><strong>{item.title}</strong><p>{item.description}</p>
-                  {!!item.supportLabels.length && <div className={styles.tags}>{item.supportLabels.map((label) => <em key={`${item.key}:s:${label}`}>supports {label}</em>)}</div>}
-                  {!!item.contradictionLabels.length && <div className={styles.tags}>{item.contradictionLabels.map((label) => <em className={styles.warning} key={`${item.key}:c:${label}`}>tests {label}</em>)}</div>}
-                  <div className={styles.contextActions}>{item.actions.map((action) => <button type="button" key={action} onClick={() => runEvidenceAction(item.sourceIndex, action)} disabled={busy}>{EVIDENCE_ACTION_LABELS[action]}</button>)}</div>
+                  <span>{text(item.state)} / {text(item.provenanceLabel)}</span><strong>{text(item.title)}</strong><p>{text(item.description)}</p>
+                  {!!item.supportLabels.length && <div className={styles.tags}>{item.supportLabels.map((label) => <em key={`${item.key}:s:${label}`}>{t("workspace.supports")} {text(label)}</em>)}</div>}
+                  {!!item.contradictionLabels.length && <div className={styles.tags}>{item.contradictionLabels.map((label) => <em className={styles.warning} key={`${item.key}:c:${label}`}>{t("workspace.tests")} {text(label)}</em>)}</div>}
+                  <div className={styles.contextActions}>{item.actions.map((action) => <button type="button" key={action} onClick={() => runEvidenceAction(item.sourceIndex, action)} disabled={busy}>{t(EVIDENCE_ACTION_KEYS[action])}</button>)}</div>
                 </article>
               ))}
             </div>
           </section>
 
           <section className={styles.pane} data-testid="final-workspace-testimony">
-            <header><div><MessageSquare size={16} /><span>Testimony</span></div><b>{model.testimony.questionedCount}/{model.testimony.totalCount} heard · {model.testimony.contradictionCount} challenged</b></header>
+            <header><div><MessageSquare size={16} aria-hidden="true" /><span>{t("workspace.testimony")}</span></div><b>{number(model.testimony.questionedCount)}/{number(model.testimony.totalCount)} {t("workspace.heard")} · {number(model.testimony.contradictionCount)} {t("workspace.challenged")}</b></header>
             <div className={styles.cardList}>
               {model.testimony.rows.map((item) => (
-                <button type="button" key={item.key} className={`${styles.card} ${styles.testimonyCard} ${styles[item.state]} ${item.selected ? styles.current : ""}`} onClick={() => setSelectedCharacterId(characters[item.characterIndex]?.id || "")}>
-                  <span>{item.state} / {item.roleLabel}</span><strong>{item.actorName}</strong><p>{item.statement}</p>
-                  {!!item.evidenceLabels.length && <small>Presented: {item.evidenceLabels.join(" / ")}</small>}
-                  {!!item.contradictionLabels.length && <small>Exposed: {item.contradictionLabels.join(" / ")}</small>}
+                <button type="button" key={item.key} className={`${styles.card} ${styles.testimonyCard} ${styles[item.state]} ${item.selected ? styles.current : ""}`} aria-pressed={item.selected} onClick={() => setSelectedCharacterId(characters[item.characterIndex]?.id || "")}>
+                  <span>{text(item.state)} / {text(item.roleLabel)}</span><strong>{text(item.actorName)}</strong><p>{text(item.statement)}</p>
+                  {!!item.evidenceLabels.length && <small>{t("workspace.presented")} {item.evidenceLabels.map(text).join(" / ")}</small>}
+                  {!!item.contradictionLabels.length && <small>{t("workspace.exposed")} {item.contradictionLabels.map(text).join(" / ")}</small>}
                 </button>
               ))}
             </div>
           </section>
         </aside>
 
-        <main className={styles.context} aria-label="Active investigation context">
+        <section className={styles.context} aria-label={t("workspace.contextAria")}>
           <section className={styles.pane} data-testid="final-workspace-context">
-            <header><div><BookOpenCheck size={16} /><span>Active Context</span></div><b>{model.activeContext.locationLabel}</b></header>
+            <header><div><BookOpenCheck size={16} aria-hidden="true" /><span>{t("workspace.context")}</span></div><b>{text(model.activeContext.locationLabel)}</b></header>
             <dl className={styles.contextSummary}>
-              <div><dt>Witness</dt><dd>{model.activeContext.actorLabel}</dd></div>
-              <div><dt>Public statement</dt><dd>{model.activeContext.testimonyLabel}</dd></div>
-              <div><dt>Visible scope</dt><dd>{model.activeContext.scopeLabel}</dd></div>
+              <div><dt>{t("workspace.witness")}</dt><dd>{text(model.activeContext.actorLabel)}</dd></div>
+              <div><dt>{t("workspace.statement")}</dt><dd>{text(model.activeContext.testimonyLabel)}</dd></div>
+              <div><dt>{t("workspace.scope")}</dt><dd>{text(model.activeContext.scopeLabel)}</dd></div>
             </dl>
-            <label>Witness
-              <select value={selectedCharacterIndex >= 0 ? String(selectedCharacterIndex) : ""} onChange={(event) => setSelectedCharacterId(characters[Number(event.target.value)]?.id || "")}>
-                <option value="">Choose a witness</option>
-                {model.testimony.rows.map((item) => <option key={item.key} value={item.characterIndex}>{item.actorName} · {item.roleLabel}</option>)}
+            <label>{t("workspace.witness")}
+              <select name="investigation-witness" autoComplete="off" value={selectedCharacterIndex >= 0 ? String(selectedCharacterIndex) : ""} onChange={(event) => setSelectedCharacterId(characters[Number(event.target.value)]?.id || "")}>
+                <option value="">{t("workspace.chooseWitness")}</option>
+                {model.testimony.rows.map((item) => <option key={item.key} value={item.characterIndex}>{text(item.actorName)} · {text(item.roleLabel)}</option>)}
               </select>
             </label>
-            <label>Discovered clue
-              <select value={selectedEvidenceIndex >= 0 ? String(selectedEvidenceIndex) : ""} onChange={(event) => setSelectedEvidenceId(notebookItems[Number(event.target.value)]?.evidenceId || "")}>
-                <option value="">No clue presented</option>
-                {model.evidence.rows.filter((item) => item.state !== "locked").map((item) => <option key={item.key} value={item.sourceIndex}>{item.title}</option>)}
+            <label>{t("workspace.clue")}
+              <select name="investigation-clue" autoComplete="off" value={selectedEvidenceIndex >= 0 ? String(selectedEvidenceIndex) : ""} onChange={(event) => setSelectedEvidenceId(notebookItems[Number(event.target.value)]?.evidenceId || "")}>
+                <option value="">{t("workspace.noClue")}</option>
+                {model.evidence.rows.filter((item) => item.state !== "locked").map((item) => <option key={item.key} value={item.sourceIndex}>{text(item.title)}</option>)}
               </select>
             </label>
-            <label>Question or challenge
-              <textarea value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="Ask about the public incident window or test one statement with a discovered clue." />
+            <label>{t("workspace.question")}
+              <textarea name="investigation-question" autoComplete="off" value={question} onChange={(event) => setQuestion(event.target.value)} placeholder={t("workspace.questionPlaceholder")} />
             </label>
           </section>
 
           <section className={styles.pane} data-testid="final-workspace-contradictions">
-            <header><div><ShieldCheck size={16} /><span>Contradictions</span></div><b>{model.contradictions.length} visible relation(s)</b></header>
+            <header><div><ShieldCheck size={16} aria-hidden="true" /><span>{t("workspace.contradictions")}</span></div><b>{number(model.contradictions.length)} {t("workspace.relations")}</b></header>
             <div className={styles.cardList}>
-              {model.contradictions.length ? model.contradictions.map((item) => <article key={item.key} className={`${styles.card} ${styles[item.state]}`}><span>{item.state}</span><strong>{item.label}</strong><p>{item.detail}</p></article>) : <p className={styles.empty}>Question witnesses and discover clues before testing a public contradiction.</p>}
+              {model.contradictions.length ? model.contradictions.map((item) => <article key={item.key} className={`${styles.card} ${styles[item.state]}`}><span>{text(item.state)}</span><strong>{text(item.label)}</strong><p>{text(item.detail)}</p></article>) : <p className={styles.empty}>{t("workspace.contradictionsEmpty")}</p>}
             </div>
           </section>
 
           {model.recovery.state !== "empty" && <section className={`${styles.pane} ${styles.recovery}`} data-testid="final-workspace-recovery">
-            <header><div><ShieldCheck size={16} /><span>Recovery</span></div><b>{model.recovery.state}</b></header>
-            <strong>{model.recovery.label}</strong><p>{model.recovery.detail}</p><small>{model.recovery.costLabel}</small><em>{model.recovery.nextAction}</em>
+            <header><div><ShieldCheck size={16} aria-hidden="true" /><span>{t("workspace.recovery")}</span></div><b>{text(model.recovery.state)}</b></header>
+            <strong>{text(model.recovery.label)}</strong><p>{text(model.recovery.detail)}</p><small>{text(model.recovery.costLabel)}</small><em>{text(model.recovery.nextAction)}</em>
           </section>}
-        </main>
+        </section>
 
-        <aside className={styles.theory} aria-label="Theory workspace">
+        <aside className={styles.theory} aria-label={t("workspace.theoryAria")}>
           <section className={styles.pane} data-testid="final-workspace-theory" data-theory-state={model.theory.state}>
-            <header><div><ShieldCheck size={16} /><span>Theory</span></div><b>{model.theory.statusLabel}</b></header>
+            <header><div><ShieldCheck size={16} aria-hidden="true" /><span>{t("workspace.theory")}</span></div><b>{text(model.theory.statusLabel)}</b></header>
             <div className={styles.readiness}>
-              <span data-complete={model.theory.suspectComplete}><b>{statusLabel(model.theory.suspectComplete)}</b>suspect</span>
-              <span data-complete={model.theory.motiveComplete}><b>{statusLabel(model.theory.motiveComplete)}</b>motive</span>
-              <span data-complete={model.theory.methodComplete}><b>{statusLabel(model.theory.methodComplete)}</b>method</span>
-              <span data-complete={model.theory.evidenceComplete}><b>{model.theory.selectedEvidenceCount}</b>evidence</span>
+              <span data-complete={model.theory.suspectComplete}><b>{t(model.theory.suspectComplete ? "common.complete" : "common.missing")}</b>{t("workspace.suspect")}</span>
+              <span data-complete={model.theory.motiveComplete}><b>{t(model.theory.motiveComplete ? "common.complete" : "common.missing")}</b>{t("workspace.motive")}</span>
+              <span data-complete={model.theory.methodComplete}><b>{t(model.theory.methodComplete ? "common.complete" : "common.missing")}</b>{t("workspace.method")}</span>
+              <span data-complete={model.theory.evidenceComplete}><b>{number(model.theory.selectedEvidenceCount)}</b>{t("workspace.theoryEvidence")}</span>
             </div>
-            <label>Suspect hypothesis
-              <select data-testid="theory-culprit" value={selectedSuspectIndex >= 0 ? String(selectedSuspectIndex) : ""} onChange={(event) => setTheory((current) => ({ ...current, culpritId: characters[Number(event.target.value)]?.id || "" }))}>
-                <option value="">Choose a suspect</option>{characters.map((character, index) => <option key={character.id} value={index}>{character.name}</option>)}
+            <label>{t("workspace.suspectHypothesis")}
+              <select name="theory-suspect" autoComplete="off" data-testid="theory-culprit" value={selectedSuspectIndex >= 0 ? String(selectedSuspectIndex) : ""} onChange={(event) => setTheory((current) => ({ ...current, culpritId: characters[Number(event.target.value)]?.id || "" }))}>
+                <option value="">{t("workspace.chooseSuspect")}</option>{characters.map((character, index) => <option key={character.id} value={index}>{text(character.name)}</option>)}
               </select>
             </label>
-            <label>Motive hypothesis<textarea placeholder="Explain the pressure or conflict supported by discovered clues." value={theory.motive} onChange={(event) => setTheory((current) => ({ ...current, motive: event.target.value }))} /></label>
-            <label>Method hypothesis<textarea placeholder="Explain the means and scene mechanism supported by discovered clues." value={theory.method} onChange={(event) => setTheory((current) => ({ ...current, method: event.target.value }))} /></label>
-            <div className={styles.selectedEvidence}><span>Selected evidence</span>{model.theory.selectedEvidenceLabels.length ? model.theory.selectedEvidenceLabels.map((label) => <b key={label}>{label}</b>) : <small>Select discovered clues from the Evidence pane.</small>}</div>
-            {!!model.theory.missingCategories.length && <div className={styles.missing}><span>Public gaps</span>{model.theory.missingCategories.map((label) => <b key={label}>{label}</b>)}</div>}
+            <label>{t("workspace.motiveHypothesis")}<textarea name="theory-motive" autoComplete="off" placeholder={t("workspace.motivePlaceholder")} value={theory.motive} onChange={(event) => setTheory((current) => ({ ...current, motive: event.target.value }))} /></label>
+            <label>{t("workspace.methodHypothesis")}<textarea name="theory-method" autoComplete="off" placeholder={t("workspace.methodPlaceholder")} value={theory.method} onChange={(event) => setTheory((current) => ({ ...current, method: event.target.value }))} /></label>
+            <div className={styles.selectedEvidence}><span>{t("workspace.selectedEvidence")}</span>{model.theory.selectedEvidenceLabels.length ? model.theory.selectedEvidenceLabels.map((label) => <b key={label}>{text(label)}</b>) : <small>{t("workspace.selectEvidence")}</small>}</div>
+            {!!model.theory.missingCategories.length && <div className={styles.missing}><span>{t("workspace.publicGaps")}</span>{model.theory.missingCategories.map((label) => <b key={label}>{text(label)}</b>)}</div>}
           </section>
         </aside>
       </div>
 
       <section ref={sourceReviewRef} tabIndex={-1} className={`${styles.sourceReview} ${styles[model.sourceReview.state]}`} data-testid="source-review-unlock">
-        <header><div><span>Source Review Unlock</span><strong>{model.sourceReview.statusLabel}</strong></div><b>{model.sourceReview.state === "locked" ? "accepted theory required" : "audit ready"}</b></header>
-        <div className={styles.sourceMetrics}><span><b>{model.sourceReview.sourceCount}</b>source events</span><span><b>{model.sourceReview.coveredObligations}/{model.sourceReview.totalObligations}</b>covered obligations</span></div>
-        {model.sourceReview.state === "locked" ? <small>Complete the certified route and submit an accepted theory before source labels and conclusion review are shown.</small> : <div className={styles.sourceGrid} data-testid="source-review-workbench">
-          {(["source", "obligation", "route", "conclusion"] as const).map((category) => <section key={category} data-testid={`source-review-${category === "source" ? "trail" : category === "obligation" ? "obligations" : category}`}><strong>{category === "source" ? "Source Trail" : category === "obligation" ? "Proof Obligations" : category === "route" ? "Certified Route" : "Conclusion Review"}</strong>{model.sourceReview.rows.filter((item) => item.category === category).map((item) => <article key={item.key} className={styles[item.state]}><span>{item.state}</span><b>{item.label}</b><small>{item.detail}</small></article>)}</section>)}
+        <header><div><span>{t("workspace.sourceReview")}</span><strong>{text(model.sourceReview.statusLabel)}</strong></div><b>{model.sourceReview.state === "locked" ? t("workspace.acceptedRequired") : t("workspace.auditReady")}</b></header>
+        <div className={styles.sourceMetrics}><span><b>{number(model.sourceReview.sourceCount)}</b>{t("workspace.sourceEvents")}</span><span><b>{number(model.sourceReview.coveredObligations)}/{number(model.sourceReview.totalObligations)}</b>{t("workspace.covered")}</span></div>
+        {model.sourceReview.state === "locked" ? <small>{t("workspace.sourceLocked")}</small> : <div className={styles.sourceGrid} data-testid="source-review-workbench">
+          {(["source", "obligation", "route", "conclusion"] as const).map((category) => <section key={category} data-testid={`source-review-${category === "source" ? "trail" : category === "obligation" ? "obligations" : category}`}><strong>{category === "source" ? t("workspace.sourceTrail") : category === "obligation" ? t("workspace.proofObligations") : category === "route" ? t("workspace.certifiedRoute") : t("workspace.conclusion")}</strong>{model.sourceReview.rows.filter((item) => item.category === category).map((item) => <article key={item.key} className={styles[item.state]}><span>{text(item.state)}</span><b>{text(item.label)}</b><small>{text(item.detail)}</small></article>)}</section>)}
         </div>}
       </section>
 
       <footer className={styles.actionBar} data-testid="final-workspace-current-action">
-        <div><span>Current Action</span><strong>{model.currentTask.action.label}</strong><small id="final-workspace-action-detail">{model.currentTask.nextAction}</small></div>
+        <div><span>{t("workspace.currentAction")}</span><strong>{text(model.currentTask.action.label)}</strong><small id="final-workspace-action-detail">{text(model.currentTask.nextAction)}</small></div>
         <button type="button" className={styles.primaryAction} data-testid="final-workspace-primary-action" data-action-kind={model.currentTask.action.kind} aria-describedby="final-workspace-action-detail" onClick={() => void runPrimaryAction()} disabled={busy || !model.currentTask.action.enabled}>
           <span data-testid="case-intake-next"><span data-testid="playable-path-next-action">
             {model.currentTask.action.kind === "join"
-              ? <span data-testid="case-intake-join">{busy ? "Resolving…" : model.currentTask.action.label}</span>
+              ? <span data-testid="case-intake-join">{busy ? t("common.resolving") : text(model.currentTask.action.label)}</span>
               : model.currentTask.action.kind === "submit"
-                ? <span data-testid="submit-theory">{busy ? "Resolving…" : model.currentTask.action.label}</span>
-                : busy ? "Resolving…" : model.currentTask.action.label}
+                ? <span data-testid="submit-theory">{busy ? t("common.resolving") : text(model.currentTask.action.label)}</span>
+                : busy ? t("common.resolving") : text(model.currentTask.action.label)}
           </span></span>
         </button>
       </footer>
 
       {ledger && <section className={styles.resolution} data-testid="final-workspace-latest-resolution"><CampaignResolutionChain entry={ledger.latest} testId="final-workspace-resolution-chain" mode="history" /></section>}
-      <small className={styles.boundary}>{model.authorityNote} The workspace stores no second selection state and never validates a theory in the browser.</small>
+      <small className={styles.boundary}>{text(model.authorityNote)} {t("workspace.boundary")}</small>
     </section>
   );
 }

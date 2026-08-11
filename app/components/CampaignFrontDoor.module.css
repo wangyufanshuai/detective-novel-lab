@@ -104,7 +104,6 @@
 .cardButton:hover,
 .cardButton:focus-visible {
   border-color: rgba(205, 176, 115, 0.72);
-  outline: none;
   transform: translateY(-2px);
 }
 

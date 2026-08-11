@@ -58,7 +58,7 @@ try {
       if (pathname.startsWith("/api/")) requests.push(safeRequestPath(pathname));
     });
     currentStep = "open server front door";
-    await page.goto(`${baseUrl}/?runtime=server`, { waitUntil: "networkidle" });
+    await page.goto(`${baseUrl}/?runtime=server&lang=en-US`, { waitUntil: "networkidle" });
     const frontDoor = page.getByTestId("campaign-front-door");
     await frontDoor.waitFor({ state: "visible", timeout: 15_000 });
     const cards = frontDoor.getByTestId("campaign-front-door-card");
@@ -142,7 +142,7 @@ try {
       const pathname = new URL(request.url()).pathname;
       if (pathname.startsWith("/api/")) staticApiRequests.push(pathname);
     });
-    await staticPage.goto(`${baseUrl}/?runtime=static`, { waitUntil: "networkidle" });
+    await staticPage.goto(`${baseUrl}/?runtime=static&lang=en-US`, { waitUntil: "networkidle" });
     const staticFrontDoor = staticPage.getByTestId("campaign-front-door");
     await staticFrontDoor.waitFor({ state: "visible", timeout: 15_000 });
     if (await staticFrontDoor.getByTestId("campaign-front-door-card").count() !== 4) failures.push("Static Front Door did not show four safe previews.");

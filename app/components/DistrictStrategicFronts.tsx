@@ -6,6 +6,7 @@ import type {
   DistrictStrategicFrontsViewModel
 } from "@/app/campaign/district-strategic-front-model";
 import type { StrategicCommandAction } from "@/app/campaign/strategic-command-model";
+import { useAppLocale } from "@/app/localization/locale-context";
 import styles from "./DistrictStrategicFronts.module.css";
 
 const FRONT_ICON = {
@@ -31,6 +32,7 @@ export const DistrictStrategicFronts = memo(function DistrictStrategicFronts({
   onSelect: (front: DistrictStrategicFront) => void;
   onAction?: (action: StrategicCommandAction, front: DistrictStrategicFront) => void | Promise<void>;
 }) {
+  const { number, t, text } = useAppLocale();
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
   if (model.status === "empty") return null;
   const selected = model.fronts.find((front) => front.key === selectedFrontKey)
@@ -60,16 +62,16 @@ export const DistrictStrategicFronts = memo(function DistrictStrategicFronts({
         onClick={onPanelToggle}
       >
         <MapPinned size={16} aria-hidden="true" />
-        <span><small>Strategic Fronts</small><strong>{selected?.districtLabel || "Townwide"}</strong></span>
-        <b>{model.fronts.length} / {selected?.state || model.status}</b>
+        <span><small>{t("district.fronts")}</small><strong>{selected ? text(selected.districtLabel) : t("district.townwide")}</strong></span>
+        <b>{number(model.fronts.length)} / {text(selected?.state || model.status)}</b>
       </button>
       <div id="district-strategic-front-panel" className={styles.panel} data-testid="district-fronts-panel" aria-hidden={!panelOpen}>
         <header>
-          <span>District Operations</span>
-          <strong>{selected?.label || "Strategic Front"}</strong>
-          <small>Choose a public district focus. Execution stays with the existing command handler.</small>
+          <span>{t("district.operations")}</span>
+          <strong>{selected ? text(selected.label) : t("district.front")}</strong>
+          <small>{t("district.detail")}</small>
         </header>
-        <div className={styles.options} role="group" aria-label="District strategic fronts">
+        <div className={styles.options} role="group" aria-label={t("district.aria")}>
           {model.fronts.map((front, index) => {
             const Icon = FRONT_ICON[front.key];
             return (
@@ -87,28 +89,28 @@ export const DistrictStrategicFronts = memo(function DistrictStrategicFronts({
                 onKeyDown={(event) => navigateFront(event, index)}
               >
                 <Icon size={15} aria-hidden="true" />
-                <span><b>{front.label}</b><small>{front.districtLabel}</small></span>
-                <em>{front.state}</em>
+                <span><b>{text(front.label)}</b><small>{text(front.districtLabel)}</small></span>
+                <em>{text(front.state)}</em>
               </button>
             );
           })}
         </div>
         {selected ? (
           <article className={styles.detail} data-testid="district-front-detail" data-front-kind={selected.key} data-front-tone={selected.tone} data-front-location={selected.districtLabel}>
-            <div className={styles.detailHeading}><span>{selected.districtLabel}</span><b>{selected.summary}</b></div>
+            <div className={styles.detailHeading}><span>{text(selected.districtLabel)}</span><b>{text(selected.summary)}</b></div>
             <dl>
-              <div><dt>Why now</dt><dd>{selected.whyNow}</dd></div>
-              <div><dt>Visible benefit</dt><dd>{selected.benefitLabel}</dd></div>
-              <div><dt>Cost / boundary</dt><dd>{selected.costLabel}</dd></div>
+              <div><dt>{t("district.whyNow")}</dt><dd>{text(selected.whyNow)}</dd></div>
+              <div><dt>{t("district.benefit")}</dt><dd>{text(selected.benefitLabel)}</dd></div>
+              <div><dt>{t("district.costBoundary")}</dt><dd>{text(selected.costLabel)}</dd></div>
             </dl>
             {selected.action && onAction ? (
               <button type="button" className={styles.action} data-testid="district-front-action" onClick={() => void onAction(selected.action!, selected)}>
-                <span>Open existing action</span><strong>{selected.action.label}</strong>
+                <span>{t("district.openAction")}</span><strong>{text(selected.action.label)}</strong>
               </button>
-            ) : <p className={styles.readonly}>{model.status === "readonly" ? "Server-only action · Static map focus remains local and read-only." : selected.nextAction}</p>}
+            ) : <p className={styles.readonly}>{model.status === "readonly" ? t("district.readonly") : text(selected.nextAction)}</p>}
           </article>
         ) : null}
-        <footer>{model.boundary}</footer>
+        <footer>{text(model.boundary)}</footer>
       </div>
     </section>
   );

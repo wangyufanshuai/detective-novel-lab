@@ -1,11 +1,12 @@
 "use client";
 
-import type { Dispatch, SetStateAction } from "react";
+import { useRef, type Dispatch, type SetStateAction } from "react";
 import type { useCampaignController } from "@/app/controllers/useCampaignController";
 import type { useInvestigationController } from "@/app/controllers/useInvestigationController";
 import type { useReviewController } from "@/app/controllers/useReviewController";
 import type { useTownRuntimeController } from "@/app/controllers/useTownRuntimeController";
 import type { WorldSessionActionAdapter } from "@/app/hooks/useWorldSessionActions";
+import { useAppLocale } from "@/app/localization/locale-context";
 import { postV1 } from "@/app/lib/client-runtime";
 import { listDetectiveCampaignDefinitions } from "@/lib/engine";
 import type {
@@ -52,7 +53,10 @@ export function useCampaignLaunchActions({
   refreshTownRuntime,
   setAppMode
 }: CampaignLaunchActionsInput): CampaignLaunchActionAdapter {
-  const { runtimeMode, setWorld, setEvents, setInspectorTab, setStatus } = investigation;
+  const startInFlight = useRef(false);
+  const continueInFlight = useRef(false);
+  const { t, text } = useAppLocale();
+  const { runtimeMode, setInspectorTab, setStatus } = investigation;
   const {
     frontDoorSelection,
     frontDoorRouteSelection,
@@ -61,93 +65,86 @@ export function useCampaignLaunchActions({
     setFrontDoorOpen,
     continueWorldId,
     continueSessionId,
-    setCampaignSession
   } = campaign;
-  const { setTownRuntime, setTownQueue } = town;
   const { setSelectedScenarioPackId } = review;
   const { createWorld, loadWorld, persist } = worldSession;
 
   async function startSelectedCampaign() {
     if (runtimeMode !== "server") return;
+    if (startInFlight.current) return;
     const definition = campaignDefinitions[frontDoorSelection] || campaignDefinitions[0];
     const route = definition?.routes[frontDoorRouteSelection] || definition?.routes[0];
     const packageId = definition?.worldPackageIds[0];
     if (!definition || !route || !packageId) {
-      setFrontDoorStatus("The selected Campaign route is unavailable in this local build.");
+      setFrontDoorStatus(t("front.routeUnavailable"));
       return;
     }
+    startInFlight.current = true;
     setFrontDoorBusy(true);
-    setFrontDoorStatus(`Preparing ${definition.label} / ${route.label} from a clean deterministic town…`);
+    setFrontDoorStatus(t("front.status.preparing", { campaign: text(definition.label), route: text(route.label) }));
     try {
-      const createdWorld = await createWorld("server", { saveAsContinue: false, campaignReady: true });
+      const createdWorld = await createWorld("server", { saveAsContinue: false, campaignReady: true, applyToClient: false });
       if (!createdWorld) throw new Error("Campaign town creation did not complete.");
       const selected = await postV1<{
         currentExperiment: { scenarioPackId: string };
         campaignSession?: CampaignSessionPublicSummary;
       }>("/api/v1/command/town/world-pack/select", { worldId: createdWorld.id, packageId, campaignRouteId: route.id });
-      setSelectedScenarioPackId(selected.currentExperiment.scenarioPackId);
-      if (selected.campaignSession) setCampaignSession(selected.campaignSession);
       let started = await postV1<{
         runtime: PersistentTownRuntime;
         events: WorldEvent[];
         queue: TownEmergenceQueue;
         world: WorldState;
       }>("/api/v1/command/town/runtime/start", { worldId: createdWorld.id, steps: 2 });
-      setTownRuntime(started.runtime);
-      setTownQueue(started.queue);
-      setWorld(started.world);
-      setEvents((items) => [...items, ...started.events]);
-      setCampaignSession(started.runtime.campaignSessionSummary || selected.campaignSession || null);
       let candidate = started.queue.candidates.find((item) => item.validation.valid);
       for (let attempt = 0; attempt < 5 && !candidate; attempt += 1) {
-        setFrontDoorStatus(`Preparing ${definition.label} / ${route.label}: validating the opening case route (${attempt + 1}/5)…`);
+        setFrontDoorStatus(t("front.status.validating", { campaign: text(definition.label), route: text(route.label), attempt: attempt + 1 }));
         started = await postV1<{
           runtime: PersistentTownRuntime;
           events: WorldEvent[];
           queue: TownEmergenceQueue;
           world: WorldState;
         }>("/api/v1/command/town/runtime/step", { worldId: createdWorld.id, steps: 8 });
-        setTownRuntime(started.runtime);
-        setTownQueue(started.queue);
-        setWorld(started.world);
-        setEvents((items) => [...items, ...started.events]);
-        setCampaignSession(started.runtime.campaignSessionSummary || selected.campaignSession || null);
         candidate = started.queue.candidates.find((item) => item.validation.valid);
       }
       if (!candidate) throw new Error("No route-certified opening case is available yet.");
       const extracted = await extractPersistentCandidate(candidate, createdWorld.id);
       if (!extracted) throw new Error("The opening case did not pass route-integrity extraction.");
+      setSelectedScenarioPackId(selected.currentExperiment.scenarioPackId);
       persist(createdWorld.id, "");
-      setFrontDoorStatus(`${definition.label} / ${route.label} started. The authored route is frozen after this successful extraction.`);
+      setFrontDoorStatus(t("front.status.started", { campaign: text(definition.label), route: text(route.label) }));
       setFrontDoorOpen(false);
       setInspectorTab("investigation");
       setAppMode("play");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to start Campaign.";
+    } catch {
+      const message = t("error.campaignStart");
       setFrontDoorStatus(message);
       setStatus(message);
     } finally {
+      startInFlight.current = false;
       setFrontDoorBusy(false);
     }
   }
 
   async function continueSavedCampaign() {
     if (runtimeMode !== "server" || !continueWorldId) return;
+    if (continueInFlight.current) return;
+    continueInFlight.current = true;
     setFrontDoorBusy(true);
-    setFrontDoorStatus("Restoring the saved local Campaign without creating a new world…");
+    setFrontDoorStatus(t("front.status.restoring"));
     try {
       const loaded = await loadWorld(continueWorldId, continueSessionId);
       if (!loaded) throw new Error("The saved local Campaign could not be restored.");
       await refreshTownRuntime(loaded.world.id);
-      setFrontDoorStatus("Saved Campaign restored from the existing local world state.");
+      setFrontDoorStatus(t("front.status.restored"));
       setFrontDoorOpen(false);
       setInspectorTab("investigation");
       setAppMode("play");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to continue Campaign.";
+    } catch {
+      const message = t("error.campaignContinue");
       setFrontDoorStatus(message);
       setStatus(message);
     } finally {
+      continueInFlight.current = false;
       setFrontDoorBusy(false);
     }
   }

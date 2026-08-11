@@ -330,11 +330,11 @@ export function WorldPackageCatalogPanel({
           if (preferred) setSelectedPackageId(preferred.packageId);
         }
       })
-      .catch((error) => {
+      .catch(() => {
         if (!cancelled) {
           setCatalog(null);
           setDetail(null);
-          setStatus(error instanceof Error ? error.message : "Failed to load package catalog.");
+          setStatus("Failed to load the package catalog safely. Retry the review request.");
         }
       });
     return () => {
@@ -369,8 +369,8 @@ export function WorldPackageCatalogPanel({
       );
       setStatus(`Synced ${data.sync.syncedPackageCount} package(s): ${data.sync.validPackageCount} valid, ${data.sync.invalidPackageCount} invalid.`);
       await loadCatalog();
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to sync package catalog.");
+    } catch {
+      setStatus("Failed to sync the package catalog safely. Retry the review request.");
     } finally {
       setSyncing(false);
     }
@@ -385,8 +385,8 @@ export function WorldPackageCatalogPanel({
       );
       onSelectPackId(data.currentExperiment.scenarioPackId);
       setStatus(`Selected ${selected.packageId}. ScenarioPack ${data.currentExperiment.scenarioPackId} is now bound with its map/rules.`);
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to select world package.");
+    } catch {
+      setStatus("Failed to select the world package safely. The last confirmed selection remains active.");
     }
   }
 
@@ -400,8 +400,8 @@ export function WorldPackageCatalogPanel({
       );
       setStatus(`Validated ${selected.packageId}: ${data.ok ? "ok" : "failed"}, ${data.errors.length} errors, ${data.warnings.length} warnings.`);
       await loadCatalog();
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to validate world package.");
+    } catch {
+      setStatus("Failed to validate the world package safely. Retry the review request.");
     } finally {
       setValidating(false);
     }
@@ -422,8 +422,8 @@ export function WorldPackageCatalogPanel({
         { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ packageId: selected.packageId, format: "folder" }) }
       );
       setStatus(`Exported ${data.packageId}: ${data.relativeExportPath} (${data.fileCount} files, ${data.validation.warnings.length} warnings).`);
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to export world package.");
+    } catch {
+      setStatus("Failed to export the world package safely. Retry the review request.");
     } finally {
       setExporting(false);
     }
@@ -536,11 +536,11 @@ export function ReplayDatasetCatalogPanel({ selectedRunId, onSelectRunId, busy =
       .then((data) => {
         if (!cancelled && !selectedRunId && data.runs[0]) onSelectRunId(data.runs[0].runId);
       })
-      .catch((error) => {
+      .catch(() => {
         if (!cancelled) {
           setCatalog(null);
           setDetail(null);
-          setStatus(error instanceof Error ? error.message : "Failed to load replay catalog.");
+          setStatus("Failed to load the replay catalog safely. Retry the review request.");
         }
       });
     return () => {
@@ -576,8 +576,8 @@ export function ReplayDatasetCatalogPanel({ selectedRunId, onSelectRunId, busy =
       );
       setStatus(`Synced ${data.sync.syncedRunCount} run(s) / ${data.sync.syncedFileCount} file(s). Audit: ${data.audit.errorCount} errors, ${data.audit.warningCount} warnings, ${data.audit.secretLeakCount} secret leaks, ${data.audit.hiddenTruthLeakCount} hidden-answer leaks.`);
       await loadCatalog();
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to sync replay catalog.");
+    } catch {
+      setStatus("Failed to sync the replay catalog safely. Retry the review request.");
     } finally {
       setSyncing(false);
     }
@@ -690,10 +690,10 @@ export function PublicReviewCatalogPanel({ busy = false }: { busy?: boolean }) {
           setStatus(`Public catalog loaded: ${data.summary.datasetCount} dataset(s).`);
         }
       })
-      .catch((error) => {
+      .catch(() => {
         if (!cancelled) {
           setCatalog(null);
-          setStatus(error instanceof Error ? error.message : "Failed to load public review catalog.");
+          setStatus("Failed to load the public review catalog safely. Retry the review request.");
         }
       });
     return () => {
@@ -1335,11 +1335,11 @@ export function DatasetPackagePanel({ busy = false, runtimeMode = "server" }: { 
 
   useEffect(() => {
     let cancelled = false;
-    loadPackages().catch((error) => {
+    loadPackages().catch(() => {
       if (!cancelled) {
         setCatalog(null);
         setDetail(null);
-        setStatus(error instanceof Error ? error.message : "Failed to load dataset packages.");
+        setStatus("Failed to load dataset packages safely. Retry the review request.");
       }
     });
     return () => {
@@ -1377,8 +1377,8 @@ export function DatasetPackagePanel({ busy = false, runtimeMode = "server" }: { 
       );
       setStatus(`Exported ${data.datasetId}: ${data.relativeExportPath} (${data.fileCount} files, ${data.bytes} bytes).`);
       await loadPackages();
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to export dataset package.");
+    } catch {
+      setStatus("Failed to export the dataset package safely. Retry the review request.");
     } finally {
       setExporting(false);
     }

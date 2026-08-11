@@ -197,7 +197,7 @@ async function verifyServer(context, baseUrl) {
   page.on("request", (request) => {
     if (request.url().includes("/api/v1/command/town/runtime/step")) runtimeStepBodies.push(request.postData() || "");
   });
-  await page.goto(`${baseUrl}/?runtime=server&study=1`, { waitUntil: "load" });
+  await page.goto(`${baseUrl}/?runtime=server&study=1&lang=en-US`, { waitUntil: "load" });
   await page.getByTestId("campaign-study-recorder").waitFor({ state: "visible", timeout: 30000 });
   await dismissCampaignFrontDoor(page);
   await page.getByTestId("open-persistent-town").waitFor({ state: "visible", timeout: 60000 });
@@ -290,7 +290,7 @@ async function verifyStatic(context, baseUrl) {
   await page.addInitScript((key) => window.localStorage.removeItem(key), STORAGE_KEY);
   page.on("request", (request) => requests.push(request.url()));
   page.on("pageerror", (error) => pageErrors.push(error.message));
-  await page.goto(`${baseUrl}/?runtime=static&study=1`, { waitUntil: "load" });
+  await page.goto(`${baseUrl}/?runtime=static&study=1&lang=en-US`, { waitUntil: "load" });
   await page.locator('[data-testid="district-strategic-fronts"][data-front-status="readonly"]').waitFor({ state: "attached", timeout: 30000 });
   const onboarding = page.getByTestId("onboarding-overlay");
   if (await onboarding.isVisible().catch(() => false)) await onboarding.locator("button").last().click();

@@ -1,4 +1,6 @@
-import { memo, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from "react";
+"use client";
+
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from "react";
 import type { StrategicCommandAction, StrategicCommandViewModel } from "@/app/campaign/strategic-command-model";
 import { buildCampaignCommandBrief, type CampaignCommandBrief } from "@/app/campaign/campaign-command-brief-model";
 import type { GuidedStepJournalEntry } from "@/app/campaign/replay-practice-model";
@@ -9,139 +11,35 @@ import { useCampaignTransitionTheatre } from "@/app/hooks/useCampaignTransitionT
 import { useCampaignResolutionLedger } from "@/app/hooks/useCampaignResolutionLedger";
 import { useCommandDeckOverlayArbiter } from "@/app/hooks/useCommandDeckOverlayArbiter";
 import { useStrategicPacing } from "@/app/hooks/useStrategicPacing";
+import { useAppLocale } from "@/app/localization/locale-context";
 import { CampaignTransitionTheatre } from "./CampaignTransitionTheatre";
+import { ContextSummary, MapIntel, NotificationStack, TownPulseBar } from "./CommandDeckChrome";
+export { CommandDeckCollapsible } from "./CommandDeckChrome";
 import {
   CampaignResolutionLatest,
   CampaignResolutionLedgerProvider
 } from "./CampaignResolutionLedger";
 import { DistrictStrategicFronts } from "./DistrictStrategicFronts";
 import { StrategicPacingSurface } from "./StrategicPacingSurface";
-import { StrategicActionBar, StrategicDecisionQueue, StrategicResourceRibbon } from "./StrategicCommandSurfaces";
+import { StrategicActionBar, StrategicDecisionQueue } from "./StrategicCommandSurfaces";
 import coreStyles from "./CommandDeckShell.module.css";
 import responsiveStyles from "./CommandDeckShell.responsive.module.css";
-import pulseStyles from "./TownPulseBar.module.css";
 
 const styles = {
   ...coreStyles,
   commandDeckShell: `${coreStyles.commandDeckShell} ${responsiveStyles.commandDeckShell}`,
   commandDeckGrid: `${coreStyles.commandDeckGrid} ${responsiveStyles.commandDeckGrid}`,
   commandDeckAgendaRail: `${coreStyles.commandDeckAgendaRail} ${responsiveStyles.commandDeckAgendaRail}`,
-  commandDeckContextSummary: `${coreStyles.commandDeckContextSummary} ${responsiveStyles.commandDeckContextSummary}`,
   commandDeckLegacyControl: `${coreStyles.commandDeckLegacyControl} ${responsiveStyles.commandDeckLegacyControl}`,
   commandDeckMapArea: `${coreStyles.commandDeckMapArea} ${responsiveStyles.commandDeckMapArea}`,
-  commandDeckMapIntel: `${coreStyles.commandDeckMapIntel} ${responsiveStyles.commandDeckMapIntel}`,
   commandDeckContextRail: `${coreStyles.commandDeckContextRail} ${responsiveStyles.commandDeckContextRail}`,
   commandDeckDrawerToggle: `${coreStyles.commandDeckDrawerToggle} ${responsiveStyles.commandDeckDrawerToggle}`,
   commandDeckContextDrawerBody: `${coreStyles.commandDeckContextDrawerBody} ${responsiveStyles.commandDeckContextDrawerBody}`,
   commandDeckInspectorDisclosure: `${coreStyles.commandDeckInspectorDisclosure} ${responsiveStyles.commandDeckInspectorDisclosure}`,
-  commandDeckNotifications: `${coreStyles.commandDeckNotifications} ${responsiveStyles.commandDeckNotifications}`,
   drawerOpen: responsiveStyles.drawerOpen
 } as typeof coreStyles & typeof responsiveStyles;
 
 type CommandPanel = "context" | "queue" | "resources" | "fronts";
-
-const TownPulseBar = memo(function TownPulseBar({ viewModel, resourcePanelOpen, onResourcePanelToggle, resourceTriggerRef }: {
-  viewModel: StrategicCommandViewModel;
-  resourcePanelOpen: boolean;
-  onResourcePanelToggle: () => void;
-  resourceTriggerRef: RefObject<HTMLButtonElement | null>;
-}) {
-  const pulse = viewModel.townPulse;
-  return (
-    <header className={pulseStyles.pulse} data-testid="command-deck-pulse">
-      <div className={pulseStyles.brand}>
-        <span className={pulseStyles.mark} aria-hidden="true">DT</span>
-        <div>
-          <span className={styles.commandDeckEyebrow}>Detective Town</span>
-          <strong>{pulse.caseLabel}</strong>
-        </div>
-      </div>
-      <StrategicResourceRibbon items={viewModel.resourceRibbon} panelOpen={resourcePanelOpen} onPanelToggle={onResourcePanelToggle} triggerRef={resourceTriggerRef} />
-    </header>
-  );
-});
-
-const ContextSummary = memo(function ContextSummary({ viewModel, commandBrief, onAction, headingRef }: {
-  viewModel: StrategicCommandViewModel;
-  commandBrief: CampaignCommandBrief;
-  onAction?: (kind: SafeContextActionKind) => void | Promise<void>;
-  headingRef: RefObject<HTMLHeadingElement | null>;
-}) {
-  const context = viewModel.selectedContext;
-  return (
-    <section className={styles.commandDeckContextSummary} data-testid="command-deck-context" data-context-kind={context?.kind || "none"} data-command-brief-layer="context">
-      <span className={styles.commandDeckEyebrow}>04 / Context Rail</span>
-      {context ? <>
-        <h2 ref={headingRef} tabIndex={-1}>{context.label}</h2>
-        <p>{context.detail}</p>
-        {context.actions.length > 0 ? (
-          <div className={styles.commandDeckContextActions} aria-label="Context actions">
-            {context.actions.map((action) => (
-              <button
-                key={action.kind}
-                type="button"
-                className={styles.commandDeckContextAction}
-                data-testid="command-deck-context-action"
-                data-context-recommended={action.primary ? "true" : undefined}
-                disabled={!action.enabled || !onAction}
-                title={action.disabledReason || action.detail}
-                aria-keyshortcuts={action.shortcut}
-                onClick={() => void onAction?.(action.kind)}
-              >
-                <span className={styles.commandDeckActionTitle}><strong>{action.label}</strong>{action.shortcut ? <kbd>{action.shortcut}</kbd> : null}</span>
-                <span>{action.disabledReason || action.detail}</span>
-              </button>
-            ))}
-          </div>
-        ) : null}
-      </> : <p>{commandBrief.context.detail}</p>}
-    </section>
-  );
-});
-
-const NotificationStack = memo(function NotificationStack({ viewModel }: { viewModel: StrategicCommandViewModel }) {
-  if (!viewModel.notifications.length) return null;
-  return (
-    <section className={styles.commandDeckNotifications} data-testid="command-deck-notifications" aria-live="polite">
-      {viewModel.notifications.map((notification, index) => (
-        <article key={`${notification.label}-${index}`} className={`${styles.commandDeckNotification} ${styles[notification.tone]}`}>
-          <strong>{notification.label}</strong><span>{notification.detail}</span>
-        </article>
-      ))}
-    </section>
-  );
-});
-
-const MapIntel = memo(function MapIntel({ viewModel, commandBrief, activeLens, onLensChange }: {
-  viewModel: StrategicCommandViewModel;
-  commandBrief: CampaignCommandBrief;
-  activeLens: TownMapLensKind;
-  onLensChange: (lens: TownMapLensKind) => void;
-}) {
-  const active = viewModel.mapLenses.controls.find((control) => control.kind === activeLens) || viewModel.mapLenses.controls[0];
-  return (
-    <aside className={styles.commandDeckMapIntel} data-testid="command-deck-map-intel" aria-label="Map world signals" data-command-brief-layer="map">
-      <div className={styles.commandDeckLensControls} role="group" aria-label="Town map lens">
-        {viewModel.mapLenses.controls.map((control) => (
-          <button key={control.kind} type="button" aria-pressed={control.kind === activeLens} data-testid="command-deck-map-lens" data-map-lens-kind={control.kind} onClick={() => onLensChange(control.kind)}>
-            {control.label.toUpperCase()}
-          </button>
-        ))}
-      </div>
-      <span className={styles.commandDeckLensSummary}><small>03 / MAP FOCUS · {active?.label || "EVIDENCE"}</small><b>{commandBrief.focus.label}</b><em>{commandBrief.focus.detail}</em></span>
-    </aside>
-  );
-});
-
-export function CommandDeckCollapsible({ enabled, title, children }: { enabled: boolean; title: string; children: ReactNode }) {
-  if (!enabled) return <>{children}</>;
-  return (
-    <details className={styles.commandDeckCollapsible} data-command-deck-collapsible>
-      <summary>{title}</summary>
-      <div className={styles.commandDeckCollapsibleBody}>{children}</div>
-    </details>
-  );
-}
 
 export function CommandDeckShell({ viewModel, commandBrief, guidedJournal, control, map, inspector, overlay, toasts, blockingOverlayActive = false, toastVisible = false, onContextAction, onStrategicAction, onStrategicFrontFocus }: {
   viewModel: StrategicCommandViewModel;
@@ -158,6 +56,7 @@ export function CommandDeckShell({ viewModel, commandBrief, guidedJournal, contr
   onStrategicAction?: (action: StrategicCommandAction) => void | Promise<void>;
   onStrategicFrontFocus?: (locationName: string) => void;
 }) {
+  const { t, text } = useAppLocale();
   const pacing = useStrategicPacing(viewModel);
   const brief = commandBrief || buildCampaignCommandBrief({ command: viewModel });
   const theatre = useCampaignTransitionTheatre(viewModel, pacing.actionLifecycle);
@@ -170,6 +69,7 @@ export function CommandDeckShell({ viewModel, commandBrief, guidedJournal, contr
   });
   const districtFronts = useMemo(() => buildDistrictStrategicFrontsViewModel(viewModel), [viewModel]);
   const [activePanel, setActivePanel] = useState<CommandPanel | null>(null);
+  const [compactLayout, setCompactLayout] = useState(false);
   const [inspectorDetailOpen, setInspectorDetailOpen] = useState(false);
   const [activeQueueIndex, setActiveQueueIndex] = useState(0);
   const [activeFrontKey, setActiveFrontKey] = useState<DistrictStrategicFrontKind | undefined>(districtFronts.currentFrontKey);
@@ -202,6 +102,14 @@ export function CommandDeckShell({ viewModel, commandBrief, guidedJournal, contr
     notificationVisible: viewModel.notifications.length > 0,
     toastVisible
   });
+
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 900px)");
+    const update = () => setCompactLayout(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
 
   useEffect(() => {
     const next = queueCount ? Math.min(activeQueueIndexRef.current, queueCount - 1) : 0;
@@ -268,7 +176,22 @@ export function CommandDeckShell({ viewModel, commandBrief, guidedJournal, contr
   function togglePanel(panel: CommandPanel, trigger: RefObject<HTMLButtonElement | null>) {
     if (overlayResolution.locksPanels) return;
     lastPanelTrigger.current = trigger.current;
-    updateActivePanel(activePanelRef.current === panel ? null : panel);
+    const next = activePanelRef.current === panel ? null : panel;
+    updateActivePanel(next);
+    if (next) window.requestAnimationFrame(() => focusPanel(next));
+  }
+
+  function focusPanel(panel: CommandPanel) {
+    if (panel === "context") {
+      contextHeadingRef.current?.focus();
+      return;
+    }
+    const selector = panel === "queue"
+      ? "#strategic-queue-body [data-queue-entry]"
+      : panel === "resources"
+        ? "#strategic-all-resources button"
+        : "#district-strategic-front-panel [data-testid='district-front-option']";
+    mainRef.current?.querySelector<HTMLElement>(selector)?.focus();
   }
 
   function updateActivePanel(panel: CommandPanel | null) {
@@ -452,7 +375,10 @@ export function CommandDeckShell({ viewModel, commandBrief, guidedJournal, contr
           />
           <MapIntel viewModel={viewModel} commandBrief={brief} activeLens={activeMapLens} onLensChange={setActiveMapLens} />
         </section>
-        <aside className={`${styles.commandDeckContextRail} ${activePanel === "context" ? styles.drawerOpen : ""}`} data-testid="command-deck-context-rail">
+        <aside
+          className={`${styles.commandDeckContextRail} ${activePanel === "context" ? styles.drawerOpen : ""}`}
+          data-testid="command-deck-context-rail"
+        >
           <button
             ref={contextTriggerRef}
             type="button"
@@ -463,20 +389,26 @@ export function CommandDeckShell({ viewModel, commandBrief, guidedJournal, contr
             disabled={overlayResolution.locksPanels}
             onClick={() => togglePanel("context", contextTriggerRef)}
           >
-            <span>Context</span><strong>{viewModel.selectedContext?.label || "Select a map object"}</strong><b aria-hidden="true">{activePanel === "context" ? "Close" : "Open"}</b>
+            <span>{t("command.context")}</span><strong>{text(viewModel.selectedContext?.label || t("command.selectMap"))}</strong><b aria-hidden="true">{activePanel === "context" ? t("common.close") : t("common.open")}</b>
           </button>
-          <div id="command-deck-context-drawer" className={styles.commandDeckContextDrawerBody}>
+          <div
+            id="command-deck-context-drawer"
+            className={styles.commandDeckContextDrawerBody}
+            aria-hidden={compactLayout && activePanel !== "context" ? true : undefined}
+            inert={compactLayout && activePanel !== "context" ? true : undefined}
+          >
             <ContextSummary viewModel={viewModel} commandBrief={brief} onAction={handleContextAction} headingRef={contextHeadingRef} />
             <section className={styles.commandDeckInspectorDisclosure} data-inspector-open={inspectorDetailOpen ? "true" : "false"}>
               <button
                 ref={inspectorDetailTriggerRef}
                 type="button"
                 className={styles.commandDeckInspectorToggle}
+                data-testid="command-deck-inspector-toggle"
                 aria-expanded={inspectorDetailOpen}
                 aria-controls="command-deck-full-inspector"
                 onClick={() => updateInspectorDetail(!inspectorDetailOpenRef.current)}
               >
-                <span>Case files &amp; detail</span><b>{inspectorDetailOpen ? "Close" : "Open"}</b>
+                <span>{t("command.caseFiles")}</span><b>{inspectorDetailOpen ? t("common.close") : t("common.open")}</b>
               </button>
               {inspectorDetailOpen ? <div id="command-deck-full-inspector" className={styles.commandDeckInspectorBody}>{inspector}</div> : null}
             </section>

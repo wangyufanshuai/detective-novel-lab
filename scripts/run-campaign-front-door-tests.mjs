@@ -76,8 +76,10 @@ assert.equal(runtime.campaignSessionSummary.routeLabel, "Chain Protection", "fir
 assert.deepEqual(engine.createStaticDemoRuntime("archive-blunt").activeCase.deductionCase.truth, originalTruth, "front-door selection never changes extracted case truth");
 
 const componentSource = await fs.readFile(path.join(root, "app", "components", "CampaignFrontDoor.tsx"), "utf8");
+const localeCatalogSource = await fs.readFile(path.join(root, "app", "localization", "locale-catalog.ts"), "utf8");
 assert.doesNotMatch(componentSource, /\bfetch\s*\(|\bpostV1\s*\(|\bpostJson\s*\(/, "Front Door presentation cannot issue requests");
-assert.match(componentSource, /Server-only route choice \/ start \/ continue/, "Static preview declares the Server-only route boundary");
+assert.match(componentSource, /t\("front\.preview\.boundary"\)/, "Static preview consumes the localized Server-only route boundary");
+assert.match(localeCatalogSource, /"front\.preview\.boundary": "Server-only route choice \/ start \/ continue"/, "English locale retains the explicit Static route boundary");
 const frontDoorCss = await fs.readFile(path.join(root, "app", "components", "CampaignFrontDoor.module.css"), "utf8");
 const routeCss = await fs.readFile(path.join(root, "app", "components", "CampaignFrontDoor.routes.module.css"), "utf8");
 assert.match(frontDoorCss, /composes:\s*routeChoice\s+from\s+"\.\/CampaignFrontDoor\.routes\.module\.css"/, "route styles use the explicit composition boundary");

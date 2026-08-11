@@ -108,6 +108,7 @@ import type {
 import type { SuggestedAction } from "@/app/hooks/useDetectiveTownRuntime";
 import type { EvidenceImpact } from "@/app/hooks/useInvestigationActions";
 import type { GuidedTask, SelectionHighlight } from "@/app/hooks/useGuidedOnboarding";
+import { useAppLocale } from "@/app/localization/locale-context";
 
 export type InspectorTabId = "events" | "investigation" | "logic" | "agent" | "people" | "developer";
 
@@ -475,16 +476,17 @@ function TownMapStageComponent({
   timeToMinutes: (time: string) => number;
   minutesToTime: (minutes: number) => string;
 }) {
+  const { number, t, text } = useAppLocale();
   const interactiveTargetIds = new Set(interactiveTargets.map((target) => `${target.kind}:${target.locationId || target.characterId || target.evidenceId || target.eventId}`));
   const lensSignalByLocation = new Map((mapLenses?.locationSignals || []).map((signal) => [signal.locationName, signal]));
   return (
     <section className="mapStage">
       <header className="stageHud">
         <div>
-          <p>WorldEvent sourced case simulation</p>
-          <h2>{caseFile}</h2>
+          <p>{t("map.caseSource")}</p>
+          <h2>{text(caseFile)}</h2>
           <div className="valueProposition" data-testid="value-proposition">
-            案件从小镇事件中发生，AI 只负责表层对话。<span>WorldEvent evidence / Memory-scoped testimony / Local rule judgement</span>
+            {t("map.caseBoundary")}<span>{t("map.authorityStack")}</span>
           </div>
         </div>
         <div className="timeBadge">{currentTime}</div>
@@ -501,39 +503,44 @@ function TownMapStageComponent({
             const interactive = Boolean(tile.locationId || actors.length || markers.length);
             const lensSignal = tile.locationName ? lensSignalByLocation.get(tile.locationName) : undefined;
             return (
-              <button
+              <div
                 key={tile.id}
                 className={`mapTile terrain-${tile.terrain} ${tile.searchable ? "searchable" : ""} ${selected ? "selected" : ""} ${highlighted ? "spotlight" : ""}`}
                 data-location-id={tile.locationId || undefined}
-                title={tile.locationName || tile.terrain}
-                aria-label={interactive ? (tile.locationName || tile.terrain) : undefined}
-                aria-hidden={!interactive}
-                role={interactive ? "button" : "presentation"}
-                tabIndex={interactive ? 0 : -1}
-                onClick={() => tile.locationId && onTileClick(tile.locationId)}
+                title={text(tile.locationName || tile.terrain)}
+                aria-label={interactive ? text(tile.locationName || tile.terrain) : undefined}
+                role={interactive ? "group" : "presentation"}
                 onMouseEnter={() => tile.locationId && onTileHover(tile.locationId)}
-                onFocus={() => tile.locationId && onTileHover(tile.locationId)}
               >
+                {tile.locationId && <button
+                  type="button"
+                  className="mapTileHitTarget"
+                  aria-label={text(tile.locationName || tile.terrain)}
+                  onClick={() => onTileClick(tile.locationId!)}
+                  onFocus={() => onTileHover(tile.locationId!)}
+                />}
                 <span className="tileIcon" aria-hidden="true">{locationIcon(tile)}</span>
-                {tile.locationName && <span className="placeName">{tile.locationName}</span>}
-                {tile.searchable && <span className="evidenceDot">{tile.discoveredEvidenceCount}/{tile.evidenceCount}</span>}
+                {tile.locationName && <span className="placeName">{text(tile.locationName)}</span>}
+                {tile.searchable && <span className="evidenceDot">{number(tile.discoveredEvidenceCount)}/{number(tile.evidenceCount)}</span>}
                 {lensSignal && <>
-                  <span className="mapLensBadge mapLens-institution" data-tone={lensSignal.institutionTone}>{lensSignal.institutionLabel}</span>
-                  <span className="mapLensBadge mapLens-pressure" data-tone={lensSignal.pressureTone}>{lensSignal.pressureLabel}</span>
-                  <span className="mapLensBadge mapLens-reaction" data-tone={lensSignal.reactionTone}>{lensSignal.reactionLabel}</span>
-                  <span className="mapLensBadge mapLens-evidence" data-tone={lensSignal.evidenceTone}>{lensSignal.evidenceLabel}</span>
+                  <span className="mapLensBadge mapLens-institution" data-tone={lensSignal.institutionTone}>{text(lensSignal.institutionLabel)}</span>
+                  <span className="mapLensBadge mapLens-pressure" data-tone={lensSignal.pressureTone}>{text(lensSignal.pressureLabel)}</span>
+                  <span className="mapLensBadge mapLens-reaction" data-tone={lensSignal.reactionTone}>{text(lensSignal.reactionLabel)}</span>
+                  <span className="mapLensBadge mapLens-evidence" data-tone={lensSignal.evidenceTone}>{text(lensSignal.evidenceLabel)}</span>
                 </>}
                 {markers.slice(0, 3).map((marker) => {
                   const state = marker.discovered ? "discovered" : marker.evidenceId ? "searchable" : "public";
                   return (
-                    <span
+                    <button
+                      type="button"
                       key={marker.id}
                       className={`marker marker-${marker.type} marker-${state} ${marker.eventId === highlightedEventId || marker.evidenceId === selectionHighlight?.evidenceId ? "hot" : ""}`}
-                      title={marker.label}
+                      title={text(marker.label)}
+                      aria-label={text(marker.label)}
                       onClick={(event) => { event.stopPropagation(); onMarkerClick(marker); }}
                     >
                       {markerGlyph[marker.type] || "•"}
-                    </span>
+                    </button>
                   );
                 })}
                 <span className="actorStack">
@@ -546,34 +553,35 @@ function TownMapStageComponent({
                       selectionHighlight?.characterId === actor.id ? "actor-spotlight" : ""
                     ].filter(Boolean).join(" ");
                     return (
-                      <span
+                      <button
+                        type="button"
                         key={actor.id}
                         className={actorClasses}
-                        title={`${actor.name} / ${actor.role} / ${encounter?.postureLabel || "Routine"}`}
-                        aria-label={`${actor.name}, ${actor.role}, ${encounter?.postureLabel || "Routine"}`}
+                        title={`${text(actor.name)} / ${text(actor.role)} / ${text(encounter?.postureLabel || t("map.routine"))}`}
+                        aria-label={`${text(actor.name)}, ${text(actor.role)}, ${text(encounter?.postureLabel || t("map.routine"))}`}
                         onClick={(event) => { event.stopPropagation(); onActorClick(actor); }}
                       >
                         <span className="actorInitial" aria-hidden="true">{firstGlyph(actor.name)}</span>
                         <span className="actorPostureMark" aria-hidden="true">
                           {encounter?.posture === "supportive" ? "+" : encounter?.posture === "guarded" ? "!" : encounter?.posture === "busy" ? "…" : encounter?.posture === "avoidant" ? "×" : "·"}
                         </span>
-                      </span>
+                      </button>
                     );
                   })}
                 </span>
-              </button>
+              </div>
             );
           })}
         </div>
         {hoverInfo && (
           <aside className="locationHoverCard" data-testid="location-hover-card">
-            <span className="eyebrow">{hoverInfo.terrain} / {hoverInfo.searchable ? "可搜索" : "公开地点"}</span>
-            <strong>{hoverInfo.name}</strong>
-            <p>证据进度：{hoverInfo.discovered}/{hoverInfo.total}</p>
-            <small>{hoverInfo.recentEvent || "暂无当前时间附近公开事件。"}</small>
+            <span className="eyebrow">{text(hoverInfo.terrain)} / {hoverInfo.searchable ? t("map.searchable") : t("map.publicLocation")}</span>
+            <strong>{text(hoverInfo.name)}</strong>
+            <p>{t("map.evidenceProgress")}：{number(hoverInfo.discovered)}/{number(hoverInfo.total)}</p>
+            <small>{text(hoverInfo.recentEvent || t("map.noRecentEvent"))}</small>
             <div className="popoverActions">
-              <button type="button" onClick={() => onLocationAction(hoverInfo.locationId)}>{hoverInfo.searchable ? "搜索地点" : "查看地点"}</button>
-              <span>{interactiveTargetIds.has(`location:${hoverInfo.locationId}`) ? "可交互" : "仅展示"}</span>
+              <button type="button" onClick={() => onLocationAction(hoverInfo.locationId)}>{hoverInfo.searchable ? t("map.searchLocation") : t("map.viewLocation")}</button>
+              <span>{interactiveTargetIds.has(`location:${hoverInfo.locationId}`) ? t("map.interactive") : t("map.readonly")}</span>
             </div>
           </aside>
         )}
@@ -588,20 +596,20 @@ function TownMapStageComponent({
 
       <footer className="timelineScrubber">
         <div className="mapLegend" data-testid="map-legend">
-          <span><b>?</b> 可搜索</span>
-          <span><b>◆</b> 已发现证据</span>
-          <span><b>!</b> 案发/矛盾</span>
-          <span><b>✓</b> 已完成线索</span>
-          <span><b className="legendNpc">人</b> NPC 姿态：＋支持 / !戒备 / …忙碌 / ×回避 / ·日常</span>
+          <span><b aria-hidden="true">?</b> {t("map.searchable")}</span>
+          <span><b aria-hidden="true">◆</b> {t("map.discovered")}</span>
+          <span><b aria-hidden="true">!</b> {t("map.incident")}</span>
+          <span><b aria-hidden="true">✓</b> {t("map.completed")}</span>
+          <span><b className="legendNpc" aria-hidden="true">人</b> {t("map.posture")}</span>
         </div>
-        <div className="scrubLabels"><span>08:00</span><strong>24h 时间轴回放</strong><span>23:00</span></div>
-        <button className="replayButton" onClick={() => setReplaying((value) => !value)}>
-          {replaying ? <Pause size={14} /> : <Play size={14} />} {replaying ? "Pause Replay" : "Play Replay"}
+        <div className="scrubLabels"><span>08:00</span><strong>{t("map.timeline")}</strong><span>23:00</span></div>
+        <button type="button" className="replayButton" onClick={() => setReplaying((value) => !value)}>
+          {replaying ? <Pause size={14} aria-hidden="true" /> : <Play size={14} aria-hidden="true" />} {replaying ? t("map.pauseReplay") : t("map.playReplay")}
         </button>
-        <input type="range" min={timeMin} max={timeMax} step={10} value={timeValue} onChange={(event) => setTimeValue(Number(event.target.value))} />
+        <input type="range" name="town-timeline" aria-label={t("map.replayControl")} min={timeMin} max={timeMax} step={10} value={timeValue} onChange={(event) => setTimeValue(Number(event.target.value))} />
         <div className="scrubTicks">
           {["08:00", "12:00", "16:00", "20:00", "21:30", "21:47", "23:00"].map((time) => (
-            <button key={time} className={minutesToTime(timeValue) === time ? "active" : ""} onClick={() => setTimeValue(timeToMinutes(time))}>{time}</button>
+            <button type="button" key={time} className={minutesToTime(timeValue) === time ? "active" : ""} onClick={() => setTimeValue(timeToMinutes(time))}>{time}</button>
           ))}
         </div>
       </footer>

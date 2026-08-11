@@ -1,10 +1,12 @@
 "use client";
 
+import { useRef } from "react";
 import type { useCampaignController } from "@/app/controllers/useCampaignController";
 import type { useInvestigationController } from "@/app/controllers/useInvestigationController";
 import type { useCampaignComprehensionStudy } from "@/app/hooks/useCampaignComprehensionStudy";
 import type { GuidedStepJournalEntry } from "@/app/campaign/replay-practice-model";
 import type { SelectionHighlight } from "@/app/hooks/useGuidedOnboarding";
+import { useAppLocale } from "@/app/localization/locale-context";
 import { apiUrl, postJson } from "@/app/lib/client-runtime";
 import { discoverDemoEvidence, interrogateDemoNpc, revealDemoSolution } from "@/lib/engine";
 import type {
@@ -63,10 +65,12 @@ export function useCertifiedInvestigationActions({
   currentStaticState,
   hydrateStatic
 }: CertifiedInvestigationActionsInput): CertifiedInvestigationActionAdapter {
+  const actionInFlight = useRef(false);
+  const { t } = useAppLocale();
   const {
     world, activeCase, session, runtimeMode, playerName, selectedCharacterId, selectedEvidenceId, question,
     setSession, setSessions, setBusy, setProgress, setSelectedEvidenceId, setSelectedSceneId,
-    setInspectorTab, setLastAiSafety, setActiveCase, setTheory, pushToast, setStatus
+    setInspectorTab, setLastAiSafety, setActiveCase, setTheory, pushToast, setStatus, progress
   } = investigation;
   const {
     setPlayerResourceCommitment, setFactionRelationship, setInvestigatorProgression
@@ -92,9 +96,13 @@ export function useCertifiedInvestigationActions({
         persist(world.id, staticSession.id);
       }
       setProgress((current) => ({ ...current, joinedInvestigation: true }));
-      setStatus("Joined investigation. Click map locations for evidence and select NPCs to question.");
+      setStatus(t("status.joined"));
       return;
     }
+    if (actionInFlight.current) return;
+    actionInFlight.current = true;
+    const confirmedSession = session;
+    const confirmedProgress = progress;
     const stamp = new Date().toISOString();
     const optimisticSession: PlayerSession = {
       id: `session-pending-${Date.now()}`,
@@ -109,8 +117,7 @@ export function useCertifiedInvestigationActions({
     };
     setSession(optimisticSession);
     setProgress((current) => ({ ...current, joinedInvestigation: true }));
-    persist(world.id, optimisticSession.id);
-    setStatus("Joined investigation. Click map locations for evidence and NPCs for questioning.");
+    setStatus(t("status.joined"));
     setBusy(true);
     try {
       const data = await postJson<{
@@ -130,19 +137,23 @@ export function useCertifiedInvestigationActions({
       setProgress((current) => ({ ...current, joinedInvestigation: true }));
       setSessions((items) => [data.session, ...items.filter((item) => item.id !== data.session.id)]);
       persist(world.id, data.session.id);
-      setStatus("Joined investigation. Click map locations for evidence and NPCs for questioning.");
+      setStatus(t("status.joined"));
       campaignStudy.recordMeaningfulAction();
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to join investigation");
+    } catch {
+      setSession(confirmedSession);
+      setProgress(confirmedProgress);
+      persist(world.id, confirmedSession?.id || "");
+      setStatus(t("error.join"));
     } finally {
+      actionInFlight.current = false;
       setBusy(false);
     }
   }
 
   async function discoverEvidence(evidenceId: string) {
-    const evidenceTitle = deductionCase?.evidence.find((item) => item.id === evidenceId)?.title || evidenceId;
+    const evidenceTitle = deductionCase?.evidence.find((item) => item.id === evidenceId)?.title || t("workspace.clue");
     if (!session) {
-      setStatus("Join the investigation before searching for evidence.");
+      setStatus(t("status.joinFirst"));
       return;
     }
     if (runtimeMode === "static-demo") {
@@ -153,11 +164,13 @@ export function useCertifiedInvestigationActions({
       const scene = scenes.find((item) => item.evidenceIds.includes(evidenceId));
       highlightSelection({ evidenceId, locationId: scene?.id });
       setInspectorTab("investigation");
-      pushToast({ tone: "success", title: "Evidence found", detail: evidenceTitle });
-      setStatus(`Evidence found: ${deductionCase?.evidence.find((item) => item.id === evidenceId)?.title || evidenceId}`);
+      pushToast({ tone: "success", title: t("status.evidenceFound"), detail: evidenceTitle });
+      setStatus(`${t("status.evidenceFound")}: ${evidenceTitle}`);
       campaignStudy.recordMeaningfulAction();
       return;
     }
+    if (actionInFlight.current) return;
+    actionInFlight.current = true;
     setBusy(true);
     try {
       const data = await postJson<{
@@ -187,12 +200,13 @@ export function useCertifiedInvestigationActions({
       const scene = scenes.find((item) => item.evidenceIds.includes(evidenceId));
       highlightSelection({ evidenceId, locationId: scene?.id });
       setInspectorTab("investigation");
-      pushToast({ tone: "success", title: "Evidence found", detail: evidenceTitle });
-      setStatus(`Evidence found: ${deductionCase?.evidence.find((item) => item.id === evidenceId)?.title || evidenceId}`);
+      pushToast({ tone: "success", title: t("status.evidenceFound"), detail: evidenceTitle });
+      setStatus(`${t("status.evidenceFound")}: ${evidenceTitle}`);
       campaignStudy.recordMeaningfulAction();
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to search evidence");
+    } catch {
+      setStatus(t("error.search"));
     } finally {
+      actionInFlight.current = false;
       setBusy(false);
     }
   }
@@ -238,6 +252,8 @@ export function useCertifiedInvestigationActions({
       setStatus(next.progress.challengedTestimony ? "Evidence exposed a contradiction; NPC testimony was corrected." : "NPC answered from their own memory scope.");
       return;
     }
+    if (actionInFlight.current) return;
+    actionInFlight.current = true;
     setBusy(true);
     try {
       const data = await postJson<{
@@ -287,13 +303,14 @@ export function useCertifiedInvestigationActions({
       });
       setStatus(data.testimonyUpdated ? "Evidence exposed a contradiction; NPC testimony was corrected." : "NPC answered from their own memory.");
       if (activeCase) {
-        const latestCase = await fetch(apiUrl(`/api/cases/${activeCase.id}`)).then((response) => response.json());
-        if (latestCase.ok) setActiveCase(latestCase.caseFromLog || latestCase.activeCase || latestCase.case);
+        const latestCase = await fetch(apiUrl(`/api/cases/${activeCase.id}`)).then((response) => response.json()).catch(() => null);
+        if (latestCase?.ok) setActiveCase(latestCase.caseFromLog || latestCase.activeCase || latestCase.case);
       }
       campaignStudy.recordMeaningfulAction();
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Questioning failed");
+    } catch {
+      setStatus(t("error.question"));
     } finally {
+      actionInFlight.current = false;
       setBusy(false);
     }
   }
@@ -323,6 +340,8 @@ export function useCertifiedInvestigationActions({
       setStatus("Answer review generated from local fact locks without calling DeepSeek.");
       return;
     }
+    if (actionInFlight.current) return;
+    actionInFlight.current = true;
     setBusy(true);
     try {
       const data = await postJson<{
@@ -336,9 +355,10 @@ export function useCertifiedInvestigationActions({
       setInspectorTab("logic");
       pushToast({ tone: "success", title: "Answer review generated", detail: "Facts are still constrained by local rules and case structure." });
       setStatus("Answer review generated and validated against local fact locks.");
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to generate answer review");
+    } catch {
+      setStatus(t("error.reveal"));
     } finally {
+      actionInFlight.current = false;
       setBusy(false);
     }
   }
