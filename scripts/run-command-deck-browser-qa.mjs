@@ -5,15 +5,23 @@ import { startReleaseCandidateServer } from "./lib/release-candidate-server.mjs"
 
 const jsonMode = process.argv.includes("--json");
 let baseUrl = "";
-const widths = [390, 768, 1440];
+const viewports = [
+  { width: 390, height: 844 },
+  { width: 768, height: 900 },
+  { width: 1280, height: 720 },
+  { width: 1440, height: 900 },
+  { width: 1920, height: 1080 }
+];
 const failures = [];
 const observations = [];
 let serverHarness;
 let currentQaStep = "startup";
 
 function launchOptions() {
-  const expected = chromium.executablePath();
-  return fs.existsSync(expected) ? { headless: true, executablePath: expected } : { headless: true };
+  // The bundled Playwright Chromium can be present but unlaunchable on some
+  // Windows sessions (`spawn UNKNOWN`). Prefer the installed Chrome channel,
+  // while keeping a default fallback for CI machines without Chrome.
+  return { headless: true, channel: "chrome" };
 }
 
 async function ensureEncounterVisible(page, encounter, inspectorToggle, label = "encounter") {
@@ -46,6 +54,25 @@ async function closeContextDrawerIfOpen(page) {
     await toggle.click({ force: true });
     await page.waitForFunction(() => document.querySelector("[data-testid='command-deck-drawer-toggle']")?.getAttribute("aria-expanded") === "false", undefined, { timeout: 5_000 }).catch(() => undefined);
   }
+}
+
+async function waitForPrimaryActionLabel(page, labels, timeout = 15_000) {
+  try {
+    await page.waitForFunction((expectedLabels) => {
+      const action = document.querySelector("[data-command-deck-primary='true']:not([disabled])");
+      const text = action?.textContent || "";
+      return expectedLabels.some((label) => text.includes(label));
+    }, labels, { timeout });
+  } catch (error) {
+    const state = await page.evaluate(() => ({
+      primary: Array.from(document.querySelectorAll("[data-command-deck-primary='true']")).map((node) => ({ text: node.textContent || "", disabled: node.hasAttribute("disabled") })),
+      lifecycle: document.querySelector("[data-testid='strategic-action-bar']")?.getAttribute("data-action-lifecycle") || "",
+      context: document.querySelector("[data-testid='command-deck-context']")?.getAttribute("data-context-kind") || "",
+      tab: document.querySelector("[data-testid='command-deck-shell']")?.getAttribute("data-active-panel") || ""
+    }));
+    throw new Error(`${error instanceof Error ? error.message : String(error)} / expected ${labels.join(" or ")} / state ${JSON.stringify(state)}`);
+  }
+  return page.locator("[data-command-deck-primary='true']:not([disabled])").first().innerText();
 }
 
 async function waitForStableTheatreGeometry(page, timeout = 5_000) {
@@ -90,8 +117,8 @@ try {
   baseUrl = serverHarness.baseUrl;
   const browser = await chromium.launch(launchOptions());
   try {
-    for (const width of widths) {
-      const page = await browser.newPage({ viewport: { width, height: width <= 390 ? 844 : 900 } });
+    for (const { width, height } of viewports) {
+      const page = await browser.newPage({ viewport: { width, height } });
       const contextKinds = [];
       const lifecycleStates = [];
       const transitionLayouts = [];
@@ -107,7 +134,7 @@ try {
       const frontDoorSelectedCount = await frontDoor.locator("[data-testid='campaign-front-door-card'][aria-pressed='true']").count();
       const frontDoorRouteSelectedCount = await frontDoor.locator("[data-testid='campaign-front-door-route'][aria-pressed='true']").count();
       const frontDoorPrimaryCount = await frontDoor.locator("[data-campaign-primary='true']:not([disabled])").count();
-      if (frontDoorCardCount !== 4 || frontDoorSelectedCount !== 1 || frontDoorRouteSelectedCount !== 1 || frontDoorPrimaryCount !== 1) failures.push(`${width}px Campaign Front Door did not expose four cards, one Campaign selection, one route selection, and one primary action.`);
+      if (frontDoorCardCount !== 12 || frontDoorSelectedCount !== 1 || frontDoorRouteSelectedCount !== 1 || frontDoorPrimaryCount !== 1) failures.push(`${width}px Campaign Front Door did not expose twelve Campaign cards, one Campaign selection, one route selection, and one primary action.`);
       await frontDoor.getByTestId("campaign-front-door-dismiss").click();
       await page.getByTestId("command-deck-pulse").waitFor({ state: "visible", timeout: 15_000 });
       const encounterActor = page.locator("[data-testid='pixel-map'] .actorPin").first();
@@ -201,9 +228,15 @@ try {
           currentQaStep = "1440 location context";
           await page.waitForFunction(() => document.querySelector("[data-testid='command-deck-context']")?.getAttribute("data-context-kind") === "location");
           contextKinds.push(await page.getByTestId("command-deck-context").getAttribute("data-context-kind"));
-          const primaryAction = page.locator("[data-command-deck-primary='true']:not([disabled])");
-          for (const prerequisite of ["Join investigation", "Observe case window"]) {
-            if ((await page.locator("[data-command-deck-primary='true']:not([disabled])").first().innerText()).includes(prerequisite)) {
+          const prerequisiteSteps = [
+            { label: "Join investigation", ready: ["Join investigation", "Observe case window", "Search location"], next: ["Observe case window", "Search location"] },
+            { label: "Observe case window", ready: ["Observe case window", "Search location", "Search the next linked scene", "Search the linked scene", "Focus search location"], next: ["Search location", "Search the next linked scene", "Search the linked scene", "Focus search location"] }
+          ];
+          for (const prerequisiteStep of prerequisiteSteps) {
+            const prerequisite = prerequisiteStep.label;
+            currentQaStep = `1440 ${prerequisite} ready`;
+            const actionLabel = await waitForPrimaryActionLabel(page, prerequisiteStep.ready);
+            if (actionLabel.includes(prerequisite)) {
               const interactionStartedAt = Date.now();
               const panelBefore = await inspectorDetailToggle.getAttribute("aria-expanded");
               const resolvePhase = width === 1440 && prerequisite === "Join investigation"
@@ -216,13 +249,13 @@ try {
                 lifecycleStates.push("resolving");
               }
               currentQaStep = `1440 ${prerequisite} completion`;
-              await page.waitForFunction((previous) => !document.querySelector("[data-command-deck-primary='true']:not([disabled])")?.textContent?.includes(previous), prerequisite, { timeout: 15_000 });
+              await waitForPrimaryActionLabel(page, prerequisiteStep.next);
               if (prerequisite === "Join investigation") await page.waitForFunction(() => document.querySelector("[data-testid='strategic-action-bar']")?.getAttribute("data-action-lifecycle") !== "resolving", undefined, { timeout: 15_000 });
               rhythmAutomation.push({ stage: prerequisite === "Join investigation" ? "join" : "search", primaryClicks: 1, panelSwitches: panelBefore === await inspectorDetailToggle.getAttribute("aria-expanded") ? 0 : 1, settleMs: Date.now() - interactionStartedAt });
             }
           }
           currentQaStep = "1440 search action ready";
-          await page.waitForFunction(() => document.querySelector("[data-command-deck-primary='true']:not([disabled])")?.textContent?.includes("Search location"), undefined, { timeout: 15_000 });
+          await waitForPrimaryActionLabel(page, ["Search location", "Search the next linked scene", "Search the linked scene", "Focus search location"]);
           const searchStartedAt = Date.now();
           const searchPanelBefore = await inspectorDetailToggle.getAttribute("aria-expanded");
           await page.locator("[data-command-deck-primary='true']:not([disabled])").first().click();
@@ -244,7 +277,7 @@ try {
           if (await page.getByTestId("campaign-transition-theatre").getAttribute("data-transition-phase") === "world-consequence") {
             await page.waitForFunction(() => document.querySelector("[data-testid='campaign-transition-theatre']")?.getAttribute("data-transition-phase") === "next-objective", undefined, { timeout: 15_000 });
           }
-          for (const transitionWidth of widths) {
+          for (const transitionWidth of viewports.map(({ width: viewportWidth }) => viewportWidth)) {
             await page.setViewportSize({ width: transitionWidth, height: transitionWidth <= 390 ? 844 : 900 });
             await waitForStableTheatreGeometry(page);
             const layout = await page.evaluate(() => {
@@ -618,6 +651,6 @@ try {
   await serverHarness?.cleanup();
 }
 
-const result = { ok: failures.length === 0, widths, observations, failures };
+const result = { ok: failures.length === 0, viewports, observations, failures };
 console.log(jsonMode ? JSON.stringify(result) : result.ok ? "Command Deck browser QA passed." : failures.join("\n"));
 if (!result.ok) process.exitCode = 1;

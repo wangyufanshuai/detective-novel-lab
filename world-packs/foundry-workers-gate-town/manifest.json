@@ -1,0 +1,24 @@
+{
+  "id": "foundry-workers-gate-town",
+  "name": "Foundry Workers Gate Town",
+  "version": "1.0.0",
+  "schemaVersion": "world-package.v1",
+  "description": "Foundry inspection, medical timing, labor leverage and controlled machine access.",
+  "author": "Detective Novel Lab",
+  "createdAt": "2026-08-12T00:00:00.000Z",
+  "license": "project-local-original",
+  "scenarioPackPath": "scenario-pack.json",
+  "mapPackPath": "map-pack.json",
+  "ruleCatalogPath": "rule-catalog.json",
+  "agentPackPath": "agent-pack.json",
+  "ecosystemCatalogPath": "ecosystem-catalog.json",
+  "expectationsPath": "expectations.json",
+  "localization": {
+    "en-US": "Foundry Workers Gate Town",
+    "zh-CN": "铸造厂工人门小镇"
+  },
+  "presentation": {
+    "key": "furnace-oath",
+    "style": "noir-archive"
+  }
+}

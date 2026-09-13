@@ -1,0 +1,298 @@
+{
+  "manifest": {
+    "id": "foundry-workers-gate-town-ecosystem",
+    "name": "Foundry Workers Gate Town Ecosystem",
+    "version": "1.0.0",
+    "schemaVersion": "ecosystem-catalog.v1",
+    "createdAt": "2026-08-12T00:00:00.000Z",
+    "description": "Foundry inspection, medical timing, labor leverage and controlled machine access."
+  },
+  "factions": [
+    {
+      "id": "furnace-oath-faction-1",
+      "name": "Civic Record Circle",
+      "institutionKind": "civic",
+      "pressureBias": 10,
+      "resourceBias": {
+        "police_time": -5
+      },
+      "preferredCaseTypes": [
+        "safety-inspection-fraud",
+        "medical-coverup"
+      ]
+    },
+    {
+      "id": "furnace-oath-faction-2",
+      "name": "Working Exchange",
+      "institutionKind": "commerce",
+      "pressureBias": 11,
+      "resourceBias": {
+        "media_attention": -6
+      },
+      "preferredCaseTypes": [
+        "medical-coverup",
+        "industrial-sabotage"
+      ]
+    },
+    {
+      "id": "furnace-oath-faction-3",
+      "name": "Public Account Desk",
+      "institutionKind": "media",
+      "pressureBias": 12,
+      "resourceBias": {
+        "family_influence": -7
+      },
+      "preferredCaseTypes": [
+        "industrial-sabotage",
+        "blackmail"
+      ]
+    },
+    {
+      "id": "furnace-oath-faction-4",
+      "name": "Review Watch",
+      "institutionKind": "police",
+      "pressureBias": 13,
+      "resourceBias": {
+        "merchant_credit": -8
+      },
+      "preferredCaseTypes": [
+        "blackmail",
+        "evidence-tampering"
+      ]
+    }
+  ],
+  "resources": [
+    {
+      "kind": "police_time",
+      "label": "Police Time",
+      "valueDelta": -5,
+      "pressureDelta": 6
+    },
+    {
+      "kind": "media_attention",
+      "label": "Media Attention",
+      "valueDelta": -6,
+      "pressureDelta": 7
+    },
+    {
+      "kind": "family_influence",
+      "label": "Family Influence",
+      "valueDelta": -7,
+      "pressureDelta": 8
+    },
+    {
+      "kind": "merchant_credit",
+      "label": "Merchant Credit",
+      "valueDelta": -5,
+      "pressureDelta": 9
+    },
+    {
+      "kind": "medical_capacity",
+      "label": "Medical Capacity",
+      "valueDelta": -6,
+      "pressureDelta": 10
+    },
+    {
+      "kind": "evidence_integrity",
+      "label": "Evidence Integrity",
+      "valueDelta": -7,
+      "pressureDelta": 11
+    }
+  ],
+  "markets": [
+    {
+      "id": "furnace-oath-market-1",
+      "label": "Police Time exchange",
+      "resource": "police_time",
+      "volatility": 0.25,
+      "tags": [
+        "furnace-oath",
+        "public"
+      ]
+    },
+    {
+      "id": "furnace-oath-market-2",
+      "label": "Media Attention exchange",
+      "resource": "media_attention",
+      "volatility": 0.29,
+      "tags": [
+        "furnace-oath",
+        "public"
+      ]
+    },
+    {
+      "id": "furnace-oath-market-3",
+      "label": "Family Influence exchange",
+      "resource": "family_influence",
+      "volatility": 0.33,
+      "tags": [
+        "furnace-oath",
+        "public"
+      ]
+    }
+  ],
+  "territories": [
+    {
+      "id": "furnace-oath-territory-1",
+      "locationId": "inspection-office",
+      "factionId": "furnace-oath-faction-1",
+      "influence": 72,
+      "tags": [
+        "furnace-oath",
+        "district"
+      ]
+    },
+    {
+      "id": "furnace-oath-territory-2",
+      "locationId": "works-infirmary",
+      "factionId": "furnace-oath-faction-2",
+      "influence": 75,
+      "tags": [
+        "furnace-oath",
+        "district"
+      ]
+    },
+    {
+      "id": "furnace-oath-territory-3",
+      "locationId": "machine-hall",
+      "factionId": "furnace-oath-faction-3",
+      "influence": 78,
+      "tags": [
+        "furnace-oath",
+        "district"
+      ]
+    },
+    {
+      "id": "furnace-oath-territory-4",
+      "locationId": "pay-window",
+      "factionId": "furnace-oath-faction-4",
+      "influence": 81,
+      "tags": [
+        "furnace-oath",
+        "district"
+      ]
+    }
+  ],
+  "taskTemplates": [
+    {
+      "id": "furnace-oath-task-1",
+      "label": "Review Inspection Office",
+      "institutionKind": "police",
+      "tags": [
+        "furnace-oath",
+        "review"
+      ],
+      "pressureDelta": 7,
+      "evidenceKinds": [
+        "document"
+      ]
+    },
+    {
+      "id": "furnace-oath-task-2",
+      "label": "Review Works Infirmary",
+      "institutionKind": "media",
+      "tags": [
+        "furnace-oath",
+        "review"
+      ],
+      "pressureDelta": 8,
+      "evidenceKinds": [
+        "testimony"
+      ]
+    },
+    {
+      "id": "furnace-oath-task-3",
+      "label": "Review Machine Hall",
+      "institutionKind": "family",
+      "tags": [
+        "furnace-oath",
+        "review"
+      ],
+      "pressureDelta": 9,
+      "evidenceKinds": [
+        "trace"
+      ]
+    },
+    {
+      "id": "furnace-oath-task-4",
+      "label": "Review Pay Window",
+      "institutionKind": "commerce",
+      "tags": [
+        "furnace-oath",
+        "review"
+      ],
+      "pressureDelta": 10,
+      "evidenceKinds": [
+        "receipt"
+      ]
+    }
+  ],
+  "randomWorldEvents": [
+    {
+      "id": "furnace-oath-event-1",
+      "label": "Inspection Office shift",
+      "weight": 20,
+      "tags": [
+        "furnace-oath",
+        "safety-inspection-fraud"
+      ],
+      "pressureDelta": 7
+    },
+    {
+      "id": "furnace-oath-event-2",
+      "label": "Works Infirmary shift",
+      "weight": 21,
+      "tags": [
+        "furnace-oath",
+        "medical-coverup"
+      ],
+      "pressureDelta": 8
+    },
+    {
+      "id": "furnace-oath-event-3",
+      "label": "Machine Hall shift",
+      "weight": 22,
+      "tags": [
+        "furnace-oath",
+        "industrial-sabotage"
+      ],
+      "pressureDelta": 9
+    },
+    {
+      "id": "furnace-oath-event-4",
+      "label": "Pay Window shift",
+      "weight": 23,
+      "tags": [
+        "furnace-oath",
+        "blackmail"
+      ],
+      "pressureDelta": 10
+    }
+  ],
+  "pressureRules": [
+    {
+      "id": "furnace-oath-resource-pressure-1",
+      "resource": "police_time",
+      "threshold": 50,
+      "effect": "safety-inspection-fraud pressure becomes visible"
+    },
+    {
+      "id": "furnace-oath-resource-pressure-2",
+      "resource": "media_attention",
+      "threshold": 51,
+      "effect": "medical-coverup pressure becomes visible"
+    },
+    {
+      "id": "furnace-oath-resource-pressure-3",
+      "resource": "family_influence",
+      "threshold": 52,
+      "effect": "industrial-sabotage pressure becomes visible"
+    },
+    {
+      "id": "furnace-oath-resource-pressure-4",
+      "resource": "merchant_credit",
+      "threshold": 53,
+      "effect": "blackmail pressure becomes visible"
+    }
+  ]
+}

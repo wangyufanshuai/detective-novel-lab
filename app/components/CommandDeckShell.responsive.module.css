@@ -1,281 +1,54 @@
+@media (max-width: 1000px) {
+  .commandDeckShell { min-height: 600px; }
+  .commandDeckShell :global([data-testid="noir-current-action"]) { padding: 20px 24px; gap: 22px; }
+}
+@media (max-width: 700px) {
+  .commandDeckShell { height: auto; min-height: 100dvh; grid-template-rows: 72px 58px auto; }
+  .commandDeckShell > header { padding-inline: 18px; gap: 18px; }
+  .commandDeckShell > header > button:first-child > span:last-child { display: none; }
+  .commandDeckShell > header > div:first-of-type { padding-left: 0; border: 0; }
+  .commandDeckShell > header > div:first-of-type > span { font-size: 9px; }
+  .commandDeckShell > header > div:first-of-type > strong { font-size: 17px; max-width: 52vw; }
+  .commandDeckShell > header > div:last-of-type { margin-left: auto; font-size: 10px; }
+  .commandDeckShell > header > div:last-of-type > i,
+  .commandDeckShell > header > button:last-child { display: none; }
+  .commandDeckShell > div:first-of-type { padding-inline: 18px; gap: 14px; }
+  .commandDeckShell > div:first-of-type > nav { flex: 1; gap: 12px; justify-content: space-between; }
+  .commandDeckShell > div:first-of-type > nav > button { min-width: 0; min-height: 44px; padding-inline: 2px; gap: 6px; font-size: 12px; letter-spacing: .02em; }
+  .commandDeckShell > div:first-of-type > nav > button > small { display: none; }
+  .commandDeckShell > div:first-of-type > nav > button > svg { display: block; }
+  .commandDeckShell > div:first-of-type > button { min-width: 44px; margin-left: 8px; justify-content: center; }
+  .commandDeckShell > div:first-of-type > button > span { display: none; }
+  .commandDeckShell :global([data-testid="noir-current-action"]) { align-items: stretch; padding: 22px 20px; flex-direction: column; gap: 16px; }
+  .commandDeckShell :global([data-testid="noir-current-action"]) > div:first-child > h1 { font-size: 26px; }
+  .commandDeckShell :global([data-testid="noir-current-action"]) > div:last-child { min-width: 0; }
+  .commandDeckShell :global([data-testid="noir-current-action"]) > div:last-child > small { text-align: left; }
+  .commandDeckShell :global([data-testid="noir-deduction-workspace"]) > :global(header) { padding: 28px 20px 16px; }
+  .commandDeckShell :global([data-testid="noir-deduction-workspace"]) > :global(header) h1 { font-size: 27px; }
+  .commandDeckShell :global([data-testid="command-deck-map-area"]) { min-height: 480px; }
+  .commandDeckShell :global([data-testid="command-deck-map-area"]) > :global([data-testid="noir-map-stage"]) { min-height: 480px; }
+  .commandDeckShell :global([data-testid="command-deck-map-area"]) > div:last-child:not(:global(.mapStage)) { inset-inline: 14px; gap: 8px; }
+  .commandDeckShell :global([data-testid="command-deck-map-area"]) [aria-label="地图视角"],
+  .commandDeckShell :global([data-testid="command-deck-map-area"]) [aria-label="Map focus"] { gap: 0; }
+  .commandDeckShell :global([data-testid="command-deck-map-lens"]) { min-height: 44px; padding-inline: 8px; font-size: 10px; }
+  .commandDeckShell :global([aria-controls="noir-town-details"]) { min-width: 42px; justify-content: center; padding-inline: 9px; }
+  .commandDeckShell :global([aria-controls="noir-town-details"]) > span,
+  .commandDeckShell :global([aria-controls="noir-town-details"]) > svg:last-child { display: none; }
+  .commandDeckShell :global([data-testid="noir-deduction-workspace"]) > nav { padding-inline: 20px; gap: 24px; }
+  .commandDeckShell :global([data-testid="noir-journal"]),
+  .commandDeckShell :global([data-testid="noir-settings"]),
+  .commandDeckShell :global([data-testid="noir-tools"]) { padding: 38px 24px 70px; }
+  .commandDeckShell :global([data-testid="noir-settings"]) > div { grid-template-columns: minmax(0, 1fr); }
+  .commandDeckShell :global([data-testid="campaign-resolution-entry"]) { grid-template-columns: 36px minmax(0,1fr); gap: 14px; }
+  .commandDeckShell :global([data-testid="campaign-resolution-entry"]) dl { grid-template-columns: minmax(0,1fr); gap: 16px; }
+  .commandDeckShell :global([data-testid="command-deck-feedback"]) { padding-inline: 20px; gap: 10px; flex-wrap: wrap; }
+  .commandDeckShell :global([data-testid="command-deck-feedback"]) > p { flex-basis: 100%; order: 3; }
+}
 @media (prefers-reduced-motion: reduce) {
-  .commandDeckShell *,
-  .commandDeckShell *::before,
-  .commandDeckShell *::after {
-    scroll-behavior: auto !important;
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
-  }
+  .commandDeckShell *, .commandDeckShell *::before, .commandDeckShell *::after { scroll-behavior: auto !important; animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
 }
-
-@media (max-width: 1180px) {
-  .commandDeckGrid {
-    grid-template-columns: 250px minmax(0, 1fr);
-    grid-template-rows: minmax(560px, 1fr) auto;
-    overflow: visible;
-  }
-
-  .commandDeckContextRail {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    max-height: min(72vh, 680px);
-    border-top: 1px solid var(--deck-line);
-    border-left: 0;
-  }
-
-  .commandDeckMapArea > :global(.mapStage) {
-    min-height: 560px;
-  }
-
-  .commandDeckMapIntel {
-    bottom: 12px;
-    left: 12px;
-    width: min(520px, calc(100% - 24px));
-  }
-}
-
-@media (max-width: 760px) {
-  .commandDeckShell {
-    display: block;
-    height: auto;
-    max-height: none;
-    overflow-x: hidden;
-    padding-bottom: 72px;
-  }
-
-  .commandDeckGrid {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto auto auto;
-    flex-direction: column;
-    min-height: 0;
-    height: auto;
-    overflow: visible;
-  }
-
-  .commandDeckAgendaRail,
-  .commandDeckMapArea,
-  .commandDeckContextRail {
-    width: 100%;
-    overflow: visible;
-    grid-column: auto;
-    grid-row: auto;
-  }
-
-  .commandDeckMapArea {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .commandDeckAgendaRail { display: contents; }
-  .commandDeckAgendaRail > :global([data-testid="strategic-action-bar"]) { order: 1; }
-  .commandDeckAgendaRail > :global([data-testid="command-deck-feedback"]) { order: 2; }
-  .commandDeckMapArea { order: 3; }
-  .commandDeckAgendaRail > :global([data-testid="strategic-decision-queue"]) { order: 4; }
-  .commandDeckLegacyControl { order: 5; }
-  .commandDeckContextRail {
-    position: fixed;
-    right: 0;
-    left: 0;
-    bottom: 0;
-    order: 4;
-    z-index: 88;
-    height: min(66vh, 560px);
-    max-height: none;
-    overflow: hidden;
-    border-top: 1px solid var(--deck-line);
-    border-left: 0;
-    box-shadow: 0 -16px 36px rgba(0, 0, 0, 0.36);
-    transform: translateY(calc(100% - 52px));
-    transition: transform 160ms ease-out;
-  }
-
-  .commandDeckContextRail.drawerOpen {
-    transform: translateY(0);
-  }
-
-  .commandDeckDrawerToggle {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    gap: 8px;
-    align-items: center;
-    width: 100%;
-    height: 52px;
-    padding: 8px 12px;
-    color: var(--deck-ink);
-    text-align: left;
-    background: rgba(9, 17, 24, 0.99);
-    border: 0;
-    border-bottom: 1px solid var(--deck-line);
-  }
-
-  .commandDeckDrawerToggle span,
-  .commandDeckDrawerToggle b {
-    color: var(--deck-accent);
-    font-size: 10px;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-  }
-
-  .commandDeckDrawerToggle strong {
-    min-width: 0;
-    overflow: hidden;
-    font-size: 11px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .commandDeckContextDrawerBody {
-    height: calc(100% - 52px);
-    overflow: hidden;
-  }
-
-  .commandDeckMapArea > :global(.mapStage) {
-    min-height: 560px;
-    height: auto;
-  }
-
-  .commandDeckMapIntel {
-    position: relative;
-    top: auto;
-    right: auto;
-    bottom: auto;
-    left: auto;
-    width: 100%;
-    max-width: none;
-    grid-template-columns: minmax(0, 1fr);
-    order: -1;
-    border-inline: 0;
-  }
-
-  .commandDeckMapArea :global(.mapLensBadge) {
-    max-width: 64px;
-    font-size: 6px;
-  }
-
-  .commandDeckLegacyControl > :global(.controlRail) {
-    padding: 8px 10px 16px;
-  }
-
-  .commandDeckNotifications {
-    right: 10px;
-    bottom: 118px;
-    z-index: 90;
-    width: calc(100vw - 20px);
-  }
-}
-
-@media (max-width: 900px) {
-  .commandDeckShell[data-suspend-context="true"] .commandDeckContextRail {
-    visibility: hidden;
-    opacity: 0;
-  }
-}
-
-@media (min-width: 521px) and (max-width: 900px) {
-  .commandDeckGrid {
-    position: relative;
-    grid-template-columns: 220px minmax(0, 1fr);
-    grid-template-rows: minmax(0, 1fr);
-    overflow: hidden;
-  }
-
-  .commandDeckAgendaRail { grid-column: 1; grid-row: 1; }
-  .commandDeckMapArea { grid-column: 2; grid-row: 1; }
-  .commandDeckMapArea > :global(.mapStage) { height: 100%; min-height: 0; }
-
-  .commandDeckContextRail {
-    position: fixed;
-    top: 86px;
-    right: 0;
-    bottom: 82px;
-    z-index: 106;
-    width: min(320px, 35vw);
-    max-height: none;
-    overflow: hidden;
-    background: rgba(9, 15, 19, 0.995);
-    border-top: 1px solid var(--deck-line);
-    border-left: 1px solid var(--deck-line);
-    box-shadow: -16px 0 36px rgba(0, 0, 0, 0.4);
-    transform: translateX(calc(100% - 52px));
-    transition: transform 160ms ease-out;
-  }
-
-  .commandDeckContextRail.drawerOpen { transform: translateX(0); }
-  .commandDeckDrawerToggle {
-    display: grid;
-    grid-template-columns: 44px minmax(0, 1fr) auto;
-    width: 100%;
-    min-height: 52px;
-    align-items: center;
-    gap: 8px;
-    padding: 7px 8px;
-    color: var(--deck-ink);
-    text-align: left;
-    background: rgba(11, 19, 24, 0.99);
-    border: 0;
-    border-bottom: 1px solid var(--deck-line);
-  }
-  .commandDeckDrawerToggle span,
-  .commandDeckDrawerToggle b { color: var(--deck-accent); font-size: 8px; text-transform: uppercase; }
-  .commandDeckDrawerToggle strong { min-width: 0; overflow: hidden; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
-  .commandDeckContextDrawerBody { height: calc(100% - 52px); overflow: hidden; }
-  .commandDeckContextSummary { max-height: 44%; overflow: auto; }
-  .commandDeckInspectorDisclosure[data-inspector-open="true"] { min-height: 56%; }
-  .commandDeckMapIntel { bottom: 10px; left: 10px; width: min(430px, calc(100% - 72px)); }
-}
-
-@media (max-width: 520px) {
-  .commandDeckShell {
-    display: block;
-    height: auto;
-    max-height: none;
-    min-height: 100vh;
-    overflow-x: hidden;
-    padding-bottom: 72px;
-  }
-
-  .commandDeckGrid {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto auto auto;
-    height: auto;
-    min-height: 0;
-    overflow: visible;
-  }
-
-  .commandDeckAgendaRail,
-  .commandDeckMapArea,
-  .commandDeckContextRail { width: 100%; grid-column: auto; grid-row: auto; overflow: visible; }
-  .commandDeckAgendaRail { display: contents; }
-  .commandDeckAgendaRail > :global([data-testid="strategic-action-bar"]) { order: 1; }
-  .commandDeckAgendaRail > :global([data-testid="command-deck-feedback"]) { order: 2; }
-  .commandDeckMapArea { display: flex; order: 3; flex-direction: column; }
-  .commandDeckAgendaRail > :global([data-testid="strategic-decision-queue"]) { order: 4; }
-  .commandDeckLegacyControl { order: 5; }
-  .commandDeckMapArea > :global(.mapStage) { height: auto; min-height: 520px; }
-
-  .commandDeckContextRail {
-    position: fixed;
-    top: auto;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    z-index: 88;
-    width: 100%;
-    height: min(66vh, 560px);
-    max-height: none;
-    overflow: hidden;
-    border-top: 1px solid var(--deck-line);
-    border-left: 0;
-    box-shadow: 0 -16px 36px rgba(0, 0, 0, 0.42);
-    transform: translateY(calc(100% - 52px));
-    transition: transform 160ms ease-out;
-  }
-
-  .commandDeckContextRail.drawerOpen { transform: translateY(0); }
-  .commandDeckContextSummary { max-height: 42%; overflow: auto; }
-  .commandDeckInspectorDisclosure[data-inspector-open="true"] { min-height: 58%; }
-  .commandDeckNotifications { bottom: 126px; }
-}
+.commandDeckShell[data-low-sensory="true"] *, .commandDeckShell[data-low-sensory="true"] *::before, .commandDeckShell[data-low-sensory="true"] *::after { scroll-behavior: auto !important; animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+/* Compatibility styles for the shared, selectively mounted disclosure primitive. */
+.commandDeckContextSummary { min-width: 0; }
+.commandDeckMapIntel { min-width: 0; }
+.commandDeckNotifications { min-width: 0; }

@@ -36,14 +36,28 @@ const workspace = {
   updatedAt: now
 };
 const saved = worldRepository.saveNovelProject(workspace);
-assert.equal(worldRepository.schemaVersion, 4, "repository reports schema v4");
+assert.equal(worldRepository.schemaVersion, 6, "repository reports schema v6");
 assert.equal(worldRepository.storageHealth().counts.novelProjects, 1, "storage health counts novel projects");
 assert.throws(
   () => worldRepository.saveNovelProject(workspace, "stale-version"),
   (error) => error instanceof NovelProjectConflictError,
   "stale saves are rejected"
 );
+const receiptKey = "storage-pending-receipt";
+assert.equal(worldRepository.claimIdempotencyReceipt({ key: receiptKey, fingerprint: "storage-fingerprint" }).kind, "claimed", "receipt can be atomically claimed");
+assert.equal(worldRepository.claimIdempotencyReceipt({ key: receiptKey, fingerprint: "storage-fingerprint" }).kind, "pending", "duplicate pending claim is blocked");
+assert.equal(worldRepository.claimIdempotencyReceipt({ key: receiptKey, fingerprint: "different-fingerprint" }).kind, "conflict", "fingerprint conflict is rejected");
 closeDatabase();
+const pendingReceipt = worldRepository.getIdempotencyReceipt(receiptKey);
+assert.equal(pendingReceipt?.state, "pending", "pending receipt survives database reopen");
+worldRepository.saveIdempotencyReceipt({ key: receiptKey, fingerprint: "storage-fingerprint", response: { ok: true, data: { committed: true } }, status: 200 });
+closeDatabase();
+const committedReceipt = worldRepository.getIdempotencyReceipt(receiptKey);
+assert.equal(committedReceipt?.state, "committed", "committed receipt survives database reopen");
+assert.equal(committedReceipt?.response?.data?.committed, true, "committed response survives database reopen");
+const auditEvent = worldRepository.recordAdminAuditEvent({ route: "/api/v1/command/town/create", method: "POST", outcome: "missing", status: 401, requestId: "storage-audit-request", credentialSource: "none" });
+assert.equal(auditEvent.status, 401, "admin audit event records authorization status");
+assert.equal(worldRepository.listAdminAuditEvents(5)[0].requestId, "storage-audit-request", "admin audit event survives repository access");
 const restored = worldRepository.getNovelProject("novel-storage-smoke");
 assert.equal(restored.chapters[0].rawText, "Persistent chapter text", "workspace survives database reopen");
 assert.equal(restored.simulationRuns[0].id, "run-1", "simulation state survives database reopen");

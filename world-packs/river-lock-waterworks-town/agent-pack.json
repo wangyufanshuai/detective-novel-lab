@@ -1,0 +1,202 @@
+{
+  "manifest": {
+    "id": "river-lock-waterworks-town-agents",
+    "name": "River Lock Waterworks Town Agents",
+    "version": "1.0.0",
+    "schemaVersion": "agent-pack.v1",
+    "createdAt": "2026-08-12T00:00:00.000Z",
+    "description": "Water rights, public permits, floodgate custody and river-household claims."
+  },
+  "agents": [
+    {
+      "id": "npc-flo-1",
+      "name": "Mara Lock",
+      "role": "detective",
+      "homeLocationId": "water-ledger",
+      "schedule": {
+        "08:00": "water-ledger",
+        "12:00": "river-square",
+        "18:00": "licensing-counter"
+      },
+      "relationships": {},
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "detective",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "detective",
+      "institutionId": "inst-police",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-flo-2",
+      "name": "Ivo Reed",
+      "role": "clerk",
+      "homeLocationId": "licensing-counter",
+      "schedule": {
+        "08:00": "licensing-counter",
+        "12:00": "river-square",
+        "18:00": "river-lock"
+      },
+      "relationships": {
+        "npc-flo-1": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "clerk",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "clerk",
+      "institutionId": "inst-civic",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-flo-3",
+      "name": "Nell Shore",
+      "role": "servant",
+      "homeLocationId": "river-lock",
+      "schedule": {
+        "08:00": "river-lock",
+        "12:00": "river-square",
+        "18:00": "riverside-house"
+      },
+      "relationships": {
+        "npc-flo-2": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "servant",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "servant",
+      "institutionId": "inst-family",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-flo-4",
+      "name": "Tomas Vale",
+      "role": "lawyer",
+      "homeLocationId": "riverside-house",
+      "schedule": {
+        "08:00": "riverside-house",
+        "12:00": "river-square",
+        "18:00": "water-court"
+      },
+      "relationships": {
+        "npc-flo-3": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "lawyer",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "lawyer",
+      "institutionId": "inst-court",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-flo-5",
+      "name": "Edda Mill",
+      "role": "merchant",
+      "homeLocationId": "water-court",
+      "schedule": {
+        "08:00": "water-court",
+        "12:00": "river-square",
+        "18:00": "river-square"
+      },
+      "relationships": {
+        "npc-flo-4": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "merchant",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "merchant",
+      "institutionId": "inst-commerce",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-flo-6",
+      "name": "Bram Gauge",
+      "role": "dockworker",
+      "homeLocationId": "river-square",
+      "schedule": {
+        "08:00": "river-square",
+        "12:00": "river-square",
+        "18:00": "water-ledger"
+      },
+      "relationships": {
+        "npc-flo-5": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "dockworker",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "dockworker",
+      "institutionId": "inst-dock-union",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    }
+  ]
+}

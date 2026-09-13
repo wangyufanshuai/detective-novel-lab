@@ -176,5 +176,85 @@
     "authoredCluster": "civic-commerce",
     "contrastKey": "false-permit",
     "campaignTags": ["permit", "market", "records"]
+  },
+  {
+    "id": "murder", "label": "Murder", "family": "violent-crime", "tags": ["death", "scene", "timeline"],
+    "evidenceTypeIds": ["physical", "blood-pattern", "alibi-note"], "roleIds": ["officer", "doctor", "informant"],
+    "motiveIds": ["case-suppression", "loyalty-pressure"], "weight": 5
+  },
+  {
+    "id": "missing-person", "label": "Missing Person", "family": "witness-pressure", "tags": ["missing", "route", "contact"],
+    "evidenceTypeIds": ["anonymous-tip", "footprint", "telegram"], "roleIds": ["informant", "officer", "servant"],
+    "motiveIds": ["loyalty-pressure", "territory-control"], "weight": 5
+  },
+  {
+    "id": "merchant-extortion", "label": "Merchant Extortion", "family": "commerce-pressure", "tags": ["market", "debt", "threat"],
+    "evidenceTypeIds": ["ledger", "receipt", "telegram"], "roleIds": ["merchant", "informant", "dockworker"],
+    "motiveIds": ["debt-pressure", "territory-control"], "weight": 5
+  },
+  {
+    "id": "police-misjudgment", "label": "Police Misjudgment", "family": "institutional-pressure", "tags": ["police", "record", "alibi"],
+    "evidenceTypeIds": ["court-record", "testimony", "alibi-note"], "roleIds": ["officer", "clerk", "lawyer"],
+    "motiveIds": ["career-preservation", "case-suppression"], "weight": 5
+  },
+  {
+    "id": "media-rumor", "label": "Media Rumor", "family": "media-escalation", "tags": ["media", "rumor", "source"],
+    "evidenceTypeIds": ["newspaper-proof", "telegram", "testimony"], "roleIds": ["reporter", "informant", "clerk"],
+    "motiveIds": ["reputation-protection", "career-preservation"], "weight": 5
+  },
+  {
+    "id": "signal-tampering", "label": "Signal Tampering", "family": "chain-risk", "tags": ["signal", "switch", "timing"],
+    "evidenceTypeIds": ["trace", "telegram", "document"], "roleIds": ["clerk", "officer", "dockworker"],
+    "motiveIds": ["case-suppression", "territory-control"], "weight": 5, "mechanicProfileId": "evidence-chain"
+  },
+  {
+    "id": "safety-inspection-fraud", "label": "Safety Inspection Fraud", "family": "document-pressure", "tags": ["inspection", "permit", "work"],
+    "evidenceTypeIds": ["document", "court-record", "trace"], "roleIds": ["clerk", "officer", "doctor"],
+    "motiveIds": ["career-preservation", "debt-pressure"], "weight": 5, "mechanicProfileId": "record-custody"
+  },
+  {
+    "id": "industrial-sabotage", "label": "Industrial Sabotage", "family": "chain-risk", "tags": ["machine", "access", "work"],
+    "evidenceTypeIds": ["physical", "trace", "weapon-mark"], "roleIds": ["dockworker", "merchant", "officer"],
+    "motiveIds": ["territory-control", "debt-pressure"], "weight": 5, "mechanicProfileId": "access-control"
+  },
+  {
+    "id": "water-rights-fraud", "label": "Water Rights Fraud", "family": "commerce-pressure", "tags": ["water", "ledger", "permit"],
+    "evidenceTypeIds": ["ledger", "document", "receipt"], "roleIds": ["merchant", "clerk", "lawyer"],
+    "motiveIds": ["debt-pressure", "territory-control"], "weight": 5, "mechanicProfileId": "record-custody"
+  },
+  {
+    "id": "floodgate-tampering", "label": "Floodgate Tampering", "family": "chain-risk", "tags": ["water", "gate", "timing"],
+    "evidenceTypeIds": ["physical", "trace", "document"], "roleIds": ["dockworker", "officer", "clerk"],
+    "motiveIds": ["territory-control", "case-suppression"], "weight": 5, "mechanicProfileId": "access-control"
+  },
+  {
+    "id": "academic-record-forgery", "label": "Academic Record Forgery", "family": "document-pressure", "tags": ["academy", "record", "signature"],
+    "evidenceTypeIds": ["document", "court-record", "key-impression"], "roleIds": ["clerk", "lawyer", "reporter"],
+    "motiveIds": ["career-preservation", "reputation-protection"], "weight": 5, "mechanicProfileId": "record-custody"
+  },
+  {
+    "id": "patronage-coercion", "label": "Patronage Coercion", "family": "witness-pressure", "tags": ["academy", "patron", "testimony"],
+    "evidenceTypeIds": ["testimony", "family-letter", "receipt"], "roleIds": ["lawyer", "reporter", "servant"],
+    "motiveIds": ["reputation-protection", "loyalty-pressure"], "weight": 5, "mechanicProfileId": "witness-timeline"
+  },
+  {
+    "id": "identity-register-fraud", "label": "Identity Register Fraud", "family": "document-pressure", "tags": ["hotel", "register", "identity"],
+    "evidenceTypeIds": ["document", "testimony", "key-impression"], "roleIds": ["clerk", "servant", "lawyer"],
+    "motiveIds": ["reputation-protection", "career-preservation"], "weight": 5, "mechanicProfileId": "record-custody"
+  },
+  {
+    "id": "utility-sabotage", "label": "Utility Sabotage", "family": "chain-risk", "tags": ["power", "grid", "access"],
+    "evidenceTypeIds": ["physical", "trace", "document"], "roleIds": ["officer", "dockworker", "clerk"],
+    "motiveIds": ["territory-control", "case-suppression"], "weight": 5, "mechanicProfileId": "access-control"
+  },
+  {
+    "id": "burial-record-forgery", "label": "Burial Record Forgery", "family": "document-pressure", "tags": ["memorial", "register", "inheritance"],
+    "evidenceTypeIds": ["document", "court-record", "family-letter"], "roleIds": ["clerk", "lawyer", "servant"],
+    "motiveIds": ["inheritance-conflict", "reputation-protection"], "weight": 5, "mechanicProfileId": "record-custody"
+  },
+  {
+    "id": "signal-interception", "label": "Signal Interception", "family": "chain-risk", "tags": ["wireless", "message", "timing"],
+    "evidenceTypeIds": ["telegram", "trace", "document"], "roleIds": ["reporter", "officer", "informant"],
+    "motiveIds": ["case-suppression", "reputation-protection"], "weight": 5, "mechanicProfileId": "evidence-chain"
   }
 ]

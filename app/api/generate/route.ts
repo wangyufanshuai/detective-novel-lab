@@ -15,6 +15,40 @@ type GenerateBody = {
   lengthTarget?: string;
 };
 
+const allowedStages = new Set([
+  "gameTruthSeed",
+  "gameLogicRepair",
+  "gameCaseFile",
+  "gameDialogue",
+  "gameEvidenceChallenge",
+  "gameJudgement",
+  "gameSolutionReveal",
+  "quickSynopsis",
+  "quickOutline",
+  "quickChapter"
+]);
+const maxBodyBytes = 96_000;
+const maxBriefChars = 12_000;
+const maxDraftChars = 48_000;
+const maxDirectionChars = 8_000;
+const maxLengthTargetChars = 160;
+
+function validateGenerateBody(body: unknown): asserts body is GenerateBody {
+  if (!body || typeof body !== "object") throw new Error("Request body must be a JSON object.");
+  const value = body as Partial<GenerateBody>;
+  if (typeof value.stage !== "string" || !allowedStages.has(value.stage)) throw new Error("Unsupported generation stage.");
+  if (typeof value.brief !== "string" || !value.brief.trim() || value.brief.length > maxBriefChars) throw new Error("brief is required and must be within the input limit.");
+  if (value.provider !== undefined && value.provider !== "deepseek" && value.provider !== "siliconflow") throw new Error("Unsupported AI provider.");
+  if (value.stageLabel !== undefined && (typeof value.stageLabel !== "string" || value.stageLabel.length > 160)) throw new Error("stageLabel exceeds the input limit.");
+  if (value.userDirection !== undefined && (typeof value.userDirection !== "string" || value.userDirection.length > maxDirectionChars)) throw new Error("userDirection exceeds the input limit.");
+  if (value.lengthTarget !== undefined && (typeof value.lengthTarget !== "string" || value.lengthTarget.length > maxLengthTargetChars)) throw new Error("lengthTarget exceeds the input limit.");
+  if (value.currentDraft !== undefined) {
+    if (!value.currentDraft || typeof value.currentDraft !== "object" || Array.isArray(value.currentDraft)) throw new Error("currentDraft must be an object.");
+    const draftText = JSON.stringify(value.currentDraft);
+    if (draftText.length > maxDraftChars) throw new Error("currentDraft exceeds the input limit.");
+  }
+}
+
 const providerConfig = {
   deepseek: {
     apiKey: process.env.DEEPSEEK_API_KEY,
@@ -115,6 +149,7 @@ async function callModel(body: GenerateBody) {
       "Content-Type": "application/json",
       Authorization: `Bearer ${config.apiKey}`
     },
+    signal: AbortSignal.timeout(45_000),
     body: JSON.stringify({
       model: config.model,
       messages: buildMessages(body),
@@ -125,8 +160,8 @@ async function callModel(body: GenerateBody) {
   });
 
   if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(`Model API returned ${response.status}: ${detail}`);
+    const detail = (await response.text()).replace(/[\r\n]+/g, " ").slice(0, 240);
+    throw new Error(`Model API returned ${response.status}: ${detail || "provider rejected the request"}`);
   }
 
   const data = await response.json();
@@ -192,7 +227,17 @@ async function generateValidatedCase(body: GenerateBody) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = (await request.json()) as GenerateBody;
+    const raw = await request.text();
+    if (new TextEncoder().encode(raw).byteLength > maxBodyBytes) {
+      return NextResponse.json({ ok: false, code: "PAYLOAD_TOO_LARGE", error: "Request body exceeds the generation limit." }, { status: 413 });
+    }
+    let body: GenerateBody;
+    try {
+      body = JSON.parse(raw) as GenerateBody;
+    } catch {
+      return NextResponse.json({ ok: false, code: "BAD_REQUEST", error: "Invalid JSON body" }, { status: 400 });
+    }
+    validateGenerateBody(body);
 
     if (body.stage === "gameTruthSeed") {
       const result = await generateValidatedCase(body);
@@ -230,12 +275,15 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ ok: true, mock: false, content: result.content });
   } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown generation error";
+    const status = /input limit|unsupported|must be|is required|currentDraft|brief|stageLabel|userDirection|lengthTarget/i.test(message) ? 400 : 500;
     return NextResponse.json(
       {
         ok: false,
-        error: error instanceof Error ? error.message : "Unknown error"
+        code: status === 400 ? "BAD_REQUEST" : "GENERATION_FAILED",
+        error: message
       },
-      { status: 500 }
+      { status }
     );
   }
 }

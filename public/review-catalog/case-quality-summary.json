@@ -1,0 +1,113 @@
+{
+  "schemaVersion": "public-case-quality-summary.v1",
+  "generatedAt": "2026-07-08T14:52:29.117Z",
+  "sourceRunId": "stable-world-1000-campaign-validation-stable-town-a-stable-town-b",
+  "sourceKind": "stable-world-case-quality",
+  "ticks": 1000,
+  "seeds": [
+    "campaign-validation",
+    "stable-town-a",
+    "stable-town-b"
+  ],
+  "seedCount": 3,
+  "nonBlocking": true,
+  "overallStatus": "ok",
+  "averageScore": 100,
+  "minScore": 100,
+  "statusCounts": {
+    "ok": 3,
+    "watch": 0,
+    "risk": 0
+  },
+  "dimensionAverages": {
+    "case-diversity": 100,
+    "cross-case-continuity": 100,
+    "evidence-provenance": 100,
+    "fair-play-evidence": 100,
+    "institution-relevance": 100,
+    "repeat-control": 100,
+    "solution-readiness": 100
+  },
+  "dimensionMinimums": {
+    "case-diversity": 100,
+    "cross-case-continuity": 100,
+    "evidence-provenance": 100,
+    "fair-play-evidence": 100,
+    "institution-relevance": 100,
+    "repeat-control": 100,
+    "solution-readiness": 100
+  },
+  "perSeed": [
+    {
+      "seed": "campaign-validation",
+      "status": "ok",
+      "score": 100,
+      "caseCount": 8,
+      "solvedCaseCount": 8,
+      "distinctCaseTypeCount": 8,
+      "evidenceCompleteCaseCount": 8,
+      "evidenceWarningCount": 0,
+      "laterCaseInfluenceRate": 100,
+      "institutionDecisionCount": 80,
+      "repeatRate": 0,
+      "deterministicRunHash": "fnv1a-fddcbe93"
+    },
+    {
+      "seed": "stable-town-a",
+      "status": "ok",
+      "score": 100,
+      "caseCount": 8,
+      "solvedCaseCount": 8,
+      "distinctCaseTypeCount": 8,
+      "evidenceCompleteCaseCount": 8,
+      "evidenceWarningCount": 0,
+      "laterCaseInfluenceRate": 100,
+      "institutionDecisionCount": 80,
+      "repeatRate": 0,
+      "deterministicRunHash": "fnv1a-0b99b69e"
+    },
+    {
+      "seed": "stable-town-b",
+      "status": "ok",
+      "score": 100,
+      "caseCount": 8,
+      "solvedCaseCount": 8,
+      "distinctCaseTypeCount": 8,
+      "evidenceCompleteCaseCount": 8,
+      "evidenceWarningCount": 0,
+      "laterCaseInfluenceRate": 100,
+      "institutionDecisionCount": 80,
+      "repeatRate": 0,
+      "deterministicRunHash": "fnv1a-50f1a916"
+    }
+  ],
+  "deterministicRunHashes": {
+    "campaign-validation": "fnv1a-fddcbe93",
+    "stable-town-a": "fnv1a-0b99b69e",
+    "stable-town-b": "fnv1a-50f1a916"
+  },
+  "artifactFiles": [
+    {
+      "name": "manifest.json",
+      "bytes": 3087,
+      "sha256": "c41463764c193835a38b41d565d95b60bbca803ac57e30b33abe018a8fe3c64c"
+    },
+    {
+      "name": "case-quality-report.json",
+      "bytes": 7098,
+      "sha256": "bad478920977ddb83d126f4e8fca5eda369eac41bb22f7ca4257c3e58ddd0e25"
+    }
+  ],
+  "publicBoundary": {
+    "sanitizedBenchmarkSummary": true,
+    "artifactBodiesIncluded": false,
+    "localPathsIncluded": false,
+    "excludedBodies": [
+      "full quality metrics",
+      "raw case bodies",
+      "raw replay data",
+      "case continuity ids",
+      "agent state snapshots"
+    ]
+  }
+}

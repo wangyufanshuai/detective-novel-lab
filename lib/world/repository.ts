@@ -94,7 +94,7 @@ type PackageCatalogRow = {
   updated_at: string;
 };
 
-const schemaVersion = 4;
+const schemaVersion = 6;
 
 export class NovelProjectConflictError extends Error {
   readonly current: NovelProjectSummary;
@@ -103,6 +103,22 @@ export class NovelProjectConflictError extends Error {
     super(`Novel project ${current.id} changed on the server at ${current.updatedAt}`);
     this.name = "NovelProjectConflictError";
     this.current = current;
+  }
+}
+
+export class InvestigationAccessError extends Error {
+  readonly status: number;
+  readonly code: "BAD_REQUEST" | "SESSION_NOT_FOUND" | "SESSION_FORBIDDEN" | "WORLD_NOT_FOUND" | "CASE_NOT_FOUND";
+
+  constructor(
+    message: string,
+    status: number,
+    code: InvestigationAccessError["code"]
+  ) {
+    super(message);
+    this.name = "InvestigationAccessError";
+    this.status = status;
+    this.code = code;
   }
 }
 
@@ -159,6 +175,27 @@ export function getDb() {
       value text not null,
       updated_at text not null
     );
+    create table if not exists idempotency_receipts (
+      key text primary key,
+      fingerprint text not null,
+      response_json text not null,
+      status integer not null,
+      created_at text not null,
+      state text not null default 'committed',
+      expires_at text not null default ''
+    );
+    create index if not exists idx_idempotency_receipts_created on idempotency_receipts(created_at);
+    create table if not exists admin_audit_events (
+      id text primary key,
+      route text not null,
+      method text not null,
+      outcome text not null,
+      status integer not null,
+      request_id text not null,
+      credential_source text not null,
+      created_at text not null
+    );
+    create index if not exists idx_admin_audit_events_created on admin_audit_events(created_at desc);
     create table if not exists novel_projects (
       id text primary key,
       title text not null,
@@ -242,6 +279,9 @@ export function getDb() {
     create index if not exists idx_package_catalog_source on package_catalog(source);
     create index if not exists idx_package_catalog_scenario on package_catalog(scenario_pack_id);
   `);
+  const receiptColumns = db.prepare("pragma table_info(idempotency_receipts)").all() as Array<{ name: string }>;
+  if (!receiptColumns.some((column) => column.name === "state")) db.exec("alter table idempotency_receipts add column state text not null default 'committed'");
+  if (!receiptColumns.some((column) => column.name === "expires_at")) db.exec("alter table idempotency_receipts add column expires_at text not null default ''");
   db.prepare(
     `insert into storage_meta (key, value, updated_at)
      values ('schema_version', ?, ?)
@@ -508,6 +548,140 @@ export const worldRepository = {
     return input.world;
   },
 
+  saveWorldBundleIfRuntimeRevision(input: { world: WorldState; events?: WorldEvent[]; activeCase?: CaseFromLog | null; expectedRevision: number }) {
+    const db = getDb();
+    const saveBundle = db.transaction(({ world, events = [], activeCase = null, expectedRevision }: { world: WorldState; events?: WorldEvent[]; activeCase?: CaseFromLog | null; expectedRevision: number }) => {
+      const now = new Date().toISOString();
+      const result = db.prepare(
+        `update worlds
+         set data = @data, updated_at = @updatedAt
+         where id = @id
+           and coalesce(json_extract(data, '$.persistentRuntime.commandRevision'), 0) = @expectedRevision`
+      ).run({
+        id: world.id,
+        data: JSON.stringify(world),
+        updatedAt: world.updatedAt,
+        expectedRevision
+      });
+      if (result.changes !== 1) return false;
+      const saveEventStatement = db.prepare(
+        `insert or replace into world_events (id, world_id, data, created_at)
+         values (@id, @worldId, @data, @createdAt)`
+      );
+      for (const event of events) saveEventStatement.run({ id: event.id, worldId: event.worldId, data: JSON.stringify(event), createdAt: now });
+      if (activeCase) {
+        db.prepare(
+          `insert into cases (id, world_id, data, created_at)
+           values (@id, @worldId, @data, @createdAt)
+           on conflict(id) do update set data = excluded.data`
+        ).run({ id: activeCase.id, worldId: activeCase.worldId, data: JSON.stringify(activeCase), createdAt: activeCase.createdAt });
+      }
+      return true;
+    });
+    return saveBundle(input);
+  },
+
+  runInTransaction<T>(action: () => T): T {
+    return getDb().transaction(action)();
+  },
+
+  getIdempotencyReceipt(key: string) {
+    const row = getDb().prepare(
+      "select key, fingerprint, response_json, status, created_at, state, expires_at from idempotency_receipts where key = ?"
+    ).get(key) as { key: string; fingerprint: string; response_json: string; status: number; created_at: string; state: "pending" | "committed"; expires_at: string } | undefined;
+    if (!row) return null;
+    return { fingerprint: row.fingerprint, response: row.response_json ? JSON.parse(row.response_json) as unknown : null, status: row.status, state: row.state, expiresAt: Date.parse(row.expires_at), createdAt: Date.parse(row.created_at) };
+  },
+
+  claimIdempotencyReceipt(input: { key: string; fingerprint: string; ttlMs?: number }) {
+    const db = getDb();
+    const claim = db.transaction(({ key, fingerprint, ttlMs = 15 * 60 * 1000 }: { key: string; fingerprint: string; ttlMs?: number }) => {
+      const existing = db.prepare("select fingerprint, response_json, status, state, created_at, expires_at from idempotency_receipts where key = ?").get(key) as { fingerprint: string; response_json: string; status: number; state: "pending" | "committed"; created_at: string; expires_at: string } | undefined;
+      const now = Date.now();
+      if (existing && existing.fingerprint !== fingerprint) return { kind: "conflict" as const };
+      if (existing?.state === "committed") return { kind: "committed" as const, receipt: { fingerprint, response: JSON.parse(existing.response_json) as unknown, status: existing.status, state: existing.state, expiresAt: Date.parse(existing.expires_at), createdAt: Date.parse(existing.created_at) } };
+      if (existing && Date.parse(existing.expires_at) > now) return { kind: "pending" as const };
+      const createdAt = new Date(now).toISOString();
+      const expiresAt = new Date(now + ttlMs).toISOString();
+      db.prepare(
+        `insert into idempotency_receipts (key, fingerprint, response_json, status, created_at, state, expires_at)
+         values (@key, @fingerprint, '', 202, @createdAt, 'pending', @expiresAt)
+         on conflict(key) do update set fingerprint = excluded.fingerprint, response_json = '', status = 202, created_at = excluded.created_at, state = 'pending', expires_at = excluded.expires_at`
+      ).run({ key, fingerprint, createdAt, expiresAt });
+      return { kind: "claimed" as const };
+    });
+    return claim(input);
+  },
+
+  saveIdempotencyReceipt(input: { key: string; fingerprint: string; response: unknown; status: number; createdAt?: number }) {
+    const createdAt = new Date(input.createdAt || Date.now()).toISOString();
+    getDb().prepare(
+      `insert into idempotency_receipts (key, fingerprint, response_json, status, created_at, state, expires_at)
+       values (@key, @fingerprint, @responseJson, @status, @createdAt, 'committed', @expiresAt)
+       on conflict(key) do update set response_json = excluded.response_json, status = excluded.status, state = 'committed', expires_at = excluded.expires_at`
+    ).run({ key: input.key, fingerprint: input.fingerprint, responseJson: JSON.stringify(input.response), status: input.status, createdAt, expiresAt: new Date((input.createdAt || Date.now()) + 15 * 60 * 1000).toISOString() });
+    getDb().prepare("delete from idempotency_receipts where created_at < ?").run(new Date(Date.now() - 15 * 60 * 1000).toISOString());
+  },
+
+  recordAdminAuditEvent(input: { route: string; method: string; outcome: "authorized" | "missing" | "invalid"; status: number; requestId: string; credentialSource: "token" | "session" | "none" }) {
+    const createdAt = new Date().toISOString();
+    const id = `admin-audit-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+    getDb().prepare(
+      `insert into admin_audit_events (id, route, method, outcome, status, request_id, credential_source, created_at)
+       values (@id, @route, @method, @outcome, @status, @requestId, @credentialSource, @createdAt)`
+    ).run({ id, route: input.route.slice(0, 500), method: input.method.slice(0, 16), outcome: input.outcome, status: input.status, requestId: input.requestId.slice(0, 120), credentialSource: input.credentialSource, createdAt });
+    return { id, ...input, createdAt };
+  },
+
+  listAdminAuditEvents(limit = 50) {
+    const safeLimit = Math.max(1, Math.min(200, Math.floor(limit)));
+    return getDb().prepare(
+      `select id, route, method, outcome, status, request_id as requestId, credential_source as credentialSource, created_at as createdAt
+       from admin_audit_events order by created_at desc limit ?`
+    ).all(safeLimit) as Array<{ id: string; route: string; method: string; outcome: string; status: number; requestId: string; credentialSource: string; createdAt: string }>;
+  },
+
+  /**
+   * Small, read-only operator projection for production-like health checks.
+   * It deliberately aggregates audit metadata and queue state only; request
+   * credentials and world truth never enter this response.
+   */
+  getAdminOperationalMetrics(windowMinutes = 60) {
+    const safeWindowMinutes = Math.max(1, Math.min(24 * 60, Math.floor(windowMinutes)));
+    const since = new Date(Date.now() - safeWindowMinutes * 60 * 1000).toISOString();
+    const db = getDb();
+    const auditRows = db.prepare(
+      `select outcome, status, count(*) as count
+       from admin_audit_events where created_at >= ? group by outcome, status`
+    ).all(since) as Array<{ outcome: string; status: number; count: number }>;
+    const byOutcome: Record<string, number> = { authorized: 0, missing: 0, invalid: 0 };
+    const byStatus: Record<string, number> = {};
+    for (const row of auditRows) {
+      byOutcome[row.outcome] = (byOutcome[row.outcome] || 0) + Number(row.count || 0);
+      const statusKey = String(row.status);
+      byStatus[statusKey] = (byStatus[statusKey] || 0) + Number(row.count || 0);
+    }
+    const pendingReceipts = (db.prepare("select count(*) as count from idempotency_receipts where state = 'pending'").get() as { count: number }).count;
+    const committedReceipts = (db.prepare("select count(*) as count from idempotency_receipts where state = 'committed'").get() as { count: number }).count;
+    const serverErrorCount = Object.entries(byStatus).reduce((sum, [status, count]) => {
+      return sum + (Number(status) >= 500 ? count : 0);
+    }, 0);
+    return {
+      windowMinutes: safeWindowMinutes,
+      since,
+      generatedAt: new Date().toISOString(),
+      adminAudit: {
+        total: Object.values(byOutcome).reduce((sum, count) => sum + count, 0),
+        byOutcome,
+        byStatus,
+        unauthorized: byOutcome.missing + byOutcome.invalid,
+        serverErrorCount
+      },
+      idempotency: { pending: pendingReceipts, committed: committedReceipts },
+      storage: worldRepository.storageHealth()
+    };
+  },
+
   getWorld(id: string) {
     const row = getDb().prepare("select id, data from worlds where id = ?").get(id) as Row | undefined;
     return parseData<WorldState>(row);
@@ -586,6 +760,26 @@ export const worldRepository = {
   getSession(id: string) {
     const row = getDb().prepare("select id, data from sessions where id = ?").get(id) as Row | undefined;
     return parseData<PlayerSession>(row);
+  },
+
+  getInterrogationContext(sessionId: string, characterId: string, evidenceId?: string, expected?: PlayerSession) {
+    const session = this.getSession(sessionId);
+    if (!session) throw new InvestigationAccessError("Session not found", 404, "SESSION_NOT_FOUND");
+    if (expected && (session.worldId !== expected.worldId || session.caseId !== expected.caseId || session.playerId !== expected.playerId || session.createdAt !== expected.createdAt)) {
+      throw new InvestigationAccessError("Session changed while the interrogation was pending", 409, "BAD_REQUEST");
+    }
+    const world = this.getWorld(session.worldId);
+    const activeCase = this.getCase(session.caseId);
+    if (!world) throw new InvestigationAccessError("World not found", 404, "WORLD_NOT_FOUND");
+    if (!activeCase) throw new InvestigationAccessError("Case not found", 404, "CASE_NOT_FOUND");
+    if (activeCase.worldId !== session.worldId) throw new InvestigationAccessError("Case does not belong to the session world", 409, "BAD_REQUEST");
+    if (!activeCase.deductionCase.characters.some((character) => character.id === characterId)) {
+      throw new InvestigationAccessError("Character does not belong to this case", 400, "BAD_REQUEST");
+    }
+    if (evidenceId !== undefined && (!activeCase.deductionCase.evidence.some((evidence) => evidence.id === evidenceId && evidence.discoverable) || !session.discoveredEvidenceIds.includes(evidenceId))) {
+      throw new InvestigationAccessError("Evidence must belong to this case and have been discovered", 400, "BAD_REQUEST");
+    }
+    return { session, world, activeCase };
   },
 
   listSessions(worldId: string, caseId: string) {
@@ -982,12 +1176,31 @@ export const worldRepository = {
     return { package: packageEntryFromRow(row) };
   },
 
-  appendInterrogation(session: PlayerSession, entry: InterrogationLogEntry) {
-    const next: PlayerSession = {
-      ...session,
-      interrogationLog: [...session.interrogationLog, entry],
-      updatedAt: new Date().toISOString()
-    };
-    return this.saveSession(next);
+  appendInterrogation(
+    expected: PlayerSession,
+    entry: InterrogationLogEntry,
+    updateCase?: (activeCase: CaseFromLog) => CaseFromLog | undefined
+  ) {
+    // Acquire the write lock only after the model reply arrives. Never persist
+    // its earlier session snapshot over evidence, verdicts, or other replies.
+    return getDb().transaction(() => {
+      if (entry.sessionId !== expected.id) throw new InvestigationAccessError("Interrogation belongs to another session", 400, "BAD_REQUEST");
+      const { session, activeCase } = this.getInterrogationContext(expected.id, entry.characterId, entry.evidenceId, expected);
+      const existing = session.interrogationLog.find((item) => item.id === entry.id);
+      if (existing) {
+        if (existing.characterId !== entry.characterId || existing.question !== entry.question || existing.evidenceId !== entry.evidenceId) {
+          throw new InvestigationAccessError("Interrogation identifier was already used for another question", 409, "BAD_REQUEST");
+        }
+        return session;
+      }
+      const caseUpdate = updateCase?.(activeCase);
+      if (caseUpdate) this.saveCase(caseUpdate);
+      return this.saveSession({
+        ...session,
+        interrogationLog: [...session.interrogationLog, entry],
+        updatedAt: new Date().toISOString()
+      });
+    }).immediate();
   }
 };
+

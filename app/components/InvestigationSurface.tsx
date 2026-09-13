@@ -1,5 +1,9 @@
 "use client";
 
+import type { InvestigationActionResult } from "@/app/campaign/investigation-action-result";
+import { useAppLocale } from "@/app/localization/locale-context";
+import styles from "./InvestigationSurface.module.css";
+import { CinematicDeductionBoard } from "@/app/components/CinematicDeductionBoard";
 import { InvestigationCoreActionsSurface } from "@/app/components/InvestigationCoreActionsSurface";
 import { InvestigationDebriefReplaySurface } from "@/app/components/InvestigationDebriefReplaySurface";
 import { InvestigationRouteReviewSurface } from "@/app/components/InvestigationRouteReviewSurface";
@@ -41,6 +45,7 @@ import {
 } from "@/app/campaign/investigation-workspace-model";
 import type { CampaignPacingViewModel } from "@/app/campaign/campaign-pacing-model";
 import type { CampaignCommandBrief } from "@/app/campaign/campaign-command-brief-model";
+import { isCinematicDeductionGoldSlice } from "@/app/campaign/cinematic-deduction-model";
 import type { CertifiedCaseRhythmViewModel } from "@/app/campaign/certified-case-rhythm-model";
 import type { CertifiedInvestigationActionAdapter } from "@/app/hooks/useCertifiedInvestigationActions";
 import { useFinalDetectiveWorkspace } from "@/app/hooks/useFinalDetectiveWorkspace";
@@ -62,7 +67,7 @@ import type {
 } from "@/lib/engine";
 
 export function InvestigationPanel({
-  playableIntake, caseRhythm, onIntakeNextAction, notebookItems, onNotebookAction, selectedSceneName,
+  playableIntake, caseRhythm, observeCaseWindow, onIntakeNextAction, notebookItems, onNotebookAction, selectedSceneName,
   discoveredEvidence, evidenceImpacts, actionAdapter, session, testimonies,
   characters, selectedCharacterId, setSelectedCharacterId, selectedEvidenceId, setSelectedEvidenceId,
   question, setQuestion, aiSafety, memoryCount, dialogueLog, theory, setTheory,
@@ -78,10 +83,11 @@ export function InvestigationPanel({
   manualEvidenceDrill, toggleManualEvidenceDrillEvidence, manualTheoryDrill,
   updateManualTheoryDrillField, approveManualTheoryFallback, replayAttemptScorecard,
   startReplayGoalAttempt, proofLedger, proofCoverage, routeCertificate, proofTourSteps,
-  busy, commandDeckMode = false
+  lowSensory, onToggleLowSensory, busy, commandDeckMode = false
 }: {
   playableIntake?: PlayableCaseIntake | null;
   caseRhythm?: CertifiedCaseRhythmViewModel | null;
+  observeCaseWindow: () => void | Promise<void>;
   onIntakeNextAction: (action: PlayableCaseNextAction) => void;
   notebookItems: EvidenceNotebookItem[];
   onNotebookAction: (item: EvidenceNotebookItem, action: NotebookAction) => void;
@@ -104,7 +110,7 @@ export function InvestigationPanel({
   theory: PlayerTheory;
   setTheory: (updater: (current: PlayerTheory) => PlayerTheory) => void;
   playerTheoryEvidence: Set<string>;
-  submitTheory: () => void;
+  submitTheory: () => Promise<InvestigationActionResult>;
   revealText: string;
   gapCards: GapCard[];
   onGapSelect: (card: GapCard) => void;
@@ -157,9 +163,12 @@ export function InvestigationPanel({
   proofCoverage?: CaseProofCoverage | null;
   routeCertificate?: CaseRouteCertificate | null;
   proofTourSteps: ProofTourStep[];
+  lowSensory: boolean;
+  onToggleLowSensory: () => void;
   busy: boolean;
   commandDeckMode?: boolean;
 }) {
+  const { locale } = useAppLocale();
   const playablePathSteps = buildPlayableInvestigationPath({ playableIntake, session, notebookItems, discoveredEvidence, dialogueLog, playerTheoryEvidence, characters });
   const serverCampaignPacing = runtimeMode === "server" ? campaignPacing : null;
   const finalWorkspace = useFinalDetectiveWorkspace({
@@ -189,12 +198,50 @@ export function InvestigationPanel({
     proofTourSteps,
     revealAvailable: Boolean(revealText)
   });
+  const investigationCoreProps = {
+    model: finalWorkspace,
+    currentAction: caseRhythm?.currentStep.action,
+    observeCaseWindow,
+    notebookItems,
+    discoveredEvidence,
+    characters,
+    actionAdapter,
+    onIntakeNextAction,
+    onNotebookAction,
+    selectedCharacterId,
+    setSelectedCharacterId,
+    selectedEvidenceId,
+    setSelectedEvidenceId,
+    dialogueLog,
+    question,
+    setQuestion,
+    theory,
+    setTheory,
+    submitTheory,
+    gapCards,
+    onGapSelect,
+    onCampaignRecoveryStart: updateCampaignRecovery ? () => updateCampaignRecovery("start") : undefined,
+    busy, lowSensory, onToggleLowSensory
+  };
+  const investigationCore = isCinematicDeductionGoldSlice(campaignSession) && campaignSession
+    ? <CinematicDeductionBoard
+        {...investigationCoreProps}
+        actionAdapter={actionAdapter}
+        campaignSession={campaignSession}
+        campaignFinaleDebrief={campaignFinaleDebrief}
+        lowSensory={lowSensory}
+        onToggleLowSensory={onToggleLowSensory}
+      />
+    : <InvestigationCoreActionsSurface {...investigationCoreProps} actionAdapter={actionAdapter} />;
   const worldCampaign = <WorldCampaignPanel runtimeMode={runtimeMode} session={session} summary={worldLead} outcome={worldLeadOutcome} handoff={worldLeadCaseHandoff} arc={worldArc} directive={worldArcDirective} pressure={worldPressureCascade} influenceBudget={worldInfluenceBudget} playerResourceCommitment={playerResourceCommitment} factionRelationship={factionRelationship} worldEventOffer={worldEventOffer} investigatorProgression={investigatorProgression} campaignRecovery={campaignRecovery} investigatorHeadquarters={investigatorHeadquarters} arcConvergence={arcConvergence} campaignSession={campaignSession} campaignFinaleDebrief={campaignFinaleDebrief} townSocialResponse={townSocialResponse} campaignPacing={serverCampaignPacing} commandBrief={campaignCommandBrief} onDecision={updateWorldLead} onDirectiveDecision={updateWorldArcDirective} onResourceCommitmentDecision={updatePlayerResourceCommitment} onWorldEventOfferDecision={updateWorldEventOffer} onCampaignRecoveryDecision={updateCampaignRecovery} onInvestigatorHeadquartersDecision={updateInvestigatorHeadquarters} busy={busy} />;
   return (
-    <div className="stackedInspector">
-      <InvestigationCoreActionsSurface model={finalWorkspace} currentAction={caseRhythm?.currentStep.action} notebookItems={notebookItems} discoveredEvidence={discoveredEvidence} characters={characters} actionAdapter={actionAdapter} onIntakeNextAction={onIntakeNextAction} onNotebookAction={onNotebookAction} selectedCharacterId={selectedCharacterId} setSelectedCharacterId={setSelectedCharacterId} selectedEvidenceId={selectedEvidenceId} setSelectedEvidenceId={setSelectedEvidenceId} question={question} setQuestion={setQuestion} theory={theory} setTheory={setTheory} submitTheory={submitTheory} gapCards={gapCards} onGapSelect={onGapSelect} onCampaignRecoveryStart={updateCampaignRecovery ? () => updateCampaignRecovery("start") : undefined} busy={busy} />
-      <InvestigationRouteReviewSurface steps={playablePathSteps} rhythm={caseRhythm} commandDeckMode={commandDeckMode} worldCampaign={worldCampaign} campaignPacing={serverCampaignPacing} guidedManualRun={guidedManualRun} runGuidedManualStep={runGuidedManualStep} guidedStepJournal={guidedStepJournal} staticPlaythroughProof={staticPlaythroughProof} runStaticPlaythroughProof={runStaticPlaythroughProof} serverPlaythroughProof={serverPlaythroughProof} runServerPlaythroughProof={runServerPlaythroughProof} />
-      <InvestigationDebriefReplaySurface commandDeckMode={commandDeckMode} campaignPacing={serverCampaignPacing} solvedCaseDebrief={solvedCaseDebrief} replayPracticeLoop={replayPracticeLoop} replayGoalCoach={replayGoalCoach} manualEvidenceDrill={manualEvidenceDrill} toggleManualEvidenceDrillEvidence={toggleManualEvidenceDrillEvidence} manualTheoryDrill={manualTheoryDrill} updateManualTheoryDrillField={updateManualTheoryDrillField} approveManualTheoryFallback={approveManualTheoryFallback} replayAttemptScorecard={replayAttemptScorecard} startReplayGoalAttempt={startReplayGoalAttempt} />
+    <div className={styles.investigation}>
+      {investigationCore}
+      <details className={styles.caseOperations} open={Boolean(worldEventOffer?.status === "offered" || campaignRecovery?.status === "ready")}><summary>{locale === "zh-CN" ? "小镇决策与后续安排" : "Town decisions & next steps"}</summary><div>{worldCampaign}</div></details>
+      <details className={styles.supportingRecords}><summary>{locale === "zh-CN" ? "调查记录与复盘工具" : "Investigation records & replay tools"}</summary>
+        <InvestigationRouteReviewSurface steps={playablePathSteps} rhythm={caseRhythm} commandDeckMode={commandDeckMode} worldCampaign={null} campaignPacing={serverCampaignPacing} guidedManualRun={guidedManualRun} runGuidedManualStep={runGuidedManualStep} guidedStepJournal={guidedStepJournal} staticPlaythroughProof={staticPlaythroughProof} runStaticPlaythroughProof={runStaticPlaythroughProof} serverPlaythroughProof={serverPlaythroughProof} runServerPlaythroughProof={runServerPlaythroughProof} />
+        <InvestigationDebriefReplaySurface commandDeckMode={commandDeckMode} campaignPacing={serverCampaignPacing} solvedCaseDebrief={solvedCaseDebrief} replayPracticeLoop={replayPracticeLoop} replayGoalCoach={replayGoalCoach} manualEvidenceDrill={manualEvidenceDrill} toggleManualEvidenceDrillEvidence={toggleManualEvidenceDrillEvidence} manualTheoryDrill={manualTheoryDrill} updateManualTheoryDrillField={updateManualTheoryDrillField} approveManualTheoryFallback={approveManualTheoryFallback} replayAttemptScorecard={replayAttemptScorecard} startReplayGoalAttempt={startReplayGoalAttempt} />
+      </details>
     </div>
   );
 }

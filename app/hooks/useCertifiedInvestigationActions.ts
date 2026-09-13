@@ -1,10 +1,12 @@
 "use client";
 
-import { useRef } from "react";
+import { useInvestigationActionScope } from "@/app/hooks/useInvestigationActionScope";
+import { investigationActionBusy, investigationActionCancelled, type InvestigationActionResult } from "@/app/campaign/investigation-action-result";
 import type { useCampaignController } from "@/app/controllers/useCampaignController";
 import type { useInvestigationController } from "@/app/controllers/useInvestigationController";
 import type { useCampaignComprehensionStudy } from "@/app/hooks/useCampaignComprehensionStudy";
 import type { GuidedStepJournalEntry } from "@/app/campaign/replay-practice-model";
+import { toggleTheoryEvidenceIds } from "@/app/campaign/final-detective-workspace-model";
 import type { SelectionHighlight } from "@/app/hooks/useGuidedOnboarding";
 import { useAppLocale } from "@/app/localization/locale-context";
 import { apiUrl, postJson } from "@/app/lib/client-runtime";
@@ -23,13 +25,13 @@ import type {
 } from "@/lib/engine";
 
 export type CertifiedInvestigationActionAdapter = {
-  joinCase: () => Promise<void>;
-  discoverEvidence: (evidenceId: string) => Promise<void>;
-  discoverFirstSceneEvidence: (sceneId: string) => Promise<void>;
-  runInterrogationTarget: (characterId: string, evidenceId: string | undefined, questionText: string) => Promise<void>;
-  interrogateSelected: () => Promise<void>;
+  joinCase: () => Promise<InvestigationActionResult>;
+  discoverEvidence: (evidenceId: string) => Promise<InvestigationActionResult>;
+  discoverFirstSceneEvidence: (sceneId: string) => Promise<InvestigationActionResult>;
+  runInterrogationTarget: (characterId: string, evidenceId: string | undefined, questionText: string) => Promise<InvestigationActionResult>;
+  interrogateSelected: () => Promise<InvestigationActionResult>;
   toggleTheoryEvidence: (evidenceId: string) => void;
-  revealSolution: () => Promise<void>;
+  revealSolution: () => Promise<InvestigationActionResult>;
 };
 
 type CertifiedInvestigationActionsInput = {
@@ -65,21 +67,28 @@ export function useCertifiedInvestigationActions({
   currentStaticState,
   hydrateStatic
 }: CertifiedInvestigationActionsInput): CertifiedInvestigationActionAdapter {
-  const actionInFlight = useRef(false);
   const { t } = useAppLocale();
   const {
     world, activeCase, session, runtimeMode, playerName, selectedCharacterId, selectedEvidenceId, question,
     setSession, setSessions, setBusy, setProgress, setSelectedEvidenceId, setSelectedSceneId,
-    setInspectorTab, setLastAiSafety, setActiveCase, setTheory, pushToast, setStatus, progress
+    setInspectorTab, setLastAiSafety, setActiveCase, setTheory, pushToast, setStatus
   } = investigation;
   const {
     setPlayerResourceCommitment, setFactionRelationship, setInvestigatorProgression
   } = campaign;
+  const actionScope = useInvestigationActionScope({
+    worldId: world?.id, caseId: activeCase?.id, sessionId: session?.id, runtimeMode
+  }, setBusy);
 
-  async function joinCase() {
-    if (!world || !activeCase) return;
-    if (runtimeMode === "static-demo") {
-      if (!session) {
+  async function joinCase(): Promise<InvestigationActionResult> {
+    if (!world || !activeCase) return { status: "blocked", detail: "Open a case before joining the investigation." };
+    if (session?.worldId === world.id && session.caseId === activeCase.id) {
+      return { status: "blocked", detail: "You have already joined this investigation." };
+    }
+    const token = actionScope.begin();
+    if (!token) return investigationActionBusy();
+    try {
+      if (runtimeMode === "static-demo") {
         const stamp = new Date().toISOString();
         const staticSession: PlayerSession = {
           id: `static-session-${Date.now()}`,
@@ -94,32 +103,11 @@ export function useCertifiedInvestigationActions({
         };
         setSession(staticSession);
         persist(world.id, staticSession.id);
+        setProgress((current) => ({ ...current, joinedInvestigation: true }));
+        setStatus(t("status.joined"));
+        campaignStudy.recordMeaningfulAction();
+        return { status: "succeeded", detail: t("status.joined") };
       }
-      setProgress((current) => ({ ...current, joinedInvestigation: true }));
-      setStatus(t("status.joined"));
-      return;
-    }
-    if (actionInFlight.current) return;
-    actionInFlight.current = true;
-    const confirmedSession = session;
-    const confirmedProgress = progress;
-    const stamp = new Date().toISOString();
-    const optimisticSession: PlayerSession = {
-      id: `session-pending-${Date.now()}`,
-      worldId: world.id,
-      caseId: activeCase.id,
-      playerId: "player-pending",
-      displayName: playerName.trim() || "Investigator",
-      discoveredEvidenceIds: [],
-      interrogationLog: [],
-      createdAt: stamp,
-      updatedAt: stamp
-    };
-    setSession(optimisticSession);
-    setProgress((current) => ({ ...current, joinedInvestigation: true }));
-    setStatus(t("status.joined"));
-    setBusy(true);
-    try {
       const data = await postJson<{
         session: PlayerSession;
         playerResourceCommitment?: PlayerResourceCommitmentPublicSummary;
@@ -130,6 +118,10 @@ export function useCertifiedInvestigationActions({
         caseId: activeCase.id,
         displayName: playerName.trim() || "Investigator"
       });
+      if (!actionScope.isCurrent(token)) return investigationActionCancelled();
+      if (!data.session || data.session.worldId !== world.id || data.session.caseId !== activeCase.id) {
+        throw new Error("Join response does not match the requested investigation");
+      }
       setSession(data.session);
       if (data.playerResourceCommitment) setPlayerResourceCommitment(data.playerResourceCommitment);
       if (data.factionRelationship) setFactionRelationship(data.factionRelationship);
@@ -139,46 +131,54 @@ export function useCertifiedInvestigationActions({
       persist(world.id, data.session.id);
       setStatus(t("status.joined"));
       campaignStudy.recordMeaningfulAction();
+      return { status: "succeeded", detail: t("status.joined") };
     } catch {
-      setSession(confirmedSession);
-      setProgress(confirmedProgress);
-      persist(world.id, confirmedSession?.id || "");
+      if (!actionScope.isCurrent(token)) return investigationActionCancelled();
       setStatus(t("error.join"));
+      return { status: "failed", detail: t("error.join") };
     } finally {
-      actionInFlight.current = false;
-      setBusy(false);
+      actionScope.finish(token);
     }
   }
 
-  async function discoverEvidence(evidenceId: string) {
-    const evidenceTitle = deductionCase?.evidence.find((item) => item.id === evidenceId)?.title || t("workspace.clue");
-    if (!session) {
+  async function discoverEvidence(evidenceId: string): Promise<InvestigationActionResult> {
+    const evidence = deductionCase?.evidence.find((item) => item.id === evidenceId);
+    const evidenceTitle = evidence?.title || t("workspace.clue");
+    if (!session || session.worldId !== world?.id || session.caseId !== activeCase?.id) {
       setStatus(t("status.joinFirst"));
-      return;
+      return { status: "blocked", detail: t("status.joinFirst") };
     }
-    if (runtimeMode === "static-demo") {
-      const state = currentStaticState();
-      if (!state) return;
-      hydrateStatic(discoverDemoEvidence(state, evidenceId), false);
-      setSelectedEvidenceId(evidenceId);
-      const scene = scenes.find((item) => item.evidenceIds.includes(evidenceId));
-      highlightSelection({ evidenceId, locationId: scene?.id });
-      setInspectorTab("investigation");
-      pushToast({ tone: "success", title: t("status.evidenceFound"), detail: evidenceTitle });
-      setStatus(`${t("status.evidenceFound")}: ${evidenceTitle}`);
-      campaignStudy.recordMeaningfulAction();
-      return;
-    }
-    if (actionInFlight.current) return;
-    actionInFlight.current = true;
-    setBusy(true);
+    if (!evidence?.discoverable) return { status: "blocked", detail: "This clue cannot be searched in the current case." };
+    if (session.discoveredEvidenceIds.includes(evidenceId)) return { status: "blocked", detail: "This clue is already in your notebook." };
+    const token = actionScope.begin();
+    if (!token) return investigationActionBusy();
     try {
+      if (runtimeMode === "static-demo") {
+        const state = currentStaticState();
+        if (!state) return { status: "blocked", detail: t("status.joinFirst") };
+        const next = discoverDemoEvidence(state, evidenceId);
+        if (!next.session.discoveredEvidenceIds.includes(evidenceId)) return { status: "rejected", detail: "The search did not find this clue." };
+        hydrateStatic(next, false);
+        setSelectedEvidenceId(evidenceId);
+        const scene = scenes.find((item) => item.evidenceIds.includes(evidenceId));
+        highlightSelection({ evidenceId, locationId: scene?.id });
+        setInspectorTab("investigation");
+        pushToast({ tone: "success", title: t("status.evidenceFound"), detail: evidenceTitle });
+        setStatus(`${t("status.evidenceFound")}: ${evidenceTitle}`);
+        campaignStudy.recordMeaningfulAction();
+        return { status: "succeeded", detail: `${t("status.evidenceFound")}: ${evidenceTitle}` };
+      }
       const data = await postJson<{
         session: PlayerSession;
         playerResourceCommitment?: PlayerResourceCommitmentPublicSummary;
         factionRelationship?: FactionRelationshipPublicSummary;
         investigatorProgression?: InvestigatorProgressionPublicSummary;
       }>("/api/investigation/discover", { sessionId: session.id, evidenceId });
+      if (!actionScope.isCurrent(token)) return investigationActionCancelled();
+      if (!data.session || data.session.id !== session.id || data.session.caseId !== activeCase.id || data.session.worldId !== world.id) {
+        throw new Error("Search response does not match the requested investigation");
+      }
+      if (!data.session.discoveredEvidenceIds.includes(evidenceId)) return { status: "rejected", detail: "The search did not find this clue." };
       setSession(data.session);
       if (data.playerResourceCommitment) {
         setPlayerResourceCommitment(data.playerResourceCommitment);
@@ -203,59 +203,71 @@ export function useCertifiedInvestigationActions({
       pushToast({ tone: "success", title: t("status.evidenceFound"), detail: evidenceTitle });
       setStatus(`${t("status.evidenceFound")}: ${evidenceTitle}`);
       campaignStudy.recordMeaningfulAction();
+      return { status: "succeeded", detail: `${t("status.evidenceFound")}: ${evidenceTitle}` };
     } catch {
+      if (!actionScope.isCurrent(token)) return investigationActionCancelled();
       setStatus(t("error.search"));
+      return { status: "failed", detail: t("error.search") };
     } finally {
-      actionInFlight.current = false;
-      setBusy(false);
+      actionScope.finish(token);
     }
   }
 
-  async function discoverFirstSceneEvidence(sceneId: string) {
+  async function discoverFirstSceneEvidence(sceneId: string): Promise<InvestigationActionResult> {
     setSelectedSceneId(sceneId);
     setInspectorTab("investigation");
     const discovered = new Set(session?.discoveredEvidenceIds || []);
     const scene = scenes.find((item) => item.id === sceneId);
     const target =
-      scene?.evidenceIds.find((id) => !discovered.has(id) && deductionCase?.evidence.find((item) => item.id === id)?.discoverable) ||
-      scene?.evidenceIds.find((id) => deductionCase?.evidence.find((item) => item.id === id)?.discoverable);
-    if (target) await discoverEvidence(target);
+      scene?.evidenceIds.find((id) => !discovered.has(id) && deductionCase?.evidence.find((item) => item.id === id)?.discoverable);
+    if (target) return discoverEvidence(target);
+    return { status: "blocked", detail: "There are no new searchable clues at this location." };
   }
 
-  async function runInterrogationTarget(characterId: string, evidenceId: string | undefined, questionText: string) {
-    if (!session || !characterId || !questionText.trim()) return;
-    if (runtimeMode === "static-demo") {
-      const state = currentStaticState();
-      if (!state) return;
-      const next = interrogateDemoNpc(state, { characterId, question: questionText, evidenceId });
-      hydrateStatic(next, false);
-      setLastAiSafety({
-        mock: true,
-        promptAudit: {
+  async function runInterrogationTarget(characterId: string, evidenceId: string | undefined, questionText: string): Promise<InvestigationActionResult> {
+    if (!session || session.worldId !== world?.id || session.caseId !== activeCase?.id) {
+      return { status: "blocked", detail: t("status.joinFirst") };
+    }
+    if (!characterId || !deductionCase?.characters.some((character) => character.id === characterId) || !questionText.trim()) {
+      return { status: "blocked", detail: "Choose a person and enter a question first." };
+    }
+    if (evidenceId && !session.discoveredEvidenceIds.includes(evidenceId)) {
+      return { status: "blocked", detail: "Discover this clue before using it to question someone." };
+    }
+    const token = actionScope.begin();
+    if (!token) return investigationActionBusy();
+    try {
+      if (runtimeMode === "static-demo") {
+        const state = currentStaticState();
+        if (!state) return { status: "blocked", detail: t("status.joinFirst") };
+        const next = interrogateDemoNpc(state, { characterId, question: questionText, evidenceId });
+        const testimonyUpdated = JSON.stringify(state.activeCase.testimonies) !== JSON.stringify(next.activeCase.testimonies);
+        hydrateStatic(next, false);
+        setLastAiSafety({
+          mock: true,
+          promptAudit: {
+            memoryCount: selectedNpcMemoryCount,
+            evidenceCount: discoveredEvidenceCount,
+            forbiddenFieldHits: [],
+            containsForbiddenTruth: false,
+            hiddenEventLeakCount: 0,
+            safe: true
+          },
           memoryCount: selectedNpcMemoryCount,
           evidenceCount: discoveredEvidenceCount,
-          forbiddenFieldHits: [],
-          containsForbiddenTruth: false,
-          hiddenEventLeakCount: 0,
-          safe: true
-        },
-        memoryCount: selectedNpcMemoryCount,
-        evidenceCount: discoveredEvidenceCount,
-        safetyFlags: []
-      });
-      setInspectorTab("investigation");
-      pushToast({
-        tone: next.progress.challengedTestimony ? "warning" : "info",
-        title: next.progress.challengedTestimony ? "Testimony contradiction" : "NPC answered",
-        detail: next.progress.challengedTestimony ? "Evidence exposed a contradiction inside known memories." : "The answer stayed within NPC memory and discovered evidence."
-      });
-      setStatus(next.progress.challengedTestimony ? "Evidence exposed a contradiction; NPC testimony was corrected." : "NPC answered from their own memory scope.");
-      return;
-    }
-    if (actionInFlight.current) return;
-    actionInFlight.current = true;
-    setBusy(true);
-    try {
+          safetyFlags: []
+        });
+        setInspectorTab("investigation");
+        pushToast({
+          tone: testimonyUpdated ? "warning" : "info",
+          title: testimonyUpdated ? "Testimony contradiction" : "NPC answered",
+          detail: testimonyUpdated ? "Evidence exposed a contradiction inside known memories." : "The answer stayed within NPC memory and discovered evidence."
+        });
+        const detail = testimonyUpdated ? "Evidence exposed a contradiction; NPC testimony was corrected." : evidenceId ? "This clue did not reveal a new contradiction in this testimony." : "NPC answered from their own memory scope.";
+        setStatus(detail);
+        campaignStudy.recordMeaningfulAction();
+        return { status: evidenceId && !testimonyUpdated ? "rejected" : "succeeded", detail };
+      }
       const data = await postJson<{
         entry: PlayerSession["interrogationLog"][number];
         session: PlayerSession;
@@ -270,6 +282,16 @@ export function useCertifiedInvestigationActions({
         factionRelationship?: FactionRelationshipPublicSummary;
         investigatorProgression?: InvestigatorProgressionPublicSummary;
       }>("/api/investigation/interrogate", { sessionId: session.id, characterId, question: questionText, evidenceId });
+      if (!actionScope.isCurrent(token)) return investigationActionCancelled();
+      if (!data.session || data.session.id !== session.id || data.session.caseId !== activeCase.id || data.session.worldId !== world.id || !data.entry?.id) {
+        throw new Error("Question response does not match the requested investigation");
+      }
+      // Read the refreshed testimony before applying the response. Switching a
+      // case during either request must not update the newly opened case.
+      const latestCase = data.testimonyUpdated
+        ? await fetch(apiUrl(`/api/cases/${activeCase.id}`)).then((response) => response.json()).catch(() => null)
+        : null;
+      if (!actionScope.isCurrent(token)) return investigationActionCancelled();
       setSession(data.session);
       if (data.playerResourceCommitment) {
         setPlayerResourceCommitment(data.playerResourceCommitment);
@@ -301,65 +323,80 @@ export function useCertifiedInvestigationActions({
         title: data.testimonyUpdated ? "Testimony contradiction" : "NPC answered",
         detail: data.testimonyUpdated ? "Evidence exposed a contradiction inside known memories." : "The answer stayed within NPC memory and discovered evidence."
       });
-      setStatus(data.testimonyUpdated ? "Evidence exposed a contradiction; NPC testimony was corrected." : "NPC answered from their own memory.");
-      if (activeCase) {
-        const latestCase = await fetch(apiUrl(`/api/cases/${activeCase.id}`)).then((response) => response.json()).catch(() => null);
-        if (latestCase?.ok) setActiveCase(latestCase.caseFromLog || latestCase.activeCase || latestCase.case);
-      }
+      const detail = data.testimonyUpdated ? "Evidence exposed a contradiction; NPC testimony was corrected." : evidenceId ? "This clue did not reveal a new contradiction in this testimony." : "NPC answered from their own memory.";
+      setStatus(detail);
+      const refreshedCase = latestCase?.ok && (latestCase.caseFromLog || latestCase.activeCase || latestCase.case);
+      if (refreshedCase?.id === activeCase.id) setActiveCase(refreshedCase);
       campaignStudy.recordMeaningfulAction();
+      return { status: evidenceId && !data.testimonyUpdated ? "rejected" : "succeeded", detail };
     } catch {
+      if (!actionScope.isCurrent(token)) return investigationActionCancelled();
       setStatus(t("error.question"));
+      return { status: "failed", detail: t("error.question") };
     } finally {
-      actionInFlight.current = false;
-      setBusy(false);
+      actionScope.finish(token);
     }
   }
 
-  async function interrogateSelected() {
-    await runInterrogationTarget(selectedCharacterId, selectedEvidenceId || undefined, question);
+  async function interrogateSelected(): Promise<InvestigationActionResult> {
+    return runInterrogationTarget(selectedCharacterId, selectedEvidenceId || undefined, question);
   }
 
   function toggleTheoryEvidence(evidenceId: string) {
     setTheory((current) => {
-      const ids = new Set(current.evidenceIds);
-      if (ids.has(evidenceId)) ids.delete(evidenceId);
-      else ids.add(evidenceId);
-      return { ...current, evidenceIds: Array.from(ids) };
+      const evidenceIds = toggleTheoryEvidenceIds(current.evidenceIds, evidenceId);
+      return {
+        ...current,
+        evidenceIds,
+        ...(current.proof && !evidenceIds.includes(evidenceId) ? {
+          proof: {
+            ...current.proof,
+            motiveEvidenceIds: current.proof.motiveEvidenceIds.filter((id) => id !== evidenceId),
+            methodEvidenceIds: current.proof.methodEvidenceIds.filter((id) => id !== evidenceId)
+          }
+        } : {})
+      };
     });
   }
 
-  async function revealSolution() {
-    if (!session?.judgement?.accepted) return;
-    if (runtimeMode === "static-demo") {
-      const state = currentStaticState();
-      if (!state) return;
-      const next = revealDemoSolution(state);
-      hydrateStatic(next, false);
-      setInspectorTab("logic");
-      pushToast({ tone: "success", title: "Answer review unlocked", detail: "You can now inspect how evidence leads to the final conclusion." });
-      setStatus("Answer review generated from local fact locks without calling DeepSeek.");
-      return;
+  async function revealSolution(): Promise<InvestigationActionResult> {
+    if (!session || session.worldId !== world?.id || session.caseId !== activeCase?.id || !session.judgement?.accepted) {
+      return { status: "blocked", detail: "An accepted theory is required before reviewing the answer." };
     }
-    if (actionInFlight.current) return;
-    actionInFlight.current = true;
-    setBusy(true);
+    const token = actionScope.begin();
+    if (!token) return investigationActionBusy();
     try {
+      if (runtimeMode === "static-demo") {
+        const state = currentStaticState();
+        if (!state) return { status: "blocked", detail: t("status.joinFirst") };
+        const next = revealDemoSolution(state);
+        if (!next.revealText.trim()) return { status: "rejected", detail: "The answer review is not available yet." };
+        hydrateStatic(next, false);
+        setInspectorTab("logic");
+        pushToast({ tone: "success", title: "Answer review unlocked", detail: "You can now inspect how evidence leads to the final conclusion." });
+        setStatus("Answer review generated from local fact locks without calling DeepSeek.");
+        return { status: "succeeded", detail: "Answer review unlocked." };
+      }
       const data = await postJson<{
         content: string;
         revealEval: RevealEvalReport;
         factContract: RevealFactContract;
         mock: boolean;
       }>("/api/investigation/reveal", { sessionId: session.id });
+      if (!actionScope.isCurrent(token)) return investigationActionCancelled();
+      if (!data.content?.trim()) throw new Error("Answer review response was empty");
       investigation.setRevealText(data.content);
       setLastAiSafety((current) => ({ ...(current || {}), revealEval: data.revealEval, factContract: data.factContract, mock: data.mock }));
       setInspectorTab("logic");
       pushToast({ tone: "success", title: "Answer review generated", detail: "Facts are still constrained by local rules and case structure." });
       setStatus("Answer review generated and validated against local fact locks.");
+      return { status: "succeeded", detail: "Answer review unlocked." };
     } catch {
+      if (!actionScope.isCurrent(token)) return investigationActionCancelled();
       setStatus(t("error.reveal"));
+      return { status: "failed", detail: t("error.reveal") };
     } finally {
-      actionInFlight.current = false;
-      setBusy(false);
+      actionScope.finish(token);
     }
   }
 

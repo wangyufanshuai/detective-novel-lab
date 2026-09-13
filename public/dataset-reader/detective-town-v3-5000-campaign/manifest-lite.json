@@ -1,0 +1,141 @@
+{
+  "schemaVersion": "static-dataset-reader.v1",
+  "datasetId": "detective-town-v3-5000-campaign",
+  "sourceRunId": "campaign-campaign-validation-5000",
+  "generatedAt": "2026-07-03T13:41:57.633Z",
+  "contentHash": "cf2349ee7e3fa92a861cdeb95af6caac5c2a117b49b8aa7c54ac93d6c909a040",
+  "readerIndexHash": "be8199f60de8db4dc47d3c53b6408498c3ef9a1f69aee7383e5962213010e849",
+  "caseSummaryIndexPath": "case-summary-index.json",
+  "caseSummaryIndexHash": "16cd4fa2193dec3bd2bc306c54212e038c93d0b104852128973b9f9b75b0105e",
+  "fileCount": 4,
+  "bytes": 50031,
+  "readerIndexPath": "reader-index.json",
+  "datasetCardPath": "dataset-card.md",
+  "gate": {
+    "tickCount": 5000,
+    "uniqueCases": 30,
+    "distinctCaseTypeCount": 15,
+    "candidateRepeatRate": 0,
+    "laterCaseInfluenceRate": 100,
+    "evidenceGraphWarnings": 0,
+    "runtimeMs": 150271,
+    "ok": true
+  },
+  "audit": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 42,
+    "secretLeakCount": 0,
+    "hiddenTruthLeakCount": 0
+  },
+  "readerSummary": {
+    "caseCount": 30,
+    "solvedCaseCount": 30,
+    "failedCaseCount": 0,
+    "distinctCaseTypeCount": 15,
+    "topCaseTypes": [
+      {
+        "id": "blackmail",
+        "count": 2
+      },
+      {
+        "id": "court-intimidation",
+        "count": 2
+      },
+      {
+        "id": "dock-smuggling",
+        "count": 2
+      },
+      {
+        "id": "evidence-tampering",
+        "count": 2
+      },
+      {
+        "id": "false-testimony",
+        "count": 2
+      },
+      {
+        "id": "family-scandal",
+        "count": 2
+      },
+      {
+        "id": "forged-will",
+        "count": 2
+      },
+      {
+        "id": "ledger-fraud",
+        "count": 2
+      }
+    ],
+    "distinctEvidenceTypeCount": 5,
+    "topEvidenceTypes": [
+      {
+        "id": "trace",
+        "count": 37
+      },
+      {
+        "id": "ledger",
+        "count": 23
+      },
+      {
+        "id": "rumor",
+        "count": 10
+      },
+      {
+        "id": "physical",
+        "count": 5
+      },
+      {
+        "id": "testimony",
+        "count": 5
+      }
+    ],
+    "caseGraph": {
+      "nodeCount": 30,
+      "edgeCount": 776,
+      "influencedLaterCaseCount": 29,
+      "laterCaseInfluenceRate": 100,
+      "topEdgeTypes": [
+        {
+          "id": "shared-location",
+          "count": 328
+        },
+        {
+          "id": "shared-npc",
+          "count": 326
+        },
+        {
+          "id": "aftermath",
+          "count": 29
+        },
+        {
+          "id": "institution-pressure",
+          "count": 29
+        },
+        {
+          "id": "public-opinion",
+          "count": 29
+        },
+        {
+          "id": "resource-delta",
+          "count": 29
+        },
+        {
+          "id": "evidence-contamination",
+          "count": 6
+        }
+      ]
+    },
+    "evidenceGraph": {
+      "nodeCount": 318,
+      "edgeCount": 498,
+      "evidenceNodeCount": 80,
+      "caseNodeCount": 30,
+      "warningCount": 0,
+      "completeEvidenceCaseCount": 30,
+      "resolvedEvidenceCaseCount": 30,
+      "completenessRate": 100
+    },
+    "worldPackageCount": 3
+  }
+}

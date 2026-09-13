@@ -1,0 +1,315 @@
+{
+  "manifest": {
+    "id": "railway-signal-yard-town",
+    "name": "Railway Signal Yard Town",
+    "version": "1.0.0",
+    "schemaVersion": "scenario-pack.v1",
+    "description": "Railway permits, signal procedure, porter testimony and timetable custody.",
+    "createdAt": "2026-08-12T00:00:00.000Z",
+    "entrypoint": "scenario.json"
+  },
+  "world": {
+    "seed": "railway-signal-yard-town",
+    "mode": "advanced",
+    "timelineHours": 96,
+    "locations": [
+      {
+        "id": "station-square",
+        "name": "Station Square",
+        "kind": "public",
+        "description": "Station Square exposes a public, reviewable surface for railway permits, signal procedure, porter testimony and timetable custody.",
+        "connectedLocationIds": [
+          "porter-tunnel",
+          "permit-desk"
+        ],
+        "x": -1,
+        "y": 0,
+        "localizedName": {
+          "en-US": "Station Square",
+          "zh-CN": "车站广场"
+        }
+      },
+      {
+        "id": "permit-desk",
+        "name": "Station Permit Desk",
+        "kind": "work",
+        "description": "Station Permit Desk exposes a public, reviewable surface for railway permits, signal procedure, porter testimony and timetable custody.",
+        "connectedLocationIds": [
+          "station-square",
+          "rail-archive"
+        ],
+        "x": 0,
+        "y": -1,
+        "localizedName": {
+          "en-US": "Station Permit Desk",
+          "zh-CN": "车站许可处"
+        }
+      },
+      {
+        "id": "rail-archive",
+        "name": "Rail Archive",
+        "kind": "work",
+        "description": "Rail Archive exposes a public, reviewable surface for railway permits, signal procedure, porter testimony and timetable custody.",
+        "connectedLocationIds": [
+          "permit-desk",
+          "signal-cabin"
+        ],
+        "x": 1,
+        "y": -1,
+        "localizedName": {
+          "en-US": "Rail Archive",
+          "zh-CN": "铁路档案室"
+        }
+      },
+      {
+        "id": "signal-cabin",
+        "name": "Signal Cabin",
+        "kind": "restricted",
+        "description": "Signal Cabin exposes a public, reviewable surface for railway permits, signal procedure, porter testimony and timetable custody.",
+        "connectedLocationIds": [
+          "rail-archive",
+          "freight-platform"
+        ],
+        "x": 1,
+        "y": 1,
+        "localizedName": {
+          "en-US": "Signal Cabin",
+          "zh-CN": "信号房"
+        }
+      },
+      {
+        "id": "freight-platform",
+        "name": "Freight Platform",
+        "kind": "restricted",
+        "description": "Freight Platform exposes a public, reviewable surface for railway permits, signal procedure, porter testimony and timetable custody.",
+        "connectedLocationIds": [
+          "signal-cabin",
+          "porter-tunnel"
+        ],
+        "x": 0,
+        "y": 2,
+        "localizedName": {
+          "en-US": "Freight Platform",
+          "zh-CN": "货运站台"
+        }
+      },
+      {
+        "id": "porter-tunnel",
+        "name": "Porter Tunnel",
+        "kind": "restricted",
+        "description": "Porter Tunnel exposes a public, reviewable surface for railway permits, signal procedure, porter testimony and timetable custody.",
+        "connectedLocationIds": [
+          "freight-platform",
+          "station-square"
+        ],
+        "x": -1,
+        "y": 1,
+        "localizedName": {
+          "en-US": "Porter Tunnel",
+          "zh-CN": "搬运行隧道"
+        }
+      }
+    ],
+    "npcs": [
+      {
+        "id": "npc-rai-1",
+        "name": "Mara Bell",
+        "role": "detective",
+        "homeLocationId": "permit-desk",
+        "schedule": {
+          "08:00": "permit-desk",
+          "12:00": "station-square",
+          "18:00": "rail-archive"
+        },
+        "relationships": {},
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "detective",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-rai-2",
+        "name": "Silas Reed",
+        "role": "clerk",
+        "homeLocationId": "rail-archive",
+        "schedule": {
+          "08:00": "rail-archive",
+          "12:00": "station-square",
+          "18:00": "signal-cabin"
+        },
+        "relationships": {
+          "npc-rai-1": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "clerk",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-rai-3",
+        "name": "Nell Porter",
+        "role": "dockworker",
+        "homeLocationId": "signal-cabin",
+        "schedule": {
+          "08:00": "signal-cabin",
+          "12:00": "station-square",
+          "18:00": "freight-platform"
+        },
+        "relationships": {
+          "npc-rai-2": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "dockworker",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-rai-4",
+        "name": "Iris Vale",
+        "role": "reporter",
+        "homeLocationId": "freight-platform",
+        "schedule": {
+          "08:00": "freight-platform",
+          "12:00": "station-square",
+          "18:00": "porter-tunnel"
+        },
+        "relationships": {
+          "npc-rai-3": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "reporter",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-rai-5",
+        "name": "Tomas Grey",
+        "role": "officer",
+        "homeLocationId": "porter-tunnel",
+        "schedule": {
+          "08:00": "porter-tunnel",
+          "12:00": "station-square",
+          "18:00": "station-square"
+        },
+        "relationships": {
+          "npc-rai-4": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "officer",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-rai-6",
+        "name": "Elian Cross",
+        "role": "informant",
+        "homeLocationId": "station-square",
+        "schedule": {
+          "08:00": "station-square",
+          "12:00": "station-square",
+          "18:00": "permit-desk"
+        },
+        "relationships": {
+          "npc-rai-5": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "informant",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      }
+    ],
+    "institutions": [],
+    "professions": []
+  },
+  "rules": {
+    "enabledModules": [
+      "institutions",
+      "professions",
+      "long-actions",
+      "public-opinion",
+      "evidence-contamination",
+      "case-aftermath"
+    ],
+    "phaseConfig": {
+      "snapshotEveryTicks": 1,
+      "maxRunningLongActions": 8
+    },
+    "thresholds": {
+      "maxEvidenceContamination": 74,
+      "maxPublicOpinionHeat": 88,
+      "minInstitutionTrust": 34
+    },
+    "longActionKinds": [
+      "investigate-scene",
+      "verify-alibi",
+      "audit-ledger",
+      "secure-evidence-locker",
+      "review-court-record",
+      "cultivate-informant"
+    ]
+  },
+  "scenario": {
+    "id": "railway-signal-yard-town",
+    "name": "Railway Signal Yard Town",
+    "seed": "railway-signal-yard-town",
+    "worldOptions": {
+      "mode": "advanced",
+      "npcCount": 6,
+      "timelineHours": 96
+    },
+    "baselineSteps": 8,
+    "branches": [],
+    "passCriteria": {
+      "minValidCandidates": 0,
+      "minEventGrowth": 1,
+      "minMemoryGrowth": 1,
+      "maxBlockedCandidates": 8
+    }
+  },
+  "expectations": {
+    "minValidCandidates": 1,
+    "minEvidenceCoverage": 80,
+    "maxEvidenceContamination": 74,
+    "maxPublicOpinionHeat": 88,
+    "benchmarkPreset": "quick-10"
+  },
+  "assets": {
+    "presentationKey": "railbound-alibi"
+  },
+  "docs": {
+    "localization": {
+      "en-US": "Railway Signal Yard Town",
+      "zh-CN": "铁路信号场小镇"
+    }
+  }
+}

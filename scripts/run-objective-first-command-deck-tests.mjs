@@ -63,7 +63,10 @@ const [panel, page, deckComponent, deckCss, deckResponsiveCss, pulseCss, pacingC
 const deckCssBundle = `${deckCss}\n${deckResponsiveCss}`;
 assert.match(deckComponent, /import responsiveStyles from "\.\/CommandDeckShell\.responsive\.module\.css"/);
 assert.match(deckComponent, /commandDeckShell:\s*`\$\{coreStyles\.commandDeckShell\}\s+\$\{responsiveStyles\.commandDeckShell\}`/);
-assert.match(deckComponent, /StrategicPacingSurface[\s\S]*StrategicActionBar[\s\S]*CampaignResolutionLatest[\s\S]*StrategicDecisionQueue/, "objective, action, latest resolution, then optional queue share the Agenda hierarchy");
+assert.match(deckComponent, /data-testid="noir-current-action"[\s\S]*?brief\.objective\.title[\s\S]*?data-testid="strategic-primary-action"[\s\S]*?data-testid="command-deck-map-area"/, "Explore places the objective and single primary action before the map");
+assert.equal((deckComponent.match(/data-testid="strategic-primary-action"/g) || []).length, 1, "Explore has one canonical primary action renderer");
+assert.match(deckComponent, /activeView === "tools"[\s\S]*?toolTab === "world" \? control/, "World controls mount only inside the tools view");
+assert.doesNotMatch(deckComponent, /commandDeckLegacyControl|command-deck-full-inspector/, "The old nested player workspace is removed rather than hidden");
 
 assert.equal((panel.match(/data-testid="world-campaign-current-action"/g) || []).length, 1, "World Campaign owns one Current Action marker");
 assert.match(panel, /data-testid="world-campaign-focus"/);
@@ -82,12 +85,12 @@ for (const [file, source] of [["brief model", briefModel], ["brief hook", briefH
 for (const [file, source] of [["world presentation", presentation], ["replay drill", drill], ["authoring adapter", authoring], ["navigation", navigation]]) {
   assert.doesNotMatch(source, /\/api\/|\bfetch\s*\(|\bpostJson\s*\(|\bpostV1\s*\(/, `${file} does not own requests`);
 }
-assert.match(pacingCss, /@media\s*\(max-width:\s*520px\)[\s\S]*?\.surface\s*\{[^}]*order:\s*0/s, "Current Objective is first on compact layout");
-assert.match(pacingCss, /forecastContext/);
-assert.match(deckCssBundle, /strategic-action-bar[^}]*order:\s*1/s, "Current Action follows Current Objective on compact layout");
-assert.match(deckCssBundle, /command-deck-feedback[^}]*order:\s*2/s, "Latest Resolution follows Current Action on compact layout");
-assert.match(deckCssBundle, /\.commandDeckMapArea\s*\{\s*(?:display:[^;]+;\s*)?order:\s*3/s, "Map follows Latest Resolution on compact layout");
-assert.match(deckCssBundle, /data-testid="strategic-decision-queue"/);
+assert.match(deckCssBundle, /noir-current-action[^}]*flex-direction:\s*column/s, "Compact layout stacks the existing objective before its action");
+assert.match(deckComponent, /mapDetailsOpen && <aside[\s\S]*?viewModel\.secondaryActions\.map/, "Secondary decisions mount only when their disclosure is open");
+assert.match(deckComponent, /activeView === "deduction"[\s\S]*?panels \? panel\(activePanelId\) : inspector/, "Deduction uses its own full-stage panel");
+assert.match(deckCss, /\.deductionWorkspace\s*\{[^}]*min-height:\s*100%/, "Deduction owns the work area instead of a narrow drawer");
+assert.match(deckComponent, /activeView === "explore" \?/, "Explore has an explicit view boundary");
+assert.match(deckComponent, /data-testid="command-deck-feedback"/, "The canonical latest result remains reachable after an action");
 assert.match(page, /useManualReplayDrillActions/);
 assert.match(page, /useWorldCampaignPresentation/);
 assert.match(page, /InvestigationGraphSurface/);

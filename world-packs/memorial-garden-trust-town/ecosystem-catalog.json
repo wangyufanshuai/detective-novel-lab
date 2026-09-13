@@ -1,0 +1,298 @@
+{
+  "manifest": {
+    "id": "memorial-garden-trust-town-ecosystem",
+    "name": "Memorial Garden Trust Town Ecosystem",
+    "version": "1.0.0",
+    "schemaVersion": "ecosystem-catalog.v1",
+    "createdAt": "2026-08-12T00:00:00.000Z",
+    "description": "Burial records, inherited access, memorial custody and caretaker testimony."
+  },
+  "factions": [
+    {
+      "id": "memorial-trust-faction-1",
+      "name": "Civic Record Circle",
+      "institutionKind": "civic",
+      "pressureBias": 10,
+      "resourceBias": {
+        "police_time": -5
+      },
+      "preferredCaseTypes": [
+        "forged-will",
+        "family-scandal"
+      ]
+    },
+    {
+      "id": "memorial-trust-faction-2",
+      "name": "Working Exchange",
+      "institutionKind": "commerce",
+      "pressureBias": 11,
+      "resourceBias": {
+        "media_attention": -6
+      },
+      "preferredCaseTypes": [
+        "family-scandal",
+        "burial-record-forgery"
+      ]
+    },
+    {
+      "id": "memorial-trust-faction-3",
+      "name": "Public Account Desk",
+      "institutionKind": "media",
+      "pressureBias": 12,
+      "resourceBias": {
+        "family_influence": -7
+      },
+      "preferredCaseTypes": [
+        "burial-record-forgery",
+        "missing-person"
+      ]
+    },
+    {
+      "id": "memorial-trust-faction-4",
+      "name": "Review Watch",
+      "institutionKind": "police",
+      "pressureBias": 13,
+      "resourceBias": {
+        "merchant_credit": -8
+      },
+      "preferredCaseTypes": [
+        "missing-person",
+        "household-escrow"
+      ]
+    }
+  ],
+  "resources": [
+    {
+      "kind": "police_time",
+      "label": "Police Time",
+      "valueDelta": -5,
+      "pressureDelta": 6
+    },
+    {
+      "kind": "media_attention",
+      "label": "Media Attention",
+      "valueDelta": -6,
+      "pressureDelta": 7
+    },
+    {
+      "kind": "family_influence",
+      "label": "Family Influence",
+      "valueDelta": -7,
+      "pressureDelta": 8
+    },
+    {
+      "kind": "merchant_credit",
+      "label": "Merchant Credit",
+      "valueDelta": -5,
+      "pressureDelta": 9
+    },
+    {
+      "kind": "medical_capacity",
+      "label": "Medical Capacity",
+      "valueDelta": -6,
+      "pressureDelta": 10
+    },
+    {
+      "kind": "evidence_integrity",
+      "label": "Evidence Integrity",
+      "valueDelta": -7,
+      "pressureDelta": 11
+    }
+  ],
+  "markets": [
+    {
+      "id": "memorial-trust-market-1",
+      "label": "Police Time exchange",
+      "resource": "police_time",
+      "volatility": 0.25,
+      "tags": [
+        "memorial-trust",
+        "public"
+      ]
+    },
+    {
+      "id": "memorial-trust-market-2",
+      "label": "Media Attention exchange",
+      "resource": "media_attention",
+      "volatility": 0.29,
+      "tags": [
+        "memorial-trust",
+        "public"
+      ]
+    },
+    {
+      "id": "memorial-trust-market-3",
+      "label": "Family Influence exchange",
+      "resource": "family_influence",
+      "volatility": 0.33,
+      "tags": [
+        "memorial-trust",
+        "public"
+      ]
+    }
+  ],
+  "territories": [
+    {
+      "id": "memorial-trust-territory-1",
+      "locationId": "solicitor-office",
+      "factionId": "memorial-trust-faction-1",
+      "influence": 72,
+      "tags": [
+        "memorial-trust",
+        "district"
+      ]
+    },
+    {
+      "id": "memorial-trust-territory-2",
+      "locationId": "memorial-garden",
+      "factionId": "memorial-trust-faction-2",
+      "influence": 75,
+      "tags": [
+        "memorial-trust",
+        "district"
+      ]
+    },
+    {
+      "id": "memorial-trust-territory-3",
+      "locationId": "memorial-archive",
+      "factionId": "memorial-trust-faction-3",
+      "influence": 78,
+      "tags": [
+        "memorial-trust",
+        "district"
+      ]
+    },
+    {
+      "id": "memorial-trust-territory-4",
+      "locationId": "caretaker-lodge",
+      "factionId": "memorial-trust-faction-4",
+      "influence": 81,
+      "tags": [
+        "memorial-trust",
+        "district"
+      ]
+    }
+  ],
+  "taskTemplates": [
+    {
+      "id": "memorial-trust-task-1",
+      "label": "Review Trust Solicitor Office",
+      "institutionKind": "police",
+      "tags": [
+        "memorial-trust",
+        "review"
+      ],
+      "pressureDelta": 7,
+      "evidenceKinds": [
+        "document"
+      ]
+    },
+    {
+      "id": "memorial-trust-task-2",
+      "label": "Review Memorial Garden",
+      "institutionKind": "media",
+      "tags": [
+        "memorial-trust",
+        "review"
+      ],
+      "pressureDelta": 8,
+      "evidenceKinds": [
+        "testimony"
+      ]
+    },
+    {
+      "id": "memorial-trust-task-3",
+      "label": "Review Memorial Archive",
+      "institutionKind": "family",
+      "tags": [
+        "memorial-trust",
+        "review"
+      ],
+      "pressureDelta": 9,
+      "evidenceKinds": [
+        "trace"
+      ]
+    },
+    {
+      "id": "memorial-trust-task-4",
+      "label": "Review Caretaker Lodge",
+      "institutionKind": "commerce",
+      "tags": [
+        "memorial-trust",
+        "review"
+      ],
+      "pressureDelta": 10,
+      "evidenceKinds": [
+        "receipt"
+      ]
+    }
+  ],
+  "randomWorldEvents": [
+    {
+      "id": "memorial-trust-event-1",
+      "label": "Trust Solicitor Office shift",
+      "weight": 20,
+      "tags": [
+        "memorial-trust",
+        "forged-will"
+      ],
+      "pressureDelta": 7
+    },
+    {
+      "id": "memorial-trust-event-2",
+      "label": "Memorial Garden shift",
+      "weight": 21,
+      "tags": [
+        "memorial-trust",
+        "family-scandal"
+      ],
+      "pressureDelta": 8
+    },
+    {
+      "id": "memorial-trust-event-3",
+      "label": "Memorial Archive shift",
+      "weight": 22,
+      "tags": [
+        "memorial-trust",
+        "burial-record-forgery"
+      ],
+      "pressureDelta": 9
+    },
+    {
+      "id": "memorial-trust-event-4",
+      "label": "Caretaker Lodge shift",
+      "weight": 23,
+      "tags": [
+        "memorial-trust",
+        "missing-person"
+      ],
+      "pressureDelta": 10
+    }
+  ],
+  "pressureRules": [
+    {
+      "id": "memorial-trust-resource-pressure-1",
+      "resource": "police_time",
+      "threshold": 50,
+      "effect": "forged-will pressure becomes visible"
+    },
+    {
+      "id": "memorial-trust-resource-pressure-2",
+      "resource": "media_attention",
+      "threshold": 51,
+      "effect": "family-scandal pressure becomes visible"
+    },
+    {
+      "id": "memorial-trust-resource-pressure-3",
+      "resource": "family_influence",
+      "threshold": 52,
+      "effect": "burial-record-forgery pressure becomes visible"
+    },
+    {
+      "id": "memorial-trust-resource-pressure-4",
+      "resource": "merchant_credit",
+      "threshold": 53,
+      "effect": "missing-person pressure becomes visible"
+    }
+  ]
+}

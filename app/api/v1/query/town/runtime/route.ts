@@ -1,6 +1,6 @@
 import { errorResponse, fail, ok } from "@/app/api/v1/_utils";
 import { buildTownEmergenceQueue } from "@/lib/engine";
-import { loadRuntimeWorld, publicRuntime } from "@/app/api/v1/_town-runtime";
+import { loadRuntimeWorld, publicPlayerRuntime, publicTownQueue } from "@/app/api/v1/_town-runtime";
 
 export async function GET(request: Request) {
   try {
@@ -9,8 +9,8 @@ export async function GET(request: Request) {
     const loaded = loadRuntimeWorld(worldId);
     if (!loaded) return fail("WORLD_NOT_FOUND", "World not found", 404);
     return ok({
-      runtime: publicRuntime(loaded.runtime),
-      queue: buildTownEmergenceQueue(loaded.world, loaded.events, loaded.runtime)
+      runtime: publicPlayerRuntime(loaded.runtime),
+      queue: publicTownQueue(buildTownEmergenceQueue(loaded.world, loaded.events, loaded.runtime))
     });
   } catch (error) {
     return errorResponse(error);

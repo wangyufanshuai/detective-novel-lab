@@ -99,8 +99,49 @@ assert.doesNotMatch(sourceFiles[0], /localStorage\.(?:getItem|setItem|removeItem
 assert.match(sourceFiles[1], /startInFlight\.current/);
 assert.match(sourceFiles[1], /applyToClient: false/, "Campaign start stages a temporary world until extraction succeeds");
 assert.doesNotMatch(sourceFiles[1], /\bset(?:World|Events|TownRuntime|TownQueue)\s*\(/, "failed Campaign start cannot leave intermediate client state");
-assert.match(sourceFiles[2], /setSession\(confirmedSession\)[\s\S]*setProgress\(confirmedProgress\)/, "failed optimistic Join rolls back confirmed state");
-assert.match(sourceFiles[3], /submitInFlight\.current/);
+// Join now commits only confirmed server state. Exercise the actual function,
+// including rejection and stale identity, instead of requiring obsolete rollback setters.
+const investigationAst = ts.createSourceFile("useCertifiedInvestigationActions.ts", sourceFiles[2], ts.ScriptTarget.Latest, true);
+let joinSource;
+function findJoin(node) {
+  if (ts.isFunctionDeclaration(node) && node.name?.text === "joinCase") joinSource = node.getText(investigationAst);
+  ts.forEachChild(node, findJoin);
+}
+findJoin(investigationAst);
+assert.ok(joinSource, "exercise the production joinCase handler");
+const joinOutput = ts.transpileModule(`${joinSource}\nreturn joinCase;`, {
+  compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS }
+}).outputText;
+for (const scenario of ["rejected", "wrong-world", "wrong-case", "stale", "confirmed"]) {
+  const writes = [];
+  let finishCount = 0;
+  const context = {
+    world: { id: "world-confirmed" }, activeCase: { id: "case-confirmed" }, session: null,
+    runtimeMode: "server", playerName: "Investigator",
+    actionScope: { begin: () => "join-token", isCurrent: () => scenario !== "stale", finish: () => { finishCount += 1; } },
+    investigationActionBusy: () => ({ status: "blocked" }), investigationActionCancelled: () => ({ status: "cancelled" }),
+    postJson: async () => {
+      assert.equal(writes.length, 0, "no session, progress or save is fabricated while Join is pending");
+      if (scenario === "rejected") throw new Error("private database path");
+      return { session: { id: "session-confirmed", worldId: scenario === "wrong-world" ? "world-other" : "world-confirmed", caseId: scenario === "wrong-case" ? "case-other" : "case-confirmed" } };
+    },
+    t: (key) => key,
+    campaignStudy: { recordMeaningfulAction: () => writes.push(["meaningful"]) }
+  };
+  for (const name of ["setSession", "setSessions", "setProgress", "setStatus", "persist", "setPlayerResourceCommitment", "setFactionRelationship", "setInvestigatorProgression"]) {
+    context[name] = (...args) => writes.push([name, ...args]);
+  }
+  const runJoin = new Function(...Object.keys(context), joinOutput)(...Object.values(context));
+  const result = await runJoin();
+  assert.equal(result.status, scenario === "confirmed" ? "succeeded" : scenario === "stale" ? "cancelled" : "failed", `${scenario} Join reports its confirmed outcome`);
+  const commits = writes.filter(([name]) => ["setSession", "setSessions", "setProgress", "persist", "meaningful"].includes(name));
+  assert.equal(commits.length, scenario === "confirmed" ? 5 : 0, `${scenario} Join cannot corrupt confirmed progress or persistence`);
+  assert.equal(JSON.stringify(writes).includes("private database path"), false, "request failures remain public-safe");
+  assert.equal(finishCount, 1, `${scenario} Join always releases its action scope`);
+}
+assert.match(sourceFiles[3], /const actionScope = useInvestigationActionScope\(\{[\s\S]*?worldId: world\?\.id, caseId: activeCase\?\.id, sessionId: session\?\.id, runtimeMode/, "Theory submission lock belongs to the current world, case and session");
+assert.match(sourceFiles[3], /const token = actionScope\.begin\(\);\s*if \(!token\) return investigationActionBusy\(\)/, "Repeated theory submissions cannot bypass the scoped lock");
+assert.match(sourceFiles[3], /finally\s*\{\s*actionScope\.finish\(token\)/, "Theory submission releases its lock on every outcome");
 for (const source of sourceFiles) assert.doesNotMatch(source, /setStatus\(error instanceof Error \? error\.message/, "main-path request errors are not rendered raw");
 
 console.log(JSON.stringify({ ok: true, suite: "save-recovery", pointerVersion: 1, fixtures: ["legacy", "current", "corrupt", "stale"], normalizedRuntime: true, unknownFieldsPreserved: true }));

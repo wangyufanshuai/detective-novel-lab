@@ -1,0 +1,24 @@
+{
+  "id": "power-station-blackout-town",
+  "name": "Power Station Blackout Town",
+  "version": "1.0.0",
+  "schemaVersion": "world-package.v1",
+  "description": "Utility permits, night patrol decisions, switch-house custody and contractor accounts.",
+  "author": "Detective Novel Lab",
+  "createdAt": "2026-08-12T00:00:00.000Z",
+  "license": "project-local-original",
+  "scenarioPackPath": "scenario-pack.json",
+  "mapPackPath": "map-pack.json",
+  "ruleCatalogPath": "rule-catalog.json",
+  "agentPackPath": "agent-pack.json",
+  "ecosystemCatalogPath": "ecosystem-catalog.json",
+  "expectationsPath": "expectations.json",
+  "localization": {
+    "en-US": "Power Station Blackout Town",
+    "zh-CN": "发电站停电小镇"
+  },
+  "presentation": {
+    "key": "blackout-ledger",
+    "style": "noir-archive"
+  }
+}

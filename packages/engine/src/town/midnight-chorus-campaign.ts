@@ -4,6 +4,9 @@ import type { DetectiveCampaignDefinition } from "./campaign-catalog";
 export const MIDNIGHT_CHORUS_CAMPAIGN = {
   id: "midnight-chorus",
   worldPackageIds: ["theatre-market-night-town"],
+  volumeId: "midnight-signals",
+  volumeLabel: "Volume III · Midnight Signals",
+  presentationKey: "midnight-chorus",
   label: "Midnight Chorus",
   themeLabel: "Public performance, backstage access, and night-watch accountability",
   routes: [

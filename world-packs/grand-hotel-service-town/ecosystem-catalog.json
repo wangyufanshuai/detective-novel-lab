@@ -1,0 +1,298 @@
+{
+  "manifest": {
+    "id": "grand-hotel-service-town-ecosystem",
+    "name": "Grand Hotel Service Town Ecosystem",
+    "version": "1.0.0",
+    "schemaVersion": "ecosystem-catalog.v1",
+    "createdAt": "2026-08-12T00:00:00.000Z",
+    "description": "Guest identity, night-desk custody, service passages and private leverage."
+  },
+  "factions": [
+    {
+      "id": "grand-hotel-register-faction-1",
+      "name": "Civic Record Circle",
+      "institutionKind": "civic",
+      "pressureBias": 10,
+      "resourceBias": {
+        "police_time": -5
+      },
+      "preferredCaseTypes": [
+        "ledger-fraud",
+        "false-testimony"
+      ]
+    },
+    {
+      "id": "grand-hotel-register-faction-2",
+      "name": "Working Exchange",
+      "institutionKind": "commerce",
+      "pressureBias": 11,
+      "resourceBias": {
+        "media_attention": -6
+      },
+      "preferredCaseTypes": [
+        "false-testimony",
+        "identity-register-fraud"
+      ]
+    },
+    {
+      "id": "grand-hotel-register-faction-3",
+      "name": "Public Account Desk",
+      "institutionKind": "media",
+      "pressureBias": 12,
+      "resourceBias": {
+        "family_influence": -7
+      },
+      "preferredCaseTypes": [
+        "identity-register-fraud",
+        "evidence-tampering"
+      ]
+    },
+    {
+      "id": "grand-hotel-register-faction-4",
+      "name": "Review Watch",
+      "institutionKind": "police",
+      "pressureBias": 13,
+      "resourceBias": {
+        "merchant_credit": -8
+      },
+      "preferredCaseTypes": [
+        "evidence-tampering",
+        "witness-disappearance"
+      ]
+    }
+  ],
+  "resources": [
+    {
+      "kind": "police_time",
+      "label": "Police Time",
+      "valueDelta": -5,
+      "pressureDelta": 6
+    },
+    {
+      "kind": "media_attention",
+      "label": "Media Attention",
+      "valueDelta": -6,
+      "pressureDelta": 7
+    },
+    {
+      "kind": "family_influence",
+      "label": "Family Influence",
+      "valueDelta": -7,
+      "pressureDelta": 8
+    },
+    {
+      "kind": "merchant_credit",
+      "label": "Merchant Credit",
+      "valueDelta": -5,
+      "pressureDelta": 9
+    },
+    {
+      "kind": "medical_capacity",
+      "label": "Medical Capacity",
+      "valueDelta": -6,
+      "pressureDelta": 10
+    },
+    {
+      "kind": "evidence_integrity",
+      "label": "Evidence Integrity",
+      "valueDelta": -7,
+      "pressureDelta": 11
+    }
+  ],
+  "markets": [
+    {
+      "id": "grand-hotel-register-market-1",
+      "label": "Police Time exchange",
+      "resource": "police_time",
+      "volatility": 0.25,
+      "tags": [
+        "grand-hotel-register",
+        "public"
+      ]
+    },
+    {
+      "id": "grand-hotel-register-market-2",
+      "label": "Media Attention exchange",
+      "resource": "media_attention",
+      "volatility": 0.29,
+      "tags": [
+        "grand-hotel-register",
+        "public"
+      ]
+    },
+    {
+      "id": "grand-hotel-register-market-3",
+      "label": "Family Influence exchange",
+      "resource": "family_influence",
+      "volatility": 0.33,
+      "tags": [
+        "grand-hotel-register",
+        "public"
+      ]
+    }
+  ],
+  "territories": [
+    {
+      "id": "grand-hotel-register-territory-1",
+      "locationId": "accounts-office",
+      "factionId": "grand-hotel-register-faction-1",
+      "influence": 72,
+      "tags": [
+        "grand-hotel-register",
+        "district"
+      ]
+    },
+    {
+      "id": "grand-hotel-register-territory-2",
+      "locationId": "palm-court",
+      "factionId": "grand-hotel-register-faction-2",
+      "influence": 75,
+      "tags": [
+        "grand-hotel-register",
+        "district"
+      ]
+    },
+    {
+      "id": "grand-hotel-register-territory-3",
+      "locationId": "night-desk",
+      "factionId": "grand-hotel-register-faction-3",
+      "influence": 78,
+      "tags": [
+        "grand-hotel-register",
+        "district"
+      ]
+    },
+    {
+      "id": "grand-hotel-register-territory-4",
+      "locationId": "luggage-room",
+      "factionId": "grand-hotel-register-faction-4",
+      "influence": 81,
+      "tags": [
+        "grand-hotel-register",
+        "district"
+      ]
+    }
+  ],
+  "taskTemplates": [
+    {
+      "id": "grand-hotel-register-task-1",
+      "label": "Review Accounts Office",
+      "institutionKind": "police",
+      "tags": [
+        "grand-hotel-register",
+        "review"
+      ],
+      "pressureDelta": 7,
+      "evidenceKinds": [
+        "document"
+      ]
+    },
+    {
+      "id": "grand-hotel-register-task-2",
+      "label": "Review Palm Court",
+      "institutionKind": "media",
+      "tags": [
+        "grand-hotel-register",
+        "review"
+      ],
+      "pressureDelta": 8,
+      "evidenceKinds": [
+        "testimony"
+      ]
+    },
+    {
+      "id": "grand-hotel-register-task-3",
+      "label": "Review Night Desk",
+      "institutionKind": "family",
+      "tags": [
+        "grand-hotel-register",
+        "review"
+      ],
+      "pressureDelta": 9,
+      "evidenceKinds": [
+        "trace"
+      ]
+    },
+    {
+      "id": "grand-hotel-register-task-4",
+      "label": "Review Luggage Room",
+      "institutionKind": "commerce",
+      "tags": [
+        "grand-hotel-register",
+        "review"
+      ],
+      "pressureDelta": 10,
+      "evidenceKinds": [
+        "receipt"
+      ]
+    }
+  ],
+  "randomWorldEvents": [
+    {
+      "id": "grand-hotel-register-event-1",
+      "label": "Accounts Office shift",
+      "weight": 20,
+      "tags": [
+        "grand-hotel-register",
+        "ledger-fraud"
+      ],
+      "pressureDelta": 7
+    },
+    {
+      "id": "grand-hotel-register-event-2",
+      "label": "Palm Court shift",
+      "weight": 21,
+      "tags": [
+        "grand-hotel-register",
+        "false-testimony"
+      ],
+      "pressureDelta": 8
+    },
+    {
+      "id": "grand-hotel-register-event-3",
+      "label": "Night Desk shift",
+      "weight": 22,
+      "tags": [
+        "grand-hotel-register",
+        "identity-register-fraud"
+      ],
+      "pressureDelta": 9
+    },
+    {
+      "id": "grand-hotel-register-event-4",
+      "label": "Luggage Room shift",
+      "weight": 23,
+      "tags": [
+        "grand-hotel-register",
+        "evidence-tampering"
+      ],
+      "pressureDelta": 10
+    }
+  ],
+  "pressureRules": [
+    {
+      "id": "grand-hotel-register-resource-pressure-1",
+      "resource": "police_time",
+      "threshold": 50,
+      "effect": "ledger-fraud pressure becomes visible"
+    },
+    {
+      "id": "grand-hotel-register-resource-pressure-2",
+      "resource": "media_attention",
+      "threshold": 51,
+      "effect": "false-testimony pressure becomes visible"
+    },
+    {
+      "id": "grand-hotel-register-resource-pressure-3",
+      "resource": "family_influence",
+      "threshold": 52,
+      "effect": "identity-register-fraud pressure becomes visible"
+    },
+    {
+      "id": "grand-hotel-register-resource-pressure-4",
+      "resource": "merchant_credit",
+      "threshold": 53,
+      "effect": "evidence-tampering pressure becomes visible"
+    }
+  ]
+}

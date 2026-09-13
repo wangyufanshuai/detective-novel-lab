@@ -1,0 +1,298 @@
+{
+  "manifest": {
+    "id": "power-station-blackout-town-ecosystem",
+    "name": "Power Station Blackout Town Ecosystem",
+    "version": "1.0.0",
+    "schemaVersion": "ecosystem-catalog.v1",
+    "createdAt": "2026-08-12T00:00:00.000Z",
+    "description": "Utility permits, night patrol decisions, switch-house custody and contractor accounts."
+  },
+  "factions": [
+    {
+      "id": "blackout-ledger-faction-1",
+      "name": "Civic Record Circle",
+      "institutionKind": "civic",
+      "pressureBias": 10,
+      "resourceBias": {
+        "police_time": -5
+      },
+      "preferredCaseTypes": [
+        "permit-forgery",
+        "police-misjudgment"
+      ]
+    },
+    {
+      "id": "blackout-ledger-faction-2",
+      "name": "Working Exchange",
+      "institutionKind": "commerce",
+      "pressureBias": 11,
+      "resourceBias": {
+        "media_attention": -6
+      },
+      "preferredCaseTypes": [
+        "police-misjudgment",
+        "utility-sabotage"
+      ]
+    },
+    {
+      "id": "blackout-ledger-faction-3",
+      "name": "Public Account Desk",
+      "institutionKind": "media",
+      "pressureBias": 12,
+      "resourceBias": {
+        "family_influence": -7
+      },
+      "preferredCaseTypes": [
+        "utility-sabotage",
+        "evidence-tampering"
+      ]
+    },
+    {
+      "id": "blackout-ledger-faction-4",
+      "name": "Review Watch",
+      "institutionKind": "police",
+      "pressureBias": 13,
+      "resourceBias": {
+        "merchant_credit": -8
+      },
+      "preferredCaseTypes": [
+        "evidence-tampering",
+        "court-intimidation"
+      ]
+    }
+  ],
+  "resources": [
+    {
+      "kind": "police_time",
+      "label": "Police Time",
+      "valueDelta": -5,
+      "pressureDelta": 6
+    },
+    {
+      "kind": "media_attention",
+      "label": "Media Attention",
+      "valueDelta": -6,
+      "pressureDelta": 7
+    },
+    {
+      "kind": "family_influence",
+      "label": "Family Influence",
+      "valueDelta": -7,
+      "pressureDelta": 8
+    },
+    {
+      "kind": "merchant_credit",
+      "label": "Merchant Credit",
+      "valueDelta": -5,
+      "pressureDelta": 9
+    },
+    {
+      "kind": "medical_capacity",
+      "label": "Medical Capacity",
+      "valueDelta": -6,
+      "pressureDelta": 10
+    },
+    {
+      "kind": "evidence_integrity",
+      "label": "Evidence Integrity",
+      "valueDelta": -7,
+      "pressureDelta": 11
+    }
+  ],
+  "markets": [
+    {
+      "id": "blackout-ledger-market-1",
+      "label": "Police Time exchange",
+      "resource": "police_time",
+      "volatility": 0.25,
+      "tags": [
+        "blackout-ledger",
+        "public"
+      ]
+    },
+    {
+      "id": "blackout-ledger-market-2",
+      "label": "Media Attention exchange",
+      "resource": "media_attention",
+      "volatility": 0.29,
+      "tags": [
+        "blackout-ledger",
+        "public"
+      ]
+    },
+    {
+      "id": "blackout-ledger-market-3",
+      "label": "Family Influence exchange",
+      "resource": "family_influence",
+      "volatility": 0.33,
+      "tags": [
+        "blackout-ledger",
+        "public"
+      ]
+    }
+  ],
+  "territories": [
+    {
+      "id": "blackout-ledger-territory-1",
+      "locationId": "permit-office",
+      "factionId": "blackout-ledger-faction-1",
+      "influence": 72,
+      "tags": [
+        "blackout-ledger",
+        "district"
+      ]
+    },
+    {
+      "id": "blackout-ledger-territory-2",
+      "locationId": "precinct",
+      "factionId": "blackout-ledger-faction-2",
+      "influence": 75,
+      "tags": [
+        "blackout-ledger",
+        "district"
+      ]
+    },
+    {
+      "id": "blackout-ledger-territory-3",
+      "locationId": "switch-house",
+      "factionId": "blackout-ledger-faction-3",
+      "influence": 78,
+      "tags": [
+        "blackout-ledger",
+        "district"
+      ]
+    },
+    {
+      "id": "blackout-ledger-territory-4",
+      "locationId": "repair-depot",
+      "factionId": "blackout-ledger-faction-4",
+      "influence": 81,
+      "tags": [
+        "blackout-ledger",
+        "district"
+      ]
+    }
+  ],
+  "taskTemplates": [
+    {
+      "id": "blackout-ledger-task-1",
+      "label": "Review Utility Permit Office",
+      "institutionKind": "police",
+      "tags": [
+        "blackout-ledger",
+        "review"
+      ],
+      "pressureDelta": 7,
+      "evidenceKinds": [
+        "document"
+      ]
+    },
+    {
+      "id": "blackout-ledger-task-2",
+      "label": "Review Blackout Precinct",
+      "institutionKind": "media",
+      "tags": [
+        "blackout-ledger",
+        "review"
+      ],
+      "pressureDelta": 8,
+      "evidenceKinds": [
+        "testimony"
+      ]
+    },
+    {
+      "id": "blackout-ledger-task-3",
+      "label": "Review Switch House",
+      "institutionKind": "family",
+      "tags": [
+        "blackout-ledger",
+        "review"
+      ],
+      "pressureDelta": 9,
+      "evidenceKinds": [
+        "trace"
+      ]
+    },
+    {
+      "id": "blackout-ledger-task-4",
+      "label": "Review Repair Depot",
+      "institutionKind": "commerce",
+      "tags": [
+        "blackout-ledger",
+        "review"
+      ],
+      "pressureDelta": 10,
+      "evidenceKinds": [
+        "receipt"
+      ]
+    }
+  ],
+  "randomWorldEvents": [
+    {
+      "id": "blackout-ledger-event-1",
+      "label": "Utility Permit Office shift",
+      "weight": 20,
+      "tags": [
+        "blackout-ledger",
+        "permit-forgery"
+      ],
+      "pressureDelta": 7
+    },
+    {
+      "id": "blackout-ledger-event-2",
+      "label": "Blackout Precinct shift",
+      "weight": 21,
+      "tags": [
+        "blackout-ledger",
+        "police-misjudgment"
+      ],
+      "pressureDelta": 8
+    },
+    {
+      "id": "blackout-ledger-event-3",
+      "label": "Switch House shift",
+      "weight": 22,
+      "tags": [
+        "blackout-ledger",
+        "utility-sabotage"
+      ],
+      "pressureDelta": 9
+    },
+    {
+      "id": "blackout-ledger-event-4",
+      "label": "Repair Depot shift",
+      "weight": 23,
+      "tags": [
+        "blackout-ledger",
+        "evidence-tampering"
+      ],
+      "pressureDelta": 10
+    }
+  ],
+  "pressureRules": [
+    {
+      "id": "blackout-ledger-resource-pressure-1",
+      "resource": "police_time",
+      "threshold": 50,
+      "effect": "permit-forgery pressure becomes visible"
+    },
+    {
+      "id": "blackout-ledger-resource-pressure-2",
+      "resource": "media_attention",
+      "threshold": 51,
+      "effect": "police-misjudgment pressure becomes visible"
+    },
+    {
+      "id": "blackout-ledger-resource-pressure-3",
+      "resource": "family_influence",
+      "threshold": 52,
+      "effect": "utility-sabotage pressure becomes visible"
+    },
+    {
+      "id": "blackout-ledger-resource-pressure-4",
+      "resource": "merchant_credit",
+      "threshold": 53,
+      "effect": "evidence-tampering pressure becomes visible"
+    }
+  ]
+}

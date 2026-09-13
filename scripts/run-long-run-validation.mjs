@@ -122,6 +122,8 @@ if (!benchmarkMode) {
   assert.equal(report.metrics.candidateDiversityScore >= 25, true, "candidate diversity stays above minimum");
   assert.equal(report.metrics.candidateRepeatRate <= 70, true, "candidate repeat rate stays below maximum");
   assert.equal(report.metrics.uniqueCaseCount, report.summary.caseCount, "every extracted campaign case has a unique id");
+  assert.equal(report.cases.every((item) => Boolean(item.triggeredEventId)), true, "every extracted campaign case preserves its real trigger identity");
+  assert.equal(new Set(report.cases.map((item) => item.triggeredEventId)).size, report.summary.caseCount, "one trigger event cannot be counted as multiple campaign cases");
   assert.equal(report.metrics.caseGraph.nodes.length, report.summary.caseCount, "case graph has one node per case");
   assert.equal(report.metrics.evidenceGraph.warnings.length, 0, report.metrics.evidenceGraph.warnings.join("; "));
   assert.equal(report.performance.totalMs <= maxRuntimeMs, true, `long run must complete within ${maxRuntimeMs}ms, actual ${Math.round(report.performance.totalMs)}ms`);

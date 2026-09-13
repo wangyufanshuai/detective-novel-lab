@@ -11,6 +11,7 @@ export function useCertifiedCaseRhythm(input: CertifiedCaseRhythmInput) {
     input.recoveryGap,
     input.revealAvailable,
     input.selectedSceneName,
-    input.session
+    input.session,
+    input.theoryEvidenceIds
   ]);
 }

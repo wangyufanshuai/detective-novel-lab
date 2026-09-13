@@ -1,0 +1,1414 @@
+{
+  "schemaVersion": "public-case-summary-index.v1",
+  "datasetId": "detective-town-v3-5000-campaign",
+  "sourceRunId": "campaign-campaign-validation-5000",
+  "generatedAt": "2026-07-03T13:41:57.633Z",
+  "caseCount": 30,
+  "cases": [
+    {
+      "publicCaseId": "public-case-001",
+      "sourceCaseHash": "830fe0b5520dceb20846834b0e5663b57a25c41683575de390a032f2bb577e5b",
+      "ordinal": 1,
+      "tick": 40,
+      "caseType": "dock-smuggling",
+      "outcome": "extracted",
+      "locationId": "lake",
+      "institutionCount": 6,
+      "evidenceCount": 6,
+      "evidenceWarningCount": 4,
+      "evidenceComplete": true,
+      "laterInfluence": {
+        "incomingEdgeCount": 0,
+        "outgoingEdgeCount": 8,
+        "incomingStrengthTotal": 0,
+        "outgoingStrengthTotal": 12
+      },
+      "edgeTypeCounts": [
+        {
+          "id": "shared-location",
+          "count": 2
+        },
+        {
+          "id": "aftermath",
+          "count": 1
+        },
+        {
+          "id": "evidence-contamination",
+          "count": 1
+        },
+        {
+          "id": "institution-pressure",
+          "count": 1
+        },
+        {
+          "id": "public-opinion",
+          "count": 1
+        },
+        {
+          "id": "resource-delta",
+          "count": 1
+        },
+        {
+          "id": "shared-npc",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "publicCaseId": "public-case-002",
+      "sourceCaseHash": "683c5494ba9f7e6f23cd4fdfb8623040cfa04c4c00000fa097b32bee8d292549",
+      "ordinal": 2,
+      "tick": 60,
+      "caseType": "evidence-tampering",
+      "outcome": "extracted",
+      "locationId": "lake",
+      "institutionCount": 5,
+      "evidenceCount": 6,
+      "evidenceWarningCount": 3,
+      "evidenceComplete": true,
+      "laterInfluence": {
+        "incomingEdgeCount": 6,
+        "outgoingEdgeCount": 6,
+        "incomingStrengthTotal": 9,
+        "outgoingStrengthTotal": 9
+      },
+      "edgeTypeCounts": [
+        {
+          "id": "aftermath",
+          "count": 2
+        },
+        {
+          "id": "evidence-contamination",
+          "count": 2
+        },
+        {
+          "id": "institution-pressure",
+          "count": 2
+        },
+        {
+          "id": "public-opinion",
+          "count": 2
+        },
+        {
+          "id": "resource-delta",
+          "count": 2
+        },
+        {
+          "id": "shared-location",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "publicCaseId": "public-case-003",
+      "sourceCaseHash": "0611b47bdb71dc22b39ca63b91cebcaebf2ccda68f539cefadf997f1f525e5eb",
+      "ordinal": 3,
+      "tick": 80,
+      "caseType": "forged-will",
+      "outcome": "extracted",
+      "locationId": "theater",
+      "institutionCount": 5,
+      "evidenceCount": 6,
+      "evidenceWarningCount": 2,
+      "evidenceComplete": true,
+      "laterInfluence": {
+        "incomingEdgeCount": 5,
+        "outgoingEdgeCount": 5,
+        "incomingStrengthTotal": 8,
+        "outgoingStrengthTotal": 8
+      },
+      "edgeTypeCounts": [
+        {
+          "id": "aftermath",
+          "count": 2
+        },
+        {
+          "id": "evidence-contamination",
+          "count": 2
+        },
+        {
+          "id": "institution-pressure",
+          "count": 2
+        },
+        {
+          "id": "public-opinion",
+          "count": 2
+        },
+        {
+          "id": "resource-delta",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "publicCaseId": "public-case-004",
+      "sourceCaseHash": "b89625ad517acfc1dd3b7b6edb46b2d56ff4453fcb915aaa20aa2ad0a66fa536",
+      "ordinal": 4,
+      "tick": 100,
+      "caseType": "family-scandal",
+      "outcome": "extracted",
+      "locationId": "lake",
+      "institutionCount": 6,
+      "evidenceCount": 6,
+      "evidenceWarningCount": 2,
+      "evidenceComplete": true,
+      "laterInfluence": {
+        "incomingEdgeCount": 8,
+        "outgoingEdgeCount": 5,
+        "incomingStrengthTotal": 12,
+        "outgoingStrengthTotal": 8
+      },
+      "edgeTypeCounts": [
+        {
+          "id": "aftermath",
+          "count": 2
+        },
+        {
+          "id": "evidence-contamination",
+          "count": 2
+        },
+        {
+          "id": "institution-pressure",
+          "count": 2
+        },
+        {
+          "id": "public-opinion",
+          "count": 2
+        },
+        {
+          "id": "resource-delta",
+          "count": 2
+        },
+        {
+          "id": "shared-location",
+          "count": 2
+        },
+        {
+          "id": "shared-npc",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "publicCaseId": "public-case-005",
+      "sourceCaseHash": "cced681dad4340a913768c0853783e8de3d1a2dc262623a6cf333fb6e21d9989",
+      "ordinal": 5,
+      "tick": 140,
+      "caseType": "witness-disappearance",
+      "outcome": "extracted",
+      "locationId": "town-square",
+      "institutionCount": 5,
+      "evidenceCount": 6,
+      "evidenceWarningCount": 0,
+      "evidenceComplete": true,
+      "laterInfluence": {
+        "incomingEdgeCount": 5,
+        "outgoingEdgeCount": 55,
+        "incomingStrengthTotal": 8,
+        "outgoingStrengthTotal": 83
+      },
+      "edgeTypeCounts": [
+        {
+          "id": "shared-location",
+          "count": 25
+        },
+        {
+          "id": "shared-npc",
+          "count": 25
+        },
+        {
+          "id": "aftermath",
+          "count": 2
+        },
+        {
+          "id": "evidence-contamination",
+          "count": 2
+        },
+        {
+          "id": "institution-pressure",
+          "count": 2
+        },
+        {
+          "id": "public-opinion",
+          "count": 2
+        },
+        {
+          "id": "resource-delta",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "publicCaseId": "public-case-006",
+      "sourceCaseHash": "ba665696b96e498797ce4f61124798f6e29fcb9b573d2af8dd8a17b23f3e474d",
+      "ordinal": 6,
+      "tick": 160,
+      "caseType": "media-rumor",
+      "outcome": "extracted",
+      "locationId": "town-square",
+      "institutionCount": 5,
+      "evidenceCount": 6,
+      "evidenceWarningCount": 1,
+      "evidenceComplete": true,
+      "laterInfluence": {
+        "incomingEdgeCount": 7,
+        "outgoingEdgeCount": 53,
+        "incomingStrengthTotal": 11,
+        "outgoingStrengthTotal": 80
+      },
+      "edgeTypeCounts": [
+        {
+          "id": "shared-location",
+          "count": 25
+        },
+        {
+          "id": "shared-npc",
+          "count": 25
+        },
+        {
+          "id": "aftermath",
+          "count": 2
+        },
+        {
+          "id": "evidence-contamination",
+          "count": 2
+        },
+        {
+          "id": "institution-pressure",
+          "count": 2
+        },
+        {
+          "id": "public-opinion",
+          "count": 2
+        },
+        {
+          "id": "resource-delta",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "publicCaseId": "public-case-007",
+      "sourceCaseHash": "c73b56235c1d9629d13312161a31ba68836ebaf06e55e2958f21b6afb1a46def",
+      "ordinal": 7,
+      "tick": 180,
+      "caseType": "false-testimony",
+      "outcome": "extracted",
+      "locationId": "town-square",
+      "institutionCount": 5,
+      "evidenceCount": 6,
+      "evidenceWarningCount": 0,
+      "evidenceComplete": true,
+      "laterInfluence": {
+        "incomingEdgeCount": 9,
+        "outgoingEdgeCount": 50,
+        "incomingStrengthTotal": 14,
+        "outgoingStrengthTotal": 75
+      },
+      "edgeTypeCounts": [
+        {
+          "id": "shared-location",
+          "count": 25
+        },
+        {
+          "id": "shared-npc",
+          "count": 25
+        },
+        {
+          "id": "aftermath",
+          "count": 2
+        },
+        {
+          "id": "institution-pressure",
+          "count": 2
+        },
+        {
+          "id": "public-opinion",
+          "count": 2
+        },
+        {
+          "id": "resource-delta",
+          "count": 2
+        },
+        {
+          "id": "evidence-contamination",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "publicCaseId": "public-case-008",
+      "sourceCaseHash": "a2f7ea466e55601df88add5b7b59a08d5b224526c3d02bfbe9fa681afea4acc2",
+      "ordinal": 8,
+      "tick": 200,
+      "caseType": "blackmail",
+      "outcome": "extracted",
+      "locationId": "town-square",
+      "institutionCount": 5,
+      "evidenceCount": 6,
+      "evidenceWarningCount": 0,
+      "evidenceComplete": true,
+      "laterInfluence": {
+        "incomingEdgeCount": 10,
+        "outgoingEdgeCount": 48,
+        "incomingStrengthTotal": 15,
+        "outgoingStrengthTotal": 72
+      },
+      "edgeTypeCounts": [
+        {
+          "id": "shared-location",
+          "count": 25
+        },
+        {
+          "id": "shared-npc",
+          "count": 25
+        },
+        {
+          "id": "aftermath",
+          "count": 2
+        },
+        {
+          "id": "institution-pressure",
+          "count": 2
+        },
+        {
+          "id": "public-opinion",
+          "count": 2
+        },
+        {
+          "id": "resource-delta",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "publicCaseId": "public-case-009",
+      "sourceCaseHash": "ff30dc36d241cb42dcf3726019ee10e80f69be0c2c5c6fa8eff4e6b6dd524805",
+      "ordinal": 9,
+      "tick": 220,
+      "caseType": "missing-person",
+      "outcome": "extracted",
+      "locationId": "town-square",
+      "institutionCount": 5,
+      "evidenceCount": 6,
+      "evidenceWarningCount": 0,
+      "evidenceComplete": true,
+      "laterInfluence": {
+        "incomingEdgeCount": 12,
+        "outgoingEdgeCount": 46,
+        "incomingStrengthTotal": 18,
+        "outgoingStrengthTotal": 69
+      },
+      "edgeTypeCounts": [
+        {
+          "id": "shared-location",
+          "count": 25
+        },
+        {
+          "id": "shared-npc",
+          "count": 25
+        },
+        {
+          "id": "aftermath",
+          "count": 2
+        },
+        {
+          "id": "institution-pressure",
+          "count": 2
+        },
+        {
+          "id": "public-opinion",
+          "count": 2
+        },
+        {
+          "id": "resource-delta",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "publicCaseId": "public-case-010",
+      "sourceCaseHash": "401bdd3233ee5fab0c3855d4d133324e06b3f1fac4706c95e4676839534c16ff",
+      "ordinal": 10,
+      "tick": 280,
+      "caseType": "murder",
+      "outcome": "extracted",
+      "locationId": "town-square",
+      "institutionCount": 5,
+      "evidenceCount": 6,
+      "evidenceWarningCount": 0,
+      "evidenceComplete": true,
+      "laterInfluence": {
+        "incomingEdgeCount": 14,
+        "outgoingEdgeCount": 44,
+        "incomingStrengthTotal": 21,
+        "outgoingStrengthTotal": 66
+      },
+      "edgeTypeCounts": [
+        {
+          "id": "shared-location",
+          "count": 25
+        },
+        {
+          "id": "shared-npc",
+          "count": 25
+        },
+        {
+          "id": "aftermath",
+          "count": 2
+        },
+        {
+          "id": "institution-pressure",
+          "count": 2
+        },
+        {
+          "id": "public-opinion",
+          "count": 2
+        },
+        {
+          "id": "resource-delta",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "publicCaseId": "public-case-011",
+      "sourceCaseHash": "f83d1318266fa275592a6e767ef29b07cb1f676682d40f63a4cdc55590863db2",
+      "ordinal": 11,
+      "tick": 300,
+      "caseType": "police-misjudgment",
+      "outcome": "extracted",
+      "locationId": "town-square",
+      "institutionCount": 5,
+      "evidenceCount": 6,
+      "evidenceWarningCount": 2,
+      "evidenceComplete": true,
+      "laterInfluence": {
+        "incomingEdgeCount": 16,
+        "outgoingEdgeCount": 42,
+        "incomingStrengthTotal": 24,
+        "outgoingStrengthTotal": 63
+      },
+      "edgeTypeCounts": [
+        {
+          "id": "shared-location",
+          "count": 25
+        },
+        {
+          "id": "shared-npc",
+          "count": 25
+        },
+        {
+          "id": "aftermath",
+          "count": 2
+        },
+        {
+          "id": "institution-pressure",
+          "count": 2
+        },
+        {
+          "id": "public-opinion",
+          "count": 2
+        },
+        {
+          "id": "resource-delta",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "publicCaseId": "public-case-012",
+      "sourceCaseHash": "9dce5c1d40b2d7cd72c475d1fd867287036b8d81e2f273e42c6a2bcc40ece4e3",
+      "ordinal": 12,
+      "tick": 320,
+      "caseType": "ledger-fraud",
+      "outcome": "extracted",
+      "locationId": "town-square",
+      "institutionCount": 5,
+      "evidenceCount": 6,
+      "evidenceWarningCount": 2,
+      "evidenceComplete": true,
+      "laterInfluence": {
+        "incomingEdgeCount": 18,
+        "outgoingEdgeCount": 40,
+        "incomingStrengthTotal": 27,
+        "outgoingStrengthTotal": 60
+      },
+      "edgeTypeCounts": [
+        {
+          "id": "shared-location",
+          "count": 25
+        },
+        {
+          "id": "shared-npc",
+          "count": 25
+        },
+        {
+          "id": "aftermath",
+          "count": 2
+        },
+        {
+          "id": "institution-pressure",
+          "count": 2
+        },
+        {
+          "id": "public-opinion",
+          "count": 2
+        },
+        {
+          "id": "resource-delta",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "publicCaseId": "public-case-013",
+      "sourceCaseHash": "7bc86c304549d288695ec89f0341e196f94cf8f9b830d317e021bc5a70af9c19",
+      "ordinal": 13,
+      "tick": 340,
+      "caseType": "court-intimidation",
+      "outcome": "extracted",
+      "locationId": "town-square",
+      "institutionCount": 5,
+      "evidenceCount": 6,
+      "evidenceWarningCount": 2,
+      "evidenceComplete": true,
+      "laterInfluence": {
+        "incomingEdgeCount": 20,
+        "outgoingEdgeCount": 38,
+        "incomingStrengthTotal": 30,
+        "outgoingStrengthTotal": 57
+      },
+      "edgeTypeCounts": [
+        {
+          "id": "shared-location",
+          "count": 25
+        },
+        {
+          "id": "shared-npc",
+          "count": 25
+        },
+        {
+          "id": "aftermath",
+          "count": 2
+        },
+        {
+          "id": "institution-pressure",
+          "count": 2
+        },
+        {
+          "id": "public-opinion",
+          "count": 2
+        },
+        {
+          "id": "resource-delta",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "publicCaseId": "public-case-014",
+      "sourceCaseHash": "ce395b7eca185b85fdd18c6740e74a80ee227372d080745de0e7fdda20de56bc",
+      "ordinal": 14,
+      "tick": 360,
+      "caseType": "merchant-extortion",
+      "outcome": "extracted",
+      "locationId": "town-square",
+      "institutionCount": 5,
+      "evidenceCount": 6,
+      "evidenceWarningCount": 0,
+      "evidenceComplete": true,
+      "laterInfluence": {
+        "incomingEdgeCount": 22,
+        "outgoingEdgeCount": 36,
+        "incomingStrengthTotal": 33,
+        "outgoingStrengthTotal": 54
+      },
+      "edgeTypeCounts": [
+        {
+          "id": "shared-location",
+          "count": 25
+        },
+        {
+          "id": "shared-npc",
+          "count": 25
+        },
+        {
+          "id": "aftermath",
+          "count": 2
+        },
+        {
+          "id": "institution-pressure",
+          "count": 2
+        },
+        {
+          "id": "public-opinion",
+          "count": 2
+        },
+        {
+          "id": "resource-delta",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "publicCaseId": "public-case-015",
+      "sourceCaseHash": "8abe6ac16ec308fbd80ccc3167bae8f417272f41f37d7780ba498a89eca2d85c",
+      "ordinal": 15,
+      "tick": 380,
+      "caseType": "medical-coverup",
+      "outcome": "extracted",
+      "locationId": "town-square",
+      "institutionCount": 5,
+      "evidenceCount": 6,
+      "evidenceWarningCount": 0,
+      "evidenceComplete": true,
+      "laterInfluence": {
+        "incomingEdgeCount": 24,
+        "outgoingEdgeCount": 34,
+        "incomingStrengthTotal": 36,
+        "outgoingStrengthTotal": 51
+      },
+      "edgeTypeCounts": [
+        {
+          "id": "shared-location",
+          "count": 25
+        },
+        {
+          "id": "shared-npc",
+          "count": 25
+        },
+        {
+          "id": "aftermath",
+          "count": 2
+        },
+        {
+          "id": "institution-pressure",
+          "count": 2
+        },
+        {
+          "id": "public-opinion",
+          "count": 2
+        },
+        {
+          "id": "resource-delta",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "publicCaseId": "public-case-016",
+      "sourceCaseHash": "710ef34943c2092d3893677d5b9f7d4ffb2e3c6c35d550e7b32de646ab4b049d",
+      "ordinal": 16,
+      "tick": 400,
+      "caseType": "dock-smuggling",
+      "outcome": "extracted",
+      "locationId": "town-square",
+      "institutionCount": 5,
+      "evidenceCount": 6,
+      "evidenceWarningCount": 2,
+      "evidenceComplete": true,
+      "laterInfluence": {
+        "incomingEdgeCount": 26,
+        "outgoingEdgeCount": 32,
+        "incomingStrengthTotal": 39,
+        "outgoingStrengthTotal": 48
+      },
+      "edgeTypeCounts": [
+        {
+          "id": "shared-location",
+          "count": 25
+        },
+        {
+          "id": "shared-npc",
+          "count": 25
+        },
+        {
+          "id": "aftermath",
+          "count": 2
+        },
+        {
+          "id": "institution-pressure",
+          "count": 2
+        },
+        {
+          "id": "public-opinion",
+          "count": 2
+        },
+        {
+          "id": "resource-delta",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "publicCaseId": "public-case-017",
+      "sourceCaseHash": "45ad3f3b8e9d20f171406f6cac23ebcd954f7ab6031e80de9b285b44190dbd1e",
+      "ordinal": 17,
+      "tick": 420,
+      "caseType": "forged-will",
+      "outcome": "extracted",
+      "locationId": "town-square",
+      "institutionCount": 5,
+      "evidenceCount": 6,
+      "evidenceWarningCount": 2,
+      "evidenceComplete": true,
+      "laterInfluence": {
+        "incomingEdgeCount": 28,
+        "outgoingEdgeCount": 30,
+        "incomingStrengthTotal": 42,
+        "outgoingStrengthTotal": 45
+      },
+      "edgeTypeCounts": [
+        {
+          "id": "shared-location",
+          "count": 25
+        },
+        {
+          "id": "shared-npc",
+          "count": 25
+        },
+        {
+          "id": "aftermath",
+          "count": 2
+        },
+        {
+          "id": "institution-pressure",
+          "count": 2
+        },
+        {
+          "id": "public-opinion",
+          "count": 2
+        },
+        {
+          "id": "resource-delta",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "publicCaseId": "public-case-018",
+      "sourceCaseHash": "6d9da644262aded20889fb5bf585c2e70975cb0aeb13adc3503c58abcf41df49",
+      "ordinal": 18,
+      "tick": 440,
+      "caseType": "evidence-tampering",
+      "outcome": "extracted",
+      "locationId": "town-square",
+      "institutionCount": 5,
+      "evidenceCount": 6,
+      "evidenceWarningCount": 2,
+      "evidenceComplete": true,
+      "laterInfluence": {
+        "incomingEdgeCount": 30,
+        "outgoingEdgeCount": 28,
+        "incomingStrengthTotal": 45,
+        "outgoingStrengthTotal": 42
+      },
+      "edgeTypeCounts": [
+        {
+          "id": "shared-location",
+          "count": 25
+        },
+        {
+          "id": "shared-npc",
+          "count": 25
+        },
+        {
+          "id": "aftermath",
+          "count": 2
+        },
+        {
+          "id": "institution-pressure",
+          "count": 2
+        },
+        {
+          "id": "public-opinion",
+          "count": 2
+        },
+        {
+          "id": "resource-delta",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "publicCaseId": "public-case-019",
+      "sourceCaseHash": "ba6ded4ccdef4dfefdc6b76d500de435a831be29da91730df4a0dc41b96c07dd",
+      "ordinal": 19,
+      "tick": 460,
+      "caseType": "media-rumor",
+      "outcome": "extracted",
+      "locationId": "town-square",
+      "institutionCount": 5,
+      "evidenceCount": 6,
+      "evidenceWarningCount": 2,
+      "evidenceComplete": true,
+      "laterInfluence": {
+        "incomingEdgeCount": 32,
+        "outgoingEdgeCount": 26,
+        "incomingStrengthTotal": 48,
+        "outgoingStrengthTotal": 39
+      },
+      "edgeTypeCounts": [
+        {
+          "id": "shared-location",
+          "count": 25
+        },
+        {
+          "id": "shared-npc",
+          "count": 25
+        },
+        {
+          "id": "aftermath",
+          "count": 2
+        },
+        {
+          "id": "institution-pressure",
+          "count": 2
+        },
+        {
+          "id": "public-opinion",
+          "count": 2
+        },
+        {
+          "id": "resource-delta",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "publicCaseId": "public-case-020",
+      "sourceCaseHash": "1c71327fdb3d9b310ca7fd044936cc8fa3c8909f3e6dc4ccb31b61e9a102da31",
+      "ordinal": 20,
+      "tick": 480,
+      "caseType": "family-scandal",
+      "outcome": "extracted",
+      "locationId": "town-square",
+      "institutionCount": 5,
+      "evidenceCount": 6,
+      "evidenceWarningCount": 2,
+      "evidenceComplete": true,
+      "laterInfluence": {
+        "incomingEdgeCount": 34,
+        "outgoingEdgeCount": 24,
+        "incomingStrengthTotal": 51,
+        "outgoingStrengthTotal": 36
+      },
+      "edgeTypeCounts": [
+        {
+          "id": "shared-location",
+          "count": 25
+        },
+        {
+          "id": "shared-npc",
+          "count": 25
+        },
+        {
+          "id": "aftermath",
+          "count": 2
+        },
+        {
+          "id": "institution-pressure",
+          "count": 2
+        },
+        {
+          "id": "public-opinion",
+          "count": 2
+        },
+        {
+          "id": "resource-delta",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "publicCaseId": "public-case-021",
+      "sourceCaseHash": "674820e6cf16808c68bdde844c0f9148375e4d390c77d63c875e95e65967a83f",
+      "ordinal": 21,
+      "tick": 600,
+      "caseType": "witness-disappearance",
+      "outcome": "extracted",
+      "locationId": "town-square",
+      "institutionCount": 5,
+      "evidenceCount": 6,
+      "evidenceWarningCount": 0,
+      "evidenceComplete": true,
+      "laterInfluence": {
+        "incomingEdgeCount": 36,
+        "outgoingEdgeCount": 22,
+        "incomingStrengthTotal": 54,
+        "outgoingStrengthTotal": 33
+      },
+      "edgeTypeCounts": [
+        {
+          "id": "shared-location",
+          "count": 25
+        },
+        {
+          "id": "shared-npc",
+          "count": 25
+        },
+        {
+          "id": "aftermath",
+          "count": 2
+        },
+        {
+          "id": "institution-pressure",
+          "count": 2
+        },
+        {
+          "id": "public-opinion",
+          "count": 2
+        },
+        {
+          "id": "resource-delta",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "publicCaseId": "public-case-022",
+      "sourceCaseHash": "2287760165fba0da25bf2ba4a2e2c4e8d865525d6615e5f09274622ef18aa4c6",
+      "ordinal": 22,
+      "tick": 620,
+      "caseType": "false-testimony",
+      "outcome": "extracted",
+      "locationId": "town-square",
+      "institutionCount": 5,
+      "evidenceCount": 6,
+      "evidenceWarningCount": 0,
+      "evidenceComplete": true,
+      "laterInfluence": {
+        "incomingEdgeCount": 38,
+        "outgoingEdgeCount": 20,
+        "incomingStrengthTotal": 57,
+        "outgoingStrengthTotal": 30
+      },
+      "edgeTypeCounts": [
+        {
+          "id": "shared-location",
+          "count": 25
+        },
+        {
+          "id": "shared-npc",
+          "count": 25
+        },
+        {
+          "id": "aftermath",
+          "count": 2
+        },
+        {
+          "id": "institution-pressure",
+          "count": 2
+        },
+        {
+          "id": "public-opinion",
+          "count": 2
+        },
+        {
+          "id": "resource-delta",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "publicCaseId": "public-case-023",
+      "sourceCaseHash": "9f18843ca835eff3779cdec5ef09df2030cf318618a8cce8dc5ebfe31f0063b6",
+      "ordinal": 23,
+      "tick": 640,
+      "caseType": "police-misjudgment",
+      "outcome": "extracted",
+      "locationId": "town-square",
+      "institutionCount": 5,
+      "evidenceCount": 6,
+      "evidenceWarningCount": 0,
+      "evidenceComplete": true,
+      "laterInfluence": {
+        "incomingEdgeCount": 40,
+        "outgoingEdgeCount": 18,
+        "incomingStrengthTotal": 60,
+        "outgoingStrengthTotal": 27
+      },
+      "edgeTypeCounts": [
+        {
+          "id": "shared-location",
+          "count": 25
+        },
+        {
+          "id": "shared-npc",
+          "count": 25
+        },
+        {
+          "id": "aftermath",
+          "count": 2
+        },
+        {
+          "id": "institution-pressure",
+          "count": 2
+        },
+        {
+          "id": "public-opinion",
+          "count": 2
+        },
+        {
+          "id": "resource-delta",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "publicCaseId": "public-case-024",
+      "sourceCaseHash": "3b2122b78db8a20ea43f611cc209aa509d390cf972085a43f1729f463560f9b1",
+      "ordinal": 24,
+      "tick": 660,
+      "caseType": "blackmail",
+      "outcome": "extracted",
+      "locationId": "town-square",
+      "institutionCount": 5,
+      "evidenceCount": 6,
+      "evidenceWarningCount": 0,
+      "evidenceComplete": true,
+      "laterInfluence": {
+        "incomingEdgeCount": 42,
+        "outgoingEdgeCount": 16,
+        "incomingStrengthTotal": 63,
+        "outgoingStrengthTotal": 24
+      },
+      "edgeTypeCounts": [
+        {
+          "id": "shared-location",
+          "count": 25
+        },
+        {
+          "id": "shared-npc",
+          "count": 25
+        },
+        {
+          "id": "aftermath",
+          "count": 2
+        },
+        {
+          "id": "institution-pressure",
+          "count": 2
+        },
+        {
+          "id": "public-opinion",
+          "count": 2
+        },
+        {
+          "id": "resource-delta",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "publicCaseId": "public-case-025",
+      "sourceCaseHash": "e44dce746215bb6ea1562266dfaafc0706868cff6eb4dee660b1e0e2bc825cd6",
+      "ordinal": 25,
+      "tick": 680,
+      "caseType": "missing-person",
+      "outcome": "extracted",
+      "locationId": "town-square",
+      "institutionCount": 5,
+      "evidenceCount": 6,
+      "evidenceWarningCount": 0,
+      "evidenceComplete": true,
+      "laterInfluence": {
+        "incomingEdgeCount": 44,
+        "outgoingEdgeCount": 14,
+        "incomingStrengthTotal": 66,
+        "outgoingStrengthTotal": 21
+      },
+      "edgeTypeCounts": [
+        {
+          "id": "shared-location",
+          "count": 25
+        },
+        {
+          "id": "shared-npc",
+          "count": 25
+        },
+        {
+          "id": "aftermath",
+          "count": 2
+        },
+        {
+          "id": "institution-pressure",
+          "count": 2
+        },
+        {
+          "id": "public-opinion",
+          "count": 2
+        },
+        {
+          "id": "resource-delta",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "publicCaseId": "public-case-026",
+      "sourceCaseHash": "0f70ab34014d163639192d05cee572286793fee4939aebbd1dd4a92d9584cc2f",
+      "ordinal": 26,
+      "tick": 740,
+      "caseType": "murder",
+      "outcome": "extracted",
+      "locationId": "town-square",
+      "institutionCount": 5,
+      "evidenceCount": 6,
+      "evidenceWarningCount": 0,
+      "evidenceComplete": true,
+      "laterInfluence": {
+        "incomingEdgeCount": 46,
+        "outgoingEdgeCount": 12,
+        "incomingStrengthTotal": 69,
+        "outgoingStrengthTotal": 18
+      },
+      "edgeTypeCounts": [
+        {
+          "id": "shared-location",
+          "count": 25
+        },
+        {
+          "id": "shared-npc",
+          "count": 25
+        },
+        {
+          "id": "aftermath",
+          "count": 2
+        },
+        {
+          "id": "institution-pressure",
+          "count": 2
+        },
+        {
+          "id": "public-opinion",
+          "count": 2
+        },
+        {
+          "id": "resource-delta",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "publicCaseId": "public-case-027",
+      "sourceCaseHash": "bffa66a8b1bb9b379963c8fa648871cba8a7359359177a259f1b430a049b6f01",
+      "ordinal": 27,
+      "tick": 760,
+      "caseType": "ledger-fraud",
+      "outcome": "extracted",
+      "locationId": "town-square",
+      "institutionCount": 5,
+      "evidenceCount": 6,
+      "evidenceWarningCount": 0,
+      "evidenceComplete": true,
+      "laterInfluence": {
+        "incomingEdgeCount": 48,
+        "outgoingEdgeCount": 10,
+        "incomingStrengthTotal": 72,
+        "outgoingStrengthTotal": 15
+      },
+      "edgeTypeCounts": [
+        {
+          "id": "shared-location",
+          "count": 25
+        },
+        {
+          "id": "shared-npc",
+          "count": 25
+        },
+        {
+          "id": "aftermath",
+          "count": 2
+        },
+        {
+          "id": "institution-pressure",
+          "count": 2
+        },
+        {
+          "id": "public-opinion",
+          "count": 2
+        },
+        {
+          "id": "resource-delta",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "publicCaseId": "public-case-028",
+      "sourceCaseHash": "8e2ffda3259c71d49fe7abec6d8940d5a1d44add0f822a7519992fb368efec7c",
+      "ordinal": 28,
+      "tick": 780,
+      "caseType": "court-intimidation",
+      "outcome": "extracted",
+      "locationId": "town-square",
+      "institutionCount": 5,
+      "evidenceCount": 6,
+      "evidenceWarningCount": 0,
+      "evidenceComplete": true,
+      "laterInfluence": {
+        "incomingEdgeCount": 50,
+        "outgoingEdgeCount": 8,
+        "incomingStrengthTotal": 75,
+        "outgoingStrengthTotal": 12
+      },
+      "edgeTypeCounts": [
+        {
+          "id": "shared-location",
+          "count": 25
+        },
+        {
+          "id": "shared-npc",
+          "count": 25
+        },
+        {
+          "id": "aftermath",
+          "count": 2
+        },
+        {
+          "id": "institution-pressure",
+          "count": 2
+        },
+        {
+          "id": "public-opinion",
+          "count": 2
+        },
+        {
+          "id": "resource-delta",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "publicCaseId": "public-case-029",
+      "sourceCaseHash": "65eb0625734fe57913e2d69479e206f2cbec863cdd5ef857a9bcab6f79ceca17",
+      "ordinal": 29,
+      "tick": 800,
+      "caseType": "merchant-extortion",
+      "outcome": "extracted",
+      "locationId": "town-square",
+      "institutionCount": 5,
+      "evidenceCount": 6,
+      "evidenceWarningCount": 0,
+      "evidenceComplete": true,
+      "laterInfluence": {
+        "incomingEdgeCount": 52,
+        "outgoingEdgeCount": 6,
+        "incomingStrengthTotal": 78,
+        "outgoingStrengthTotal": 9
+      },
+      "edgeTypeCounts": [
+        {
+          "id": "shared-location",
+          "count": 25
+        },
+        {
+          "id": "shared-npc",
+          "count": 25
+        },
+        {
+          "id": "aftermath",
+          "count": 2
+        },
+        {
+          "id": "institution-pressure",
+          "count": 2
+        },
+        {
+          "id": "public-opinion",
+          "count": 2
+        },
+        {
+          "id": "resource-delta",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "publicCaseId": "public-case-030",
+      "sourceCaseHash": "c8b351f765aba1048a585701fe42bcee6b499f5a7ddaf64a86a45e4c55a6214f",
+      "ordinal": 30,
+      "tick": 820,
+      "caseType": "medical-coverup",
+      "outcome": "extracted",
+      "locationId": "town-square",
+      "institutionCount": 5,
+      "evidenceCount": 6,
+      "evidenceWarningCount": 2,
+      "evidenceComplete": true,
+      "laterInfluence": {
+        "incomingEdgeCount": 54,
+        "outgoingEdgeCount": 0,
+        "incomingStrengthTotal": 81,
+        "outgoingStrengthTotal": 0
+      },
+      "edgeTypeCounts": [
+        {
+          "id": "shared-location",
+          "count": 25
+        },
+        {
+          "id": "shared-npc",
+          "count": 25
+        },
+        {
+          "id": "aftermath",
+          "count": 1
+        },
+        {
+          "id": "institution-pressure",
+          "count": 1
+        },
+        {
+          "id": "public-opinion",
+          "count": 1
+        },
+        {
+          "id": "resource-delta",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "caseCount": 30,
+    "caseTypeCount": 15,
+    "locationCount": 3,
+    "evidenceCompleteCount": 30,
+    "evidenceWarningCaseCount": 14,
+    "totalEvidenceCount": 180,
+    "laterInfluencedCaseCount": 30,
+    "edgeTypeDistribution": [
+      {
+        "id": "shared-location",
+        "count": 328
+      },
+      {
+        "id": "shared-npc",
+        "count": 326
+      },
+      {
+        "id": "aftermath",
+        "count": 29
+      },
+      {
+        "id": "institution-pressure",
+        "count": 29
+      },
+      {
+        "id": "public-opinion",
+        "count": 29
+      },
+      {
+        "id": "resource-delta",
+        "count": 29
+      },
+      {
+        "id": "evidence-contamination",
+        "count": 6
+      }
+    ]
+  }
+}

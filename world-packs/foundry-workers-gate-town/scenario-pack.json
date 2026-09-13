@@ -1,0 +1,315 @@
+{
+  "manifest": {
+    "id": "foundry-workers-gate-town",
+    "name": "Foundry Workers Gate Town",
+    "version": "1.0.0",
+    "schemaVersion": "scenario-pack.v1",
+    "description": "Foundry inspection, medical timing, labor leverage and controlled machine access.",
+    "createdAt": "2026-08-12T00:00:00.000Z",
+    "entrypoint": "scenario.json"
+  },
+  "world": {
+    "seed": "foundry-workers-gate-town",
+    "mode": "advanced",
+    "timelineHours": 96,
+    "locations": [
+      {
+        "id": "foundry-square",
+        "name": "Foundry Square",
+        "kind": "public",
+        "description": "Foundry Square exposes a public, reviewable surface for foundry inspection, medical timing, labor leverage and controlled machine access.",
+        "connectedLocationIds": [
+          "worker-gate",
+          "inspection-office"
+        ],
+        "x": -1,
+        "y": 0,
+        "localizedName": {
+          "en-US": "Foundry Square",
+          "zh-CN": "铸造广场"
+        }
+      },
+      {
+        "id": "inspection-office",
+        "name": "Inspection Office",
+        "kind": "work",
+        "description": "Inspection Office exposes a public, reviewable surface for foundry inspection, medical timing, labor leverage and controlled machine access.",
+        "connectedLocationIds": [
+          "foundry-square",
+          "works-infirmary"
+        ],
+        "x": 0,
+        "y": -1,
+        "localizedName": {
+          "en-US": "Inspection Office",
+          "zh-CN": "检查处"
+        }
+      },
+      {
+        "id": "works-infirmary",
+        "name": "Works Infirmary",
+        "kind": "work",
+        "description": "Works Infirmary exposes a public, reviewable surface for foundry inspection, medical timing, labor leverage and controlled machine access.",
+        "connectedLocationIds": [
+          "inspection-office",
+          "machine-hall"
+        ],
+        "x": 1,
+        "y": -1,
+        "localizedName": {
+          "en-US": "Works Infirmary",
+          "zh-CN": "工厂医务室"
+        }
+      },
+      {
+        "id": "machine-hall",
+        "name": "Machine Hall",
+        "kind": "restricted",
+        "description": "Machine Hall exposes a public, reviewable surface for foundry inspection, medical timing, labor leverage and controlled machine access.",
+        "connectedLocationIds": [
+          "works-infirmary",
+          "pay-window"
+        ],
+        "x": 1,
+        "y": 1,
+        "localizedName": {
+          "en-US": "Machine Hall",
+          "zh-CN": "机器大厅"
+        }
+      },
+      {
+        "id": "pay-window",
+        "name": "Pay Window",
+        "kind": "restricted",
+        "description": "Pay Window exposes a public, reviewable surface for foundry inspection, medical timing, labor leverage and controlled machine access.",
+        "connectedLocationIds": [
+          "machine-hall",
+          "worker-gate"
+        ],
+        "x": 0,
+        "y": 2,
+        "localizedName": {
+          "en-US": "Pay Window",
+          "zh-CN": "工资窗口"
+        }
+      },
+      {
+        "id": "worker-gate",
+        "name": "Worker Gatehouse",
+        "kind": "restricted",
+        "description": "Worker Gatehouse exposes a public, reviewable surface for foundry inspection, medical timing, labor leverage and controlled machine access.",
+        "connectedLocationIds": [
+          "pay-window",
+          "foundry-square"
+        ],
+        "x": -1,
+        "y": 1,
+        "localizedName": {
+          "en-US": "Worker Gatehouse",
+          "zh-CN": "工人门房"
+        }
+      }
+    ],
+    "npcs": [
+      {
+        "id": "npc-fur-1",
+        "name": "Ada Flint",
+        "role": "detective",
+        "homeLocationId": "inspection-office",
+        "schedule": {
+          "08:00": "inspection-office",
+          "12:00": "foundry-square",
+          "18:00": "works-infirmary"
+        },
+        "relationships": {},
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "detective",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-fur-2",
+        "name": "Bram Holt",
+        "role": "dockworker",
+        "homeLocationId": "works-infirmary",
+        "schedule": {
+          "08:00": "works-infirmary",
+          "12:00": "foundry-square",
+          "18:00": "machine-hall"
+        },
+        "relationships": {
+          "npc-fur-1": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "dockworker",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-fur-3",
+        "name": "Clara Voss",
+        "role": "doctor",
+        "homeLocationId": "machine-hall",
+        "schedule": {
+          "08:00": "machine-hall",
+          "12:00": "foundry-square",
+          "18:00": "pay-window"
+        },
+        "relationships": {
+          "npc-fur-2": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "doctor",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-fur-4",
+        "name": "Elias Forge",
+        "role": "merchant",
+        "homeLocationId": "pay-window",
+        "schedule": {
+          "08:00": "pay-window",
+          "12:00": "foundry-square",
+          "18:00": "worker-gate"
+        },
+        "relationships": {
+          "npc-fur-3": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "merchant",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-fur-5",
+        "name": "Nora Pike",
+        "role": "clerk",
+        "homeLocationId": "worker-gate",
+        "schedule": {
+          "08:00": "worker-gate",
+          "12:00": "foundry-square",
+          "18:00": "foundry-square"
+        },
+        "relationships": {
+          "npc-fur-4": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "clerk",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-fur-6",
+        "name": "Jon Reed",
+        "role": "informant",
+        "homeLocationId": "foundry-square",
+        "schedule": {
+          "08:00": "foundry-square",
+          "12:00": "foundry-square",
+          "18:00": "inspection-office"
+        },
+        "relationships": {
+          "npc-fur-5": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "informant",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      }
+    ],
+    "institutions": [],
+    "professions": []
+  },
+  "rules": {
+    "enabledModules": [
+      "institutions",
+      "professions",
+      "long-actions",
+      "public-opinion",
+      "evidence-contamination",
+      "case-aftermath"
+    ],
+    "phaseConfig": {
+      "snapshotEveryTicks": 1,
+      "maxRunningLongActions": 8
+    },
+    "thresholds": {
+      "maxEvidenceContamination": 74,
+      "maxPublicOpinionHeat": 88,
+      "minInstitutionTrust": 34
+    },
+    "longActionKinds": [
+      "investigate-scene",
+      "verify-alibi",
+      "audit-ledger",
+      "secure-evidence-locker",
+      "review-court-record",
+      "cultivate-informant"
+    ]
+  },
+  "scenario": {
+    "id": "foundry-workers-gate-town",
+    "name": "Foundry Workers Gate Town",
+    "seed": "foundry-workers-gate-town",
+    "worldOptions": {
+      "mode": "advanced",
+      "npcCount": 6,
+      "timelineHours": 96
+    },
+    "baselineSteps": 8,
+    "branches": [],
+    "passCriteria": {
+      "minValidCandidates": 0,
+      "minEventGrowth": 1,
+      "minMemoryGrowth": 1,
+      "maxBlockedCandidates": 8
+    }
+  },
+  "expectations": {
+    "minValidCandidates": 1,
+    "minEvidenceCoverage": 80,
+    "maxEvidenceContamination": 74,
+    "maxPublicOpinionHeat": 88,
+    "benchmarkPreset": "quick-10"
+  },
+  "assets": {
+    "presentationKey": "furnace-oath"
+  },
+  "docs": {
+    "localization": {
+      "en-US": "Foundry Workers Gate Town",
+      "zh-CN": "铸造厂工人门小镇"
+    }
+  }
+}

@@ -1,0 +1,623 @@
+{
+  "schemaVersion": "public-review-catalog.v1",
+  "generatedAt": "2026-07-15T14:59:51.420Z",
+  "summary": {
+    "datasetCount": 1,
+    "sourceRunCount": 1,
+    "worldPackageCount": 3,
+    "gateOkCount": 1,
+    "auditOkCount": 1,
+    "totalBytes": 50031,
+    "latestGeneratedAt": "2026-07-03T13:41:57.633Z",
+    "caseCount": 30,
+    "distinctCaseTypeCount": 15,
+    "evidenceNodeCount": 318,
+    "publicCaseSummaryCount": 30
+  },
+  "publicBoundary": {
+    "staticOnly": true,
+    "apiRoutesAllowed": false,
+    "artifactBodiesIncluded": false,
+    "allowedFetchPrefixes": [
+      "/review-catalog/",
+      "/dataset-reader/"
+    ]
+  },
+  "contentSummary": {
+    "packId": "detective-content-v1",
+    "schemaVersion": "detective-content-pack.v1",
+    "tableCounts": {
+      "caseTypes": 10,
+      "locations": 6,
+      "roles": 9,
+      "motives": 7,
+      "evidenceTypes": 19,
+      "redHerringPatterns": 5,
+      "escalationRules": 5,
+      "resources": 6,
+      "factions": 6,
+      "eventArchetypes": 6,
+      "progressionLines": 6
+    },
+    "caseTypeCount": 10,
+    "evidenceTypeCount": 19,
+    "locationCount": 6,
+    "roleCount": 9,
+    "motiveCount": 7,
+    "redHerringPatternCount": 5,
+    "escalationRuleCount": 5,
+    "resourceCount": 6,
+    "factionCount": 6,
+    "eventArchetypeCount": 6,
+    "progressionLineCount": 6,
+    "worldSystemCount": 6,
+    "worldSystemRecordCount": 39,
+    "coverage": {
+      "caseTypesWithEvidence": 10,
+      "caseTypesWithRoles": 10,
+      "caseTypesWithMotives": 10,
+      "evidenceTypesWithCases": 19,
+      "rolesWithCases": 9,
+      "motivesWithCases": 7,
+      "resourcesWithCases": 6,
+      "resourcesWithRoles": 6,
+      "factionsWithResources": 6,
+      "eventArchetypesWithFactions": 6,
+      "progressionLinesWithEvents": 6,
+      "worldSystemsWithRefs": 24
+    },
+    "validation": {
+      "ok": true,
+      "errorCount": 0,
+      "warningCount": 0
+    }
+  },
+  "stableWorldSummaryPath": "/review-catalog/stable-world-summary.json",
+  "stableWorldSummaryHash": "b536aa8d77c63962847fe98fb294856f75abbbe4c58467ac6b327bbfeda84c75",
+  "stableWorld": {
+    "schemaVersion": "public-stable-world-summary.v1",
+    "generatedAt": "2026-07-08T14:52:29.117Z",
+    "sourceRunId": "stable-world-1000-campaign-validation-stable-town-a-stable-town-b",
+    "sourceKind": "stable-world",
+    "ticks": 1000,
+    "seeds": [
+      "campaign-validation",
+      "stable-town-a",
+      "stable-town-b"
+    ],
+    "seedCount": 3,
+    "gate": {
+      "ok": true,
+      "passedSeedCount": 3,
+      "failedSeedCount": 0,
+      "worstCandidateRepeatRate": 0,
+      "lowestDistinctCaseTypeCount": 8,
+      "lowestSelectedActionKindCount": 8,
+      "highestLargestSelectedActionShare": 31,
+      "lowestInstitutionDecisionCount": 80,
+      "minRuntimeMs": 49051,
+      "maxRuntimeMs": 56176
+    },
+    "deterministicRunHashes": {
+      "campaign-validation": "fnv1a-fddcbe93",
+      "stable-town-a": "fnv1a-0b99b69e",
+      "stable-town-b": "fnv1a-50f1a916"
+    },
+    "diagnostics": {
+      "ok": true,
+      "overallStatus": "watch",
+      "findingCounts": {
+        "ok": 25,
+        "watch": 5,
+        "risk": 0,
+        "blocker": 0
+      },
+      "blockerCount": 0,
+      "riskCount": 0,
+      "watchCount": 5
+    },
+    "regression": {
+      "baselineAvailable": true,
+      "ok": true,
+      "overallStatus": "watch",
+      "deltaCounts": {
+        "improved": 0,
+        "unchanged": 38,
+        "watch": 1,
+        "regressed": 0,
+        "blocked": 0
+      },
+      "blockedCount": 0,
+      "regressedCount": 0,
+      "watchCount": 1
+    },
+    "aggregate": {
+      "repeatRate": 0,
+      "caseTypeCount": 8,
+      "actionKindCount": 8,
+      "largestActionShare": 31,
+      "institutionDecisionCount": 80,
+      "evidenceWarningCount": 0,
+      "laterInfluenceRate": 100
+    },
+    "artifactFiles": [
+      {
+        "name": "manifest.json",
+        "bytes": 3087,
+        "sha256": "c41463764c193835a38b41d565d95b60bbca803ac57e30b33abe018a8fe3c64c"
+      },
+      {
+        "name": "stability-summary.json",
+        "bytes": 2087,
+        "sha256": "5d7046444e674dd4d18b91dcf0fba5d0a7fce4d5b0c8786a9e5aab999cf077cf"
+      },
+      {
+        "name": "diagnostics-report.json",
+        "bytes": 15690,
+        "sha256": "1879e715fc558155fba16a6bc1f5d0df4ff38c6ec56ac7a9279e448f1bc77a9a"
+      },
+      {
+        "name": "regression-report.json",
+        "bytes": 14562,
+        "sha256": "497407d55b967bbb04e20c8eb2c9fa60e07298f34b92c79937b5516379bf69ee"
+      }
+    ],
+    "publicBoundary": {
+      "sanitizedBenchmarkSummary": true,
+      "artifactBodiesIncluded": false,
+      "localPathsIncluded": false,
+      "excludedBodies": [
+        "full quality metrics",
+        "causal metric samples",
+        "raw replay data",
+        "agent state snapshots"
+      ]
+    }
+  },
+  "caseQualitySummaryPath": "/review-catalog/case-quality-summary.json",
+  "caseQualitySummaryHash": "c75b01529557df50391947f5bb43f3cd5c64f4b255103dd45b80225a5fc2e647",
+  "caseQuality": {
+    "schemaVersion": "public-case-quality-summary.v1",
+    "generatedAt": "2026-07-08T14:52:29.117Z",
+    "sourceRunId": "stable-world-1000-campaign-validation-stable-town-a-stable-town-b",
+    "sourceKind": "stable-world-case-quality",
+    "ticks": 1000,
+    "seeds": [
+      "campaign-validation",
+      "stable-town-a",
+      "stable-town-b"
+    ],
+    "seedCount": 3,
+    "nonBlocking": true,
+    "overallStatus": "ok",
+    "averageScore": 100,
+    "minScore": 100,
+    "statusCounts": {
+      "ok": 3,
+      "watch": 0,
+      "risk": 0
+    },
+    "dimensionAverages": {
+      "case-diversity": 100,
+      "cross-case-continuity": 100,
+      "evidence-provenance": 100,
+      "fair-play-evidence": 100,
+      "institution-relevance": 100,
+      "repeat-control": 100,
+      "solution-readiness": 100
+    },
+    "dimensionMinimums": {
+      "case-diversity": 100,
+      "cross-case-continuity": 100,
+      "evidence-provenance": 100,
+      "fair-play-evidence": 100,
+      "institution-relevance": 100,
+      "repeat-control": 100,
+      "solution-readiness": 100
+    },
+    "perSeed": [
+      {
+        "seed": "campaign-validation",
+        "status": "ok",
+        "score": 100,
+        "caseCount": 8,
+        "solvedCaseCount": 8,
+        "distinctCaseTypeCount": 8,
+        "evidenceCompleteCaseCount": 8,
+        "evidenceWarningCount": 0,
+        "laterCaseInfluenceRate": 100,
+        "institutionDecisionCount": 80,
+        "repeatRate": 0,
+        "deterministicRunHash": "fnv1a-fddcbe93"
+      },
+      {
+        "seed": "stable-town-a",
+        "status": "ok",
+        "score": 100,
+        "caseCount": 8,
+        "solvedCaseCount": 8,
+        "distinctCaseTypeCount": 8,
+        "evidenceCompleteCaseCount": 8,
+        "evidenceWarningCount": 0,
+        "laterCaseInfluenceRate": 100,
+        "institutionDecisionCount": 80,
+        "repeatRate": 0,
+        "deterministicRunHash": "fnv1a-0b99b69e"
+      },
+      {
+        "seed": "stable-town-b",
+        "status": "ok",
+        "score": 100,
+        "caseCount": 8,
+        "solvedCaseCount": 8,
+        "distinctCaseTypeCount": 8,
+        "evidenceCompleteCaseCount": 8,
+        "evidenceWarningCount": 0,
+        "laterCaseInfluenceRate": 100,
+        "institutionDecisionCount": 80,
+        "repeatRate": 0,
+        "deterministicRunHash": "fnv1a-50f1a916"
+      }
+    ],
+    "deterministicRunHashes": {
+      "campaign-validation": "fnv1a-fddcbe93",
+      "stable-town-a": "fnv1a-0b99b69e",
+      "stable-town-b": "fnv1a-50f1a916"
+    },
+    "artifactFiles": [
+      {
+        "name": "manifest.json",
+        "bytes": 3087,
+        "sha256": "c41463764c193835a38b41d565d95b60bbca803ac57e30b33abe018a8fe3c64c"
+      },
+      {
+        "name": "case-quality-report.json",
+        "bytes": 7098,
+        "sha256": "bad478920977ddb83d126f4e8fca5eda369eac41bb22f7ca4257c3e58ddd0e25"
+      }
+    ],
+    "publicBoundary": {
+      "sanitizedBenchmarkSummary": true,
+      "artifactBodiesIncluded": false,
+      "localPathsIncluded": false,
+      "excludedBodies": [
+        "full quality metrics",
+        "raw case bodies",
+        "raw replay data",
+        "case continuity ids",
+        "agent state snapshots"
+      ]
+    }
+  },
+  "worldSystemInfluenceSummaryPath": "/review-catalog/world-system-influence-summary.json",
+  "worldSystemInfluenceSummaryHash": "3f45fc85ec0f1c76096f0c7b6475433c4bc7d1af7eea84b9768b08058db9aadf",
+  "worldSystemInfluence": {
+    "schemaVersion": "public-world-system-influence-summary.v1",
+    "generatedAt": "2026-07-15T14:59:51.420Z",
+    "sourceKind": "world-system-influence-audit",
+    "seedCount": 3,
+    "tickCount": 120,
+    "aggregate": {
+      "appliedBiasCount": 1044,
+      "maxBias": 4,
+      "hintedActionShare": 97,
+      "institutionLabelCoverage": 100,
+      "validCandidateTrendDelta": -1,
+      "actionKindDelta": {
+        "confront": -1,
+        "cover-up": -40,
+        "hide-trace": -41,
+        "investigate": 28,
+        "observe": -3,
+        "obtain-resource": 76,
+        "pressure": 41,
+        "seek-alibi": -32,
+        "spread-rumor": -28
+      }
+    },
+    "safety": {
+      "maxBiasOk": true,
+      "noLegalCandidateLoss": true,
+      "deterministicHashOk": true,
+      "publicSafe": true
+    },
+    "perSeed": [
+      {
+        "seed": "hint-audit-a",
+        "tickCount": 120,
+        "hintedActionShare": 98,
+        "appliedBiasCount": 352,
+        "maxBias": 4,
+        "validCandidateTrendDelta": -1,
+        "deterministicHash": "fnv1a-941ce85f"
+      },
+      {
+        "seed": "hint-audit-b",
+        "tickCount": 120,
+        "hintedActionShare": 97,
+        "appliedBiasCount": 348,
+        "maxBias": 4,
+        "validCandidateTrendDelta": 1,
+        "deterministicHash": "fnv1a-9ffb8e1d"
+      },
+      {
+        "seed": "hint-audit-c",
+        "tickCount": 120,
+        "hintedActionShare": 96,
+        "appliedBiasCount": 344,
+        "maxBias": 4,
+        "validCandidateTrendDelta": -1,
+        "deterministicHash": "fnv1a-8a63ca4f"
+      }
+    ],
+    "publicBoundary": {
+      "sanitizedAuditSummary": true,
+      "rawBodiesIncluded": false,
+      "rawIdsIncluded": false,
+      "localPathsIncluded": false,
+      "runtimeAuthority": false,
+      "excludedBodies": [
+        "raw replay data",
+        "raw case bodies",
+        "NPC ids",
+        "evidence ids",
+        "event/source ids",
+        "agent state snapshots",
+        "candidate lists"
+      ]
+    }
+  },
+  "datasets": [
+    {
+      "datasetId": "detective-town-v3-5000-campaign",
+      "title": "detective-town-v3-5000-campaign",
+      "sourceRunId": "campaign-campaign-validation-5000",
+      "generatedAt": "2026-07-03T13:41:57.633Z",
+      "staticPath": "/dataset-reader/detective-town-v3-5000-campaign",
+      "manifestPath": "/dataset-reader/detective-town-v3-5000-campaign/manifest-lite.json",
+      "readerIndexPath": "/dataset-reader/detective-town-v3-5000-campaign/reader-index.json",
+      "datasetCardPath": "/dataset-reader/detective-town-v3-5000-campaign/dataset-card.md",
+      "caseSummaryIndexPath": "/dataset-reader/detective-town-v3-5000-campaign/case-summary-index.json",
+      "contentHash": "cf2349ee7e3fa92a861cdeb95af6caac5c2a117b49b8aa7c54ac93d6c909a040",
+      "readerIndexHash": "be8199f60de8db4dc47d3c53b6408498c3ef9a1f69aee7383e5962213010e849",
+      "caseSummaryIndexHash": "16cd4fa2193dec3bd2bc306c54212e038c93d0b104852128973b9f9b75b0105e",
+      "caseSummaryCount": 30,
+      "fileCount": 4,
+      "bytes": 50031,
+      "gate": {
+        "tickCount": 5000,
+        "uniqueCases": 30,
+        "distinctCaseTypeCount": 15,
+        "candidateRepeatRate": 0,
+        "laterCaseInfluenceRate": 100,
+        "evidenceGraphWarnings": 0,
+        "runtimeMs": 150271,
+        "ok": true
+      },
+      "audit": {
+        "ok": true,
+        "errorCount": 0,
+        "warningCount": 42,
+        "secretLeakCount": 0,
+        "hiddenTruthLeakCount": 0
+      },
+      "readerSummary": {
+        "caseCount": 30,
+        "solvedCaseCount": 30,
+        "failedCaseCount": 0,
+        "distinctCaseTypeCount": 15,
+        "topCaseTypes": [
+          {
+            "id": "blackmail",
+            "count": 2
+          },
+          {
+            "id": "court-intimidation",
+            "count": 2
+          },
+          {
+            "id": "dock-smuggling",
+            "count": 2
+          },
+          {
+            "id": "evidence-tampering",
+            "count": 2
+          },
+          {
+            "id": "false-testimony",
+            "count": 2
+          },
+          {
+            "id": "family-scandal",
+            "count": 2
+          },
+          {
+            "id": "forged-will",
+            "count": 2
+          },
+          {
+            "id": "ledger-fraud",
+            "count": 2
+          }
+        ],
+        "distinctEvidenceTypeCount": 5,
+        "topEvidenceTypes": [
+          {
+            "id": "trace",
+            "count": 37
+          },
+          {
+            "id": "ledger",
+            "count": 23
+          },
+          {
+            "id": "rumor",
+            "count": 10
+          },
+          {
+            "id": "physical",
+            "count": 5
+          },
+          {
+            "id": "testimony",
+            "count": 5
+          }
+        ],
+        "caseGraph": {
+          "nodeCount": 30,
+          "edgeCount": 776,
+          "influencedLaterCaseCount": 29,
+          "laterCaseInfluenceRate": 100,
+          "topEdgeTypes": [
+            {
+              "id": "shared-location",
+              "count": 328
+            },
+            {
+              "id": "shared-npc",
+              "count": 326
+            },
+            {
+              "id": "aftermath",
+              "count": 29
+            },
+            {
+              "id": "institution-pressure",
+              "count": 29
+            },
+            {
+              "id": "public-opinion",
+              "count": 29
+            },
+            {
+              "id": "resource-delta",
+              "count": 29
+            },
+            {
+              "id": "evidence-contamination",
+              "count": 6
+            }
+          ]
+        },
+        "evidenceGraph": {
+          "nodeCount": 318,
+          "edgeCount": 498,
+          "evidenceNodeCount": 80,
+          "caseNodeCount": 30,
+          "warningCount": 0,
+          "completeEvidenceCaseCount": 30,
+          "resolvedEvidenceCaseCount": 30,
+          "completenessRate": 100
+        },
+        "worldPackageCount": 3
+      },
+      "caseTypeDistribution": [
+        {
+          "id": "blackmail",
+          "count": 2
+        },
+        {
+          "id": "court-intimidation",
+          "count": 2
+        },
+        {
+          "id": "dock-smuggling",
+          "count": 2
+        },
+        {
+          "id": "evidence-tampering",
+          "count": 2
+        },
+        {
+          "id": "false-testimony",
+          "count": 2
+        },
+        {
+          "id": "family-scandal",
+          "count": 2
+        },
+        {
+          "id": "forged-will",
+          "count": 2
+        },
+        {
+          "id": "ledger-fraud",
+          "count": 2
+        },
+        {
+          "id": "media-rumor",
+          "count": 2
+        },
+        {
+          "id": "medical-coverup",
+          "count": 2
+        },
+        {
+          "id": "merchant-extortion",
+          "count": 2
+        },
+        {
+          "id": "missing-person",
+          "count": 2
+        },
+        {
+          "id": "murder",
+          "count": 2
+        },
+        {
+          "id": "police-misjudgment",
+          "count": 2
+        },
+        {
+          "id": "witness-disappearance",
+          "count": 2
+        }
+      ],
+      "evidenceTypeDistribution": [
+        {
+          "id": "trace",
+          "count": 37
+        },
+        {
+          "id": "ledger",
+          "count": 23
+        },
+        {
+          "id": "rumor",
+          "count": 10
+        },
+        {
+          "id": "physical",
+          "count": 5
+        },
+        {
+          "id": "testimony",
+          "count": 5
+        }
+      ],
+      "worldPackages": [
+        {
+          "packageId": "city-hall-merchant-debt-town",
+          "name": "City Hall Merchant Debt Town",
+          "version": "1.0.0",
+          "license": "project-local-original",
+          "contentHash": "0cda1e6bb424ea3d070819a058b705293cca559869785f6e1c246193182bdf09"
+        },
+        {
+          "packageId": "dock-court-market-town",
+          "name": "Dock Court Market Town",
+          "version": "1.0.0",
+          "license": "project-local-original",
+          "contentHash": "a3e1dcf0e06ccc3f249d70bbcfd2698b8aa8205e5106a034d0061bafa7a8051a"
+        },
+        {
+          "packageId": "hospital-family-press-town",
+          "name": "Hospital Family Press Town",
+          "version": "1.0.0",
+          "license": "project-local-original",
+          "contentHash": "6ae8445d8ab4b687c8c9cbbe020470a9eb86021ffd6f89cd4f9ff3f4d2489f24"
+        }
+      ]
+    }
+  ]
+}

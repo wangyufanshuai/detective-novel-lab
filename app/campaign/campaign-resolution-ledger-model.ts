@@ -2,9 +2,9 @@ import type { CampaignCommandBrief } from "./campaign-command-brief-model";
 import type { CampaignBeatPresentation } from "./campaign-transition-model";
 import type { GuidedStepJournalEntry } from "./replay-practice-model";
 import type { StrategicCommandViewModel } from "./strategic-command-model";
-import type { StrategicSafeOutcome } from "./strategic-pacing-model";
+import type { StrategicActionLifecycle, StrategicSafeOutcome } from "./strategic-pacing-model";
 
-export type CampaignResolutionLedgerStatus = "idle" | "resolving" | "recorded" | "blocked" | "completed";
+export type CampaignResolutionLedgerStatus = "idle" | "resolving" | "recorded" | "rejected" | "blocked" | "cancelled" | "failed" | "completed";
 export type CampaignResolutionLedgerTone = "quiet" | "info" | "focus" | "warning" | "success";
 
 export type CampaignResolutionChain = {
@@ -39,6 +39,7 @@ export type CampaignResolutionLedgerInput = {
   transition?: CampaignBeatPresentation;
   guidedJournal?: readonly GuidedStepJournalEntry[];
   recentSafeOutcomes?: readonly StrategicSafeOutcome[];
+  actionLifecycle?: StrategicActionLifecycle;
 };
 
 const MAX_ENTRIES = 6 as const;
@@ -70,7 +71,7 @@ function stableSignature(parts: readonly string[]) {
 
 function statusTone(status: CampaignResolutionLedgerStatus): CampaignResolutionLedgerTone {
   if (status === "resolving") return "focus";
-  if (status === "blocked") return "warning";
+  if (status === "blocked" || status === "rejected" || status === "failed") return "warning";
   if (status === "completed") return "success";
   if (status === "recorded") return "info";
   return "quiet";
@@ -109,7 +110,7 @@ function buildEntry(input: {
     nextAction: safeText(input.nextAction, "Continue the next legal action.", 220)
   };
   return {
-    signature: stableSignature([status === "completed" ? "completed" : status === "blocked" ? "blocked" : "recorded", actionLabel, chain.result, chain.worldChange, chain.objectiveProgress]),
+    signature: stableSignature([status, actionLabel, chain.result, chain.worldChange, chain.objectiveProgress]),
     status,
     tone: statusTone(status),
     actionLabel,
@@ -140,14 +141,14 @@ function safeOutcomeEntry(
   command: StrategicCommandViewModel,
   brief: CampaignCommandBrief
 ): CampaignResolutionLedgerEntry {
-  const status = outcome.state === "blocked" || outcome.state === "failed-safe" ? "blocked" : "recorded";
+  const status = outcome.state === "failed-safe" ? "failed" : outcome.state === "succeeded" ? "recorded" : outcome.state;
   return buildEntry({
     status,
-    actionLabel: status === "blocked" ? "Action returned safely" : command.presentationFeedback.label,
+    actionLabel: outcome.actionLabel || "Recorded investigation action",
     result: outcome.immediateResult,
-    worldChange: command.runtimeMode === "server" && command.worldConsequenceTimeline.state !== "empty"
-      ? outcome.worldConsequence
-      : NO_WORLD_CHANGE,
+    worldChange: command.runtimeMode !== "server" || ["blocked", "cancelled", "failed-safe"].includes(outcome.state)
+      ? NO_WORLD_CHANGE
+      : outcome.worldChange ?? (outcome.state === "succeeded" && command.worldConsequenceTimeline.state !== "empty" ? outcome.worldConsequence : NO_WORLD_CHANGE),
     objectiveProgress: currentProgress(command),
     nextAction: outcome.nextObjective || brief.nextAction,
     authorityNote: brief.safeBoundary
@@ -155,17 +156,26 @@ function safeOutcomeEntry(
 }
 
 function ledgerStatus(input: CampaignResolutionLedgerInput, history: readonly CampaignResolutionLedgerEntry[]): CampaignResolutionLedgerStatus {
+  const state = input.actionLifecycle?.state;
+  if (state === "selected" || state === "resolving") return "resolving";
+  if (state) return state === "failed-safe" ? "failed" : state === "succeeded" ? "recorded" : state;
   if (input.transition?.phase === "action-resolving" || input.command.presentationFeedback.state === "resolving") return "resolving";
   if (input.command.presentationFeedback.state === "blocked") return "blocked";
   if (input.command.presentationFeedback.state === "completed" || input.command.campaignPacing?.status === "settled") return "completed";
-  if (history[0]?.status === "blocked") return "blocked";
+  if (history[0] && ["rejected", "blocked", "cancelled", "failed"].includes(history[0].status)) return history[0].status;
   if (history.length || input.command.presentationFeedback.state === "updated" || input.transition?.visible) return "recorded";
   return "idle";
 }
 
 function currentWorldChange(input: CampaignResolutionLedgerInput, base?: CampaignResolutionLedgerEntry) {
   if (input.command.runtimeMode === "static-demo") return NO_WORLD_CHANGE;
-  if (base && base.chain.worldChange !== NO_WORLD_CHANGE) return base.chain.worldChange;
+  if (input.actionLifecycle && ["selected", "resolving", "blocked", "cancelled", "failed-safe"].includes(input.actionLifecycle.state)) return NO_WORLD_CHANGE;
+  if (input.actionLifecycle?.worldChange !== undefined) return input.actionLifecycle.worldChange;
+  if (input.actionLifecycle && input.actionLifecycle.state !== "succeeded") return NO_WORLD_CHANGE;
+  if (base && ["rejected", "blocked", "cancelled", "failed"].includes(base.status)) return NO_WORLD_CHANGE;
+  // A recorded "no change" is itself authoritative. An old transition or
+  // world lead must not be re-attributed to the latest investigation action.
+  if (base) return base.chain.worldChange;
   const transitionOwnsWorldChange = input.transition?.kind === "world-choice-resolved"
     || input.transition?.kind === "case-opened"
     || input.transition?.kind === "chapter-transition"
@@ -190,12 +200,12 @@ function currentEntry(
     actionLabel: idle
       ? "No action resolved"
       : resolving
-      ? transition?.title || input.command.primaryAction?.label || input.command.presentationFeedback.label
+      ? input.actionLifecycle?.action?.label || transition?.title || input.command.primaryAction?.label || input.command.presentationFeedback.label
       : base?.actionLabel || transition?.eyebrow || input.command.presentationFeedback.label,
     result: idle
       ? "No result has been recorded yet."
       : resolving
-      ? transition?.detail || input.command.presentationFeedback.detail
+      ? input.actionLifecycle?.detail || transition?.detail || input.command.presentationFeedback.detail
       : base?.chain.result || input.command.presentationFeedback.detail || input.command.outcomeFeedback.immediate.detail,
     worldChange: resolving ? NO_WORLD_CHANGE : currentWorldChange(input, base),
     objectiveProgress: base?.chain.objectiveProgress || currentProgress(input.command),
@@ -224,10 +234,8 @@ export function buildCampaignResolutionLedger(input: CampaignResolutionLedgerInp
   const journalHistory = [...(input.guidedJournal || [])]
     .reverse()
     .map((entry) => journalEntry(entry, input.command, input.commandBrief));
-  const fallbackHistory = journalHistory.length
-    ? []
-    : (input.recentSafeOutcomes || []).map((outcome) => safeOutcomeEntry(outcome, input.command, input.commandBrief));
-  const initialHistory = uniqueBounded([...journalHistory, ...fallbackHistory]);
+  const actionHistory = (input.recentSafeOutcomes || []).map((outcome) => safeOutcomeEntry(outcome, input.command, input.commandBrief));
+  const initialHistory = uniqueBounded([...actionHistory, ...journalHistory]);
   const status = ledgerStatus(input, initialHistory);
   const latest = currentEntry(input, status, initialHistory[0]);
   const entries = uniqueBounded([latest, ...initialHistory]);

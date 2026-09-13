@@ -1,10 +1,12 @@
-import { errorResponse, fail, ok, readJson } from "@/app/api/v1/_utils";
+import { errorResponse, fail, adminOk, adminGuard, readJson } from "@/app/api/v1/_utils";
 import { loadRuntimeWorld, selectCurrentExperiment } from "@/app/api/v1/_town-runtime";
 import { findWorldPackageRegistryEntryById } from "@/app/api/v1/_world-package-registry";
 import { isDetectiveCampaignRouteId, type DetectiveCampaignRouteId } from "@/lib/engine";
 
 export async function POST(request: Request) {
   try {
+    const unauthorized = adminGuard(request);
+    if (unauthorized) return unauthorized;
     const body = await readJson<{ worldId?: string; packageId?: string; campaignRouteId?: DetectiveCampaignRouteId }>(request, {});
     if (!body.worldId) return fail("BAD_REQUEST", "worldId is required", 400);
     if (!body.packageId) return fail("BAD_REQUEST", "packageId is required", 400);
@@ -14,7 +16,7 @@ export async function POST(request: Request) {
     if (!loaded) return fail("WORLD_NOT_FOUND", "World not found", 404);
     const entry = findWorldPackageRegistryEntryById(body.packageId);
     if (!entry || !entry.validationOk || !entry.scenarioPackId) return fail("PACKAGE_NOT_FOUND", "Valid WorldPackage not found", 404);
-    return ok(selectCurrentExperiment(loaded.world, loaded.runtime, { scenarioPackId: entry.scenarioPackId, campaignRouteId: body.campaignRouteId }));
+    return adminOk(selectCurrentExperiment(loaded.world, loaded.runtime, { scenarioPackId: entry.scenarioPackId, campaignRouteId: body.campaignRouteId }));
   } catch (error) {
     if (error instanceof Error && error.name === "EXPERIMENT_PACK_NOT_FOUND") return fail("EXPERIMENT_PACK_NOT_FOUND", error.message, 404);
     if (error instanceof Error && error.name === "CAMPAIGN_ROUTE_LOCKED") return fail("CAMPAIGN_ROUTE_LOCKED", error.message, 409);

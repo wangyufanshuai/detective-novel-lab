@@ -1,13 +1,14 @@
 "use client";
 
-import { useRef } from "react";
+import { useInvestigationActionScope } from "@/app/hooks/useInvestigationActionScope";
+import { investigationActionBusy, investigationActionCancelled, type InvestigationActionResult } from "@/app/campaign/investigation-action-result";
 import type { useCampaignController } from "@/app/controllers/useCampaignController";
 import type { useInvestigationController } from "@/app/controllers/useInvestigationController";
 import type { useReplayController } from "@/app/controllers/useReplayController";
 import type { GuidedStepJournalEntry } from "@/app/campaign/replay-practice-model";
 import { useAppLocale } from "@/app/localization/locale-context";
 import { postJson } from "@/app/lib/client-runtime";
-import { submitDemoTheory } from "@/lib/engine";
+import { isPlayerTheoryInput, submitDemoTheory } from "@/lib/engine";
 import type {
   ArcConvergencePublicSummary,
   CampaignFinaleDebriefPublicSummary,
@@ -48,14 +49,12 @@ export function useTheorySubmissionActions({
   appendJournal,
   currentStaticState,
   hydrateStatic,
-  refreshTownRuntime,
   recordTheoryResult,
   recordMeaningfulAction
 }: TheorySubmissionActionsInput) {
-  const submitInFlight = useRef(false);
   const { t } = useAppLocale();
   const {
-    session, theory, runtimeMode, world, setTheory, setSession, setBusy, setProgress,
+    session, theory, runtimeMode, world, activeCase, setTheory, setSession, setBusy, setProgress,
     setInspectorTab, pushToast, setStatus
   } = investigation;
   const {
@@ -65,30 +64,42 @@ export function useTheorySubmissionActions({
     setInvestigatorHeadquarters, setArcConvergence, setCampaignSession, setCampaignFinaleDebrief
   } = campaign;
   const { replayGoalAttempt } = replay;
+  const actionScope = useInvestigationActionScope({
+    worldId: world?.id, caseId: activeCase?.id, sessionId: session?.id, runtimeMode
+  }, setBusy);
 
-  async function submitCurrentTheory(theoryOverride?: PlayerTheory, options?: { syncVisibleTheory?: boolean }) {
-    if (!session) return null;
-    const nextTheory = theoryOverride || theory;
-    if (theoryOverride && options?.syncVisibleTheory !== false) setTheory(theoryOverride);
-    if (runtimeMode === "static-demo") {
-      const state = currentStaticState();
-      if (!state) return null;
-      const next = submitDemoTheory(state, nextTheory);
-      hydrateStatic(next, false);
-      recordTheoryResult(Boolean(next.session.judgement?.accepted));
-      setInspectorTab("investigation");
-      pushToast({
-        tone: next.session.judgement?.accepted ? "success" : "warning",
-        title: next.session.judgement?.accepted ? "Theory accepted" : "Theory has gaps",
-        detail: next.session.judgement?.accepted ? "Answer review and final graph nodes are unlocked." : `Missing: ${next.session.judgement?.missing?.join(", ") || "key evidence chain"}`
-      });
-      setStatus(next.session.judgement?.accepted ? "Theory accepted. Final conclusion and answer review unlocked." : `Theory rejected: ${next.session.judgement?.missing?.join(", ") || "evidence chain incomplete"}`);
-      return next.session.judgement || null;
+  async function submitTheoryResult(theoryOverride?: PlayerTheory, options?: { syncVisibleTheory?: boolean }): Promise<InvestigationActionResult> {
+    if (!session || session.worldId !== world?.id || session.caseId !== activeCase?.id) {
+      return { status: "blocked", detail: t("status.joinFirst") };
     }
-    if (submitInFlight.current) return null;
-    submitInFlight.current = true;
-    setBusy(true);
+    const token = actionScope.begin();
+    if (!token) return investigationActionBusy();
     try {
+      const nextTheory = theoryOverride || theory;
+      if (!isPlayerTheoryInput(nextTheory)) return { status: "blocked", detail: "Choose a suspect and valid evidence groups before submitting the theory." };
+      if (theoryOverride && options?.syncVisibleTheory !== false) setTheory(theoryOverride);
+      if (runtimeMode === "static-demo") {
+        const state = currentStaticState();
+        if (!state) return { status: "blocked", detail: t("status.joinFirst") };
+        const next = submitDemoTheory(state, nextTheory);
+        if (!next.session.judgement) throw new Error("Theory response has no judgement");
+        hydrateStatic(next, false);
+        recordTheoryResult(Boolean(next.session.judgement?.accepted));
+        setInspectorTab("investigation");
+        pushToast({
+          tone: next.session.judgement?.accepted ? "success" : "warning",
+          title: next.session.judgement?.accepted ? "Theory accepted" : "Theory has gaps",
+          detail: next.session.judgement?.accepted ? "Answer review and final graph nodes are unlocked." : `Missing: ${next.session.judgement?.missing?.join(", ") || "key evidence chain"}`
+        });
+        setStatus(next.session.judgement?.accepted ? "Theory accepted. Final conclusion and answer review unlocked." : `Theory rejected: ${next.session.judgement?.missing?.join(", ") || "evidence chain incomplete"}`);
+        recordMeaningfulAction();
+        return {
+          status: next.session.judgement.accepted ? "succeeded" : "rejected",
+          detail: next.session.judgement.accepted ? "Theory accepted. Answer review unlocked." : "The theory still has proof gaps. Review the evidence and try again.",
+          worldChange: "No persistent world change",
+          judgement: next.session.judgement
+        };
+      }
       const data = await postJson<{
         judgement: PlayerSession["judgement"];
         session: PlayerSession;
@@ -107,6 +118,10 @@ export function useTheorySubmissionActions({
         campaignFinaleDebrief?: CampaignFinaleDebriefPublicSummary;
         townSocialResponse?: TownSocialResponsePublicSummary;
       }>("/api/investigation/submit-theory", { sessionId: session.id, theory: nextTheory });
+      if (!actionScope.isCurrent(token)) return investigationActionCancelled();
+      if (!data.session || data.session.id !== session.id || data.session.caseId !== activeCase.id || data.session.worldId !== world.id || !data.judgement) {
+        throw new Error("Theory response does not match the requested investigation");
+      }
       setSession(data.session);
       if (data.playerResourceCommitment) {
         setPlayerResourceCommitment(data.playerResourceCommitment);
@@ -149,7 +164,8 @@ export function useTheorySubmissionActions({
           result: "A bounded next-case follow-up is ready after the accepted theory.",
           progressDelta: "The next case queue will carry one safe preference without changing route coverage.", nextAction: data.worldLeadCaseHandoff.nextAction
         });
-        await refreshTownRuntime(world?.id).catch(() => undefined);
+        // The command already supplies its world and Campaign summaries. A
+        // second, unscoped runtime refresh could overwrite a newly opened case.
       }
       if (data.worldArc) {
         setWorldArc(data.worldArc);
@@ -234,18 +250,36 @@ export function useTheorySubmissionActions({
       });
       setStatus(data.judgement?.accepted ? "Theory accepted. Answer review can be generated." : `Theory rejected: ${data.judgement?.missing?.join(", ") || "evidence chain incomplete"}`);
       recordMeaningfulAction();
-      return data.judgement || null;
+      return {
+        status: data.judgement.accepted ? "succeeded" : "rejected",
+        detail: data.judgement.accepted ? "Theory accepted. Answer review unlocked." : "The theory still has proof gaps. Review the evidence and try again.",
+        worldChange: data.campaignRecovery
+          ? `${data.campaignRecovery.failureLabel} ${data.campaignRecovery.progressLabel}`
+          : data.worldLeadOutcome
+            ? `${data.worldLeadOutcome.benefitLabel} ${data.worldLeadOutcome.costLabel}`
+            : data.campaignSession
+              ? `${data.campaignSession.chapterLabel}: ${data.campaignSession.progressLabel}`
+              : "No persistent world change",
+        judgement: data.judgement
+      };
     } catch {
+      if (!actionScope.isCurrent(token)) return investigationActionCancelled();
       setStatus(t("error.submit"));
-      return null;
+      return { status: "failed", detail: t("error.submit") };
     } finally {
-      submitInFlight.current = false;
-      setBusy(false);
+      actionScope.finish(token);
     }
   }
 
+  // Guided practice needs the original judgement contract; UI actions consume
+  // the explicit result so rejected/failed submissions cannot appear successful.
+  async function submitCurrentTheory(theoryOverride?: PlayerTheory, options?: { syncVisibleTheory?: boolean }) {
+    const result = await submitTheoryResult(theoryOverride, options);
+    return result.judgement || null;
+  }
+
   async function submitTheory() {
-    await submitCurrentTheory();
+    return submitTheoryResult();
   }
 
   return { submitCurrentTheory, submitTheory };

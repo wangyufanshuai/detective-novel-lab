@@ -1,0 +1,189 @@
+{
+  "license": "SIL Open Font License 1.1",
+  "source": "https://fonts.google.com/noto",
+  "derivation": {
+    "description": "Real locally encoded WOFF2 subsets of official Noto SC static TTF faces. No remote font request is needed at runtime.",
+    "tool": "fontTools 4.63.0 with Brotli 1.2.0",
+    "script": "outputs/noir-font-subset/subset-fonts.py",
+    "originalEvidence": "outputs/noir-font-subset/originals/sources.original.json",
+    "charset": "GB2312 level-1 common Chinese (3,755) plus actual and Unicode-escaped printable characters in app, lib, packages, content, world-packs, Basic Latin, Latin-1, general/CJK punctuation and fullwidth forms supported by the original fonts.",
+    "sourceFileCount": 471,
+    "charsetSha256": "684df7bfd9d0b8c59439f1f2c8749c84aa7723f512ea637673ba10c9545e6228",
+    "requiredChineseCodepoints": 3763,
+    "scanNote": "Unicode escape range boundaries used by source regexes are excluded; they are code syntax rather than authored visible characters.",
+    "weights": "400 and 600 are real faces in both families. Other requested weights use normal browser matching/synthesis.",
+    "fallback": "Rare user-entered characters or symbols missing in the original Noto SC font use the application system/emoji font fallback.",
+    "internalNames": "Derivative internal family names are Noir Town Sans and Noir Town Serif. CSS aliases preserve the app-facing Noto Sans SC and Noto Serif SC family names.",
+    "budgetBytes": 4194304,
+    "actualFontBytes": 2603048,
+    "coverageNote": "All source characters are covered except U+241F, an internal hash delimiter absent from the original fonts and not player copy. All 3,763 required Chinese codepoints are present in every subset."
+  },
+  "resources": [
+    {
+      "family": "Noto Sans SC",
+      "internalFamily": "Noir Town Sans",
+      "weight": 400,
+      "path": "/fonts/noir/noir-sans-sc-regular.woff2",
+      "format": "woff2",
+      "bytes": 560732,
+      "sha256": "fc41d30b64277a5cd6bc9f16ceb51727fca5b9b0269e82db8b5164b76bfa3c42",
+      "glyphs": 4351,
+      "supportedRequestedCodepoints": 4279,
+      "sourceCodepointsCovered": 1346,
+      "sourceUnsupportedInOriginal": [
+        {
+          "codepoint": "U+241F",
+          "character": "␟",
+          "name": "SYMBOL FOR UNIT SEPARATOR"
+        }
+      ],
+      "requiredChineseCovered": 3763,
+      "missingRequiredChinese": [],
+      "original": {
+        "url": "https://fonts.gstatic.com/s/notosanssc/v40/k3kCo84MPvpLmixcA63oeAL7Iqp5IZJF9bmaG9_FnYw.ttf",
+        "sha256": "450625c8d46ab3df97b7904ded955ec2746d17ec76740cb1e91d1ba63a0f89af",
+        "bytes": 10540644,
+        "archivePath": "outputs/noir-font-subset/originals/16614f6ffef6141858.ttf"
+      }
+    },
+    {
+      "family": "Noto Sans SC",
+      "internalFamily": "Noir Town Sans",
+      "weight": 600,
+      "path": "/fonts/noir/noir-sans-sc-semibold.woff2",
+      "format": "woff2",
+      "bytes": 571384,
+      "sha256": "a2988d9018301b50ae57e19a90528a8441cedf89e88dab53be7ca2d04417c1db",
+      "glyphs": 4351,
+      "supportedRequestedCodepoints": 4279,
+      "sourceCodepointsCovered": 1346,
+      "sourceUnsupportedInOriginal": [
+        {
+          "codepoint": "U+241F",
+          "character": "␟",
+          "name": "SYMBOL FOR UNIT SEPARATOR"
+        }
+      ],
+      "requiredChineseCovered": 3763,
+      "missingRequiredChinese": [],
+      "original": {
+        "url": "https://fonts.gstatic.com/s/notosanssc/v40/k3kCo84MPvpLmixcA63oeAL7Iqp5IZJF9bmaGwHCnYw.ttf",
+        "sha256": "7c941d13e1f99a7c78fc89ef734b9322404804573a936085f7a910b47b8bb984",
+        "bytes": 10530348,
+        "archivePath": "outputs/noir-font-subset/originals/a9fb3edf8ec6199047.ttf"
+      }
+    },
+    {
+      "family": "Noto Serif SC",
+      "internalFamily": "Noir Town Serif",
+      "weight": 400,
+      "path": "/fonts/noir/noir-serif-sc-regular.woff2",
+      "format": "woff2",
+      "bytes": 730564,
+      "sha256": "d82ece560e9b19d2cea7a23068863e42a4d54269af8fbdc47f3cd19719026623",
+      "glyphs": 4352,
+      "supportedRequestedCodepoints": 4279,
+      "sourceCodepointsCovered": 1346,
+      "sourceUnsupportedInOriginal": [
+        {
+          "codepoint": "U+241F",
+          "character": "␟",
+          "name": "SYMBOL FOR UNIT SEPARATOR"
+        }
+      ],
+      "requiredChineseCovered": 3763,
+      "missingRequiredChinese": [],
+      "original": {
+        "url": "https://fonts.gstatic.com/s/notoserifsc/v35/H4cyBXePl9DZ0Xe7gG9cyOj7uK2-n-D2rd4FY7SCqyWv.ttf",
+        "sha256": "968be826d702638d29546002a5e24d8c55036ab441bbc09db9e22aee90d73606",
+        "bytes": 14780348,
+        "archivePath": "outputs/noir-font-subset/originals/c5d53f3aebe1280769.ttf"
+      }
+    },
+    {
+      "family": "Noto Serif SC",
+      "internalFamily": "Noir Town Serif",
+      "weight": 600,
+      "path": "/fonts/noir/noir-serif-sc-semibold.woff2",
+      "format": "woff2",
+      "bytes": 740368,
+      "sha256": "08c5f66f74c8e683eb57a78d8f0d25c43c8a3fdc4b835cccae34f156c9682502",
+      "glyphs": 4352,
+      "supportedRequestedCodepoints": 4279,
+      "sourceCodepointsCovered": 1346,
+      "sourceUnsupportedInOriginal": [
+        {
+          "codepoint": "U+241F",
+          "character": "␟",
+          "name": "SYMBOL FOR UNIT SEPARATOR"
+        }
+      ],
+      "requiredChineseCovered": 3763,
+      "missingRequiredChinese": [],
+      "original": {
+        "url": "https://fonts.gstatic.com/s/notoserifsc/v35/H4cyBXePl9DZ0Xe7gG9cyOj7uK2-n-D2rd4FY7RcrCWv.ttf",
+        "sha256": "8f0a6604f5c914c190a480948dab6d29417250cf204b3cd6acdb4fbe8ce1921e",
+        "bytes": 14779772,
+        "archivePath": "outputs/noir-font-subset/originals/eeb9ac3e6b8797aadb.ttf"
+      }
+    }
+  ],
+  "originalDownloads": [
+    {
+      "url": "https://fonts.gstatic.com/s/notosanssc/v40/k3kCo84MPvpLmixcA63oeAL7Iqp5IZJF9bmaGzjCnYw.ttf",
+      "bytes": 10530408,
+      "sha256": "0066a522a1ac007c1d72bc4fccb114f80ff7294641c78cead9715bd14d43b9ea",
+      "archivePath": "outputs/noir-font-subset/originals/205c4073f74022c186.ttf",
+      "originalPublicPath": "/fonts/noir/205c4073f74022c186.ttf"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/notosanssc/v40/k3kCo84MPvpLmixcA63oeAL7Iqp5IZJF9bmaG9_FnYw.ttf",
+      "bytes": 10540644,
+      "sha256": "450625c8d46ab3df97b7904ded955ec2746d17ec76740cb1e91d1ba63a0f89af",
+      "archivePath": "outputs/noir-font-subset/originals/16614f6ffef6141858.ttf",
+      "originalPublicPath": "/fonts/noir/16614f6ffef6141858.ttf"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/notosanssc/v40/k3kCo84MPvpLmixcA63oeAL7Iqp5IZJF9bmaGwHCnYw.ttf",
+      "bytes": 10530348,
+      "sha256": "7c941d13e1f99a7c78fc89ef734b9322404804573a936085f7a910b47b8bb984",
+      "archivePath": "outputs/noir-font-subset/originals/a9fb3edf8ec6199047.ttf",
+      "originalPublicPath": "/fonts/noir/a9fb3edf8ec6199047.ttf"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/notosanssc/v40/k3kCo84MPvpLmixcA63oeAL7Iqp5IZJF9bmaG-3FnYw.ttf",
+      "bytes": 10533840,
+      "sha256": "09f17deea660cdd9cc2ba1e8b90adad18eabeca73b62b3c5f76b7ec3b61b33e0",
+      "archivePath": "outputs/noir-font-subset/originals/9baf16aadfb7ffab2c.ttf",
+      "originalPublicPath": "/fonts/noir/9baf16aadfb7ffab2c.ttf"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/notoserifsc/v35/H4cyBXePl9DZ0Xe7gG9cyOj7uK2-n-D2rd4FY7RlrCWv.ttf",
+      "bytes": 14779260,
+      "sha256": "9868e5845782ccce226e0941b7a5d1fea3b2520f7e59e6e62e89e02f132eb0ab",
+      "archivePath": "outputs/noir-font-subset/originals/7859742aac213aa381.ttf",
+      "originalPublicPath": "/fonts/noir/7859742aac213aa381.ttf"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/notoserifsc/v35/H4cyBXePl9DZ0Xe7gG9cyOj7uK2-n-D2rd4FY7RcrCWv.ttf",
+      "bytes": 14779772,
+      "sha256": "8f0a6604f5c914c190a480948dab6d29417250cf204b3cd6acdb4fbe8ce1921e",
+      "archivePath": "outputs/noir-font-subset/originals/eeb9ac3e6b8797aadb.ttf",
+      "originalPublicPath": "/fonts/noir/eeb9ac3e6b8797aadb.ttf"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/notoserifsc/v35/H4cyBXePl9DZ0Xe7gG9cyOj7uK2-n-D2rd4FY7SCqyWv.ttf",
+      "bytes": 14780348,
+      "sha256": "968be826d702638d29546002a5e24d8c55036ab441bbc09db9e22aee90d73606",
+      "archivePath": "outputs/noir-font-subset/originals/c5d53f3aebe1280769.ttf",
+      "originalPublicPath": "/fonts/noir/c5d53f3aebe1280769.ttf"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/notoserifsc/v35/H4cyBXePl9DZ0Xe7gG9cyOj7uK2-n-D2rd4FY7SwqyWv.ttf",
+      "bytes": 14780368,
+      "sha256": "5e792d889dd5c4c853cd5cee57e839ff97088287280a0efc88dab7b335be0fa9",
+      "archivePath": "outputs/noir-font-subset/originals/55ca7b47574af0a327.ttf",
+      "originalPublicPath": "/fonts/noir/55ca7b47574af0a327.ttf"
+    }
+  ]
+}

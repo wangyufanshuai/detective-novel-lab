@@ -1,0 +1,204 @@
+{
+  "version": 1,
+  "generatedWith": "built-in image_gen",
+  "records": [
+    {
+      "key": "town-reckoning",
+      "tool": "built-in image_gen",
+      "source": "generated-original",
+      "license": "OpenAI generated original",
+      "sourceSha256": "12fd6992217b83d1aa9093379c813b36e0fed8d202db34bcd1bc73e84bf97126",
+      "prompt": "Use case: stylized-concept. Asset type: full-bleed browser detective-game district artwork, usable as both map background and case-selection hero. Create one richly painted high-detail isometric noir district landscape, landscape 1536x1024, elevated 40-degree aerial view of a coherent walkable district, beautiful architectural realism and painterly texture. Late 1930s fictional town at a rainy blue-black evening. Ink #0B1013 shadows, aged paper #E7DDC8 stone, brass #B99B63 highlights. Carefully placed pools of warm window light, cool mist, wet tactile masonry, cinematic composition, architecture fills the frame. No labels, no lettering, no UI, no symbols, no map pins, no diagram, no geometric placeholder blocks, no border, no watermark. No identifiable people or story-specific murder evidence. District: Civic Records Quarter. Scene: A severe municipal records quarter: stone city hall with a broad stair and clock tower, colonnaded courthouse, narrow ledger-window archive, rain-soaked civic square, old shopfronts, cast iron street lamps. Strong civic geometry; no castles.",
+      "width": 1536,
+      "height": 1024,
+      "quality": 80,
+      "bytes": 317980,
+      "sha256": "b60f79aad16bc090d8c0cfc5316d3a2e686182a2778d21c8f12b8809d0268822",
+      "paths": [
+        "/noir-archive/town-reckoning/cover.webp",
+        "/noir-archive/town-reckoning/map.webp"
+      ],
+      "use": "One district artwork, cover crop and full map background; no case truth or labels"
+    },
+    {
+      "key": "clinic-headlines",
+      "tool": "built-in image_gen",
+      "source": "generated-original",
+      "license": "OpenAI generated original",
+      "sourceSha256": "7d971f11d644e43957af34ca4cffd8c5dec94a7d9bd99146da30458748a1c467",
+      "prompt": "Use case: stylized-concept. Asset type: full-bleed browser detective-game district artwork, usable as both map background and case-selection hero. Create one richly painted high-detail isometric noir district landscape, landscape 1536x1024, elevated 40-degree aerial view of a coherent walkable district, beautiful architectural realism and painterly texture. Late 1930s fictional town at a rainy blue-black evening. Ink #0B1013 shadows, aged paper #E7DDC8 stone, brass #B99B63 highlights. Carefully placed pools of warm window light, cool mist, wet tactile masonry, cinematic composition, architecture fills the frame. No labels, no lettering, no UI, no symbols, no map pins, no diagram, no geometric placeholder blocks, no border, no watermark. No identifiable people or story-specific murder evidence. District: Clinic and Press Ward. Scene: A dense clinic and newspaper quarter: pale milk-glass clinic windows, red-brick newspaper press house, guarded townhouse doorsteps, covered hospital courtyard, printing-works skylights and quiet wet streets. Medical light against warm printing rooms; no modern hospital towers.",
+      "width": 1536,
+      "height": 1024,
+      "quality": 80,
+      "bytes": 299756,
+      "sha256": "40b59961d61ffcb7b52f5d844633c5212df1852a4ad9c21ce6dd4ea1f5ce1d55",
+      "paths": [
+        "/noir-archive/clinic-headlines/cover.webp",
+        "/noir-archive/clinic-headlines/map.webp"
+      ],
+      "use": "One district artwork, cover crop and full map background; no case truth or labels"
+    },
+    {
+      "key": "scholarly-silence",
+      "tool": "built-in image_gen",
+      "source": "generated-original",
+      "license": "OpenAI generated original",
+      "sourceSha256": "e396cd8bc56cdda85646ff5f77b41dbf903f49b429c3500acfcce1bf0d1bfcbe",
+      "prompt": "Use case: stylized-concept. Asset type: full-bleed browser detective-game district artwork, usable as both map background and case-selection hero. Create one richly painted high-detail isometric noir district landscape, landscape 1536x1024, elevated 40-degree aerial view of a coherent walkable district, beautiful architectural realism and painterly texture. Late 1930s fictional town at a rainy blue-black evening. Ink #0B1013 shadows, aged paper #E7DDC8 stone, brass #B99B63 highlights. Carefully placed pools of warm window light, cool mist, wet tactile masonry, cinematic composition, architecture fills the frame. No labels, no lettering, no UI, no symbols, no map pins, no diagram, no geometric placeholder blocks, no border, no watermark. No identifiable people or story-specific murder evidence. District: Academy Quadrangle. Scene: An old academy quadrangle: cloisters surrounding a rain-polished slate court, a tall library with lamplit arched windows, faculty archive annex, narrow covered walkways, ivy-covered masonry and a quiet stone fountain.",
+      "width": 1536,
+      "height": 1024,
+      "quality": 85,
+      "bytes": 340736,
+      "sha256": "4a3c53696b2e51b9f1c27f88d3ab61a4efd47e7dd50d6085d793a56ee64759a8",
+      "paths": [
+        "/noir-archive/scholarly-silence/cover.webp",
+        "/noir-archive/scholarly-silence/map.webp"
+      ],
+      "use": "One district artwork, cover crop and full map background; no case truth or labels"
+    },
+    {
+      "key": "memorial-trust",
+      "tool": "built-in image_gen",
+      "source": "generated-original",
+      "license": "OpenAI generated original",
+      "sourceSha256": "04835fdbc70ca9990916c209138f476828c8ab41816ec807a0db90f34b91a22f",
+      "prompt": "Use case: stylized-concept. Asset type: full-bleed browser detective-game district artwork, usable as both map background and case-selection hero. Create one richly painted high-detail isometric noir district landscape, landscape 1536x1024, elevated 40-degree aerial view of a coherent walkable district, beautiful architectural realism and painterly texture. Late 1930s fictional town at a rainy blue-black evening. Ink #0B1013 shadows, aged paper #E7DDC8 stone, brass #B99B63 highlights. Carefully placed pools of warm window light, cool mist, wet tactile masonry, cinematic composition, architecture fills the frame. No labels, no lettering, no UI, no symbols, no map pins, no diagram, no geometric placeholder blocks, no border, no watermark. No identifiable people or story-specific murder evidence. District: Memorial Garden. Scene: A memorial garden district: misty walled formal garden, old stone memorial pavilion, modest mausoleum, restrained funerary brass gates, caretaker house, flower seller by the entrance, pools of lamplight along wet paths and cypress trees.",
+      "width": 1536,
+      "height": 1024,
+      "quality": 85,
+      "bytes": 248748,
+      "sha256": "3f9d746cdd9ab055677c5fcd3bb076517b4e43f9f73d5c2e5fac5472fb8ac900",
+      "paths": [
+        "/noir-archive/memorial-trust/cover.webp",
+        "/noir-archive/memorial-trust/map.webp"
+      ],
+      "use": "One district artwork, cover crop and full map background; no case truth or labels"
+    },
+    {
+      "key": "harbor-testimony",
+      "tool": "built-in image_gen",
+      "source": "generated-original",
+      "license": "OpenAI generated original",
+      "sourceSha256": "cd658819741c60a15603a2c188a22d7e955f401cc24d6a3cdf0f3627f6263a4f",
+      "prompt": "Use case: stylized-concept. Asset type: full-bleed browser detective-game district artwork, usable as both map background and case-selection hero. Create one richly painted high-detail isometric noir district landscape, landscape 1536x1024, elevated 40-degree aerial view of a coherent walkable district, beautiful architectural realism and painterly texture. Late 1930s fictional town at a rainy blue-black evening. Ink #0B1013 shadows, aged paper #E7DDC8 stone, brass #B99B63 highlights. Carefully placed pools of warm window light, cool mist, wet tactile masonry, cinematic composition, architecture fills the frame. No labels, no lettering, no UI, no symbols, no map pins, no diagram, no geometric placeholder blocks, no border, no watermark. No identifiable people or story-specific murder evidence. District: Harbor Tribunal. Scene: A foggy working harbor district: tribunal customs house beside wet stone quays, iron cargo cranes, red-brick bonded warehouses, moored cargo boats, covered witness passage and lamps reflected in dark water. The water and docks are prominent.",
+      "width": 1536,
+      "height": 1024,
+      "quality": 85,
+      "bytes": 269302,
+      "sha256": "671b85ab6658763cdab627f9fc3a551818b5e45ccb36eaed65d29e446004bfe4",
+      "paths": [
+        "/noir-archive/harbor-testimony/cover.webp",
+        "/noir-archive/harbor-testimony/map.webp"
+      ],
+      "use": "One district artwork, cover crop and full map background; no case truth or labels"
+    },
+    {
+      "key": "railbound-alibi",
+      "tool": "built-in image_gen",
+      "source": "generated-original",
+      "license": "OpenAI generated original",
+      "sourceSha256": "eecf30e8e4d0818fc78562a270fc38c8ef3c9101a5bf2a1044ab4a410a3a833d",
+      "prompt": "Use case: stylized-concept. Asset type: full-bleed browser detective-game district artwork, usable as both map background and case-selection hero. Create one richly painted high-detail isometric noir district landscape, landscape 1536x1024, elevated 40-degree aerial view of a coherent walkable district, beautiful architectural realism and painterly texture. Late 1930s fictional town at a rainy blue-black evening. Ink #0B1013 shadows, aged paper #E7DDC8 stone, brass #B99B63 highlights. Carefully placed pools of warm window light, cool mist, wet tactile masonry, cinematic composition, architecture fills the frame. No labels, no lettering, no UI, no symbols, no map pins, no diagram, no geometric placeholder blocks, no border, no watermark. No identifiable people or story-specific murder evidence. District: Signal Yard. Scene: A rain-black railway signal yard: multiple curving rails, small signal cabins, red semaphore lights, old station shed, a coal-dark engine house, iron pedestrian footbridge, sidings with vintage rail cars and mist behind them.",
+      "width": 1536,
+      "height": 1024,
+      "quality": 85,
+      "bytes": 297758,
+      "sha256": "4840e7deb0929036a4ef8ddb9ebfb454b8d290d326c0a96aaa8b77f1bbb6889f",
+      "paths": [
+        "/noir-archive/railbound-alibi/cover.webp",
+        "/noir-archive/railbound-alibi/map.webp"
+      ],
+      "use": "One district artwork, cover crop and full map background; no case truth or labels"
+    },
+    {
+      "key": "furnace-oath",
+      "tool": "built-in image_gen",
+      "source": "generated-original",
+      "license": "OpenAI generated original",
+      "sourceSha256": "f786bec256796d57b87a5fd0bbb3cfdcaf5060a29bb50babfa08c9530cc34bb2",
+      "prompt": "Use case: stylized-concept. Asset type: full-bleed browser detective-game district artwork, usable as both map background and case-selection hero. Create one richly painted high-detail isometric noir district landscape, landscape 1536x1024, elevated 40-degree aerial view of a coherent walkable district, beautiful architectural realism and painterly texture. Late 1930s fictional town at a rainy blue-black evening. Ink #0B1013 shadows, aged paper #E7DDC8 stone, brass #B99B63 highlights. Carefully placed pools of warm window light, cool mist, wet tactile masonry, cinematic composition, architecture fills the frame. No labels, no lettering, no UI, no symbols, no map pins, no diagram, no geometric placeholder blocks, no border, no watermark. No identifiable people or story-specific murder evidence. District: Foundry Gate. Scene: A looming industrial foundry district: glowing furnace mouths behind black steel frames, brick chimney stacks, inspection gatehouse, workers' clock-in yard, covered loading sheds, scorched cobblestones and red-orange molten light reflecting in rain.",
+      "width": 1536,
+      "height": 1024,
+      "quality": 85,
+      "bytes": 319192,
+      "sha256": "7d0f4306a27f506631604b4d07aa0fa1a831625bcfbb972d8456f3edcc490362",
+      "paths": [
+        "/noir-archive/furnace-oath/cover.webp",
+        "/noir-archive/furnace-oath/map.webp"
+      ],
+      "use": "One district artwork, cover crop and full map background; no case truth or labels"
+    },
+    {
+      "key": "floodgate-covenant",
+      "tool": "built-in image_gen",
+      "source": "generated-original",
+      "license": "OpenAI generated original",
+      "sourceSha256": "5d60a663e57c725779e55a29fa5f55694399c8be6ca0b2245c318bef259c5172",
+      "prompt": "Use case: stylized-concept. Asset type: full-bleed browser detective-game district artwork, usable as both map background and case-selection hero. Create one richly painted high-detail isometric noir district landscape, landscape 1536x1024, elevated 40-degree aerial view of a coherent walkable district, beautiful architectural realism and painterly texture. Late 1930s fictional town at a rainy blue-black evening. Ink #0B1013 shadows, aged paper #E7DDC8 stone, brass #B99B63 highlights. Carefully placed pools of warm window light, cool mist, wet tactile masonry, cinematic composition, architecture fills the frame. No labels, no lettering, no UI, no symbols, no map pins, no diagram, no geometric placeholder blocks, no border, no watermark. No identifiable people or story-specific murder evidence. District: River Lock District. Scene: A river lock district: huge aged concrete floodgates, brass and oxidized iron winding mechanisms, narrow lock keeper buildings, water gauge pillars, a footbridge crossing dark canal water, deep wet retaining walls and floodlights in mist.",
+      "width": 1536,
+      "height": 1024,
+      "quality": 85,
+      "bytes": 299556,
+      "sha256": "818bea0b50189cb67c7e2cd9f7ce1b86dbf1ba17cf1a582700c173760b6589e9",
+      "paths": [
+        "/noir-archive/floodgate-covenant/cover.webp",
+        "/noir-archive/floodgate-covenant/map.webp"
+      ],
+      "use": "One district artwork, cover crop and full map background; no case truth or labels"
+    },
+    {
+      "key": "grand-hotel-register",
+      "tool": "built-in image_gen",
+      "source": "generated-original",
+      "license": "OpenAI generated original",
+      "sourceSha256": "bdefdfe575f397c9b55eb51a905f0468b2c1252cda296d36cc465589c756f97f",
+      "prompt": "Use case: stylized-concept. Asset type: full-bleed browser detective-game district artwork, usable as both map background and case-selection hero. Create one richly painted high-detail isometric noir district landscape, landscape 1536x1024, elevated 40-degree aerial view of a coherent walkable district, beautiful architectural realism and painterly texture. Late 1930s fictional town at a rainy blue-black evening. Ink #0B1013 shadows, aged paper #E7DDC8 stone, brass #B99B63 highlights. Carefully placed pools of warm window light, cool mist, wet tactile masonry, cinematic composition, architecture fills the frame. No labels, no lettering, no UI, no symbols, no map pins, no diagram, no geometric placeholder blocks, no border, no watermark. No identifiable people or story-specific murder evidence. District: Grand Hotel. Scene: An elegant 1930s grand hotel district: large art deco hotel with stepped roofline, bright brass-and-glass lobby entrance, sheltered car drop-off, service alley and rear kitchens, midnight-blue window curtains, small surrounding shops and rain-polished paving.",
+      "width": 1536,
+      "height": 1024,
+      "quality": 85,
+      "bytes": 268872,
+      "sha256": "c8fb1b9b98b759185712a11d1c30ada61b903573427cf771695656f3c806cb08",
+      "paths": [
+        "/noir-archive/grand-hotel-register/cover.webp",
+        "/noir-archive/grand-hotel-register/map.webp"
+      ],
+      "use": "One district artwork, cover crop and full map background; no case truth or labels"
+    },
+    {
+      "key": "blackout-ledger",
+      "tool": "built-in image_gen",
+      "source": "generated-original",
+      "license": "OpenAI generated original",
+      "sourceSha256": "1baa1ec880fb1d12a8a7f96781ad9f277f16c21c208ef37ab5828a4f3e9f3c3f",
+      "prompt": "Use case: stylized-concept. Asset type: full-bleed browser detective-game district artwork, usable as both map background and case-selection hero. Create one richly painted high-detail isometric noir district landscape, landscape 1536x1024, elevated 40-degree aerial view of a coherent walkable district, beautiful architectural realism and painterly texture. Late 1930s fictional town at a rainy blue-black evening. Ink #0B1013 shadows, aged paper #E7DDC8 stone, brass #B99B63 highlights. Carefully placed pools of warm window light, cool mist, wet tactile masonry, cinematic composition, architecture fills the frame. No labels, no lettering, no UI, no symbols, no map pins, no diagram, no geometric placeholder blocks, no border, no watermark. No identifiable people or story-specific murder evidence. District: Power Station Ward. Scene: A partly dark power station district: brick turbine hall, dense electrical switchyard, copper pipes, black control-room windows, overhead service gantries, a few amber emergency lamps and nearby streets in blackout. No futuristic technology.",
+      "width": 1536,
+      "height": 1024,
+      "quality": 85,
+      "bytes": 303130,
+      "sha256": "97646b395cad0a601116c3093ce69eabc6535c415889d21f77bdbb15d6450d65",
+      "paths": [
+        "/noir-archive/blackout-ledger/cover.webp",
+        "/noir-archive/blackout-ledger/map.webp"
+      ],
+      "use": "One district artwork, cover crop and full map background; no case truth or labels"
+    },
+    {
+      "key": "wireless-shadows",
+      "tool": "built-in image_gen",
+      "source": "generated-original",
+      "license": "OpenAI generated original",
+      "sourceSha256": "940d5ed68fbedc78a69100413b28af668c41b5353082a60ec23e169e5e7fb5d0",
+      "prompt": "Use case: stylized-concept. Asset type: full-bleed browser detective-game district artwork, usable as both map background and case-selection hero. Create one richly painted high-detail isometric noir district landscape, landscape 1536x1024, elevated 40-degree aerial view of a coherent walkable district, beautiful architectural realism and painterly texture. Late 1930s fictional town at a rainy blue-black evening. Ink #0B1013 shadows, aged paper #E7DDC8 stone, brass #B99B63 highlights. Carefully placed pools of warm window light, cool mist, wet tactile masonry, cinematic composition, architecture fills the frame. No labels, no lettering, no UI, no symbols, no map pins, no diagram, no geometric placeholder blocks, no border, no watermark. No identifiable people or story-specific murder evidence. District: Wireless Tower District. Scene: An atmospheric wireless station quarter: a very tall slender 1930s radio mast with guy wires in mist, art deco transmitter building, separate press room annex, roof antennas and tuning workshop windows glowing subdued electric cyan amid warm street lamps.",
+      "width": 1536,
+      "height": 1024,
+      "quality": 85,
+      "bytes": 272266,
+      "sha256": "dfd648dc9b1d2a7de85a6a0aefe711d4b795e012ebc08695d802829a45016d72",
+      "paths": [
+        "/noir-archive/wireless-shadows/cover.webp",
+        "/noir-archive/wireless-shadows/map.webp"
+      ],
+      "use": "One district artwork, cover crop and full map background; no case truth or labels"
+    }
+  ]
+}

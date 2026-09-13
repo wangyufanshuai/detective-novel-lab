@@ -1,14 +1,16 @@
-import { errorResponse, fail, ok, readJson } from "@/app/api/v1/_utils";
+import { errorResponse, fail, adminOk, adminGuard, readJson } from "@/app/api/v1/_utils";
 
 export async function POST(request: Request) {
   try {
+    const unauthorized = adminGuard(request);
+    if (unauthorized) return unauthorized;
     const body = await readJson<{ packageId?: string; format?: "folder" | "zip" }>(request, {});
     if (!body.packageId) return fail("BAD_REQUEST", "packageId is required", 400);
     if (!/^[a-z0-9._-]+$/i.test(body.packageId)) return fail("BAD_REQUEST", "Invalid packageId", 400);
     if (body.format && body.format !== "folder") return fail("BAD_REQUEST", "Only folder export is supported without adding a zip dependency.", 400);
     const { exportWorldPackage } = await import("@/lib/world-package-catalog");
     const report = exportWorldPackage({ packageId: body.packageId, format: "folder" });
-    return ok({
+    return adminOk({
       packageId: report.packageId,
       exportedAt: report.exportedAt,
       format: report.format,

@@ -1,0 +1,6 @@
+.investigation { display: grid; gap: 26px; width: 100%; min-width: 0; font-size: 16px; }
+.caseOperations, .supportingRecords { border-top: 1px solid #b99b6335; color: #e7ddc8; }
+.caseOperations > summary, .supportingRecords > summary { cursor: pointer; padding: 20px 3px; min-height: 56px; font-family: var(--font-noir-serif, Georgia, serif); font-size: 19px; color: #b99b63; }
+.caseOperations > div { padding: 12px 0; }
+.supportingRecords { opacity: .85; }
+.supportingRecords[open] { opacity: 1; }

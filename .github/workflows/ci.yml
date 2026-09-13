@@ -46,6 +46,15 @@ jobs:
       - name: Detective content validation
         run: npm run content:validate -- --json
 
+      - name: v11 Alpha Campaign contracts
+        run: |
+          npm run test:campaign-content -- --json
+          npm run test:authored-campaign-cases -- --json
+          npm run test:campaign-pacing -- --json
+          npm run test:campaign-front-door -- --json
+          npm run test:noir-presentation -- --json
+          npm run test:v11-world-packages -- --json
+
       - name: Repository privacy and artifact boundary
         run: npm run quality:repository-safety
 
@@ -60,6 +69,9 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Twelve-Campaign Server smoke
+        run: npm run test:twelve-campaign-smoke -- --json
 
       - name: Scenario Agent API smoke
         run: npm run test:scenario-api

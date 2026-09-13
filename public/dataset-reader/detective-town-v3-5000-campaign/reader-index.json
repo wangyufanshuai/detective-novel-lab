@@ -1,0 +1,452 @@
+{
+  "schemaVersion": "dataset-reader.v1",
+  "datasetId": "detective-town-v3-5000-campaign",
+  "sourceRunId": "campaign-campaign-validation-5000",
+  "generatedAt": "2026-07-03T13:41:57.633Z",
+  "gate": {
+    "tickCount": 5000,
+    "uniqueCases": 30,
+    "distinctCaseTypeCount": 15,
+    "candidateRepeatRate": 0,
+    "laterCaseInfluenceRate": 100,
+    "evidenceGraphWarnings": 0,
+    "runtimeMs": 150271,
+    "ok": true
+  },
+  "audit": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 42,
+    "secretLeakCount": 0,
+    "hiddenTruthLeakCount": 0
+  },
+  "summary": {
+    "caseCount": 30,
+    "solvedCaseCount": 30,
+    "failedCaseCount": 0,
+    "distinctCaseTypeCount": 15,
+    "topCaseTypes": [
+      {
+        "id": "blackmail",
+        "count": 2
+      },
+      {
+        "id": "court-intimidation",
+        "count": 2
+      },
+      {
+        "id": "dock-smuggling",
+        "count": 2
+      },
+      {
+        "id": "evidence-tampering",
+        "count": 2
+      },
+      {
+        "id": "false-testimony",
+        "count": 2
+      },
+      {
+        "id": "family-scandal",
+        "count": 2
+      },
+      {
+        "id": "forged-will",
+        "count": 2
+      },
+      {
+        "id": "ledger-fraud",
+        "count": 2
+      }
+    ],
+    "distinctEvidenceTypeCount": 5,
+    "topEvidenceTypes": [
+      {
+        "id": "trace",
+        "count": 37
+      },
+      {
+        "id": "ledger",
+        "count": 23
+      },
+      {
+        "id": "rumor",
+        "count": 10
+      },
+      {
+        "id": "physical",
+        "count": 5
+      },
+      {
+        "id": "testimony",
+        "count": 5
+      }
+    ],
+    "caseGraph": {
+      "nodeCount": 30,
+      "edgeCount": 776,
+      "influencedLaterCaseCount": 29,
+      "laterCaseInfluenceRate": 100,
+      "topEdgeTypes": [
+        {
+          "id": "shared-location",
+          "count": 328
+        },
+        {
+          "id": "shared-npc",
+          "count": 326
+        },
+        {
+          "id": "aftermath",
+          "count": 29
+        },
+        {
+          "id": "institution-pressure",
+          "count": 29
+        },
+        {
+          "id": "public-opinion",
+          "count": 29
+        },
+        {
+          "id": "resource-delta",
+          "count": 29
+        },
+        {
+          "id": "evidence-contamination",
+          "count": 6
+        }
+      ]
+    },
+    "evidenceGraph": {
+      "nodeCount": 318,
+      "edgeCount": 498,
+      "evidenceNodeCount": 80,
+      "caseNodeCount": 30,
+      "warningCount": 0,
+      "completeEvidenceCaseCount": 30,
+      "resolvedEvidenceCaseCount": 30,
+      "completenessRate": 100
+    },
+    "worldPackageCount": 3
+  },
+  "caseTypeDistribution": [
+    {
+      "id": "blackmail",
+      "count": 2
+    },
+    {
+      "id": "court-intimidation",
+      "count": 2
+    },
+    {
+      "id": "dock-smuggling",
+      "count": 2
+    },
+    {
+      "id": "evidence-tampering",
+      "count": 2
+    },
+    {
+      "id": "false-testimony",
+      "count": 2
+    },
+    {
+      "id": "family-scandal",
+      "count": 2
+    },
+    {
+      "id": "forged-will",
+      "count": 2
+    },
+    {
+      "id": "ledger-fraud",
+      "count": 2
+    },
+    {
+      "id": "media-rumor",
+      "count": 2
+    },
+    {
+      "id": "medical-coverup",
+      "count": 2
+    },
+    {
+      "id": "merchant-extortion",
+      "count": 2
+    },
+    {
+      "id": "missing-person",
+      "count": 2
+    },
+    {
+      "id": "murder",
+      "count": 2
+    },
+    {
+      "id": "police-misjudgment",
+      "count": 2
+    },
+    {
+      "id": "witness-disappearance",
+      "count": 2
+    }
+  ],
+  "evidenceTypeDistribution": [
+    {
+      "id": "trace",
+      "count": 37
+    },
+    {
+      "id": "ledger",
+      "count": 23
+    },
+    {
+      "id": "rumor",
+      "count": 10
+    },
+    {
+      "id": "physical",
+      "count": 5
+    },
+    {
+      "id": "testimony",
+      "count": 5
+    }
+  ],
+  "worldPackages": [
+    {
+      "packageId": "city-hall-merchant-debt-town",
+      "name": "City Hall Merchant Debt Town",
+      "version": "1.0.0",
+      "license": "project-local-original",
+      "contentHash": "0cda1e6bb424ea3d070819a058b705293cca559869785f6e1c246193182bdf09"
+    },
+    {
+      "packageId": "dock-court-market-town",
+      "name": "Dock Court Market Town",
+      "version": "1.0.0",
+      "license": "project-local-original",
+      "contentHash": "a3e1dcf0e06ccc3f249d70bbcfd2698b8aa8205e5106a034d0061bafa7a8051a"
+    },
+    {
+      "packageId": "hospital-family-press-town",
+      "name": "Hospital Family Press Town",
+      "version": "1.0.0",
+      "license": "project-local-original",
+      "contentHash": "6ae8445d8ab4b687c8c9cbbe020470a9eb86021ffd6f89cd4f9ff3f4d2489f24"
+    }
+  ],
+  "files": [
+    {
+      "path": "replay-index.snapshot.json",
+      "bytes": 199550,
+      "sha256": "7d480801e11e494d8bd9c29eeccbd0fd31478cb9490cb014f183d1e953dd4b82",
+      "role": "snapshot"
+    },
+    {
+      "path": "package-index.snapshot.json",
+      "bytes": 8411,
+      "sha256": "f51c6ad8b698ffa02fcb06b8f6ee4abdbfd99dc4bf074cc44762db008522caaa",
+      "role": "snapshot"
+    },
+    {
+      "path": "audit-report.json",
+      "bytes": 11020,
+      "sha256": "3de97548984b36ac7c9da9470fb21d003eba9f48d0fc166afed2f5eca50ad44b",
+      "role": "audit"
+    },
+    {
+      "path": "dataset-card.md",
+      "bytes": 1424,
+      "sha256": "7aa4114630631e74acac7ce9e743a302c40939a1a6fa3fb13babaf226cf8f552",
+      "role": "card"
+    },
+    {
+      "path": "runs/campaign-campaign-validation-5000/campaign-report.json",
+      "bytes": 1755834,
+      "sha256": "b44c571533a376e408ee5eeb3ff452b7ec6409505f6b8e36f183b2d9058bbd1a",
+      "role": "run-metadata"
+    },
+    {
+      "path": "runs/campaign-campaign-validation-5000/campaign-report.md",
+      "bytes": 270,
+      "sha256": "32c9273c14660af522227db9c6ce94f9c009f8f6f9731f46c73d1017906f108b",
+      "role": "run-metadata"
+    },
+    {
+      "path": "runs/campaign-campaign-validation-5000/case-graph.json",
+      "bytes": 329725,
+      "sha256": "0c01a328753b6df02f91862acd7c14b28e3975658d910e56c6ff673f3fb7f8c8",
+      "role": "run-metadata"
+    },
+    {
+      "path": "runs/campaign-campaign-validation-5000/causal-metrics.json",
+      "bytes": 675072,
+      "sha256": "34ab0f81f5baf4fa0acbcffce2a1b530d3b5d9bdaa62696a1e978f28a28d42c6",
+      "role": "run-metadata"
+    },
+    {
+      "path": "runs/campaign-campaign-validation-5000/evidence-graph.json",
+      "bytes": 230879,
+      "sha256": "beea38653098187033884d6dab62be34db7c681c567eaeeac40d0f2c65eb57f5",
+      "role": "run-metadata"
+    },
+    {
+      "path": "runs/campaign-campaign-validation-5000/manifest.json",
+      "bytes": 1843,
+      "sha256": "9cbe25a7ad343b04ae946f68bd22780b0e48883912ad14d2ab0c83e64838cd22",
+      "role": "run-metadata"
+    },
+    {
+      "path": "runs/campaign-campaign-validation-5000/quality-report.json",
+      "bytes": 878130,
+      "sha256": "c2dd64f9b0f84819698c6062d558a75fda174652b1e7456cbee3c5ee99315e24",
+      "role": "run-metadata"
+    },
+    {
+      "path": "world-packs/city-hall-merchant-debt-town/manifest.json",
+      "bytes": 649,
+      "sha256": "dfe1182b60a3cd00002aaa9c938d1d4dfee50720e3859af117c680d2337ae330",
+      "role": "world-package"
+    },
+    {
+      "path": "world-packs/city-hall-merchant-debt-town/scenario-pack.json",
+      "bytes": 5201,
+      "sha256": "eb66cc7a69966fba9366dc0370b93362c1f051c5848564620cc96f5e12d01107",
+      "role": "world-package"
+    },
+    {
+      "path": "world-packs/city-hall-merchant-debt-town/map-pack.json",
+      "bytes": 3384,
+      "sha256": "06c508d096a2f5159a6118ef8705772fe793e3c9dfe4a79b29c17fd729400b58",
+      "role": "world-package"
+    },
+    {
+      "path": "world-packs/city-hall-merchant-debt-town/rule-catalog.json",
+      "bytes": 8352,
+      "sha256": "8168c7e59ce9ca2eadf0df9a806cf0f4d25048c191355497cee82422f0b02613",
+      "role": "world-package"
+    },
+    {
+      "path": "world-packs/city-hall-merchant-debt-town/agent-pack.json",
+      "bytes": 2801,
+      "sha256": "9c524bcc4cfb98448ed533efecc3bae8c85984a4dbae30c58146fc6ecc5253c3",
+      "role": "world-package"
+    },
+    {
+      "path": "world-packs/city-hall-merchant-debt-town/ecosystem-catalog.json",
+      "bytes": 4507,
+      "sha256": "0c53e56d80d344197b0f89d11f4a0d566ceaab4f4015cc236630292b50e07df8",
+      "role": "world-package"
+    },
+    {
+      "path": "world-packs/city-hall-merchant-debt-town/expectations.json",
+      "bytes": 249,
+      "sha256": "27fe241bf0687ec5555c2e44636500e00ed6aa7a55d2049a560cdd5d2fe0bdc2",
+      "role": "world-package"
+    },
+    {
+      "path": "world-packs/city-hall-merchant-debt-town/README.md",
+      "bytes": 637,
+      "sha256": "4c876f9f6ca7269312bfb16b5b8a42ad35dceece4200227f4ad3b6aac78164eb",
+      "role": "world-package"
+    },
+    {
+      "path": "world-packs/dock-court-market-town/manifest.json",
+      "bytes": 626,
+      "sha256": "2751cf135bc4378ce55a5921a45610dba1b750671db5f93cbc043053e2c6a872",
+      "role": "world-package"
+    },
+    {
+      "path": "world-packs/dock-court-market-town/scenario-pack.json",
+      "bytes": 4307,
+      "sha256": "c631a9a731a2a230cee75d51d736c9ab81033032a43dbe2621b1e68e45a550f2",
+      "role": "world-package"
+    },
+    {
+      "path": "world-packs/dock-court-market-town/map-pack.json",
+      "bytes": 2872,
+      "sha256": "c39724c2517ab717c226239f1282427d8398f92f448f701f5863f1826b9855d6",
+      "role": "world-package"
+    },
+    {
+      "path": "world-packs/dock-court-market-town/rule-catalog.json",
+      "bytes": 7077,
+      "sha256": "af9a9d92c507ae36f6907b6a1056a1e5302fea8a764a85083caa41b61cdf67f8",
+      "role": "world-package"
+    },
+    {
+      "path": "world-packs/dock-court-market-town/agent-pack.json",
+      "bytes": 2209,
+      "sha256": "b96ea14066e29670d50652a1b920c0396ac1f617a30051e23429e6a9f5fd5ed5",
+      "role": "world-package"
+    },
+    {
+      "path": "world-packs/dock-court-market-town/ecosystem-catalog.json",
+      "bytes": 3378,
+      "sha256": "3280decaed0091afd745ef4e9483ff8783871a9735b9e4a5614dec4fdcd0b459",
+      "role": "world-package"
+    },
+    {
+      "path": "world-packs/dock-court-market-town/expectations.json",
+      "bytes": 156,
+      "sha256": "e02df0416c07ff1570df4d36f7f092ebc0deba25e6a4ed9678f853df8d885eea",
+      "role": "world-package"
+    },
+    {
+      "path": "world-packs/dock-court-market-town/README.md",
+      "bytes": 202,
+      "sha256": "b213181aa6eafff7ef3abdebe30ab7d62d4d0b24c9682a0e41639db3f47b9dbb",
+      "role": "world-package"
+    },
+    {
+      "path": "world-packs/hospital-family-press-town/manifest.json",
+      "bytes": 605,
+      "sha256": "027455861b65e417bb3cffca55e1e1fd1f7e4f8a8700134094925967d1671b4e",
+      "role": "world-package"
+    },
+    {
+      "path": "world-packs/hospital-family-press-town/scenario-pack.json",
+      "bytes": 4324,
+      "sha256": "5507f2557b069abdf5409826073a5708118ea27582dd6814500d10b4fa5517cb",
+      "role": "world-package"
+    },
+    {
+      "path": "world-packs/hospital-family-press-town/map-pack.json",
+      "bytes": 2838,
+      "sha256": "5cf82d550965647e275539b92d41851257b14f11777ebece4e70bb1d54b63a8b",
+      "role": "world-package"
+    },
+    {
+      "path": "world-packs/hospital-family-press-town/rule-catalog.json",
+      "bytes": 7778,
+      "sha256": "54a6d4c30a9fb3113e4f925464857b350d0037585357ea326127ce2829f2110d",
+      "role": "world-package"
+    },
+    {
+      "path": "world-packs/hospital-family-press-town/agent-pack.json",
+      "bytes": 2241,
+      "sha256": "30a6a5edb8c19505ccd42eaf34cb15913c8aa873cc75c20df4b0dd8db96aa77b",
+      "role": "world-package"
+    },
+    {
+      "path": "world-packs/hospital-family-press-town/ecosystem-catalog.json",
+      "bytes": 3613,
+      "sha256": "9c5809dd141e730e11e4880ea2bfe09a2bdc899943f04e9d88aae8d2fd1e9f49",
+      "role": "world-package"
+    },
+    {
+      "path": "world-packs/hospital-family-press-town/expectations.json",
+      "bytes": 156,
+      "sha256": "a0cb14cfe790aa0457014a8f535502edde23c9dc76b0e6fb987bfe2585da71ec",
+      "role": "world-package"
+    },
+    {
+      "path": "world-packs/hospital-family-press-town/README.md",
+      "bytes": 163,
+      "sha256": "63e86f48cc13fd254a42b3a4350b8e1de6711d6ee45bd1d54e131dbe95f89ee8",
+      "role": "world-package"
+    }
+  ]
+}

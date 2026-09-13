@@ -1,0 +1,70 @@
+name: v11 Alpha Nightly
+
+on:
+  schedule:
+    - cron: "17 18 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v11-alpha-nightly-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  full-campaign-baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: TypeScript
+        run: npx tsc --noEmit --incremental false
+
+      - name: v11 Alpha content and asset contracts
+        run: |
+          npm run test:campaign-content -- --json
+          npm run test:authored-campaign-cases -- --json
+          npm run test:campaign-pacing -- --json
+          npm run test:noir-presentation -- --json
+          npm run test:v11-world-packages -- --json
+
+      - name: Production build
+        run: npm run build
+
+      - name: Full 72-case Server playthrough
+        run: npm run test:seventy-two-case-campaign -- --json
+
+      - name: Campaign contribution admission contract
+        run: npm run validate:campaign-contribution -- --json
+
+      - name: 5000 / 10000 tick Beta gate
+        continue-on-error: true
+        run: npm run gate:v11-long-run -- --json
+
+      - name: Alpha browser observability
+        run: npm run qa:v11-alpha-browser -- --json
+
+      - name: Merge Alpha evidence report
+        if: always()
+        run: npm run report:v11-alpha -- --json
+
+      - name: Upload local-only Alpha evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v11-alpha-evidence
+          path: outputs/v11-alpha/
+          if-no-files-found: error
+          retention-days: 14

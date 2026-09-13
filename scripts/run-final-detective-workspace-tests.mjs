@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import ts from "typescript";
 import { pathToFileURL } from "node:url";
+import { execFileSync } from "node:child_process";
 
 const root = process.cwd();
 const read = (file) => fs.readFile(path.join(root, file), "utf8");
@@ -122,6 +123,13 @@ try {
 
   const before = structuredClone(baseInput);
   const first = buildFinalDetectiveWorkspace(baseInput);
+  const idContradictionInput = structuredClone(baseInput);
+  idContradictionInput.testimonies[0].exposedContradictions = ["evidence-private-01", "ev-undiscovered-private"];
+  const idContradictions = buildFinalDetectiveWorkspace(idContradictionInput);
+  const visibleContradictionLabels = idContradictions.contradictions.map((item) => item.label);
+  assert.ok(visibleContradictionLabels.includes("Stamped ledger copy"), "exposed references use a discovered evidence title");
+  assert.ok(visibleContradictionLabels.includes("Exposed testimony contradiction"), "unknown exposed references use a public generic label");
+  assert.doesNotMatch(JSON.stringify(idContradictions), /ev-undiscovered-private|evidence-private-01/, "opaque evidence identifiers do not become player copy");
   const second = buildFinalDetectiveWorkspace(structuredClone(baseInput));
   assert.deepEqual(first, second, "same safe input produces the same workspace");
   assert.deepEqual(baseInput, before, "workspace projection does not mutate input");
@@ -194,23 +202,84 @@ try {
     read("app/hooks/useFinalDetectiveWorkspace.ts"),
     read("app/components/InvestigationSurface.tsx")
   ]);
-  assert.equal((surfaceSource.match(/data-testid="final-workspace-primary-action"/g) || []).length, 1, "workspace owns one primary action");
-  for (const method of ["joinCase", "discoverEvidence", "discoverFirstSceneEvidence", "runInterrogationTarget", "toggleTheoryEvidence", "revealSolution"]) {
-    assert.match(surfaceSource, new RegExp(`actionAdapter\\.${method}\\b`), `workspace reuses certified adapter ${method}`);
+  assert.match(surfaceSource, /<CinematicDeductionBoard \{\.\.\.props\} variant="standard"/, "all non-gold routes delegate controlled props to the shared desk");
+  const deskSource = await read("app/components/CinematicDeductionBoard.tsx");
+  assert.equal((deskSource.match(/data-testid="cinematic-certified-action"/g) || []).length, 1, "the shared desk owns one primary action");
+  const componentAst = ts.createSourceFile("CinematicDeductionBoard.tsx", deskSource, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const primaryHandlers = [];
+  function visitHandler(node) {
+    if (ts.isFunctionDeclaration(node) && ["runCertifiedAction", "executeCertifiedAction", "runExclusive"].includes(node.name?.text)) primaryHandlers.push(node.getText(componentAst));
+    ts.forEachChild(node, visitHandler);
+  }
+  visitHandler(componentAst);
+  assert.equal(primaryHandlers.length, 3, "test the shared component's actual dispatcher and exclusive primary handler");
+  const dispatcherSource = await read("app/campaign/execute-certified-investigation-step.ts");
+  const handlerRuntime = ts.transpileModule(`${dispatcherSource}
+    export function createPrimaryHarness(input) {
+      const {busy, model, currentAction, actionAdapter, observeCaseWindow, onIntakeNextAction,
+        notebookItems, discoveredEvidence, theory, submitTheory, selectedCharacterId,
+        selectedEvidenceId, question, onCampaignRecoveryStart, gapCards, onGapSelect,
+        runWithResolution} = input;
+      const effectiveBusy = busy;
+      const actionLock = {current:false};
+      const setLocalBusy = () => {};
+      ${primaryHandlers.join("\n")}
+      return runCertifiedAction;
+    }`, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
+  const { createPrimaryHarness } = await import(`data:text/javascript;base64,${Buffer.from(handlerRuntime).toString("base64")}`);
+  const primaryCases = [
+    { kind: "join", expected: ["joinCase"] },
+    { kind: "observe", expected: ["observe"] },
+    { kind: "search", action: { kind: "search", targetEvidenceId: "clue" }, expected: ["discoverEvidence"] },
+    { kind: "search", action: { kind: "search", targetLocationId: "archive" }, expected: ["discoverFirstSceneEvidence"] },
+    { kind: "question", expected: ["runInterrogationTarget"] },
+    { kind: "challenge", expected: ["runInterrogationTarget"] },
+    { kind: "select-evidence", expected: ["toggleTheoryEvidence"] },
+    { kind: "submit", expected: ["submitTheory"] },
+    { kind: "review-source", expected: ["revealSolution"] }
+  ];
+  for (const sample of primaryCases) {
+    const calls = [];
+    const outcomes = [];
+    const record = (name) => async (...args) => { calls.push({ name, args }); return { status: "succeeded", detail: name }; };
+    const adapter = Object.fromEntries(["joinCase", "discoverEvidence", "discoverFirstSceneEvidence", "runInterrogationTarget", "toggleTheoryEvidence", "revealSolution"].map((name) => [name, record(name)]));
+    const run = createPrimaryHarness({
+      busy: false, model: { ...ready, currentTask: { action: { kind: sample.kind, enabled: true, label: "Current action" } } },
+      currentAction: sample.action, actionAdapter: adapter, observeCaseWindow: record("observe"), onIntakeNextAction: record("focus"),
+      notebookItems: [], discoveredEvidence: [{ id: "clue" }], theory: { ...baseInput.theory, evidenceIds: [] },
+      submitTheory: record("submitTheory"), selectedCharacterId: "selected-witness", selectedEvidenceId: "selected-clue", question: "My own question",
+      gapCards: [], onGapSelect: record("gap"), focusSourceReview: record("focus-review"),
+      runWithResolution: async (label, execute) => outcomes.push({ label, result: await execute() })
+    });
+    await run();
+    assert.deepEqual(calls.map((item) => item.name), sample.expected, `${sample.kind} uses its existing adapter once through the shared dispatcher`);
+    assert.equal(outcomes.length, 1, `${sample.kind} reports one result to the resolution owner`);
+    if (sample.kind === "question" || sample.kind === "challenge") {
+      assert.deepEqual(calls[0].args, ["selected-witness", sample.kind === "challenge" ? "selected-clue" : undefined, "My own question"], "the actual component preserves player-selected context and question text");
+    }
   }
   assert.match(coreSource, /FinalDetectiveWorkspace/);
   assert.doesNotMatch(routeSource, /SourceReviewUnlockPanel|source-review-workbench/, "route audit no longer duplicates Source Review");
   assert.match(panelSource, /useFinalDetectiveWorkspace/);
   assert.match(panelSource, /testimonies=\{activeCase\?\.testimonies|testimonies/);
-  for (const requestFree of [source, surfaceSource, coreSource, routeSource, hookSource]) {
+  for (const requestFree of [source, surfaceSource, deskSource, coreSource, routeSource, hookSource]) {
     assert.doesNotMatch(requestFree, /\/api\/|\bfetch\s*\(|\bpostJson\s*\(|\bpostV1\s*\(|localStorage|sessionStorage|indexedDB/);
   }
   assert.equal(source.split(/\r?\n/).length < 500, true, "workspace model stays below 500 lines");
   assert.equal(surfaceSource.split(/\r?\n/).length < 500, true, "workspace surface stays below 500 lines");
 
+  const suspectSelection = JSON.parse(execFileSync(process.execPath, ["scripts/run-cinematic-suspect-selection-tests.mjs"], { cwd: root, encoding: "utf8" }));
+  assert.equal(suspectSelection.ok, true, "clearing and deferred suspect changes preserve player intent");
+  const actionLock = JSON.parse(execFileSync(process.execPath, ["scripts/run-cinematic-action-lock-tests.mjs"], { cwd: root, encoding: "utf8" }));
+  assert.equal(actionLock.ok, true, "exclusive actions release their lock after success and failure");
+  const spatialTransfer = JSON.parse(execFileSync(process.execPath, ["scripts/run-cinematic-spatial-transfer-tests.mjs"], { cwd: root, encoding: "utf8" }));
+  assert.equal(spatialTransfer.ok, true, "spatial transfer cancels and cleans up without owning selection");
   console.log(JSON.stringify({
     ok: true,
     suite: "final-detective-workspace",
+    suspectSelectionChecks: suspectSelection.checks,
+    actionLockChecks: actionLock.checks.length,
+    spatialTransferChecks: spatialTransfer.checks.length,
     checks: ["stage-projection", "single-next-action", "evidence-provenance", "testimony-contradiction", "theory-readiness", "recovery", "source-review", "determinism", "input-non-mutation", "public-safe", "single-primary-action", "shared-adapter", "request-free", "source-budgets"]
   }));
 } finally {

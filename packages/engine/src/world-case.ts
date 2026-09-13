@@ -392,7 +392,10 @@ export function makeRuleBoundInterrogation(
     ? `${context.character.name}说：我只能确认自己知道的事。${context.visibleEvents.map((event) => event.publicSummary).slice(0, 2).join(" ")}${challenge?.hit ? " 你提到的证据确实让我原先的说法站不稳。" : " 其他细节我没有亲眼见过。"}`
     : "这个角色不存在，无法询问。";
   return {
-    id: `iq-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+    // The same normalized action must address the same log entry so a network
+    // retry cannot append a second interrogation. Repository persistence still
+    // performs the session revision check before accepting the write.
+    id: `iq-${stableInterrogationHash(sessionId, characterId, question, evidenceId)}`,
     sessionId,
     characterId,
     question,
@@ -402,6 +405,16 @@ export function makeRuleBoundInterrogation(
     challenge,
     createdAt: new Date().toISOString()
   };
+}
+
+function stableInterrogationHash(sessionId: string, characterId: string, question: string, evidenceId?: string) {
+  const value = `${sessionId}|${characterId}|${question.trim().replace(/\s+/g, " ")}|${evidenceId || ""}`;
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
 }
 
 export function submitWorldTheory(deductionCase: DeductionCase, theory: PlayerTheory, discoveredEvidenceIds: string[]) {

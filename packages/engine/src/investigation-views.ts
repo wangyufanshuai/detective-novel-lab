@@ -853,7 +853,7 @@ export function deriveMapInteractiveTargets(world: WorldState, caseFromLog?: Cas
       kind: "npc",
       label: npc.name,
       characterId: npc.id,
-      locationId: npc.schedule[world.currentTime] || npc.homeLocationId,
+      locationId: npc.schedule?.[world.currentTime] || npc.homeLocationId,
       enabled: npc.alive
     });
   }

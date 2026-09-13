@@ -39,18 +39,18 @@ try {
     const frontDoor = page.getByTestId("campaign-front-door");
     await frontDoor.waitFor({ state: "visible", timeout: 15_000 });
     const cards = frontDoor.getByTestId("campaign-front-door-card");
-    if (await cards.count() !== 4) failures.push("Server Front Door did not show exactly four Campaign cards.");
+    if (await cards.count() !== 12) failures.push("Server Front Door did not show exactly twelve Campaign archive entries.");
     const initialText = await frontDoor.innerText();
     const normalizedInitialText = initialText.toLowerCase();
-    for (const label of ["Town Reckoning", "Harbor Testimony", "Clinic Headlines", "Midnight Chorus", "Civic Procedure", "Merchant Leverage", "Public surface", "Evidence style", "World pressure", "Finale"]) {
+    for (const label of ["Town Reckoning", "Harbor Testimony", "Clinic Headlines", "Midnight Chorus", "Railbound Alibi", "Wireless Shadows", "Civic Procedure", "Merchant Leverage", "Public surface", "Evidence style", "World pressure", "Finale", "Volume I", "Volume II", "Volume III"]) {
       if (!normalizedInitialText.includes(label.toLowerCase())) failures.push(`Server Front Door is missing ${label}.`);
     }
     if (/\b(?:case|npc|event|source|location|institution|resource|evidence|session|world)-[a-z0-9-]*\d[a-z0-9-]*\b/i.test(initialText)) failures.push("Server Front Door exposed a raw identifier-shaped value.");
     if (await frontDoor.locator("[data-campaign-primary='true']:not([disabled])").count() !== 1) failures.push("Server Front Door does not have exactly one primary Start action.");
 
     currentStep = "select Harbor Testimony";
-    await cards.nth(1).click();
-    if (await cards.nth(1).getAttribute("aria-pressed") !== "true") failures.push("Harbor Testimony card did not become selected.");
+    await cards.nth(4).click();
+    if (await cards.nth(4).getAttribute("aria-pressed") !== "true") failures.push("Harbor Testimony archive entry did not become selected.");
     currentStep = "select Harbor Chain Protection route";
     const routeButtons = frontDoor.getByTestId("campaign-front-door-route");
     if (await routeButtons.count() !== 2) failures.push("Selected Campaign did not expose exactly two authored route choices.");
@@ -122,7 +122,7 @@ try {
     await staticPage.goto(`${baseUrl}/?runtime=static&lang=en-US`, { waitUntil: "networkidle" });
     const staticFrontDoor = staticPage.getByTestId("campaign-front-door");
     await staticFrontDoor.waitFor({ state: "visible", timeout: 15_000 });
-    if (await staticFrontDoor.getByTestId("campaign-front-door-card").count() !== 4) failures.push("Static Front Door did not show four safe previews.");
+    if (await staticFrontDoor.getByTestId("campaign-front-door-card").count() !== 12) failures.push("Static Front Door did not show twelve safe previews.");
     if (await staticFrontDoor.getByTestId("campaign-front-door-start").count()) failures.push("Static Front Door exposed Start Campaign.");
     if (await staticFrontDoor.getByTestId("campaign-front-door-continue").count()) failures.push("Static Front Door exposed Continue Campaign.");
     if (await staticFrontDoor.getByTestId("campaign-front-door-route").count()) failures.push("Static Front Door exposed persistent route controls.");

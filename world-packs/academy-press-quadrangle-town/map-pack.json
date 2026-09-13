@@ -1,0 +1,239 @@
+{
+  "manifest": {
+    "id": "academy-press-quadrangle-town-map",
+    "name": "Academy Press Quadrangle Town Map",
+    "version": "1.0.0",
+    "schemaVersion": "town-map-pack.v1",
+    "description": "Academic records, patronage pressure, student testimony and public correction.",
+    "createdAt": "2026-08-12T00:00:00.000Z",
+    "entrypoint": "map.json"
+  },
+  "locations": [
+    {
+      "id": "college-quadrangle",
+      "name": "College Quadrangle",
+      "kind": "public",
+      "description": "College Quadrangle exposes a public, reviewable surface for academic records, patronage pressure, student testimony and public correction.",
+      "connectedLocationIds": [
+        "senate-chamber",
+        "lecture-hall"
+      ],
+      "x": -1,
+      "y": 0,
+      "localizedName": {
+        "en-US": "College Quadrangle",
+        "zh-CN": "学院方庭"
+      }
+    },
+    {
+      "id": "lecture-hall",
+      "name": "Lecture Hall",
+      "kind": "work",
+      "description": "Lecture Hall exposes a public, reviewable surface for academic records, patronage pressure, student testimony and public correction.",
+      "connectedLocationIds": [
+        "college-quadrangle",
+        "benefactors-room"
+      ],
+      "x": 0,
+      "y": -1,
+      "localizedName": {
+        "en-US": "Lecture Hall",
+        "zh-CN": "讲堂"
+      }
+    },
+    {
+      "id": "benefactors-room",
+      "name": "Benefactors Room",
+      "kind": "work",
+      "description": "Benefactors Room exposes a public, reviewable surface for academic records, patronage pressure, student testimony and public correction.",
+      "connectedLocationIds": [
+        "lecture-hall",
+        "faculty-archive"
+      ],
+      "x": 1,
+      "y": -1,
+      "localizedName": {
+        "en-US": "Benefactors Room",
+        "zh-CN": "赞助人室"
+      }
+    },
+    {
+      "id": "faculty-archive",
+      "name": "Faculty Archive",
+      "kind": "restricted",
+      "description": "Faculty Archive exposes a public, reviewable surface for academic records, patronage pressure, student testimony and public correction.",
+      "connectedLocationIds": [
+        "benefactors-room",
+        "student-press"
+      ],
+      "x": 1,
+      "y": 1,
+      "localizedName": {
+        "en-US": "Faculty Archive",
+        "zh-CN": "教员档案室"
+      }
+    },
+    {
+      "id": "student-press",
+      "name": "Student Press",
+      "kind": "restricted",
+      "description": "Student Press exposes a public, reviewable surface for academic records, patronage pressure, student testimony and public correction.",
+      "connectedLocationIds": [
+        "faculty-archive",
+        "senate-chamber"
+      ],
+      "x": 0,
+      "y": 2,
+      "localizedName": {
+        "en-US": "Student Press",
+        "zh-CN": "学生报社"
+      }
+    },
+    {
+      "id": "senate-chamber",
+      "name": "Senate Chamber",
+      "kind": "restricted",
+      "description": "Senate Chamber exposes a public, reviewable surface for academic records, patronage pressure, student testimony and public correction.",
+      "connectedLocationIds": [
+        "student-press",
+        "college-quadrangle"
+      ],
+      "x": -1,
+      "y": 1,
+      "localizedName": {
+        "en-US": "Senate Chamber",
+        "zh-CN": "评议厅"
+      }
+    }
+  ],
+  "connections": [
+    {
+      "from": "college-quadrangle",
+      "to": "lecture-hall",
+      "kind": "street",
+      "travelMinutes": 3
+    },
+    {
+      "from": "lecture-hall",
+      "to": "benefactors-room",
+      "kind": "service-route",
+      "travelMinutes": 4
+    },
+    {
+      "from": "benefactors-room",
+      "to": "faculty-archive",
+      "kind": "street",
+      "travelMinutes": 5
+    },
+    {
+      "from": "faculty-archive",
+      "to": "student-press",
+      "kind": "service-route",
+      "travelMinutes": 6
+    },
+    {
+      "from": "student-press",
+      "to": "senate-chamber",
+      "kind": "street",
+      "travelMinutes": 7
+    },
+    {
+      "from": "senate-chamber",
+      "to": "college-quadrangle",
+      "kind": "service-route",
+      "travelMinutes": 8
+    }
+  ],
+  "interactions": [
+    {
+      "id": "inspect-lecture-hall",
+      "locationId": "lecture-hall",
+      "kind": "search",
+      "label": "Review Lecture Hall",
+      "risk": 28,
+      "tags": [
+        "scholarly-silence",
+        "witness"
+      ]
+    },
+    {
+      "id": "inspect-benefactors-room",
+      "locationId": "benefactors-room",
+      "kind": "question",
+      "label": "Review Benefactors Room",
+      "risk": 34,
+      "tags": [
+        "scholarly-silence",
+        "record"
+      ]
+    },
+    {
+      "id": "inspect-faculty-archive",
+      "locationId": "faculty-archive",
+      "kind": "work",
+      "label": "Review Faculty Archive",
+      "risk": 40,
+      "tags": [
+        "scholarly-silence",
+        "witness"
+      ]
+    },
+    {
+      "id": "inspect-student-press",
+      "locationId": "student-press",
+      "kind": "search",
+      "label": "Review Student Press",
+      "risk": 46,
+      "tags": [
+        "scholarly-silence",
+        "record"
+      ]
+    },
+    {
+      "id": "inspect-senate-chamber",
+      "locationId": "senate-chamber",
+      "kind": "question",
+      "label": "Review Senate Chamber",
+      "risk": 52,
+      "tags": [
+        "scholarly-silence",
+        "witness"
+      ]
+    }
+  ],
+  "spawnPoints": [
+    {
+      "id": "spawn-1",
+      "locationId": "lecture-hall",
+      "roleHint": "detective",
+      "weight": 80
+    },
+    {
+      "id": "spawn-2",
+      "locationId": "benefactors-room",
+      "roleHint": "clerk",
+      "weight": 75
+    },
+    {
+      "id": "spawn-3",
+      "locationId": "faculty-archive",
+      "roleHint": "reporter",
+      "weight": 70
+    },
+    {
+      "id": "spawn-4",
+      "locationId": "student-press",
+      "roleHint": "lawyer",
+      "weight": 65
+    }
+  ],
+  "assets": {
+    "presentationKey": "scholarly-silence"
+  },
+  "docs": {
+    "localization": {
+      "en-US": "Academy Press Quadrangle Town",
+      "zh-CN": "学院报社方庭小镇"
+    }
+  }
+}

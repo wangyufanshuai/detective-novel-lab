@@ -1,0 +1,24 @@
+{
+  "id": "grand-hotel-service-town",
+  "name": "Grand Hotel Service Town",
+  "version": "1.0.0",
+  "schemaVersion": "world-package.v1",
+  "description": "Guest identity, night-desk custody, service passages and private leverage.",
+  "author": "Detective Novel Lab",
+  "createdAt": "2026-08-12T00:00:00.000Z",
+  "license": "project-local-original",
+  "scenarioPackPath": "scenario-pack.json",
+  "mapPackPath": "map-pack.json",
+  "ruleCatalogPath": "rule-catalog.json",
+  "agentPackPath": "agent-pack.json",
+  "ecosystemCatalogPath": "ecosystem-catalog.json",
+  "expectationsPath": "expectations.json",
+  "localization": {
+    "en-US": "Grand Hotel Service Town",
+    "zh-CN": "大饭店服务小镇"
+  },
+  "presentation": {
+    "key": "grand-hotel-register",
+    "style": "noir-archive"
+  }
+}

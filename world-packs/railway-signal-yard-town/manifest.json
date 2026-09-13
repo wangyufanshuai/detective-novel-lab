@@ -1,0 +1,24 @@
+{
+  "id": "railway-signal-yard-town",
+  "name": "Railway Signal Yard Town",
+  "version": "1.0.0",
+  "schemaVersion": "world-package.v1",
+  "description": "Railway permits, signal procedure, porter testimony and timetable custody.",
+  "author": "Detective Novel Lab",
+  "createdAt": "2026-08-12T00:00:00.000Z",
+  "license": "project-local-original",
+  "scenarioPackPath": "scenario-pack.json",
+  "mapPackPath": "map-pack.json",
+  "ruleCatalogPath": "rule-catalog.json",
+  "agentPackPath": "agent-pack.json",
+  "ecosystemCatalogPath": "ecosystem-catalog.json",
+  "expectationsPath": "expectations.json",
+  "localization": {
+    "en-US": "Railway Signal Yard Town",
+    "zh-CN": "铁路信号场小镇"
+  },
+  "presentation": {
+    "key": "railbound-alibi",
+    "style": "noir-archive"
+  }
+}

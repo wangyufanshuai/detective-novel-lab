@@ -55,6 +55,7 @@ export function useCampaignLaunchActions({
 }: CampaignLaunchActionsInput): CampaignLaunchActionAdapter {
   const startInFlight = useRef(false);
   const continueInFlight = useRef(false);
+  const runtimeActionSequence = useRef(0);
   const { t, text } = useAppLocale();
   const { runtimeMode, setInspectorTab, setStatus } = investigation;
   const {
@@ -68,6 +69,11 @@ export function useCampaignLaunchActions({
   } = campaign;
   const { setSelectedScenarioPackId } = review;
   const { createWorld, loadWorld, persist } = worldSession;
+
+  function runtimeCommandMeta(label: string, revision?: string) {
+    runtimeActionSequence.current += 1;
+    return { actionId: `${label}-${Date.now().toString(36)}-${runtimeActionSequence.current}`, sessionRevision: revision };
+  }
 
   async function startSelectedCampaign() {
     if (runtimeMode !== "server") return;
@@ -88,13 +94,13 @@ export function useCampaignLaunchActions({
       const selected = await postV1<{
         currentExperiment: { scenarioPackId: string };
         campaignSession?: CampaignSessionPublicSummary;
-      }>("/api/v1/command/town/world-pack/select", { worldId: createdWorld.id, packageId, campaignRouteId: route.id });
+      }>("/api/v1/command/player/world-pack/select", { worldId: createdWorld.id, packageId, campaignRouteId: route.id });
       let started = await postV1<{
         runtime: PersistentTownRuntime;
         events: WorldEvent[];
         queue: TownEmergenceQueue;
         world: WorldState;
-      }>("/api/v1/command/town/runtime/start", { worldId: createdWorld.id, steps: 2 });
+      }>("/api/v1/command/town/runtime/start", { worldId: createdWorld.id, steps: 2, ...runtimeCommandMeta("campaign-start") });
       let candidate = started.queue.candidates.find((item) => item.validation.valid);
       for (let attempt = 0; attempt < 5 && !candidate; attempt += 1) {
         setFrontDoorStatus(t("front.status.validating", { campaign: text(definition.label), route: text(route.label), attempt: attempt + 1 }));
@@ -103,7 +109,7 @@ export function useCampaignLaunchActions({
           events: WorldEvent[];
           queue: TownEmergenceQueue;
           world: WorldState;
-        }>("/api/v1/command/town/runtime/step", { worldId: createdWorld.id, steps: 8 });
+        }>("/api/v1/command/town/runtime/step", { worldId: createdWorld.id, steps: 8, ...runtimeCommandMeta("campaign-step", started.runtime.revision) });
         candidate = started.queue.candidates.find((item) => item.validation.valid);
       }
       if (!candidate) throw new Error("No route-certified opening case is available yet.");
@@ -113,8 +119,11 @@ export function useCampaignLaunchActions({
       persist(createdWorld.id, "");
       setFrontDoorStatus(t("front.status.started", { campaign: text(definition.label), route: text(route.label) }));
       setFrontDoorOpen(false);
-      setInspectorTab("investigation");
-      setAppMode("play");
+      // A campaign begins in the living world. The extracted opening case is
+      // available from the world console, but investigation remains a
+      // deliberate downstream view rather than the product's default shell.
+      setInspectorTab("agent");
+      setAppMode("persistent-town");
     } catch {
       const message = t("error.campaignStart");
       setFrontDoorStatus(message);
@@ -137,8 +146,8 @@ export function useCampaignLaunchActions({
       await refreshTownRuntime(loaded.world.id);
       setFrontDoorStatus(t("front.status.restored"));
       setFrontDoorOpen(false);
-      setInspectorTab("investigation");
-      setAppMode("play");
+      setInspectorTab("agent");
+      setAppMode("persistent-town");
     } catch {
       const message = t("error.campaignContinue");
       setFrontDoorStatus(message);

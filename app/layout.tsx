@@ -5,16 +5,18 @@ import "./styles/novel-workbench.css";
 import "./styles/authoring.css";
 import "./styles/town-shell.css";
 import "./styles/command-center.css";
+import "./styles/world-console.css";
 import "./styles/investigation-review.css";
 import "./styles/campaign-study.css";
 import "./styles/presentation-pass.css";
+import "./styles/noir-player.css";
 
 export const metadata: Metadata = {
   title: "Detective Town",
-  description: "A murder mystery engine where cases emerge from simulated NPC lives."
+  description: "走进雨夜小镇，追索证词与物证之间的真相。"
 };
 
-export const viewport: Viewport = { themeColor: "#090d12" };
+export const viewport: Viewport = { themeColor: "#0B1013" };
 
 export default function RootLayout({
   children
@@ -54,6 +56,7 @@ export default function RootLayout({
   return (
     <html lang="en-US" suppressHydrationWarning>
       <head>
+        <link rel="stylesheet" href="/fonts/noir/fonts.css" />
         <meta name="google" content="notranslate" />
         <script dangerouslySetInnerHTML={{ __html: extensionErrorGuard }} />
       </head>

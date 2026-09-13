@@ -38,6 +38,7 @@ const coreScripts = [
   "test:campaign-pacing",
   "test:campaign-transition",
   "test:presentation-ui",
+  "test:noir-presentation",
   "test:controller-contracts",
   "test:world-session-boundaries",
   "test:localization",
@@ -65,7 +66,7 @@ const browserScripts = [
 
 const stages = [
   { label: "next-typegen", command: npxCommand, args: ["next", "typegen"], timeoutMs: 180_000 },
-  { label: "typescript", command: npxCommand, args: ["tsc", "--noEmit"], timeoutMs: 180_000 },
+  { label: "typescript", command: npxCommand, args: ["tsc", "--noEmit", "--incremental", "false"], timeoutMs: 180_000 },
   { label: "release-candidate-contracts", command: process.execPath, args: ["scripts/run-release-candidate-contract-tests.mjs"], timeoutMs: 30_000 },
   { label: "v10-distribution-contracts", command: process.execPath, args: ["scripts/run-v10-distribution-contract-tests.mjs"], timeoutMs: 30_000 },
   { label: "v10-supply-chain", command: process.execPath, args: ["scripts/run-v10-supply-chain-audit.mjs", "--json"], timeoutMs: 60_000 },
@@ -73,7 +74,8 @@ const stages = [
   { label: "fairness-invariants-24-seed", command: npmCommand, args: ["run", "test:v75-invariants", "--", "--json"], timeoutMs: 600_000 },
   { label: "content-validation", command: npmCommand, args: ["run", "content:validate", "--", "--json"], timeoutMs: 180_000 },
   { label: "production-build", command: npmCommand, args: ["run", "build"], timeoutMs: 600_000 },
-  { label: "campaign-playthrough-24-case", command: npmCommand, args: ["run", "test:twenty-four-case-campaign", "--", "--json"], timeoutMs: 1_200_000 },
+  { label: "v11-world-packages", command: npmCommand, args: ["run", "test:v11-world-packages", "--", "--json"], timeoutMs: 180_000 },
+  { label: "campaign-playthrough-72-case", command: npmCommand, args: ["run", "test:seventy-two-case-campaign", "--", "--json"], timeoutMs: 3_600_000 },
   { label: "v10-distribution-smoke", command: process.execPath, args: ["scripts/run-v10-distribution-smoke.mjs"], timeoutMs: 180_000 },
   { label: "persistent-town-api-smoke", command: process.execPath, args: ["scripts/run-persistent-town-api-smoke.mjs"], timeoutMs: 600_000 },
   { label: "performance-budget", command: npmCommand, args: ["run", "quality:performance-budget", "--", "--json"], timeoutMs: 180_000 },
@@ -185,7 +187,7 @@ const treeUnchanged = beforeTree.treeHash === afterTree.treeHash;
 const clean = treeUnchanged && protectedChanges.length === 0 && residualData.length === 0;
 const report = {
   ok: reports.length === stages.length && reports.every((item) => item.ok) && clean,
-  version: "v10.0",
+  version: "v11.0-alpha",
   durationMs: Date.now() - startedAt,
   stageCount: stages.length,
   completedStageCount: reports.length,

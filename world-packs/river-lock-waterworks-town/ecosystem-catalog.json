@@ -1,0 +1,298 @@
+{
+  "manifest": {
+    "id": "river-lock-waterworks-town-ecosystem",
+    "name": "River Lock Waterworks Town Ecosystem",
+    "version": "1.0.0",
+    "schemaVersion": "ecosystem-catalog.v1",
+    "createdAt": "2026-08-12T00:00:00.000Z",
+    "description": "Water rights, public permits, floodgate custody and river-household claims."
+  },
+  "factions": [
+    {
+      "id": "floodgate-covenant-faction-1",
+      "name": "Civic Record Circle",
+      "institutionKind": "civic",
+      "pressureBias": 10,
+      "resourceBias": {
+        "police_time": -5
+      },
+      "preferredCaseTypes": [
+        "water-rights-fraud",
+        "permit-forgery"
+      ]
+    },
+    {
+      "id": "floodgate-covenant-faction-2",
+      "name": "Working Exchange",
+      "institutionKind": "commerce",
+      "pressureBias": 11,
+      "resourceBias": {
+        "media_attention": -6
+      },
+      "preferredCaseTypes": [
+        "permit-forgery",
+        "floodgate-tampering"
+      ]
+    },
+    {
+      "id": "floodgate-covenant-faction-3",
+      "name": "Public Account Desk",
+      "institutionKind": "media",
+      "pressureBias": 12,
+      "resourceBias": {
+        "family_influence": -7
+      },
+      "preferredCaseTypes": [
+        "floodgate-tampering",
+        "family-scandal"
+      ]
+    },
+    {
+      "id": "floodgate-covenant-faction-4",
+      "name": "Review Watch",
+      "institutionKind": "police",
+      "pressureBias": 13,
+      "resourceBias": {
+        "merchant_credit": -8
+      },
+      "preferredCaseTypes": [
+        "family-scandal",
+        "court-intimidation"
+      ]
+    }
+  ],
+  "resources": [
+    {
+      "kind": "police_time",
+      "label": "Police Time",
+      "valueDelta": -5,
+      "pressureDelta": 6
+    },
+    {
+      "kind": "media_attention",
+      "label": "Media Attention",
+      "valueDelta": -6,
+      "pressureDelta": 7
+    },
+    {
+      "kind": "family_influence",
+      "label": "Family Influence",
+      "valueDelta": -7,
+      "pressureDelta": 8
+    },
+    {
+      "kind": "merchant_credit",
+      "label": "Merchant Credit",
+      "valueDelta": -5,
+      "pressureDelta": 9
+    },
+    {
+      "kind": "medical_capacity",
+      "label": "Medical Capacity",
+      "valueDelta": -6,
+      "pressureDelta": 10
+    },
+    {
+      "kind": "evidence_integrity",
+      "label": "Evidence Integrity",
+      "valueDelta": -7,
+      "pressureDelta": 11
+    }
+  ],
+  "markets": [
+    {
+      "id": "floodgate-covenant-market-1",
+      "label": "Police Time exchange",
+      "resource": "police_time",
+      "volatility": 0.25,
+      "tags": [
+        "floodgate-covenant",
+        "public"
+      ]
+    },
+    {
+      "id": "floodgate-covenant-market-2",
+      "label": "Media Attention exchange",
+      "resource": "media_attention",
+      "volatility": 0.29,
+      "tags": [
+        "floodgate-covenant",
+        "public"
+      ]
+    },
+    {
+      "id": "floodgate-covenant-market-3",
+      "label": "Family Influence exchange",
+      "resource": "family_influence",
+      "volatility": 0.33,
+      "tags": [
+        "floodgate-covenant",
+        "public"
+      ]
+    }
+  ],
+  "territories": [
+    {
+      "id": "floodgate-covenant-territory-1",
+      "locationId": "water-ledger",
+      "factionId": "floodgate-covenant-faction-1",
+      "influence": 72,
+      "tags": [
+        "floodgate-covenant",
+        "district"
+      ]
+    },
+    {
+      "id": "floodgate-covenant-territory-2",
+      "locationId": "licensing-counter",
+      "factionId": "floodgate-covenant-faction-2",
+      "influence": 75,
+      "tags": [
+        "floodgate-covenant",
+        "district"
+      ]
+    },
+    {
+      "id": "floodgate-covenant-territory-3",
+      "locationId": "river-lock",
+      "factionId": "floodgate-covenant-faction-3",
+      "influence": 78,
+      "tags": [
+        "floodgate-covenant",
+        "district"
+      ]
+    },
+    {
+      "id": "floodgate-covenant-territory-4",
+      "locationId": "riverside-house",
+      "factionId": "floodgate-covenant-faction-4",
+      "influence": 81,
+      "tags": [
+        "floodgate-covenant",
+        "district"
+      ]
+    }
+  ],
+  "taskTemplates": [
+    {
+      "id": "floodgate-covenant-task-1",
+      "label": "Review Waterworks Ledger Room",
+      "institutionKind": "police",
+      "tags": [
+        "floodgate-covenant",
+        "review"
+      ],
+      "pressureDelta": 7,
+      "evidenceKinds": [
+        "document"
+      ]
+    },
+    {
+      "id": "floodgate-covenant-task-2",
+      "label": "Review River Licensing Counter",
+      "institutionKind": "media",
+      "tags": [
+        "floodgate-covenant",
+        "review"
+      ],
+      "pressureDelta": 8,
+      "evidenceKinds": [
+        "testimony"
+      ]
+    },
+    {
+      "id": "floodgate-covenant-task-3",
+      "label": "Review River Lock",
+      "institutionKind": "family",
+      "tags": [
+        "floodgate-covenant",
+        "review"
+      ],
+      "pressureDelta": 9,
+      "evidenceKinds": [
+        "trace"
+      ]
+    },
+    {
+      "id": "floodgate-covenant-task-4",
+      "label": "Review Riverside House",
+      "institutionKind": "commerce",
+      "tags": [
+        "floodgate-covenant",
+        "review"
+      ],
+      "pressureDelta": 10,
+      "evidenceKinds": [
+        "receipt"
+      ]
+    }
+  ],
+  "randomWorldEvents": [
+    {
+      "id": "floodgate-covenant-event-1",
+      "label": "Waterworks Ledger Room shift",
+      "weight": 20,
+      "tags": [
+        "floodgate-covenant",
+        "water-rights-fraud"
+      ],
+      "pressureDelta": 7
+    },
+    {
+      "id": "floodgate-covenant-event-2",
+      "label": "River Licensing Counter shift",
+      "weight": 21,
+      "tags": [
+        "floodgate-covenant",
+        "permit-forgery"
+      ],
+      "pressureDelta": 8
+    },
+    {
+      "id": "floodgate-covenant-event-3",
+      "label": "River Lock shift",
+      "weight": 22,
+      "tags": [
+        "floodgate-covenant",
+        "floodgate-tampering"
+      ],
+      "pressureDelta": 9
+    },
+    {
+      "id": "floodgate-covenant-event-4",
+      "label": "Riverside House shift",
+      "weight": 23,
+      "tags": [
+        "floodgate-covenant",
+        "family-scandal"
+      ],
+      "pressureDelta": 10
+    }
+  ],
+  "pressureRules": [
+    {
+      "id": "floodgate-covenant-resource-pressure-1",
+      "resource": "police_time",
+      "threshold": 50,
+      "effect": "water-rights-fraud pressure becomes visible"
+    },
+    {
+      "id": "floodgate-covenant-resource-pressure-2",
+      "resource": "media_attention",
+      "threshold": 51,
+      "effect": "permit-forgery pressure becomes visible"
+    },
+    {
+      "id": "floodgate-covenant-resource-pressure-3",
+      "resource": "family_influence",
+      "threshold": 52,
+      "effect": "floodgate-tampering pressure becomes visible"
+    },
+    {
+      "id": "floodgate-covenant-resource-pressure-4",
+      "resource": "merchant_credit",
+      "threshold": 53,
+      "effect": "family-scandal pressure becomes visible"
+    }
+  ]
+}

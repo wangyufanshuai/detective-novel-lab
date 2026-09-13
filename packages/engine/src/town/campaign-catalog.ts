@@ -1,42 +1,18 @@
 import type { PersistentTownRuntime, TownCaseType } from "../persistent-town";
 import { MIDNIGHT_CHORUS_CAMPAIGN } from "./midnight-chorus-campaign";
-
-export type DetectiveCampaignId = "town-reckoning" | "harbor-testimony" | "clinic-headlines" | "midnight-chorus";
-export type DetectiveCampaignRouteId = "baseline" | "counter-route";
-
-export type DetectiveCampaignChapter = {
-  ordinal: 1 | 2 | 3;
-  label: string;
-  objectiveLabel: string;
-  preferredCaseTypes: readonly TownCaseType[];
-  evidenceThemeLabel: string;
-  worldSurfaceLabel: string;
-};
-
-export type DetectiveCampaignRouteDefinition = {
-  id: DetectiveCampaignRouteId;
-  label: string;
-  strategyLabel: string;
-  finaleLabel: string;
-  finaleCaseType: TownCaseType;
-  replayContrast: string;
-  chapters: readonly [DetectiveCampaignChapter, DetectiveCampaignChapter, DetectiveCampaignChapter];
-};
-
-export type DetectiveCampaignDefinition = {
-  id: DetectiveCampaignId;
-  worldPackageIds: readonly string[];
-  label: string;
-  themeLabel: string;
-  routes: readonly [DetectiveCampaignRouteDefinition, DetectiveCampaignRouteDefinition];
-};
+import { NOIR_EXPANSION_CAMPAIGNS } from "./noir-expansion-campaigns";
+import type { DetectiveCampaignDefinition, DetectiveCampaignRouteId, LocalizedSafeText } from "./campaign-types";
+export type { DetectiveCampaignDefinition, DetectiveCampaignRouteId, DetectiveCampaignChapter, DetectiveCampaignRouteDefinition, DetectiveCampaignVolumeId, LocalizedSafeText } from "./campaign-types";
 
 export const DEFAULT_DETECTIVE_CAMPAIGN_ROUTE_ID: DetectiveCampaignRouteId = "baseline";
 
-const CAMPAIGNS: readonly DetectiveCampaignDefinition[] = [
+const LEGACY_CAMPAIGNS = [
   {
     id: "town-reckoning",
     worldPackageIds: ["city-hall-merchant-debt-town", "small-town-review"],
+    volumeId: "public-records",
+    volumeLabel: "Volume I · Public Records",
+    presentationKey: "town-reckoning",
     label: "Town Reckoning",
     themeLabel: "Civic records, merchant debt, and institutional pressure",
     routes: [
@@ -113,6 +89,9 @@ const CAMPAIGNS: readonly DetectiveCampaignDefinition[] = [
   {
     id: "harbor-testimony",
     worldPackageIds: ["dock-court-market-town"],
+    volumeId: "moving-city",
+    volumeLabel: "Volume II · Moving City",
+    presentationKey: "harbor-testimony",
     label: "Harbor Testimony",
     themeLabel: "Cargo movement, witness identity, and court pressure",
     routes: [
@@ -189,6 +168,9 @@ const CAMPAIGNS: readonly DetectiveCampaignDefinition[] = [
   {
     id: "clinic-headlines",
     worldPackageIds: ["hospital-family-press-town"],
+    volumeId: "public-records",
+    volumeLabel: "Volume I · Public Records",
+    presentationKey: "clinic-headlines",
     label: "Clinic Headlines",
     themeLabel: "Medical timing, household access, and public reputation",
     routes: [
@@ -265,6 +247,24 @@ const CAMPAIGNS: readonly DetectiveCampaignDefinition[] = [
   MIDNIGHT_CHORUS_CAMPAIGN
 ] as const;
 
+export const DETECTIVE_CAMPAIGN_REGISTRY = [
+  LEGACY_CAMPAIGNS[0],
+  LEGACY_CAMPAIGNS[2],
+  NOIR_EXPANSION_CAMPAIGNS[3].campaign,
+  NOIR_EXPANSION_CAMPAIGNS[6].campaign,
+  LEGACY_CAMPAIGNS[1],
+  NOIR_EXPANSION_CAMPAIGNS[0].campaign,
+  NOIR_EXPANSION_CAMPAIGNS[1].campaign,
+  NOIR_EXPANSION_CAMPAIGNS[2].campaign,
+  LEGACY_CAMPAIGNS[3],
+  NOIR_EXPANSION_CAMPAIGNS[4].campaign,
+  NOIR_EXPANSION_CAMPAIGNS[5].campaign,
+  NOIR_EXPANSION_CAMPAIGNS[7].campaign
+] as const satisfies readonly DetectiveCampaignDefinition[];
+
+export type DetectiveCampaignId = (typeof DETECTIVE_CAMPAIGN_REGISTRY)[number]["id"];
+const CAMPAIGNS: readonly DetectiveCampaignDefinition<DetectiveCampaignId>[] = DETECTIVE_CAMPAIGN_REGISTRY;
+
 const DEFAULT_CAMPAIGN = CAMPAIGNS[0];
 
 export function isDetectiveCampaignRouteId(value: unknown): value is DetectiveCampaignRouteId {
@@ -327,6 +327,7 @@ export function deriveDetectiveCampaignCaseTypeBonus(
 
 export function toDetectiveCampaignPublicPreview(definition: DetectiveCampaignDefinition) {
   return {
+    volumeLabel: definition.volumeLabel,
     label: definition.label,
     themeLabel: definition.themeLabel,
     routes: definition.routes.map((route) => ({
@@ -342,4 +343,10 @@ export function toDetectiveCampaignPublicPreview(definition: DetectiveCampaignDe
       replayContrast: route.replayContrast
     }))
   };
+}
+
+export function campaignLocalizedSafeTextIndex() {
+  const result: Record<string, LocalizedSafeText> = {};
+  for (const campaign of CAMPAIGNS) Object.assign(result, campaign.localizedText || {});
+  return result as Readonly<Record<string, LocalizedSafeText>>;
 }

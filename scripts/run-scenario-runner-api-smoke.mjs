@@ -1,10 +1,10 @@
-import { spawn, spawnSync } from "node:child_process";
 import assert from "node:assert/strict";
+import { startReleaseCandidateServer, waitForServer } from "./lib/release-candidate-server.mjs";
 
 const port = Number(process.env.SCENARIO_RUNNER_API_SMOKE_PORT || 3103);
 let baseUrl = process.env.SCENARIO_RUNNER_API_BASE_URL || `http://127.0.0.1:${port}`;
 const runBenchmarkSmoke = process.env.SCENARIO_RUNNER_API_SMOKE_BENCHMARK === "1";
-const serverOutput = [];
+let serverHarness;
 const smokeTimeout = setTimeout(() => {
   console.error(`Scenario runner Agent API smoke test timed out at ${baseUrl}.`);
   process.exit(1);
@@ -27,41 +27,13 @@ async function request(path, options = {}) {
   return json.data;
 }
 
-async function waitForServer() {
-  for (let attempt = 0; attempt < 80; attempt += 1) {
-    try {
-      const response = await fetch(`${baseUrl}/api/v1/query/runtime/status`);
-      if (response.ok) return;
-    } catch {
-      await sleep(500);
-    }
-    await sleep(500);
-  }
-  throw new Error(`server did not start at ${baseUrl}\n${serverOutput.slice(-20).join("\n")}`);
-}
-
-async function isReady(url) {
-  try {
-    const response = await fetch(`${url}/api/v1/query/runtime/status`);
-    return response.ok;
-  } catch {
-    return false;
-  }
-}
-
-const server = process.env.SCENARIO_RUNNER_API_BASE_URL || baseUrl === "http://127.0.0.1:3000"
-  ? null
-  : spawn(process.platform === "win32" ? process.env.ComSpec || "cmd.exe" : "npm", process.platform === "win32" ? ["/c", "npm", "run", "dev", "--", "-p", String(port)] : ["run", "dev", "--", "-p", String(port)], {
-      stdio: ["ignore", "pipe", "pipe"],
-      detached: process.platform !== "win32",
-      env: { ...process.env, PORT: String(port), AI_PROVIDER: "mock", DEEPSEEK_API_KEY: "", SILICONFLOW_API_KEY: "" }
-    });
-
-server?.stdout.on("data", (chunk) => serverOutput.push(String(chunk).trim()));
-server?.stderr.on("data", (chunk) => serverOutput.push(String(chunk).trim()));
-
 try {
-  await waitForServer();
+  if (process.env.SCENARIO_RUNNER_API_BASE_URL) {
+    await waitForServer(baseUrl, { pathName: "/api/v1/query/runtime/status", timeoutMs: 30_000 });
+  } else {
+    serverHarness = await startReleaseCandidateServer({ prefix: "rc-scenario-runner-api-smoke", healthPath: "/api/v1/query/runtime/status", env: { AI_PROVIDER: "mock", DEEPSEEK_API_KEY: "", SILICONFLOW_API_KEY: "" } });
+    baseUrl = serverHarness.baseUrl;
+  }
   const status = await request("/api/v1/query/runtime/status");
   assert.equal(status.capabilities.scenarioRunner, true, "runtime status exposes scenario runner capability");
   assert.equal(status.capabilities.worldStateTimeMachine, true, "runtime status exposes time machine capability");
@@ -183,11 +155,16 @@ try {
   assert.equal(experimentRun.job.status, "queued", "new run from pack starts a queued scenario job");
   assert.notEqual(experimentRun.worldId, worldId, "new run from pack creates a branch world");
   assert.equal(experimentRun.sourceWorldId, worldId, "new run response records source world");
+  const sourceRuntimeAtBranch = await request(`/api/v1/query/town/runtime?worldId=${encodeURIComponent(worldId)}`);
   const tickedExperimentJob = await request("/api/v1/command/town/run-job/tick", {
     method: "POST",
     body: JSON.stringify({ worldId: experimentRun.worldId, jobId: experimentRun.job.id })
   });
   assert.equal(tickedExperimentJob.job.status, "completed", "branch experiment job completes on branch world");
+  const sourceRuntimeAfterBranch = await request(`/api/v1/query/town/runtime?worldId=${encodeURIComponent(worldId)}`);
+  assert.equal(sourceRuntimeAfterBranch.runtime.tick, sourceRuntimeAtBranch.runtime.tick, "branch execution does not advance the source world tick");
+  assert.deepEqual(sourceRuntimeAfterBranch.runtime.caseLifecycle, sourceRuntimeAtBranch.runtime.caseLifecycle, "branch execution does not overwrite source case lifecycle");
+  assert.deepEqual(sourceRuntimeAfterBranch.runtime.campaignSessionSummary, sourceRuntimeAtBranch.runtime.campaignSessionSummary, "branch execution preserves source campaign summary");
   const runArtifacts = await request("/api/v1/query/town/run-artifacts?limit=20");
   assert.equal(runArtifacts.artifacts.some((artifact) => artifact.runId === tickedExperimentJob.job.runId), true, "run artifacts list includes completed pack run");
   const runArtifact = await request(`/api/v1/query/town/run-artifacts/${encodeURIComponent(tickedExperimentJob.job.runId)}`);
@@ -335,15 +312,5 @@ try {
   console.log("Scenario runner Agent API smoke test passed.");
 } finally {
   clearTimeout(smokeTimeout);
-  if (server) {
-    if (process.platform === "win32") {
-      spawnSync("taskkill", ["/PID", String(server.pid), "/T", "/F"], { stdio: "ignore" });
-    } else {
-      try {
-        process.kill(-server.pid, "SIGTERM");
-      } catch {
-        server.kill("SIGTERM");
-      }
-    }
-  }
+  await serverHarness?.cleanup().catch(() => undefined);
 }

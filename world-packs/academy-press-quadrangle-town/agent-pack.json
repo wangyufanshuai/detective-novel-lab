@@ -1,0 +1,202 @@
+{
+  "manifest": {
+    "id": "academy-press-quadrangle-town-agents",
+    "name": "Academy Press Quadrangle Town Agents",
+    "version": "1.0.0",
+    "schemaVersion": "agent-pack.v1",
+    "createdAt": "2026-08-12T00:00:00.000Z",
+    "description": "Academic records, patronage pressure, student testimony and public correction."
+  },
+  "agents": [
+    {
+      "id": "npc-sch-1",
+      "name": "Ada Quill",
+      "role": "detective",
+      "homeLocationId": "lecture-hall",
+      "schedule": {
+        "08:00": "lecture-hall",
+        "12:00": "college-quadrangle",
+        "18:00": "benefactors-room"
+      },
+      "relationships": {},
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "detective",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "detective",
+      "institutionId": "inst-police",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-sch-2",
+      "name": "Elias March",
+      "role": "clerk",
+      "homeLocationId": "benefactors-room",
+      "schedule": {
+        "08:00": "benefactors-room",
+        "12:00": "college-quadrangle",
+        "18:00": "faculty-archive"
+      },
+      "relationships": {
+        "npc-sch-1": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "clerk",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "clerk",
+      "institutionId": "inst-civic",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-sch-3",
+      "name": "Nora Bell",
+      "role": "reporter",
+      "homeLocationId": "faculty-archive",
+      "schedule": {
+        "08:00": "faculty-archive",
+        "12:00": "college-quadrangle",
+        "18:00": "student-press"
+      },
+      "relationships": {
+        "npc-sch-2": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "reporter",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "reporter",
+      "institutionId": "inst-media",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-sch-4",
+      "name": "Silas Venn",
+      "role": "lawyer",
+      "homeLocationId": "student-press",
+      "schedule": {
+        "08:00": "student-press",
+        "12:00": "college-quadrangle",
+        "18:00": "senate-chamber"
+      },
+      "relationships": {
+        "npc-sch-3": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "lawyer",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "lawyer",
+      "institutionId": "inst-court",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-sch-5",
+      "name": "Iris Reed",
+      "role": "informant",
+      "homeLocationId": "senate-chamber",
+      "schedule": {
+        "08:00": "senate-chamber",
+        "12:00": "college-quadrangle",
+        "18:00": "college-quadrangle"
+      },
+      "relationships": {
+        "npc-sch-4": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "informant",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "informant",
+      "institutionId": "inst-media",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-sch-6",
+      "name": "Tomas Grey",
+      "role": "servant",
+      "homeLocationId": "college-quadrangle",
+      "schedule": {
+        "08:00": "college-quadrangle",
+        "12:00": "college-quadrangle",
+        "18:00": "lecture-hall"
+      },
+      "relationships": {
+        "npc-sch-5": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "servant",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "servant",
+      "institutionId": "inst-family",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    }
+  ]
+}

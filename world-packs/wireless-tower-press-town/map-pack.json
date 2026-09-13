@@ -1,0 +1,239 @@
+{
+  "manifest": {
+    "id": "wireless-tower-press-town-map",
+    "name": "Wireless Tower Press Town Map",
+    "version": "1.0.0",
+    "schemaVersion": "town-map-pack.v1",
+    "description": "Broadcast rumor, intercepted messages, editorial custody and wireless patrol procedure.",
+    "createdAt": "2026-08-12T00:00:00.000Z",
+    "entrypoint": "map.json"
+  },
+  "locations": [
+    {
+      "id": "wireless-square",
+      "name": "Wireless Square",
+      "kind": "public",
+      "description": "Wireless Square exposes a public, reviewable surface for broadcast rumor, intercepted messages, editorial custody and wireless patrol procedure.",
+      "connectedLocationIds": [
+        "patrol-post",
+        "broadcast-studio"
+      ],
+      "x": -1,
+      "y": 0,
+      "localizedName": {
+        "en-US": "Wireless Square",
+        "zh-CN": "无线广场"
+      }
+    },
+    {
+      "id": "broadcast-studio",
+      "name": "Broadcast Studio",
+      "kind": "work",
+      "description": "Broadcast Studio exposes a public, reviewable surface for broadcast rumor, intercepted messages, editorial custody and wireless patrol procedure.",
+      "connectedLocationIds": [
+        "wireless-square",
+        "newsroom"
+      ],
+      "x": 0,
+      "y": -1,
+      "localizedName": {
+        "en-US": "Broadcast Studio",
+        "zh-CN": "广播室"
+      }
+    },
+    {
+      "id": "newsroom",
+      "name": "Wireless Newsroom",
+      "kind": "work",
+      "description": "Wireless Newsroom exposes a public, reviewable surface for broadcast rumor, intercepted messages, editorial custody and wireless patrol procedure.",
+      "connectedLocationIds": [
+        "broadcast-studio",
+        "transmitter-room"
+      ],
+      "x": 1,
+      "y": -1,
+      "localizedName": {
+        "en-US": "Wireless Newsroom",
+        "zh-CN": "无线电新闻室"
+      }
+    },
+    {
+      "id": "transmitter-room",
+      "name": "Transmitter Room",
+      "kind": "restricted",
+      "description": "Transmitter Room exposes a public, reviewable surface for broadcast rumor, intercepted messages, editorial custody and wireless patrol procedure.",
+      "connectedLocationIds": [
+        "newsroom",
+        "telephone-exchange"
+      ],
+      "x": 1,
+      "y": 1,
+      "localizedName": {
+        "en-US": "Transmitter Room",
+        "zh-CN": "发射机房"
+      }
+    },
+    {
+      "id": "telephone-exchange",
+      "name": "Telephone Exchange",
+      "kind": "restricted",
+      "description": "Telephone Exchange exposes a public, reviewable surface for broadcast rumor, intercepted messages, editorial custody and wireless patrol procedure.",
+      "connectedLocationIds": [
+        "transmitter-room",
+        "patrol-post"
+      ],
+      "x": 0,
+      "y": 2,
+      "localizedName": {
+        "en-US": "Telephone Exchange",
+        "zh-CN": "电话交换所"
+      }
+    },
+    {
+      "id": "patrol-post",
+      "name": "Wireless Patrol Post",
+      "kind": "restricted",
+      "description": "Wireless Patrol Post exposes a public, reviewable surface for broadcast rumor, intercepted messages, editorial custody and wireless patrol procedure.",
+      "connectedLocationIds": [
+        "telephone-exchange",
+        "wireless-square"
+      ],
+      "x": -1,
+      "y": 1,
+      "localizedName": {
+        "en-US": "Wireless Patrol Post",
+        "zh-CN": "无线巡查岗"
+      }
+    }
+  ],
+  "connections": [
+    {
+      "from": "wireless-square",
+      "to": "broadcast-studio",
+      "kind": "street",
+      "travelMinutes": 3
+    },
+    {
+      "from": "broadcast-studio",
+      "to": "newsroom",
+      "kind": "service-route",
+      "travelMinutes": 4
+    },
+    {
+      "from": "newsroom",
+      "to": "transmitter-room",
+      "kind": "street",
+      "travelMinutes": 5
+    },
+    {
+      "from": "transmitter-room",
+      "to": "telephone-exchange",
+      "kind": "service-route",
+      "travelMinutes": 6
+    },
+    {
+      "from": "telephone-exchange",
+      "to": "patrol-post",
+      "kind": "street",
+      "travelMinutes": 7
+    },
+    {
+      "from": "patrol-post",
+      "to": "wireless-square",
+      "kind": "service-route",
+      "travelMinutes": 8
+    }
+  ],
+  "interactions": [
+    {
+      "id": "inspect-broadcast-studio",
+      "locationId": "broadcast-studio",
+      "kind": "search",
+      "label": "Review Broadcast Studio",
+      "risk": 28,
+      "tags": [
+        "wireless-shadows",
+        "witness"
+      ]
+    },
+    {
+      "id": "inspect-newsroom",
+      "locationId": "newsroom",
+      "kind": "question",
+      "label": "Review Wireless Newsroom",
+      "risk": 34,
+      "tags": [
+        "wireless-shadows",
+        "record"
+      ]
+    },
+    {
+      "id": "inspect-transmitter-room",
+      "locationId": "transmitter-room",
+      "kind": "work",
+      "label": "Review Transmitter Room",
+      "risk": 40,
+      "tags": [
+        "wireless-shadows",
+        "witness"
+      ]
+    },
+    {
+      "id": "inspect-telephone-exchange",
+      "locationId": "telephone-exchange",
+      "kind": "search",
+      "label": "Review Telephone Exchange",
+      "risk": 46,
+      "tags": [
+        "wireless-shadows",
+        "record"
+      ]
+    },
+    {
+      "id": "inspect-patrol-post",
+      "locationId": "patrol-post",
+      "kind": "question",
+      "label": "Review Wireless Patrol Post",
+      "risk": 52,
+      "tags": [
+        "wireless-shadows",
+        "witness"
+      ]
+    }
+  ],
+  "spawnPoints": [
+    {
+      "id": "spawn-1",
+      "locationId": "broadcast-studio",
+      "roleHint": "detective",
+      "weight": 80
+    },
+    {
+      "id": "spawn-2",
+      "locationId": "newsroom",
+      "roleHint": "reporter",
+      "weight": 75
+    },
+    {
+      "id": "spawn-3",
+      "locationId": "transmitter-room",
+      "roleHint": "clerk",
+      "weight": 70
+    },
+    {
+      "id": "spawn-4",
+      "locationId": "telephone-exchange",
+      "roleHint": "officer",
+      "weight": 65
+    }
+  ],
+  "assets": {
+    "presentationKey": "wireless-shadows"
+  },
+  "docs": {
+    "localization": {
+      "en-US": "Wireless Tower Press Town",
+      "zh-CN": "无线电塔报社小镇"
+    }
+  }
+}

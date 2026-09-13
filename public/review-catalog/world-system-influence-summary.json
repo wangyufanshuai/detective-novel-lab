@@ -1,0 +1,76 @@
+{
+  "schemaVersion": "public-world-system-influence-summary.v1",
+  "generatedAt": "2026-07-15T14:59:51.420Z",
+  "sourceKind": "world-system-influence-audit",
+  "seedCount": 3,
+  "tickCount": 120,
+  "aggregate": {
+    "appliedBiasCount": 1044,
+    "maxBias": 4,
+    "hintedActionShare": 97,
+    "institutionLabelCoverage": 100,
+    "validCandidateTrendDelta": -1,
+    "actionKindDelta": {
+      "confront": -1,
+      "cover-up": -40,
+      "hide-trace": -41,
+      "investigate": 28,
+      "observe": -3,
+      "obtain-resource": 76,
+      "pressure": 41,
+      "seek-alibi": -32,
+      "spread-rumor": -28
+    }
+  },
+  "safety": {
+    "maxBiasOk": true,
+    "noLegalCandidateLoss": true,
+    "deterministicHashOk": true,
+    "publicSafe": true
+  },
+  "perSeed": [
+    {
+      "seed": "hint-audit-a",
+      "tickCount": 120,
+      "hintedActionShare": 98,
+      "appliedBiasCount": 352,
+      "maxBias": 4,
+      "validCandidateTrendDelta": -1,
+      "deterministicHash": "fnv1a-941ce85f"
+    },
+    {
+      "seed": "hint-audit-b",
+      "tickCount": 120,
+      "hintedActionShare": 97,
+      "appliedBiasCount": 348,
+      "maxBias": 4,
+      "validCandidateTrendDelta": 1,
+      "deterministicHash": "fnv1a-9ffb8e1d"
+    },
+    {
+      "seed": "hint-audit-c",
+      "tickCount": 120,
+      "hintedActionShare": 96,
+      "appliedBiasCount": 344,
+      "maxBias": 4,
+      "validCandidateTrendDelta": -1,
+      "deterministicHash": "fnv1a-8a63ca4f"
+    }
+  ],
+  "publicBoundary": {
+    "sanitizedAuditSummary": true,
+    "rawBodiesIncluded": false,
+    "rawIdsIncluded": false,
+    "localPathsIncluded": false,
+    "runtimeAuthority": false,
+    "excludedBodies": [
+      "raw replay data",
+      "raw case bodies",
+      "NPC ids",
+      "evidence ids",
+      "event/source ids",
+      "agent state snapshots",
+      "candidate lists"
+    ]
+  }
+}

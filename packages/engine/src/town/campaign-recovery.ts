@@ -20,6 +20,7 @@ export type CampaignRecoveryActionKind =
   | "rebuild-trust"
   | "reopen-opportunity"
   | "review-certified-route"
+  | "repair-theory-trust"
   | "choose-alternate-response"
   | "headquarters-route-assist";
 
@@ -44,6 +45,7 @@ export type CampaignRecovery = {
   appliedResourceDelta?: number;
   appliedPressureDelta?: number;
   appliedStandingDelta?: number;
+  incurredStandingDelta?: number;
   appliedOpportunityDelta?: number;
 };
 
@@ -83,6 +85,7 @@ const ACTION_LABELS: Record<CampaignRecoveryActionKind, string> = {
   "rebuild-trust": "Complete one trust-rebuilding interval",
   "reopen-opportunity": "Prepare one lower-risk opportunity retry",
   "review-certified-route": "Return to the existing certified clue route",
+  "repair-theory-trust": "Complete one public theory-review interval",
   "choose-alternate-response": "Choose the other legal faction response",
   "headquarters-route-assist": "Use one Headquarters evidence-handling interval"
 };
@@ -118,8 +121,22 @@ function nextCadence(tick: number) {
   return tick + (remainder === 0 ? RECOVERY_CADENCE : RECOVERY_CADENCE - remainder);
 }
 
+function usesCinematicTheoryPressure(runtime: PersistentTownRuntime, failureKind: CampaignRecoveryFailureKind) {
+  return failureKind === "rejected-theory"
+    && runtime.campaignSession?.campaignId === "midnight-chorus"
+    && runtime.campaignSession?.routeId === "baseline";
+}
+
+function failureLabel(item: CampaignRecovery) {
+  if (item.actionKind === "repair-theory-trust") {
+    return "The rejected public theory strained confidence in the inquiry while its certified proof gaps remain open.";
+  }
+  return FAILURE_LABELS[item.failureKind];
+}
+
 function costLabel(item: CampaignRecovery) {
   if (item.actionKind === "headquarters-route-assist") return "Uses one Headquarters Recovery assist; no answer, evidence, or truth is filled automatically.";
+  if (item.actionKind === "repair-theory-trust") return "Press Network standing is temporarily reduced by 3 until one legal institution cycle completes; truth and proof remain unchanged.";
   if (item.actionKind === "review-certified-route") return "No resource cost; this only restores low-spoiler route guidance.";
   if (item.actionKind === "choose-alternate-response") return "No resource cost; the existing alternate response keeps its original prerequisites.";
   return "Costs one visible town institution interval; no event or case truth is rewritten.";
@@ -146,7 +163,7 @@ export function toCampaignRecoveryPublicSummary(runtime: PersistentTownRuntime):
   const queuedCount = state.items.filter((entry) => entry.id !== item.id && isOpen(entry)).length;
   return {
     status: item.status,
-    failureLabel: FAILURE_LABELS[item.failureKind],
+    failureLabel: failureLabel(item),
     recoveryActionLabel: ACTION_LABELS[item.actionKind],
     costLabel: costLabel(item),
     progressLabel: item.status === "ready"
@@ -195,18 +212,32 @@ export function prepareCampaignRecovery(runtime: PersistentTownRuntime, input: {
   const id = `campaign-recovery-${input.sourceKey}`;
   const existing = state.items.find((item) => item.id === id);
   if (existing) return refresh(runtime);
+  const theoryPressure = usesCinematicTheoryPressure(runtime, input.failureKind);
+  const factionKind = theoryPressure ? "media" : input.factionKind;
+  const standingBefore = theoryPressure ? runtime.factionRelationships?.standings.media?.value || 0 : 0;
+  if (theoryPressure) {
+    applyFactionRelationshipDelta(runtime, {
+      sourceKey: `${id}:theory-pressure`,
+      factionKind: "media",
+      delta: -3,
+      reason: "recovery"
+    });
+  }
   const item: CampaignRecovery = {
     id,
     sourceKey: input.sourceKey,
     failureKind: input.failureKind,
-    actionKind: actionFor(input.failureKind),
+    actionKind: theoryPressure ? "repair-theory-trust" : actionFor(input.failureKind),
     status: "ready",
     createdAtTick: runtime.tick,
     caseId: input.caseId,
     sessionId: input.sessionId,
     resourceKind: input.resourceKind,
-    factionKind: input.factionKind,
-    offerId: input.offerId
+    factionKind,
+    offerId: input.offerId,
+    incurredStandingDelta: theoryPressure
+      ? (runtime.factionRelationships?.standings.media?.value || 0) - standingBefore
+      : undefined
   };
   const active = currentRecovery(runtime);
   runtime.campaignRecoveries = {
@@ -297,6 +328,16 @@ export function reconcileCampaignRecovery(runtime: PersistentTownRuntime) {
     opportunityDelta = beforeOffer && afterOffer && beforeOffer.status !== "offered" && afterOffer.status === "offered" ? 1 : 0;
   } else if (item.actionKind === "headquarters-route-assist") {
     if (!consumeInvestigatorHeadquartersRecovery(runtime)) return undefined;
+  }
+  if (item.incurredStandingDelta && item.factionKind) {
+    const before = runtime.factionRelationships?.standings[item.factionKind]?.value || 0;
+    applyFactionRelationshipDelta(runtime, {
+      sourceKey: `${item.id}:theory-pressure-repair`,
+      factionKind: item.factionKind,
+      delta: Math.abs(item.incurredStandingDelta),
+      reason: "recovery"
+    });
+    standingDelta += (runtime.factionRelationships?.standings[item.factionKind]?.value || 0) - before;
   }
   return store(runtime, {
     ...item,

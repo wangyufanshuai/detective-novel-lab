@@ -1,5 +1,7 @@
 "use client";
 
+import { NoirMapStage } from "./NoirMapStage";
+
 import {
   AlertTriangle,
   BookOpen,
@@ -23,13 +25,15 @@ import {
   Users,
   X
 } from "lucide-react";
-import { memo, useRef, useState, type PointerEvent, type ReactNode } from "react";
+import { memo, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from "react";
 import { BenchmarkSeedTable, CurrentExperimentPanel, DatasetPackagePanel, PublicReviewCatalogPanel, ReplayDatasetCatalogPanel, ReviewExportActions, RunCatalogPanel, ScenarioPackPanel, ScenarioPresetEditor, ScenarioRunHistory, WorldPackageCatalogPanel } from "@/app/components/ReviewModePanels";
 import { TownRuleStatePanel } from "@/app/components/TownRuleStatePanel";
 import { CommandDeckCollapsible, CommandDeckShell } from "@/app/components/CommandDeckShell";
 import { InvestigationStageBar } from "@/app/components/TownControlSurface";
 import { CandidatePlayabilityPreview } from "@/app/components/CandidatePlayabilityPreview";
 import { CharacterEncounterCard } from "@/app/components/CharacterEncounterCard";
+import { useInvestigationActionExecution } from "@/app/components/InvestigationActionExecution";
+import type { InvestigationActionResult } from "@/app/campaign/investigation-action-result";
 import type { CampaignCommandDeckViewModel } from "@/app/campaign/command-deck-model";
 import type { CharacterEncounterViewModel } from "@/app/campaign/character-encounter-model";
 import type { SafeContextActionKind } from "@/app/campaign/context-action-resolver";
@@ -413,38 +417,7 @@ function locationIcon(tile: WorldMapTile) {
   return "";
 }
 
-function TownMapStageComponent({
-  caseFile,
-  currentTime,
-  stages,
-  snapshot,
-  actorsByTile,
-  markersByTile,
-  hoverInfo,
-  characterEncounter,
-  encountersByActorId,
-  selectedSceneId,
-  highlightedEventId,
-  selectedCharacterId,
-  selectionHighlight,
-  interactiveTargets,
-  mapLenses,
-  onTileClick,
-  onTileHover,
-  onMarkerClick,
-  onActorClick,
-  onLocationAction,
-  onEncounterAction,
-  onEncounterDismiss,
-  replaying,
-  setReplaying,
-  timeMin,
-  timeMax,
-  timeValue,
-  setTimeValue,
-  timeToMinutes,
-  minutesToTime
-}: {
+export type TownMapStageProps = {
   caseFile: string;
   currentTime: string;
   stages: InvestigationStage[];
@@ -465,7 +438,7 @@ function TownMapStageComponent({
   onMarkerClick: (marker: WorldMapMarker) => void;
   onActorClick: (actor: WorldMapActor) => void;
   onLocationAction: (locationId: string) => void;
-  onEncounterAction: (kind: SafeContextActionKind) => void;
+  onEncounterAction: (kind: SafeContextActionKind) => InvestigationActionResult | void | Promise<InvestigationActionResult | void>;
   onEncounterDismiss: () => void;
   replaying: boolean;
   setReplaying: (value: boolean | ((value: boolean) => boolean)) => void;
@@ -475,146 +448,12 @@ function TownMapStageComponent({
   setTimeValue: (value: number) => void;
   timeToMinutes: (time: string) => number;
   minutesToTime: (minutes: number) => string;
-}) {
-  const { number, t, text } = useAppLocale();
-  const interactiveTargetIds = new Set(interactiveTargets.map((target) => `${target.kind}:${target.locationId || target.characterId || target.evidenceId || target.eventId}`));
-  const lensSignalByLocation = new Map((mapLenses?.locationSignals || []).map((signal) => [signal.locationName, signal]));
-  return (
-    <section className="mapStage">
-      <header className="stageHud">
-        <div>
-          <p>{t("map.caseSource")}</p>
-          <h2>{text(caseFile)}</h2>
-          <div className="valueProposition" data-testid="value-proposition">
-            {t("map.caseBoundary")}<span>{t("map.authorityStack")}</span>
-          </div>
-        </div>
-        <div className="timeBadge">{currentTime}</div>
-      </header>
-      <InvestigationStageBar stages={stages} />
+  campaignMapPath?: string;
+  campaignMapReady?: boolean;
+};
 
-      <section className="pixelMapWrap" data-testid="pixel-map">
-        <div className="pixelMap" style={{ gridTemplateColumns: `repeat(${snapshot?.width || 28}, minmax(18px, 1fr))` }}>
-          {(snapshot?.tiles || []).map((tile: WorldMapTile) => {
-            const actors = actorsByTile.get(`${tile.x}:${tile.y}`) || [];
-            const markers = markersByTile.get(`${tile.x}:${tile.y}`) || [];
-            const selected = tile.locationId && tile.locationId === selectedSceneId;
-            const highlighted = tile.locationId && tile.locationId === selectionHighlight?.locationId;
-            const interactive = Boolean(tile.locationId || actors.length || markers.length);
-            const lensSignal = tile.locationName ? lensSignalByLocation.get(tile.locationName) : undefined;
-            return (
-              <div
-                key={tile.id}
-                className={`mapTile terrain-${tile.terrain} ${tile.searchable ? "searchable" : ""} ${selected ? "selected" : ""} ${highlighted ? "spotlight" : ""}`}
-                data-location-id={tile.locationId || undefined}
-                title={text(tile.locationName || tile.terrain)}
-                aria-label={interactive ? text(tile.locationName || tile.terrain) : undefined}
-                role={interactive ? "group" : "presentation"}
-                onMouseEnter={() => tile.locationId && onTileHover(tile.locationId)}
-              >
-                {tile.locationId && <button
-                  type="button"
-                  className="mapTileHitTarget"
-                  aria-label={text(tile.locationName || tile.terrain)}
-                  onClick={() => onTileClick(tile.locationId!)}
-                  onFocus={() => onTileHover(tile.locationId!)}
-                />}
-                <span className="tileIcon" aria-hidden="true">{locationIcon(tile)}</span>
-                {tile.locationName && <span className="placeName">{text(tile.locationName)}</span>}
-                {tile.searchable && <span className="evidenceDot">{number(tile.discoveredEvidenceCount)}/{number(tile.evidenceCount)}</span>}
-                {lensSignal && <>
-                  <span className="mapLensBadge mapLens-institution" data-tone={lensSignal.institutionTone}>{text(lensSignal.institutionLabel)}</span>
-                  <span className="mapLensBadge mapLens-pressure" data-tone={lensSignal.pressureTone}>{text(lensSignal.pressureLabel)}</span>
-                  <span className="mapLensBadge mapLens-reaction" data-tone={lensSignal.reactionTone}>{text(lensSignal.reactionLabel)}</span>
-                  <span className="mapLensBadge mapLens-evidence" data-tone={lensSignal.evidenceTone}>{text(lensSignal.evidenceLabel)}</span>
-                </>}
-                {markers.slice(0, 3).map((marker) => {
-                  const state = marker.discovered ? "discovered" : marker.evidenceId ? "searchable" : "public";
-                  return (
-                    <button
-                      type="button"
-                      key={marker.id}
-                      className={`marker marker-${marker.type} marker-${state} ${marker.eventId === highlightedEventId || marker.evidenceId === selectionHighlight?.evidenceId ? "hot" : ""}`}
-                      title={text(marker.label)}
-                      aria-label={text(marker.label)}
-                      onClick={(event) => { event.stopPropagation(); onMarkerClick(marker); }}
-                    >
-                      {markerGlyph[marker.type] || "•"}
-                    </button>
-                  );
-                })}
-                <span className="actorStack">
-                  {actors.slice(0, 4).map((actor) => {
-                    const encounter = encountersByActorId.get(actor.id);
-                    const actorClasses = [
-                      "actorPin",
-                      encounter ? `actor-posture-${encounter.posture}` : "actor-posture-routine",
-                      selectedCharacterId === actor.id ? "actor-current" : "",
-                      selectionHighlight?.characterId === actor.id ? "actor-spotlight" : ""
-                    ].filter(Boolean).join(" ");
-                    return (
-                      <button
-                        type="button"
-                        key={actor.id}
-                        className={actorClasses}
-                        title={`${text(actor.name)} / ${text(actor.role)} / ${text(encounter?.postureLabel || t("map.routine"))}`}
-                        aria-label={`${text(actor.name)}, ${text(actor.role)}, ${text(encounter?.postureLabel || t("map.routine"))}`}
-                        onClick={(event) => { event.stopPropagation(); onActorClick(actor); }}
-                      >
-                        <span className="actorInitial" aria-hidden="true">{firstGlyph(actor.name)}</span>
-                        <span className="actorPostureMark" aria-hidden="true">
-                          {encounter?.posture === "supportive" ? "+" : encounter?.posture === "guarded" ? "!" : encounter?.posture === "busy" ? "…" : encounter?.posture === "avoidant" ? "×" : "·"}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-        {hoverInfo && (
-          <aside className="locationHoverCard" data-testid="location-hover-card">
-            <span className="eyebrow">{text(hoverInfo.terrain)} / {hoverInfo.searchable ? t("map.searchable") : t("map.publicLocation")}</span>
-            <strong>{text(hoverInfo.name)}</strong>
-            <p>{t("map.evidenceProgress")}：{number(hoverInfo.discovered)}/{number(hoverInfo.total)}</p>
-            <small>{text(hoverInfo.recentEvent || t("map.noRecentEvent"))}</small>
-            <div className="popoverActions">
-              <button type="button" onClick={() => onLocationAction(hoverInfo.locationId)}>{hoverInfo.searchable ? t("map.searchLocation") : t("map.viewLocation")}</button>
-              <span>{interactiveTargetIds.has(`location:${hoverInfo.locationId}`) ? t("map.interactive") : t("map.readonly")}</span>
-            </div>
-          </aside>
-        )}
-        {characterEncounter && (
-          <CharacterEncounterCard
-            encounter={characterEncounter}
-            onAction={onEncounterAction}
-            onDismiss={onEncounterDismiss}
-          />
-        )}
-      </section>
-
-      <footer className="timelineScrubber">
-        <div className="mapLegend" data-testid="map-legend">
-          <span><b aria-hidden="true">?</b> {t("map.searchable")}</span>
-          <span><b aria-hidden="true">◆</b> {t("map.discovered")}</span>
-          <span><b aria-hidden="true">!</b> {t("map.incident")}</span>
-          <span><b aria-hidden="true">✓</b> {t("map.completed")}</span>
-          <span><b className="legendNpc" aria-hidden="true">人</b> {t("map.posture")}</span>
-        </div>
-        <div className="scrubLabels"><span>08:00</span><strong>{t("map.timeline")}</strong><span>23:00</span></div>
-        <button type="button" className="replayButton" onClick={() => setReplaying((value) => !value)}>
-          {replaying ? <Pause size={14} aria-hidden="true" /> : <Play size={14} aria-hidden="true" />} {replaying ? t("map.pauseReplay") : t("map.playReplay")}
-        </button>
-        <input type="range" name="town-timeline" aria-label={t("map.replayControl")} min={timeMin} max={timeMax} step={10} value={timeValue} onChange={(event) => setTimeValue(Number(event.target.value))} />
-        <div className="scrubTicks">
-          {["08:00", "12:00", "16:00", "20:00", "21:30", "21:47", "23:00"].map((time) => (
-            <button type="button" key={time} className={minutesToTime(timeValue) === time ? "active" : ""} onClick={() => setTimeValue(timeToMinutes(time))}>{time}</button>
-          ))}
-        </div>
-      </footer>
-    </section>
-  );
+function TownMapStageComponent(props: TownMapStageProps) {
+  return <NoirMapStage {...props} />;
 }
 
 export const TownMapStage = memo(TownMapStageComponent, (previous, next) => (

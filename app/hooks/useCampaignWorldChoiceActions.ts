@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import type { useInvestigationController } from "@/app/controllers/useInvestigationController";
 import type { useCampaignController } from "@/app/controllers/useCampaignController";
 import type { useTownRuntimeController } from "@/app/controllers/useTownRuntimeController";
@@ -43,7 +44,12 @@ type CampaignWorldChoiceActionsInput = {
 export function useCampaignWorldChoiceActions({ investigation, campaign, town, replay, campaignStudy, appendJournal }: CampaignWorldChoiceActionsInput) {
   const { t } = useAppLocale();
   const { world, setWorld, session, runtimeMode, setBusy, setStatus } = investigation;
-  const { setTownRuntime, setTownQueue } = town;
+  const { townRuntime, setTownRuntime, setTownQueue } = town;
+  const actionSequence = useRef(0);
+  function runtimeCommandMeta(label: string) {
+    actionSequence.current += 1;
+    return { actionId: `${label}-${Date.now().toString(36)}-${actionSequence.current}`, sessionRevision: townRuntime?.revision };
+  }
   const { replayGoalAttempt } = replay;
   const {
     worldLead, setWorldLead, setWorldLeadOutcome, setWorldArc, setWorldArcDirective,
@@ -65,7 +71,7 @@ export function useCampaignWorldChoiceActions({ investigation, campaign, town, r
         campaignSession?: CampaignSessionPublicSummary;
         campaignFinaleDebrief?: CampaignFinaleDebriefPublicSummary;
       }>("/api/v1/command/town/runtime/step", {
-        worldId: world.id,
+        worldId: world.id, ...runtimeCommandMeta("headquarters"),
         steps: 0,
         investigatorHeadquartersDecision: { choice }
       });
@@ -101,7 +107,7 @@ export function useCampaignWorldChoiceActions({ investigation, campaign, town, r
         worldLead: WorldLeadPublicSummary; worldLeadOutcome?: WorldLeadOutcomePublicSummary;
         worldArc?: WorldArcPublicSummary; worldInfluenceBudget?: WorldInfluenceBudgetPublicSummary;
         arcConvergence?: ArcConvergencePublicSummary;
-      }>("/api/v1/command/town/runtime/step", { worldId: world.id, steps: 0, worldLeadDecision: { sessionId: session.id, action } });
+      }>("/api/v1/command/town/runtime/step", { worldId: world.id, steps: 0, ...runtimeCommandMeta("world-lead"), worldLeadDecision: { sessionId: session.id, action } });
       setTownRuntime(data.runtime);
       setTownQueue(data.queue);
       setWorld(data.world);
@@ -154,7 +160,7 @@ export function useCampaignWorldChoiceActions({ investigation, campaign, town, r
         worldArcDirective: WorldArcDirectivePublicSummary; worldPressureCascade?: WorldPressureCascadePublicSummary;
         factionRelationship?: FactionRelationshipPublicSummary; worldInfluenceBudget?: WorldInfluenceBudgetPublicSummary;
         investigatorProgression?: InvestigatorProgressionPublicSummary;
-      }>("/api/v1/command/town/runtime/step", { worldId: world.id, steps: 0, worldArcDirectiveDecision: { choice } });
+      }>("/api/v1/command/town/runtime/step", { worldId: world.id, steps: 0, ...runtimeCommandMeta("world-arc"), worldArcDirectiveDecision: { choice } });
       setTownRuntime(data.runtime);
       setTownQueue(data.queue);
       setWorld(data.world);
@@ -183,7 +189,7 @@ export function useCampaignWorldChoiceActions({ investigation, campaign, town, r
         runtime: PersistentTownRuntime; queue: TownEmergenceQueue; world: WorldState;
         playerResourceCommitment: PlayerResourceCommitmentPublicSummary;
         factionRelationship?: FactionRelationshipPublicSummary; worldInfluenceBudget?: WorldInfluenceBudgetPublicSummary;
-      }>("/api/v1/command/town/runtime/step", { worldId: world.id, steps: 0, playerResourceCommitmentDecision: { sessionId: session.id, allocations } });
+      }>("/api/v1/command/town/runtime/step", { worldId: world.id, steps: 0, ...runtimeCommandMeta("resource-commitment"), playerResourceCommitmentDecision: { sessionId: session.id, allocations } });
       setTownRuntime(data.runtime);
       setTownQueue(data.queue);
       setWorld(data.world);
@@ -211,7 +217,7 @@ export function useCampaignWorldChoiceActions({ investigation, campaign, town, r
       const data = await postV1<{
         runtime: PersistentTownRuntime; queue: TownEmergenceQueue; world: WorldState;
         worldEventOffer: WorldEventOfferPublicSummary; factionRelationship?: FactionRelationshipPublicSummary;
-      }>("/api/v1/command/town/runtime/step", { worldId: world.id, steps: 0, worldEventOfferDecision: { choice } });
+      }>("/api/v1/command/town/runtime/step", { worldId: world.id, steps: 0, ...runtimeCommandMeta("world-offer"), worldEventOfferDecision: { choice } });
       setTownRuntime(data.runtime);
       setTownQueue(data.queue);
       setWorld(data.world);
@@ -255,7 +261,7 @@ export function useCampaignWorldChoiceActions({ investigation, campaign, town, r
         runtime: PersistentTownRuntime; queue: TownEmergenceQueue; world: WorldState; campaignRecovery: CampaignRecoveryPublicSummary;
         investigatorHeadquarters?: InvestigatorHeadquartersPublicSummary; factionRelationship?: FactionRelationshipPublicSummary;
         worldEventOffer?: WorldEventOfferPublicSummary;
-      }>("/api/v1/command/town/runtime/step", { worldId: world.id, steps: 0, campaignRecoveryDecision: { choice } });
+      }>("/api/v1/command/town/runtime/step", { worldId: world.id, steps: 0, ...runtimeCommandMeta("campaign-recovery"), campaignRecoveryDecision: { choice } });
       setTownRuntime(data.runtime);
       setTownQueue(data.queue);
       setWorld(data.world);

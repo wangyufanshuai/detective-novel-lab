@@ -1,4 +1,4 @@
-import { errorResponse, ok, readJson } from "@/app/api/v1/_utils";
+import { errorResponse, adminOk, adminGuard, readJson } from "@/app/api/v1/_utils";
 import { createInitialWorld, createPremiumShowcaseWorld, extractCaseFromWorld, simulateDailyLife, simulateWorldTick, type CaseTemplateId, type MurderArchetype, type WorldMode } from "@/lib/engine";
 import { worldRepository } from "@/lib/world/repository";
 
@@ -15,12 +15,14 @@ type CreateTownBody = {
 
 export async function POST(request: Request) {
   try {
+    const unauthorized = adminGuard(request);
+    if (unauthorized) return unauthorized;
     const body = await readJson<CreateTownBody>(request, {});
     const mode = body.mode || "showcase";
     if (mode === "showcase" && (body.caseMode || "generated") === "premium") {
       const premium = createPremiumShowcaseWorld(body.seed || "premium-showcase", body.caseTemplateId || "archive-blunt");
       const savedWorld = worldRepository.saveWorldBundle({ world: premium.world, events: premium.events, activeCase: premium.activeCase });
-      return ok({ world: savedWorld, events: premium.events, activeCase: premium.activeCase, qualityReport: premium.activeCase.qualityReport, simulationReports: [] });
+      return adminOk({ world: savedWorld, events: premium.events, activeCase: premium.activeCase, qualityReport: premium.activeCase.qualityReport, simulationReports: [] });
     }
     const generatedNpcCount = mode === "advanced" ? 30 : 20;
     const world = createInitialWorld(body.seed || "detective-town-showcase", {
@@ -35,7 +37,7 @@ export async function POST(request: Request) {
     const activeCase = extractCaseFromWorld(tick.world, events);
     tick.world.activeCaseId = activeCase.id;
     const savedWorld = worldRepository.saveWorldBundle({ world: tick.world, events, activeCase });
-    return ok({ world: savedWorld, events, activeCase, qualityReport: activeCase.qualityReport, simulationReports: daily.reports });
+    return adminOk({ world: savedWorld, events, activeCase, qualityReport: activeCase.qualityReport, simulationReports: daily.reports });
   } catch (error) {
     return errorResponse(error);
   }

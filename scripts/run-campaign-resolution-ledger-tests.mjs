@@ -206,7 +206,11 @@ const theatreSource = await fs.readFile(path.join(root, "app/components/Campaign
 const journalSource = await fs.readFile(path.join(root, "app/components/InvestigationRouteReviewSurface.tsx"), "utf8");
 assert.deepEqual([...componentSource.matchAll(/messageKey: "(ledger\.(?:result|worldChange|objectiveProgress|nextAction))"/g)].map((match) => match[1]), ["ledger.result", "ledger.worldChange", "ledger.objectiveProgress", "ledger.nextAction"], "one shared component owns the localized fixed four-stage chain");
 assert.match(shellSource, /CampaignResolutionLedgerProvider ledger=\{resolutionLedger\}/, "Command Deck provides one canonical Ledger object to all descendants");
-assert.match(shellSource, /<CampaignResolutionLatest ledger=\{resolutionLedger\}/, "Command Deck consumes the canonical latest resolution");
+assert.match(shellSource, /data-testid="command-deck-feedback"[\s\S]*?resolutionLedger\.latest\.chain\.result/, "Explore renders the canonical latest result rather than rebuilding it");
+assert.match(shellSource, /resultVisible && !toastVisible/, "The inline result yields to the current toast");
+assert.match(shellSource, /const resultVisible =[^;]*!transitionVisible[^;]*!blockingOverlayActive/, "An active theatre or blocking overlay owns result visibility");
+assert.match(shellSource, /resolutionLedger\.entries\.map/, "The journal renders the same ledger entries");
+for (const field of ["result", "worldChange", "objectiveProgress", "nextAction"]) assert.match(shellSource, new RegExp(`entry\\.chain\\.${field}`), `Journal preserves canonical ${field}`);
 assert.match(shellSource, /<CampaignTransitionTheatre presentation=\{theatre\.presentation\} ledger=\{resolutionLedger\}/, "Theatre consumes that same Ledger object");
 assert.match(theatreSource, /CampaignResolutionChain/, "Theatre renders the shared causal chain instead of rewriting result copy");
 assert.match(journalSource, /<CampaignResolutionJournal\s*\/>/, "Guided Journal consumes the Ledger from the same provider");

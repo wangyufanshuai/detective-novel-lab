@@ -135,6 +135,17 @@ function safeConsequences(runtime: PersistentTownRuntime) {
   return labels.slice(0, 4);
 }
 
+function goldSliceCausalBeats(runtime: PersistentTownRuntime) {
+  const state = ensureCampaignSession(runtime);
+  if (state.campaignId !== "midnight-chorus" || state.routeId !== "baseline") return [];
+  return state.history
+    .slice(0, TARGET_CASE_COUNT)
+    .map((entry, index) => entry.authoredAftermathLabel
+      ? `Chapter ${index + 1}: ${entry.authoredAftermathLabel}`
+      : `Chapter ${index + 1}: one certified evidence chain was closed by an accepted player theory.`
+    );
+}
+
 export function toCampaignSessionPublicSummary(runtime: PersistentTownRuntime): CampaignSessionPublicSummary {
   const state = ensureCampaignSession(runtime);
   const campaign = detectiveCampaignForRuntime(runtime);
@@ -216,7 +227,9 @@ export function toCampaignFinaleDebriefPublicSummary(runtime: PersistentTownRunt
     };
   }
   const consequences = safeConsequences(runtime);
+  const chapterRecall = goldSliceCausalBeats(runtime);
   const causalBeats = [
+    ...chapterRecall,
     `${state.completedCycleKeys.length} certified investigations were closed by accepted player theories.`,
     `${approachLabel(runtime)} connected the campaign history to the shared town reckoning.`,
     ...consequences,

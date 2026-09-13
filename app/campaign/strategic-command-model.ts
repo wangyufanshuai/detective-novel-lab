@@ -459,11 +459,11 @@ export function resolveStrategicActionDispatch(action: StrategicCommandAction): 
 }
 
 export type StrategicActionHandlers = {
-  contextAction: (actionKind: SafeContextActionKind) => void | Promise<void>;
-  openCampaign: () => void | Promise<void>;
-  advanceTown: () => void | Promise<void>;
-  showNextCase: () => void | Promise<void>;
-  showInspector: () => void | Promise<void>;
+  contextAction: (actionKind: SafeContextActionKind) => unknown | Promise<unknown>;
+  openCampaign: () => unknown | Promise<unknown>;
+  advanceTown: () => unknown | Promise<unknown>;
+  showNextCase: () => unknown | Promise<unknown>;
+  showInspector: () => unknown | Promise<unknown>;
 };
 
 function dispatchStrategicAction(action: StrategicCommandAction, handlers: StrategicActionHandlers) {

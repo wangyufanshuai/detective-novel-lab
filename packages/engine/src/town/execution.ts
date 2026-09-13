@@ -50,6 +50,7 @@ export type TownTickIndex = {
   eventsByLocationId: Map<string, WorldEvent[]>;
   memoryByNpcId: Map<string, MemoryRecord[]>;
   memoryByEventId: Map<string, MemoryRecord[]>;
+  indexedMemoryCount: number;
   observationsByEventId: Map<string, TownEventObservation[]>;
   evidenceByEventId: Map<string, TownRuleRuntimeState["evidenceChain"]["items"]>;
   evidenceByLocationId: Map<string, TownRuleRuntimeState["evidenceChain"]["items"]>;
@@ -59,6 +60,8 @@ export type TownTickIndex = {
   npcById: Map<string, NPCProfile>;
   locationById: Map<string, WorldState["locations"][number]>;
 };
+
+export type TownTickMemoryIndex = Pick<TownTickIndex, "memoryByNpcId" | "memoryByEventId" | "indexedMemoryCount">;
 
 export function normalizeTownExecutionPolicy(input: Partial<TownExecutionPolicy> = {}): TownExecutionPolicy {
   return {
@@ -80,7 +83,8 @@ function appendMapValue<T>(map: Map<string, T[]>, key: string, value: T) {
 export function createTownTickIndex(
   world: WorldState,
   events: WorldEvent[],
-  runtime: PersistentTownRuntime
+  runtime: PersistentTownRuntime,
+  memoryIndex?: TownTickMemoryIndex
 ): TownTickIndex {
   const eventById = new Map<string, WorldEvent>();
   const eventsByActorId = new Map<string, WorldEvent[]>();
@@ -90,11 +94,13 @@ export function createTownTickIndex(
     for (const npcId of new Set([...event.actorIds, ...event.relatedCharacterIds])) appendMapValue(eventsByActorId, npcId, event);
     appendMapValue(eventsByLocationId, event.locationId, event);
   }
-  const memoryByNpcId = new Map<string, MemoryRecord[]>();
-  const memoryByEventId = new Map<string, MemoryRecord[]>();
-  for (const memory of world.memories || []) {
-    appendMapValue(memoryByNpcId, memory.npcId, memory);
-    appendMapValue(memoryByEventId, memory.eventId, memory);
+  const memoryByNpcId = memoryIndex?.memoryByNpcId || new Map<string, MemoryRecord[]>();
+  const memoryByEventId = memoryIndex?.memoryByEventId || new Map<string, MemoryRecord[]>();
+  if (!memoryIndex) {
+    for (const memory of world.memories || []) {
+      appendMapValue(memoryByNpcId, memory.npcId, memory);
+      appendMapValue(memoryByEventId, memory.eventId, memory);
+    }
   }
   const observationsByEventId = new Map<string, TownEventObservation[]>();
   for (const observation of runtime.eventObservations || []) appendMapValue(observationsByEventId, observation.eventId, observation);
@@ -114,6 +120,7 @@ export function createTownTickIndex(
     eventsByLocationId,
     memoryByNpcId,
     memoryByEventId,
+    indexedMemoryCount: memoryIndex?.indexedMemoryCount ?? (world.memories || []).length,
     observationsByEventId,
     evidenceByEventId,
     evidenceByLocationId,
@@ -129,6 +136,15 @@ export function addEventToTownTickIndex(index: TownTickIndex, event: WorldEvent)
   index.eventById.set(event.id, event);
   for (const npcId of new Set([...event.actorIds, ...event.relatedCharacterIds])) appendMapValue(index.eventsByActorId, npcId, event);
   appendMapValue(index.eventsByLocationId, event.locationId, event);
+}
+
+export function addMemoryToTownTickIndex(index: TownTickIndex, memory: MemoryRecord) {
+  if (!(index.memoryByEventId.get(memory.eventId) || []).some((item) => item.id === memory.id)) {
+    appendMapValue(index.memoryByEventId, memory.eventId, memory);
+  }
+  if (!(index.memoryByNpcId.get(memory.npcId) || []).some((item) => item.id === memory.id)) {
+    appendMapValue(index.memoryByNpcId, memory.npcId, memory);
+  }
 }
 
 export function recordTownPhaseTiming(summary: TownPerformanceSummary, phase: string, elapsedMs: number) {

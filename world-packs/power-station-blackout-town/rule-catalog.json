@@ -1,0 +1,525 @@
+{
+  "id": "power-station-blackout-town-rules",
+  "name": "Power Station Blackout Town Rules",
+  "version": "1.0.0",
+  "resources": [
+    {
+      "kind": "police_time",
+      "label": "Police Time",
+      "value": 54,
+      "capacity": 100,
+      "pressure": 52
+    },
+    {
+      "kind": "media_attention",
+      "label": "Media Attention",
+      "value": 48,
+      "capacity": 100,
+      "pressure": 58
+    },
+    {
+      "kind": "family_influence",
+      "label": "Family Influence",
+      "value": 52,
+      "capacity": 100,
+      "pressure": 44
+    },
+    {
+      "kind": "merchant_credit",
+      "label": "Merchant Credit",
+      "value": 50,
+      "capacity": 100,
+      "pressure": 55
+    },
+    {
+      "kind": "medical_capacity",
+      "label": "Medical Capacity",
+      "value": 54,
+      "capacity": 100,
+      "pressure": 36
+    },
+    {
+      "kind": "evidence_integrity",
+      "label": "Evidence Integrity",
+      "value": 74,
+      "capacity": 100,
+      "pressure": 42
+    },
+    {
+      "kind": "court_docket",
+      "label": "Court Docket",
+      "value": 50,
+      "capacity": 100,
+      "pressure": 50
+    },
+    {
+      "kind": "dock_credit",
+      "label": "Service Credit",
+      "value": 48,
+      "capacity": 100,
+      "pressure": 56
+    },
+    {
+      "kind": "informant_trust",
+      "label": "Informant Trust",
+      "value": 46,
+      "capacity": 100,
+      "pressure": 57
+    }
+  ],
+  "institutions": [
+    {
+      "id": "inst-police",
+      "name": "Power Station Blackout Town Police Review",
+      "kind": "police",
+      "resources": 48,
+      "reputation": 50,
+      "pressure": 44,
+      "agenda": "Keep blackout ledger outcomes reviewable.",
+      "influenceByLocation": {
+        "blackout-square": 52
+      },
+      "trustByNpcId": {
+        "npc-bla-1": 70,
+        "npc-bla-2": 70
+      },
+      "activeCaseIds": [],
+      "policyPressure": 44
+    },
+    {
+      "id": "inst-media",
+      "name": "Power Station Blackout Town Public Record Desk",
+      "kind": "media",
+      "resources": 51,
+      "reputation": 52,
+      "pressure": 48,
+      "agenda": "Keep blackout ledger outcomes reviewable.",
+      "influenceByLocation": {
+        "permit-office": 74,
+        "blackout-square": 52
+      },
+      "trustByNpcId": {
+        "npc-bla-6": 70
+      },
+      "activeCaseIds": [],
+      "policyPressure": 48
+    },
+    {
+      "id": "inst-family",
+      "name": "Power Station Blackout Town Household Trust",
+      "kind": "family",
+      "resources": 54,
+      "reputation": 54,
+      "pressure": 52,
+      "agenda": "Keep blackout ledger outcomes reviewable.",
+      "influenceByLocation": {
+        "precinct": 74,
+        "blackout-square": 52
+      },
+      "trustByNpcId": {},
+      "activeCaseIds": [],
+      "policyPressure": 52
+    },
+    {
+      "id": "inst-commerce",
+      "name": "Power Station Blackout Town Commercial Board",
+      "kind": "commerce",
+      "resources": 57,
+      "reputation": 50,
+      "pressure": 56,
+      "agenda": "Keep blackout ledger outcomes reviewable.",
+      "influenceByLocation": {
+        "switch-house": 74,
+        "blackout-square": 52
+      },
+      "trustByNpcId": {
+        "npc-bla-5": 70
+      },
+      "activeCaseIds": [],
+      "policyPressure": 56
+    },
+    {
+      "id": "inst-civic",
+      "name": "Power Station Blackout Town Civic Records",
+      "kind": "civic",
+      "resources": 48,
+      "reputation": 52,
+      "pressure": 60,
+      "agenda": "Keep blackout ledger outcomes reviewable.",
+      "influenceByLocation": {
+        "repair-depot": 74,
+        "blackout-square": 52
+      },
+      "trustByNpcId": {
+        "npc-bla-3": 70
+      },
+      "activeCaseIds": [],
+      "policyPressure": 60
+    },
+    {
+      "id": "inst-medical",
+      "name": "Power Station Blackout Town Medical Review",
+      "kind": "medical",
+      "resources": 51,
+      "reputation": 54,
+      "pressure": 44,
+      "agenda": "Keep blackout ledger outcomes reviewable.",
+      "influenceByLocation": {
+        "contractor-office": 74,
+        "blackout-square": 52
+      },
+      "trustByNpcId": {},
+      "activeCaseIds": [],
+      "policyPressure": 44
+    },
+    {
+      "id": "inst-court",
+      "name": "Power Station Blackout Town Public Court",
+      "kind": "court",
+      "resources": 54,
+      "reputation": 50,
+      "pressure": 48,
+      "agenda": "Keep blackout ledger outcomes reviewable.",
+      "influenceByLocation": {
+        "blackout-square": 52
+      },
+      "trustByNpcId": {},
+      "activeCaseIds": [],
+      "policyPressure": 48
+    },
+    {
+      "id": "inst-dock-union",
+      "name": "Power Station Blackout Town Service Guild",
+      "kind": "dock_union",
+      "resources": 57,
+      "reputation": 52,
+      "pressure": 52,
+      "agenda": "Keep blackout ledger outcomes reviewable.",
+      "influenceByLocation": {
+        "permit-office": 74,
+        "blackout-square": 52
+      },
+      "trustByNpcId": {
+        "npc-bla-4": 70
+      },
+      "activeCaseIds": [],
+      "policyPressure": 52
+    }
+  ],
+  "professions": [
+    {
+      "npcId": "npc-bla-1",
+      "kind": "detective",
+      "institutionId": "inst-police",
+      "rank": 3,
+      "skills": [
+        "detective",
+        "records"
+      ],
+      "income": 36,
+      "workload": 42
+    },
+    {
+      "npcId": "npc-bla-2",
+      "kind": "officer",
+      "institutionId": "inst-police",
+      "rank": 2,
+      "skills": [
+        "officer",
+        "records"
+      ],
+      "income": 39,
+      "workload": 46
+    },
+    {
+      "npcId": "npc-bla-3",
+      "kind": "clerk",
+      "institutionId": "inst-civic",
+      "rank": 1,
+      "skills": [
+        "clerk",
+        "records"
+      ],
+      "income": 42,
+      "workload": 50
+    },
+    {
+      "npcId": "npc-bla-4",
+      "kind": "dockworker",
+      "institutionId": "inst-dock-union",
+      "rank": 2,
+      "skills": [
+        "dockworker",
+        "records"
+      ],
+      "income": 45,
+      "workload": 54
+    },
+    {
+      "npcId": "npc-bla-5",
+      "kind": "merchant",
+      "institutionId": "inst-commerce",
+      "rank": 1,
+      "skills": [
+        "merchant",
+        "records"
+      ],
+      "income": 48,
+      "workload": 58
+    },
+    {
+      "npcId": "npc-bla-6",
+      "kind": "reporter",
+      "institutionId": "inst-media",
+      "rank": 2,
+      "skills": [
+        "reporter",
+        "records"
+      ],
+      "income": 51,
+      "workload": 62
+    }
+  ],
+  "longActionDefinitions": [
+    {
+      "kind": "investigate-scene",
+      "label": "Inspect public scene",
+      "durationTicks": 3,
+      "resourceCosts": {
+        "police_time": 3
+      },
+      "institutionDeltas": {
+        "inst-police": {
+          "resources": -2,
+          "reputation": 2,
+          "pressure": -1
+        }
+      },
+      "publicOpinionDelta": {
+        "trustInPolice": 1
+      },
+      "evidenceContaminationDelta": -5
+    },
+    {
+      "kind": "verify-alibi",
+      "label": "Verify public schedule",
+      "durationTicks": 3,
+      "resourceCosts": {
+        "police_time": 2,
+        "informant_trust": 2
+      },
+      "institutionDeltas": {
+        "inst-police": {
+          "resources": -2,
+          "reputation": 2,
+          "pressure": -1
+        }
+      },
+      "publicOpinionDelta": {
+        "witnessFear": -2
+      },
+      "evidenceContaminationDelta": -3
+    },
+    {
+      "kind": "audit-ledger",
+      "label": "Audit bounded ledger",
+      "durationTicks": 4,
+      "resourceCosts": {
+        "merchant_credit": 3
+      },
+      "institutionDeltas": {
+        "inst-commerce": {
+          "resources": -2,
+          "reputation": 2,
+          "pressure": 1
+        }
+      },
+      "publicOpinionDelta": {
+        "heat": 1
+      },
+      "evidenceContaminationDelta": -4
+    },
+    {
+      "kind": "secure-evidence-locker",
+      "label": "Secure evidence custody",
+      "durationTicks": 3,
+      "requiredInstitutionId": "inst-police",
+      "resourceCosts": {
+        "evidence_integrity": 3,
+        "police_time": 2
+      },
+      "institutionDeltas": {
+        "inst-police": {
+          "resources": -2,
+          "reputation": 2,
+          "pressure": -2
+        }
+      },
+      "publicOpinionDelta": {
+        "trustInPolice": 1
+      },
+      "evidenceContaminationDelta": -8
+    },
+    {
+      "kind": "review-court-record",
+      "label": "Review formal record",
+      "durationTicks": 3,
+      "requiredInstitutionId": "inst-court",
+      "resourceCosts": {
+        "court_docket": 3
+      },
+      "institutionDeltas": {
+        "inst-court": {
+          "resources": -3,
+          "reputation": 3,
+          "pressure": -2
+        }
+      },
+      "publicOpinionDelta": {
+        "heat": 1
+      },
+      "evidenceContaminationDelta": -5
+    },
+    {
+      "kind": "cultivate-informant",
+      "label": "Cultivate public source",
+      "durationTicks": 4,
+      "resourceCosts": {
+        "informant_trust": 4
+      },
+      "institutionDeltas": {
+        "inst-media": {
+          "resources": -2,
+          "reputation": 2,
+          "pressure": 2
+        }
+      },
+      "publicOpinionDelta": {
+        "witnessFear": -3,
+        "rumorVelocity": 1
+      },
+      "evidenceContaminationDelta": -4
+    }
+  ],
+  "randomEvents": [
+    {
+      "id": "blackout-ledger-pressure-1",
+      "label": "Utility Permit Office pressure",
+      "weight": 20,
+      "tags": [
+        "blackout-ledger",
+        "permit-forgery"
+      ]
+    },
+    {
+      "id": "blackout-ledger-pressure-2",
+      "label": "Blackout Precinct pressure",
+      "weight": 21,
+      "tags": [
+        "blackout-ledger",
+        "police-misjudgment"
+      ]
+    },
+    {
+      "id": "blackout-ledger-pressure-3",
+      "label": "Switch House pressure",
+      "weight": 22,
+      "tags": [
+        "blackout-ledger",
+        "utility-sabotage"
+      ]
+    },
+    {
+      "id": "blackout-ledger-pressure-4",
+      "label": "Repair Depot pressure",
+      "weight": 23,
+      "tags": [
+        "blackout-ledger",
+        "evidence-tampering"
+      ]
+    }
+  ],
+  "casePressureRules": [
+    {
+      "id": "blackout-ledger-case-pressure-1",
+      "resource": "police_time",
+      "threshold": 52,
+      "effect": "permit-forgery becomes prominent"
+    },
+    {
+      "id": "blackout-ledger-case-pressure-2",
+      "resource": "media_attention",
+      "threshold": 55,
+      "effect": "police-misjudgment becomes prominent"
+    },
+    {
+      "id": "blackout-ledger-case-pressure-3",
+      "resource": "evidence_integrity",
+      "threshold": 55,
+      "effect": "utility-sabotage becomes prominent"
+    },
+    {
+      "id": "blackout-ledger-case-pressure-4",
+      "resource": "informant_trust",
+      "threshold": 50,
+      "effect": "evidence-tampering becomes prominent"
+    }
+  ],
+  "evidenceRules": [
+    {
+      "id": "blackout-ledger-evidence-1",
+      "kind": "document",
+      "weakContaminationThreshold": 66,
+      "strongProvenanceIntegrityFloor": 56,
+      "relatedCaseTypes": [
+        "permit-forgery",
+        "police-misjudgment",
+        "utility-sabotage"
+      ]
+    },
+    {
+      "id": "blackout-ledger-evidence-2",
+      "kind": "testimony",
+      "weakContaminationThreshold": 62,
+      "strongProvenanceIntegrityFloor": 52,
+      "relatedCaseTypes": [
+        "police-misjudgment",
+        "utility-sabotage",
+        "evidence-tampering"
+      ]
+    },
+    {
+      "id": "blackout-ledger-evidence-3",
+      "kind": "trace",
+      "weakContaminationThreshold": 68,
+      "strongProvenanceIntegrityFloor": 56,
+      "relatedCaseTypes": [
+        "permit-forgery",
+        "police-misjudgment",
+        "utility-sabotage"
+      ]
+    },
+    {
+      "id": "blackout-ledger-evidence-4",
+      "kind": "receipt",
+      "weakContaminationThreshold": 68,
+      "strongProvenanceIntegrityFloor": 54,
+      "relatedCaseTypes": [
+        "police-misjudgment",
+        "utility-sabotage",
+        "evidence-tampering"
+      ]
+    },
+    {
+      "id": "blackout-ledger-evidence-5",
+      "kind": "telegram",
+      "weakContaminationThreshold": 64,
+      "strongProvenanceIntegrityFloor": 52,
+      "relatedCaseTypes": [
+        "permit-forgery",
+        "police-misjudgment",
+        "utility-sabotage"
+      ]
+    }
+  ]
+}

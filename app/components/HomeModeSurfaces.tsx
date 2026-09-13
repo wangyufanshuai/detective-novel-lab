@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { CampaignStudyRecorder } from "@/app/components/CampaignStudyRecorder";
-import { PersistentTownCommandCenter } from "@/app/components/TownReviewSurface";
+import { WorldConsoleSurface } from "@/app/components/WorldConsoleSurface";
 import type { useCampaignComprehensionStudy } from "@/app/hooks/useCampaignComprehensionStudy";
 import type { useInvestigationController } from "@/app/controllers/useInvestigationController";
 import type { useReviewController } from "@/app/controllers/useReviewController";
@@ -94,7 +94,7 @@ export function PersistentTownModeSurface({
   return (
     <>
       {studyRecorder}
-      <PersistentTownCommandCenter
+      <WorldConsoleSurface
         runtimeMode={investigation.runtimeMode}
         worldName={worldName}
         caseTitle={caseTitle}

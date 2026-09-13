@@ -1,0 +1,202 @@
+{
+  "manifest": {
+    "id": "memorial-garden-trust-town-agents",
+    "name": "Memorial Garden Trust Town Agents",
+    "version": "1.0.0",
+    "schemaVersion": "agent-pack.v1",
+    "createdAt": "2026-08-12T00:00:00.000Z",
+    "description": "Burial records, inherited access, memorial custody and caretaker testimony."
+  },
+  "agents": [
+    {
+      "id": "npc-mem-1",
+      "name": "Mara Ash",
+      "role": "detective",
+      "homeLocationId": "solicitor-office",
+      "schedule": {
+        "08:00": "solicitor-office",
+        "12:00": "memorial-square",
+        "18:00": "memorial-garden"
+      },
+      "relationships": {},
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "detective",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "detective",
+      "institutionId": "inst-police",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-mem-2",
+      "name": "Elias Venn",
+      "role": "lawyer",
+      "homeLocationId": "memorial-garden",
+      "schedule": {
+        "08:00": "memorial-garden",
+        "12:00": "memorial-square",
+        "18:00": "memorial-archive"
+      },
+      "relationships": {
+        "npc-mem-1": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "lawyer",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "lawyer",
+      "institutionId": "inst-court",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-mem-3",
+      "name": "Nell Moss",
+      "role": "servant",
+      "homeLocationId": "memorial-archive",
+      "schedule": {
+        "08:00": "memorial-archive",
+        "12:00": "memorial-square",
+        "18:00": "caretaker-lodge"
+      },
+      "relationships": {
+        "npc-mem-2": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "servant",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "servant",
+      "institutionId": "inst-family",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-mem-4",
+      "name": "Silas Reed",
+      "role": "clerk",
+      "homeLocationId": "caretaker-lodge",
+      "schedule": {
+        "08:00": "caretaker-lodge",
+        "12:00": "memorial-square",
+        "18:00": "memorial-chapel"
+      },
+      "relationships": {
+        "npc-mem-3": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "clerk",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "clerk",
+      "institutionId": "inst-civic",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-mem-5",
+      "name": "Iris Vale",
+      "role": "reporter",
+      "homeLocationId": "memorial-chapel",
+      "schedule": {
+        "08:00": "memorial-chapel",
+        "12:00": "memorial-square",
+        "18:00": "memorial-square"
+      },
+      "relationships": {
+        "npc-mem-4": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "reporter",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "reporter",
+      "institutionId": "inst-media",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-mem-6",
+      "name": "Tomas Bell",
+      "role": "informant",
+      "homeLocationId": "memorial-square",
+      "schedule": {
+        "08:00": "memorial-square",
+        "12:00": "memorial-square",
+        "18:00": "solicitor-office"
+      },
+      "relationships": {
+        "npc-mem-5": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "informant",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "informant",
+      "institutionId": "inst-media",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    }
+  ]
+}

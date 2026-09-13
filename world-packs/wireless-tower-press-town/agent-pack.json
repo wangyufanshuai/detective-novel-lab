@@ -1,0 +1,202 @@
+{
+  "manifest": {
+    "id": "wireless-tower-press-town-agents",
+    "name": "Wireless Tower Press Town Agents",
+    "version": "1.0.0",
+    "schemaVersion": "agent-pack.v1",
+    "createdAt": "2026-08-12T00:00:00.000Z",
+    "description": "Broadcast rumor, intercepted messages, editorial custody and wireless patrol procedure."
+  },
+  "agents": [
+    {
+      "id": "npc-wir-1",
+      "name": "Ada Wave",
+      "role": "detective",
+      "homeLocationId": "broadcast-studio",
+      "schedule": {
+        "08:00": "broadcast-studio",
+        "12:00": "wireless-square",
+        "18:00": "newsroom"
+      },
+      "relationships": {},
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "detective",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "detective",
+      "institutionId": "inst-police",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-wir-2",
+      "name": "Iris Quill",
+      "role": "reporter",
+      "homeLocationId": "newsroom",
+      "schedule": {
+        "08:00": "newsroom",
+        "12:00": "wireless-square",
+        "18:00": "transmitter-room"
+      },
+      "relationships": {
+        "npc-wir-1": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "reporter",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "reporter",
+      "institutionId": "inst-media",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-wir-3",
+      "name": "Nora Bell",
+      "role": "clerk",
+      "homeLocationId": "transmitter-room",
+      "schedule": {
+        "08:00": "transmitter-room",
+        "12:00": "wireless-square",
+        "18:00": "telephone-exchange"
+      },
+      "relationships": {
+        "npc-wir-2": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "clerk",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "clerk",
+      "institutionId": "inst-civic",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-wir-4",
+      "name": "Silas Vale",
+      "role": "officer",
+      "homeLocationId": "telephone-exchange",
+      "schedule": {
+        "08:00": "telephone-exchange",
+        "12:00": "wireless-square",
+        "18:00": "patrol-post"
+      },
+      "relationships": {
+        "npc-wir-3": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "officer",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "officer",
+      "institutionId": "inst-police",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-wir-5",
+      "name": "Elias Reed",
+      "role": "informant",
+      "homeLocationId": "patrol-post",
+      "schedule": {
+        "08:00": "patrol-post",
+        "12:00": "wireless-square",
+        "18:00": "wireless-square"
+      },
+      "relationships": {
+        "npc-wir-4": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "informant",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "informant",
+      "institutionId": "inst-media",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-wir-6",
+      "name": "Tomas Venn",
+      "role": "lawyer",
+      "homeLocationId": "wireless-square",
+      "schedule": {
+        "08:00": "wireless-square",
+        "12:00": "wireless-square",
+        "18:00": "broadcast-studio"
+      },
+      "relationships": {
+        "npc-wir-5": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "lawyer",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "lawyer",
+      "institutionId": "inst-court",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    }
+  ]
+}

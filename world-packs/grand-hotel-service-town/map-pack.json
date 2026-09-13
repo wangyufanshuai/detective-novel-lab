@@ -1,0 +1,239 @@
+{
+  "manifest": {
+    "id": "grand-hotel-service-town-map",
+    "name": "Grand Hotel Service Town Map",
+    "version": "1.0.0",
+    "schemaVersion": "town-map-pack.v1",
+    "description": "Guest identity, night-desk custody, service passages and private leverage.",
+    "createdAt": "2026-08-12T00:00:00.000Z",
+    "entrypoint": "map.json"
+  },
+  "locations": [
+    {
+      "id": "hotel-court",
+      "name": "Hotel Court",
+      "kind": "public",
+      "description": "Hotel Court exposes a public, reviewable surface for guest identity, night-desk custody, service passages and private leverage.",
+      "connectedLocationIds": [
+        "service-basement",
+        "accounts-office"
+      ],
+      "x": -1,
+      "y": 0,
+      "localizedName": {
+        "en-US": "Hotel Court",
+        "zh-CN": "饭店前庭"
+      }
+    },
+    {
+      "id": "accounts-office",
+      "name": "Accounts Office",
+      "kind": "work",
+      "description": "Accounts Office exposes a public, reviewable surface for guest identity, night-desk custody, service passages and private leverage.",
+      "connectedLocationIds": [
+        "hotel-court",
+        "palm-court"
+      ],
+      "x": 0,
+      "y": -1,
+      "localizedName": {
+        "en-US": "Accounts Office",
+        "zh-CN": "账房"
+      }
+    },
+    {
+      "id": "palm-court",
+      "name": "Palm Court",
+      "kind": "work",
+      "description": "Palm Court exposes a public, reviewable surface for guest identity, night-desk custody, service passages and private leverage.",
+      "connectedLocationIds": [
+        "accounts-office",
+        "night-desk"
+      ],
+      "x": 1,
+      "y": -1,
+      "localizedName": {
+        "en-US": "Palm Court",
+        "zh-CN": "棕榈庭"
+      }
+    },
+    {
+      "id": "night-desk",
+      "name": "Night Desk",
+      "kind": "restricted",
+      "description": "Night Desk exposes a public, reviewable surface for guest identity, night-desk custody, service passages and private leverage.",
+      "connectedLocationIds": [
+        "palm-court",
+        "luggage-room"
+      ],
+      "x": 1,
+      "y": 1,
+      "localizedName": {
+        "en-US": "Night Desk",
+        "zh-CN": "夜间前台"
+      }
+    },
+    {
+      "id": "luggage-room",
+      "name": "Luggage Room",
+      "kind": "restricted",
+      "description": "Luggage Room exposes a public, reviewable surface for guest identity, night-desk custody, service passages and private leverage.",
+      "connectedLocationIds": [
+        "night-desk",
+        "service-basement"
+      ],
+      "x": 0,
+      "y": 2,
+      "localizedName": {
+        "en-US": "Luggage Room",
+        "zh-CN": "行李房"
+      }
+    },
+    {
+      "id": "service-basement",
+      "name": "Service Basement",
+      "kind": "restricted",
+      "description": "Service Basement exposes a public, reviewable surface for guest identity, night-desk custody, service passages and private leverage.",
+      "connectedLocationIds": [
+        "luggage-room",
+        "hotel-court"
+      ],
+      "x": -1,
+      "y": 1,
+      "localizedName": {
+        "en-US": "Service Basement",
+        "zh-CN": "服务地下室"
+      }
+    }
+  ],
+  "connections": [
+    {
+      "from": "hotel-court",
+      "to": "accounts-office",
+      "kind": "street",
+      "travelMinutes": 3
+    },
+    {
+      "from": "accounts-office",
+      "to": "palm-court",
+      "kind": "service-route",
+      "travelMinutes": 4
+    },
+    {
+      "from": "palm-court",
+      "to": "night-desk",
+      "kind": "street",
+      "travelMinutes": 5
+    },
+    {
+      "from": "night-desk",
+      "to": "luggage-room",
+      "kind": "service-route",
+      "travelMinutes": 6
+    },
+    {
+      "from": "luggage-room",
+      "to": "service-basement",
+      "kind": "street",
+      "travelMinutes": 7
+    },
+    {
+      "from": "service-basement",
+      "to": "hotel-court",
+      "kind": "service-route",
+      "travelMinutes": 8
+    }
+  ],
+  "interactions": [
+    {
+      "id": "inspect-accounts-office",
+      "locationId": "accounts-office",
+      "kind": "search",
+      "label": "Review Accounts Office",
+      "risk": 28,
+      "tags": [
+        "grand-hotel-register",
+        "witness"
+      ]
+    },
+    {
+      "id": "inspect-palm-court",
+      "locationId": "palm-court",
+      "kind": "question",
+      "label": "Review Palm Court",
+      "risk": 34,
+      "tags": [
+        "grand-hotel-register",
+        "record"
+      ]
+    },
+    {
+      "id": "inspect-night-desk",
+      "locationId": "night-desk",
+      "kind": "work",
+      "label": "Review Night Desk",
+      "risk": 40,
+      "tags": [
+        "grand-hotel-register",
+        "witness"
+      ]
+    },
+    {
+      "id": "inspect-luggage-room",
+      "locationId": "luggage-room",
+      "kind": "search",
+      "label": "Review Luggage Room",
+      "risk": 46,
+      "tags": [
+        "grand-hotel-register",
+        "record"
+      ]
+    },
+    {
+      "id": "inspect-service-basement",
+      "locationId": "service-basement",
+      "kind": "question",
+      "label": "Review Service Basement",
+      "risk": 52,
+      "tags": [
+        "grand-hotel-register",
+        "witness"
+      ]
+    }
+  ],
+  "spawnPoints": [
+    {
+      "id": "spawn-1",
+      "locationId": "accounts-office",
+      "roleHint": "detective",
+      "weight": 80
+    },
+    {
+      "id": "spawn-2",
+      "locationId": "palm-court",
+      "roleHint": "clerk",
+      "weight": 75
+    },
+    {
+      "id": "spawn-3",
+      "locationId": "night-desk",
+      "roleHint": "servant",
+      "weight": 70
+    },
+    {
+      "id": "spawn-4",
+      "locationId": "luggage-room",
+      "roleHint": "dockworker",
+      "weight": 65
+    }
+  ],
+  "assets": {
+    "presentationKey": "grand-hotel-register"
+  },
+  "docs": {
+    "localization": {
+      "en-US": "Grand Hotel Service Town",
+      "zh-CN": "大饭店服务小镇"
+    }
+  }
+}

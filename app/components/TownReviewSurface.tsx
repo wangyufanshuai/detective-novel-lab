@@ -28,6 +28,7 @@ import { BenchmarkSeedTable, CurrentExperimentPanel, DatasetPackagePanel, Public
 import { TownRuleStatePanel } from "@/app/components/TownRuleStatePanel";
 import { CommandDeckCollapsible, CommandDeckShell } from "@/app/components/CommandDeckShell";
 import { CandidatePlayabilityPreview } from "@/app/components/CandidatePlayabilityPreview";
+import { getNoirPortrait } from "@/app/campaign/noir-player-assets";
 import type { CampaignCommandDeckViewModel } from "@/app/campaign/command-deck-model";
 import { deriveCampaignPacingViewModel } from "@/app/campaign/campaign-pacing-model";
 import type { SafeContextActionKind } from "@/app/campaign/context-action-resolver";
@@ -900,7 +901,7 @@ export function AgentControlPanel({
           <article className="worldInspectCard compact">
             <span className="eyebrow">{selectedCharacterName || selectedAgent.npcId}</span>
             <h3>{selectedAgent.currentGoal}</h3>
-            <p>{selectedAgent.currentPlan.join(" -> ")}</p>
+            <p>{(selectedAgent.currentPlan || (selectedAgent.nextActionPreview ? [selectedAgent.nextActionPreview] : [])).join(" -> ") || "等待下一次观察"}</p>
             <div className="logicBadges">
               <span>优先级: {selectedAgent.goalPriority}</span>
               <span>关系压力: {selectedAgent.relationshipPressure}</span>
@@ -910,7 +911,7 @@ export function AgentControlPanel({
               <span>传播记忆: {selectedAgent.propagatedMemoryCount ?? 0}</span>
               <span>最近后果: {selectedAgent.lastConsequence || "无"}</span>
             </div>
-            <small>已知事实: {selectedAgent.knownFactIds.slice(-4).join(" / ") || "无"}</small>
+            <small>已知事实: {(selectedAgent.knownFactIds || []).slice(-4).join(" / ") || "无"}</small>
             {selectedDecision?.consequence && (
               <div className="directorConsequence">
                 <strong>行动后果</strong>
@@ -1161,7 +1162,7 @@ export function PersistentTownCommandCenter({
   const maxX = Math.max(1, (snapshot?.width || 28) - 1);
   const maxY = Math.max(1, (snapshot?.height || 18) - 1);
   const actorName = selectedCharacterName || selectedActor?.name || selectedAgent?.npcId || "未选择 NPC";
-  const avatarIndex = Math.abs(Array.from(selectedAgent?.npcId || selectedCharacterId || "0").reduce((sum, char) => sum + char.charCodeAt(0), 0)) % 8;
+  const actorPortrait = getNoirPortrait(selectedActor?.name || selectedCharacterName || "");
   const [activeSection, setActiveSection] = useState<"map" | "actions" | "memory" | "queue" | "time">("map");
   const [mapZoom, setMapZoom] = useState(1);
   const [mapPan, setMapPan] = useState({ x: 0, y: 0 });
@@ -1676,7 +1677,7 @@ export function PersistentTownCommandCenter({
         <section className="commandPanel commandNpcPanel" data-testid="command-npc-dossier">
           <div className="panelHeaderLine"><h2>选中 NPC：{actorName}</h2><span>★</span></div>
           <div className="commandNpcHero">
-            <img src={`/command-center/avatar-${avatarIndex}.webp`} alt="" />
+            {actorPortrait ? <img src={actorPortrait.src} alt="" /> : <Users size={48} aria-hidden="true" />}
             <div>
               <label>关系压力 <b>{selectedAgent?.relationshipPressure ?? 0}/100</b><meter value={selectedAgent?.relationshipPressure ?? 0} min={0} max={100} /></label>
               <label>秘密风险 <b>{selectedAgent?.secretRisk ?? 0}/100</b><meter value={selectedAgent?.secretRisk ?? 0} min={0} max={100} /></label>

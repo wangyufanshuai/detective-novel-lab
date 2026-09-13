@@ -1,0 +1,24 @@
+{
+  "id": "academy-press-quadrangle-town",
+  "name": "Academy Press Quadrangle Town",
+  "version": "1.0.0",
+  "schemaVersion": "world-package.v1",
+  "description": "Academic records, patronage pressure, student testimony and public correction.",
+  "author": "Detective Novel Lab",
+  "createdAt": "2026-08-12T00:00:00.000Z",
+  "license": "project-local-original",
+  "scenarioPackPath": "scenario-pack.json",
+  "mapPackPath": "map-pack.json",
+  "ruleCatalogPath": "rule-catalog.json",
+  "agentPackPath": "agent-pack.json",
+  "ecosystemCatalogPath": "ecosystem-catalog.json",
+  "expectationsPath": "expectations.json",
+  "localization": {
+    "en-US": "Academy Press Quadrangle Town",
+    "zh-CN": "学院报社方庭小镇"
+  },
+  "presentation": {
+    "key": "scholarly-silence",
+    "style": "noir-archive"
+  }
+}

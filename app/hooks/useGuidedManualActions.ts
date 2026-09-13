@@ -12,6 +12,7 @@ import {
 } from "@/app/campaign/replay-practice-model";
 import type { SelectionHighlight } from "@/app/hooks/useGuidedOnboarding";
 import type { CertifiedInvestigationActionAdapter } from "@/app/hooks/useCertifiedInvestigationActions";
+import type { InvestigationActionResult } from "@/app/campaign/investigation-action-result";
 import type { CaseRouteCertificate, DeductionCase, PlayableCaseIntake, PlayerSession, PlayerTheory } from "@/lib/engine";
 
 type GuidedManualActionsInput = {
@@ -53,13 +54,26 @@ export function useGuidedManualActions({
     replayGoalAttempt, setReplayGoalAttempt
   } = replay;
 
+  function actionSucceeded(result: InvestigationActionResult) {
+    if (result.status === "succeeded") return true;
+    // The owning case may already have changed; do not append an old action to it.
+    if (result.status === "cancelled") return false;
+    setGuidedManualLastResult(`${target.kind} ${result.status}`);
+    setStatus(result.detail);
+    appendJournal({
+      step: target.kind, label: target.label, status: "blocked", result: result.detail,
+      progressDelta: "0 steps advanced.", nextAction: "Review the action result before continuing."
+    });
+    return false;
+  }
+
   async function runGuidedManualStep() {
     if (guidedManualRunning) return;
     setGuidedManualRunning(true);
     recordGuidedStep();
     try {
       if (target.kind === "join") {
-        await actionAdapter.joinCase();
+        if (!actionSucceeded(await actionAdapter.joinCase())) return;
         setGuidedManualLastResult("joined");
         appendJournal({
           step: "join", label: "Join investigation", status: "done", result: "Investigation session opened.",
@@ -87,7 +101,7 @@ export function useGuidedManualActions({
           return;
         }
         if (target.locationId) setSelectedSceneId(target.locationId);
-        await actionAdapter.discoverEvidence(target.evidenceId);
+        if (!actionSucceeded(await actionAdapter.discoverEvidence(target.evidenceId))) return;
         setGuidedManualLastResult("search complete");
         appendJournal({
           step: "search", label: "Search certified clue", status: "done", result: "One route clue was discovered.",
@@ -112,7 +126,7 @@ export function useGuidedManualActions({
         setSelectedSuspectId(target.characterId);
         setQuestion(questionText);
         highlightSelection({ characterId: target.characterId });
-        await actionAdapter.runInterrogationTarget(target.characterId, undefined, questionText);
+        if (!actionSucceeded(await actionAdapter.runInterrogationTarget(target.characterId, undefined, questionText))) return;
         setGuidedManualLastResult("question complete");
         appendJournal({
           step: "question", label: "Question certified witness", status: "done", result: "A route witness was questioned.",
@@ -141,7 +155,7 @@ export function useGuidedManualActions({
         const scene = scenes.find((item) => item.evidenceIds.includes(target.evidenceId as string));
         if (scene) setSelectedSceneId(scene.id);
         highlightSelection({ characterId: target.characterId, evidenceId: target.evidenceId, locationId: scene?.id });
-        await actionAdapter.runInterrogationTarget(target.characterId, target.evidenceId, questionText);
+        if (!actionSucceeded(await actionAdapter.runInterrogationTarget(target.characterId, target.evidenceId, questionText))) return;
         setGuidedManualLastResult("challenge complete");
         appendJournal({
           step: "challenge", label: "Challenge certified testimony", status: "done",
@@ -269,7 +283,8 @@ export function useGuidedManualActions({
           culpritId: fallbackTheoryFields.has("culpritId") ? activeCase.deductionCase.truth.culpritId : theory.culpritId,
           motive: fallbackTheoryFields.has("motive") ? activeCase.deductionCase.truth.motive : theory.motive,
           method: fallbackTheoryFields.has("method") ? activeCase.deductionCase.truth.method : theory.method,
-          evidenceIds: selectedEvidenceIds
+          evidenceIds: selectedEvidenceIds,
+          ...(theory.proof ? { proof: theory.proof } : {})
         };
         const judgement = await submitCurrentTheory(certifiedTheory, { syncVisibleTheory: false });
         const accepted = Boolean(judgement?.accepted);

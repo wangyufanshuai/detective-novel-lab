@@ -1,0 +1,315 @@
+{
+  "manifest": {
+    "id": "power-station-blackout-town",
+    "name": "Power Station Blackout Town",
+    "version": "1.0.0",
+    "schemaVersion": "scenario-pack.v1",
+    "description": "Utility permits, night patrol decisions, switch-house custody and contractor accounts.",
+    "createdAt": "2026-08-12T00:00:00.000Z",
+    "entrypoint": "scenario.json"
+  },
+  "world": {
+    "seed": "power-station-blackout-town",
+    "mode": "advanced",
+    "timelineHours": 96,
+    "locations": [
+      {
+        "id": "blackout-square",
+        "name": "Blackout Square",
+        "kind": "public",
+        "description": "Blackout Square exposes a public, reviewable surface for utility permits, night patrol decisions, switch-house custody and contractor accounts.",
+        "connectedLocationIds": [
+          "contractor-office",
+          "permit-office"
+        ],
+        "x": -1,
+        "y": 0,
+        "localizedName": {
+          "en-US": "Blackout Square",
+          "zh-CN": "停电广场"
+        }
+      },
+      {
+        "id": "permit-office",
+        "name": "Utility Permit Office",
+        "kind": "work",
+        "description": "Utility Permit Office exposes a public, reviewable surface for utility permits, night patrol decisions, switch-house custody and contractor accounts.",
+        "connectedLocationIds": [
+          "blackout-square",
+          "precinct"
+        ],
+        "x": 0,
+        "y": -1,
+        "localizedName": {
+          "en-US": "Utility Permit Office",
+          "zh-CN": "公用事业许可处"
+        }
+      },
+      {
+        "id": "precinct",
+        "name": "Blackout Precinct",
+        "kind": "work",
+        "description": "Blackout Precinct exposes a public, reviewable surface for utility permits, night patrol decisions, switch-house custody and contractor accounts.",
+        "connectedLocationIds": [
+          "permit-office",
+          "switch-house"
+        ],
+        "x": 1,
+        "y": -1,
+        "localizedName": {
+          "en-US": "Blackout Precinct",
+          "zh-CN": "停电辖区"
+        }
+      },
+      {
+        "id": "switch-house",
+        "name": "Switch House",
+        "kind": "restricted",
+        "description": "Switch House exposes a public, reviewable surface for utility permits, night patrol decisions, switch-house custody and contractor accounts.",
+        "connectedLocationIds": [
+          "precinct",
+          "repair-depot"
+        ],
+        "x": 1,
+        "y": 1,
+        "localizedName": {
+          "en-US": "Switch House",
+          "zh-CN": "开关站"
+        }
+      },
+      {
+        "id": "repair-depot",
+        "name": "Repair Depot",
+        "kind": "restricted",
+        "description": "Repair Depot exposes a public, reviewable surface for utility permits, night patrol decisions, switch-house custody and contractor accounts.",
+        "connectedLocationIds": [
+          "switch-house",
+          "contractor-office"
+        ],
+        "x": 0,
+        "y": 2,
+        "localizedName": {
+          "en-US": "Repair Depot",
+          "zh-CN": "维修仓库"
+        }
+      },
+      {
+        "id": "contractor-office",
+        "name": "Contractor Office",
+        "kind": "restricted",
+        "description": "Contractor Office exposes a public, reviewable surface for utility permits, night patrol decisions, switch-house custody and contractor accounts.",
+        "connectedLocationIds": [
+          "repair-depot",
+          "blackout-square"
+        ],
+        "x": -1,
+        "y": 1,
+        "localizedName": {
+          "en-US": "Contractor Office",
+          "zh-CN": "承包商办公室"
+        }
+      }
+    ],
+    "npcs": [
+      {
+        "id": "npc-bla-1",
+        "name": "Ada Volt",
+        "role": "detective",
+        "homeLocationId": "permit-office",
+        "schedule": {
+          "08:00": "permit-office",
+          "12:00": "blackout-square",
+          "18:00": "precinct"
+        },
+        "relationships": {},
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "detective",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-bla-2",
+        "name": "Silas Wire",
+        "role": "officer",
+        "homeLocationId": "precinct",
+        "schedule": {
+          "08:00": "precinct",
+          "12:00": "blackout-square",
+          "18:00": "switch-house"
+        },
+        "relationships": {
+          "npc-bla-1": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "officer",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-bla-3",
+        "name": "Nora Fuse",
+        "role": "clerk",
+        "homeLocationId": "switch-house",
+        "schedule": {
+          "08:00": "switch-house",
+          "12:00": "blackout-square",
+          "18:00": "repair-depot"
+        },
+        "relationships": {
+          "npc-bla-2": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "clerk",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-bla-4",
+        "name": "Bram Pike",
+        "role": "dockworker",
+        "homeLocationId": "repair-depot",
+        "schedule": {
+          "08:00": "repair-depot",
+          "12:00": "blackout-square",
+          "18:00": "contractor-office"
+        },
+        "relationships": {
+          "npc-bla-3": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "dockworker",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-bla-5",
+        "name": "Elias Watt",
+        "role": "merchant",
+        "homeLocationId": "contractor-office",
+        "schedule": {
+          "08:00": "contractor-office",
+          "12:00": "blackout-square",
+          "18:00": "blackout-square"
+        },
+        "relationships": {
+          "npc-bla-4": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "merchant",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-bla-6",
+        "name": "Iris Vale",
+        "role": "reporter",
+        "homeLocationId": "blackout-square",
+        "schedule": {
+          "08:00": "blackout-square",
+          "12:00": "blackout-square",
+          "18:00": "permit-office"
+        },
+        "relationships": {
+          "npc-bla-5": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "reporter",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      }
+    ],
+    "institutions": [],
+    "professions": []
+  },
+  "rules": {
+    "enabledModules": [
+      "institutions",
+      "professions",
+      "long-actions",
+      "public-opinion",
+      "evidence-contamination",
+      "case-aftermath"
+    ],
+    "phaseConfig": {
+      "snapshotEveryTicks": 1,
+      "maxRunningLongActions": 8
+    },
+    "thresholds": {
+      "maxEvidenceContamination": 74,
+      "maxPublicOpinionHeat": 88,
+      "minInstitutionTrust": 34
+    },
+    "longActionKinds": [
+      "investigate-scene",
+      "verify-alibi",
+      "audit-ledger",
+      "secure-evidence-locker",
+      "review-court-record",
+      "cultivate-informant"
+    ]
+  },
+  "scenario": {
+    "id": "power-station-blackout-town",
+    "name": "Power Station Blackout Town",
+    "seed": "power-station-blackout-town",
+    "worldOptions": {
+      "mode": "advanced",
+      "npcCount": 6,
+      "timelineHours": 96
+    },
+    "baselineSteps": 8,
+    "branches": [],
+    "passCriteria": {
+      "minValidCandidates": 0,
+      "minEventGrowth": 1,
+      "minMemoryGrowth": 1,
+      "maxBlockedCandidates": 8
+    }
+  },
+  "expectations": {
+    "minValidCandidates": 1,
+    "minEvidenceCoverage": 80,
+    "maxEvidenceContamination": 74,
+    "maxPublicOpinionHeat": 88,
+    "benchmarkPreset": "quick-10"
+  },
+  "assets": {
+    "presentationKey": "blackout-ledger"
+  },
+  "docs": {
+    "localization": {
+      "en-US": "Power Station Blackout Town",
+      "zh-CN": "发电站停电小镇"
+    }
+  }
+}

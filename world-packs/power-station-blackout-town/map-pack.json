@@ -1,0 +1,239 @@
+{
+  "manifest": {
+    "id": "power-station-blackout-town-map",
+    "name": "Power Station Blackout Town Map",
+    "version": "1.0.0",
+    "schemaVersion": "town-map-pack.v1",
+    "description": "Utility permits, night patrol decisions, switch-house custody and contractor accounts.",
+    "createdAt": "2026-08-12T00:00:00.000Z",
+    "entrypoint": "map.json"
+  },
+  "locations": [
+    {
+      "id": "blackout-square",
+      "name": "Blackout Square",
+      "kind": "public",
+      "description": "Blackout Square exposes a public, reviewable surface for utility permits, night patrol decisions, switch-house custody and contractor accounts.",
+      "connectedLocationIds": [
+        "contractor-office",
+        "permit-office"
+      ],
+      "x": -1,
+      "y": 0,
+      "localizedName": {
+        "en-US": "Blackout Square",
+        "zh-CN": "停电广场"
+      }
+    },
+    {
+      "id": "permit-office",
+      "name": "Utility Permit Office",
+      "kind": "work",
+      "description": "Utility Permit Office exposes a public, reviewable surface for utility permits, night patrol decisions, switch-house custody and contractor accounts.",
+      "connectedLocationIds": [
+        "blackout-square",
+        "precinct"
+      ],
+      "x": 0,
+      "y": -1,
+      "localizedName": {
+        "en-US": "Utility Permit Office",
+        "zh-CN": "公用事业许可处"
+      }
+    },
+    {
+      "id": "precinct",
+      "name": "Blackout Precinct",
+      "kind": "work",
+      "description": "Blackout Precinct exposes a public, reviewable surface for utility permits, night patrol decisions, switch-house custody and contractor accounts.",
+      "connectedLocationIds": [
+        "permit-office",
+        "switch-house"
+      ],
+      "x": 1,
+      "y": -1,
+      "localizedName": {
+        "en-US": "Blackout Precinct",
+        "zh-CN": "停电辖区"
+      }
+    },
+    {
+      "id": "switch-house",
+      "name": "Switch House",
+      "kind": "restricted",
+      "description": "Switch House exposes a public, reviewable surface for utility permits, night patrol decisions, switch-house custody and contractor accounts.",
+      "connectedLocationIds": [
+        "precinct",
+        "repair-depot"
+      ],
+      "x": 1,
+      "y": 1,
+      "localizedName": {
+        "en-US": "Switch House",
+        "zh-CN": "开关站"
+      }
+    },
+    {
+      "id": "repair-depot",
+      "name": "Repair Depot",
+      "kind": "restricted",
+      "description": "Repair Depot exposes a public, reviewable surface for utility permits, night patrol decisions, switch-house custody and contractor accounts.",
+      "connectedLocationIds": [
+        "switch-house",
+        "contractor-office"
+      ],
+      "x": 0,
+      "y": 2,
+      "localizedName": {
+        "en-US": "Repair Depot",
+        "zh-CN": "维修仓库"
+      }
+    },
+    {
+      "id": "contractor-office",
+      "name": "Contractor Office",
+      "kind": "restricted",
+      "description": "Contractor Office exposes a public, reviewable surface for utility permits, night patrol decisions, switch-house custody and contractor accounts.",
+      "connectedLocationIds": [
+        "repair-depot",
+        "blackout-square"
+      ],
+      "x": -1,
+      "y": 1,
+      "localizedName": {
+        "en-US": "Contractor Office",
+        "zh-CN": "承包商办公室"
+      }
+    }
+  ],
+  "connections": [
+    {
+      "from": "blackout-square",
+      "to": "permit-office",
+      "kind": "street",
+      "travelMinutes": 3
+    },
+    {
+      "from": "permit-office",
+      "to": "precinct",
+      "kind": "service-route",
+      "travelMinutes": 4
+    },
+    {
+      "from": "precinct",
+      "to": "switch-house",
+      "kind": "street",
+      "travelMinutes": 5
+    },
+    {
+      "from": "switch-house",
+      "to": "repair-depot",
+      "kind": "service-route",
+      "travelMinutes": 6
+    },
+    {
+      "from": "repair-depot",
+      "to": "contractor-office",
+      "kind": "street",
+      "travelMinutes": 7
+    },
+    {
+      "from": "contractor-office",
+      "to": "blackout-square",
+      "kind": "service-route",
+      "travelMinutes": 8
+    }
+  ],
+  "interactions": [
+    {
+      "id": "inspect-permit-office",
+      "locationId": "permit-office",
+      "kind": "search",
+      "label": "Review Utility Permit Office",
+      "risk": 28,
+      "tags": [
+        "blackout-ledger",
+        "witness"
+      ]
+    },
+    {
+      "id": "inspect-precinct",
+      "locationId": "precinct",
+      "kind": "question",
+      "label": "Review Blackout Precinct",
+      "risk": 34,
+      "tags": [
+        "blackout-ledger",
+        "record"
+      ]
+    },
+    {
+      "id": "inspect-switch-house",
+      "locationId": "switch-house",
+      "kind": "work",
+      "label": "Review Switch House",
+      "risk": 40,
+      "tags": [
+        "blackout-ledger",
+        "witness"
+      ]
+    },
+    {
+      "id": "inspect-repair-depot",
+      "locationId": "repair-depot",
+      "kind": "search",
+      "label": "Review Repair Depot",
+      "risk": 46,
+      "tags": [
+        "blackout-ledger",
+        "record"
+      ]
+    },
+    {
+      "id": "inspect-contractor-office",
+      "locationId": "contractor-office",
+      "kind": "question",
+      "label": "Review Contractor Office",
+      "risk": 52,
+      "tags": [
+        "blackout-ledger",
+        "witness"
+      ]
+    }
+  ],
+  "spawnPoints": [
+    {
+      "id": "spawn-1",
+      "locationId": "permit-office",
+      "roleHint": "detective",
+      "weight": 80
+    },
+    {
+      "id": "spawn-2",
+      "locationId": "precinct",
+      "roleHint": "officer",
+      "weight": 75
+    },
+    {
+      "id": "spawn-3",
+      "locationId": "switch-house",
+      "roleHint": "clerk",
+      "weight": 70
+    },
+    {
+      "id": "spawn-4",
+      "locationId": "repair-depot",
+      "roleHint": "dockworker",
+      "weight": 65
+    }
+  ],
+  "assets": {
+    "presentationKey": "blackout-ledger"
+  },
+  "docs": {
+    "localization": {
+      "en-US": "Power Station Blackout Town",
+      "zh-CN": "发电站停电小镇"
+    }
+  }
+}

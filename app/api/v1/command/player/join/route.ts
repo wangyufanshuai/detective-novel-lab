@@ -1,4 +1,4 @@
-import { errorResponse, fail, ok, readJson } from "@/app/api/v1/_utils";
+import { errorResponse, fail, playerOk, readJson } from "@/app/api/v1/_utils";
 import type { PlayerSession } from "@/lib/engine";
 import { getRuntimeFactionRelationshipSummary, getRuntimeInvestigatorProgressionSummary, prepareRuntimePlayerResourceCommitment } from "@/app/api/v1/_town-runtime";
 import { worldRepository } from "@/lib/world/repository";
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     const playerResourceCommitment = prepareRuntimePlayerResourceCommitment(world.id, { sessionId: session.id, caseId: activeCase.id });
     const factionRelationship = getRuntimeFactionRelationshipSummary(world.id);
     const investigatorProgression = getRuntimeInvestigatorProgressionSummary(world.id);
-    return ok({ session, playerResourceCommitment, factionRelationship, investigatorProgression });
+    return playerOk({ session, playerResourceCommitment, factionRelationship, investigatorProgression });
   } catch (error) {
     return errorResponse(error);
   }

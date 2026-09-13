@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### v11.0-alpha Stabilization
+
+- Stabilized the current 12 Campaign / 24 authored route / 72 treatment matrix as a reproducible Alpha baseline.
+- Added a PR-scale 36-case Campaign smoke, a complete 72-case route playthrough, and a 12-package WorldPackage contract.
+- Promoted the release-candidate report to `v11.0-alpha` while retaining v10 distribution compatibility and protected-public cleanup rules.
+- Split Campaign Front Door presentation below its line budget, corrected stale 24-treatment and four-Campaign assertions, and added Noir presentation checks to CI and RC.
+- Hardened Noir asset verification with disk SHA-256 recomputation, WebP signature/dimension checks, license-register synchronization, and orphan/planned drift detection.
+- Corrected audio visibility lifecycle handling and normalized rapid settings updates; Static Runtime remains storage- and playback-free.
+- Production builds now use the stable Webpack path; `build:turbo` remains available for non-gating experiments.
+
 ### Added
 
 - Added v10.0 clean-worktree closure with two independent RC passes, Windows/Linux distribution smoke, save compatibility fixtures, deterministic manifests/checksums, and lockfile/license evidence.

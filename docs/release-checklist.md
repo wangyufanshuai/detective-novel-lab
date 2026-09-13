@@ -2,6 +2,29 @@
 
 Use this checklist before pushing a launch or demo-readiness change. The v3.x public baseline is the Static Demo reader path plus the 5000 tick dataset handoff.
 
+## v11.0-alpha baseline closure
+
+For the current Alpha baseline, require the 12-Campaign content/presentation contracts, 12 WorldPackages, the 36-case PR smoke, and the complete 72-case route playthrough before treating a change as committable. See [v11.0-alpha-baseline.md](v11.0-alpha-baseline.md).
+
+```powershell
+npm.cmd run test:twelve-campaign-smoke -- --json
+npm.cmd run test:seventy-two-case-campaign -- --json
+npm.cmd run test:v11-world-packages -- --json
+npm.cmd run test:noir-presentation -- --json
+```
+
+v11.1 黄金切片与贡献协议还要求：
+
+```powershell
+npm.cmd run test:cinematic-deduction -- --json
+npm.cmd run qa:v11-alpha-browser -- --json
+npm.cmd run gate:v11-long-run -- --json
+npm.cmd run report:v11-alpha -- --json
+npm.cmd run validate:campaign-contribution -- --json
+```
+
+Alpha report 中的人工理解度、art-direction approval 和 5000 / 10000 tick gate 必须保持真实状态；长跑门禁证据写入 `outputs/v11-alpha/long-run-gate.json`，任何一项为 `human-pending`、`not-run` 或 `failed` 时不得 tag、release 或 deploy。参见 [v11.1-cinematic-deduction-gold-slice.md](v11.1-cinematic-deduction-gold-slice.md)、[v11.1-alpha2-asset-rollout.md](v11.1-alpha2-asset-rollout.md) 与 [world-package-authoring-and-compatibility.md](world-package-authoring-and-compatibility.md)。
+
 ## v10.0 clean distribution closure
 
 Use a committed or explicit tree snapshot for the canonical clean run:

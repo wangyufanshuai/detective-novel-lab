@@ -1,4 +1,4 @@
-import { listDetectiveCampaignDefinitions, toDetectiveCampaignPublicPreview } from "@/lib/engine";
+import { getCampaignPresentationManifest, listDetectiveCampaignDefinitions, toDetectiveCampaignPublicPreview } from "@/lib/engine";
 
 export type CampaignFrontDoorRouteCard = {
   label: string;
@@ -12,8 +12,15 @@ export type CampaignFrontDoorRouteCard = {
 };
 
 export type CampaignFrontDoorCard = {
+  presentationKey: string;
+  volumeId: "public-records" | "moving-city" | "midnight-signals";
+  volumeLabel: string;
   label: string;
   investigationTheme: string;
+  districtLabel: string;
+  motifLabel: string;
+  coverPath?: string;
+  coverReady: boolean;
   routes: [CampaignFrontDoorRouteCard, CampaignFrontDoorRouteCard];
 };
 
@@ -32,6 +39,7 @@ function uniqueLabels(values: string[]) {
 export function deriveCampaignFrontDoorCards(): CampaignFrontDoorCard[] {
   return listDetectiveCampaignDefinitions().map((definition) => {
     const preview = toDetectiveCampaignPublicPreview(definition);
+    const presentation = getCampaignPresentationManifest(definition.presentationKey);
     const routes = preview.routes.map((route) => {
       const evidenceStyles = uniqueLabels(route.chapters.map((chapter) => chapter.evidenceThemeLabel));
       const surfaces = uniqueLabels(route.chapters.map((chapter) => chapter.worldSurfaceLabel));
@@ -47,8 +55,15 @@ export function deriveCampaignFrontDoorCards(): CampaignFrontDoorCard[] {
       };
     }) as [CampaignFrontDoorRouteCard, CampaignFrontDoorRouteCard];
     return {
+      presentationKey: definition.presentationKey,
+      volumeId: definition.volumeId,
+      volumeLabel: safeLabel(preview.volumeLabel, "Noir Archive", 64),
       label: safeLabel(preview.label, "Detective Campaign", 64),
       investigationTheme: safeLabel(preview.themeLabel, "A three-case public investigation", 160),
+      districtLabel: safeLabel(presentation.districtLabel, "Noir Archive district", 80),
+      motifLabel: safeLabel(presentation.motifLabel, "archive motif", 56),
+      ...(presentation.cover.status === "ready" ? { coverPath: presentation.cover.path } : {}),
+      coverReady: presentation.cover.status === "ready",
       routes
     };
   });

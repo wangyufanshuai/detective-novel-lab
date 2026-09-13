@@ -51,7 +51,7 @@ try {
     read("app/hooks/useCommandDeckContext.ts"),
     read("app/hooks/useGuidedManualActions.ts"),
     read("app/components/InvestigationCoreActionsSurface.tsx"),
-    read("app/components/FinalDetectiveWorkspace.tsx"),
+    read("app/components/CinematicDeductionBoard.tsx"),
     read("app/components/InvestigationSurface.tsx"),
     read("app/components/InvestigationRouteReviewSurface.tsx"),
     read("app/components/InvestigationDebriefReplaySurface.tsx"),
@@ -83,8 +83,27 @@ try {
   assert.match(guidedSource, /actionAdapter\.joinCase/);
   assert.match(guidedSource, /actionAdapter\.discoverEvidence/);
   assert.match(coreSource, /FinalDetectiveWorkspace/);
-  assert.match(finalWorkspaceSource, /actionAdapter\.interrogateSelected/);
-  assert.match(finalWorkspaceSource, /actionAdapter\.runInterrogationTarget/);
+  assert.match(finalWorkspaceSource, /executeCertifiedInvestigationStep\(\{[\s\S]*?adapter: actionAdapter/, "the workspace passes the certified adapter to the shared executor");
+  const dispatcherSource = await read("app/campaign/execute-certified-investigation-step.ts");
+  const dispatcherRuntime = ts.transpileModule(dispatcherSource, {
+    compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 }
+  }).outputText;
+  const { executeCertifiedInvestigationStep } = await import(`data:text/javascript;base64,${Buffer.from(dispatcherRuntime).toString("base64")}`);
+  const calls = [];
+  const expectedOutcome = { status: "succeeded", detail: "Witness answered" };
+  const dispatchInput = {
+    kind: "question", selectedCharacterId: "selected-witness", selectedEvidenceId: "selected-clue", question: "My precise question about the receipt",
+    adapter: { runInterrogationTarget: async (...args) => { calls.push(args); return expectedOutcome; } },
+    observeCaseWindow: () => assert.fail("question cannot observe"), focusStep: () => assert.fail("a complete question cannot become mere focus"),
+    notebookItems: [], discoveredEvidence: [], theory: { culpritId: "", motive: "", method: "", evidenceIds: [] },
+    submitTheory: () => assert.fail("question cannot submit")
+  };
+  assert.deepEqual(await executeCertifiedInvestigationStep(dispatchInput), expectedOutcome);
+  assert.deepEqual(calls.pop(), ["selected-witness", undefined, "My precise question about the receipt"], "free questioning retains the selected witness and exact player wording");
+  await executeCertifiedInvestigationStep({ ...dispatchInput, kind: "challenge", action: { kind: "challenge", targetCharacterId: "route-witness", targetEvidenceId: "route-clue" } });
+  assert.deepEqual(calls.pop(), ["route-witness", "route-clue", "My precise question about the receipt"], "certified challenge targets retain precedence without discarding the player's question");
+  const blockedOutcome = { status: "blocked", detail: "Discover this clue first" };
+  assert.deepEqual(await executeCertifiedInvestigationStep({ ...dispatchInput, kind: "challenge", adapter: { runInterrogationTarget: async () => blockedOutcome } }), blockedOutcome, "discovery rejection remains authoritative through the shared dispatcher");
   assert.match(finalWorkspaceSource, /actionAdapter\.toggleTheoryEvidence/);
   assert.match(surfaceSource, /actionAdapter=\{actionAdapter\}/);
   assert.match(pageSource, /actionAdapter=\{certifiedInvestigationActions\}/);

@@ -8,14 +8,21 @@ import type {
 import { useAppLocale } from "@/app/localization/locale-context";
 import type { LocaleMessageKey } from "@/app/localization/locale-catalog";
 import styles from "./CampaignResolutionLedger.module.css";
+import type { CampaignBeatPhase } from "@/app/campaign/campaign-transition-model";
 
 const ResolutionLedgerContext = createContext<CampaignResolutionLedger | null>(null);
+const ResolutionPhaseContext = createContext<CampaignBeatPhase | null>(null);
 
-export function CampaignResolutionLedgerProvider({ ledger, children }: {
+export function CampaignResolutionLedgerProvider({ ledger, phase = null, children }: {
   ledger: CampaignResolutionLedger;
+  phase?: CampaignBeatPhase | null;
   children: ReactNode;
 }) {
-  return <ResolutionLedgerContext.Provider value={ledger}>{children}</ResolutionLedgerContext.Provider>;
+  return <ResolutionLedgerContext.Provider value={ledger}><ResolutionPhaseContext.Provider value={phase}>{children}</ResolutionPhaseContext.Provider></ResolutionLedgerContext.Provider>;
+}
+
+export function useCampaignResolutionPhase() {
+  return useContext(ResolutionPhaseContext);
 }
 
 export function useCampaignResolutionLedgerContext() {

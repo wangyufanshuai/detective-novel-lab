@@ -63,8 +63,8 @@ try {
         if (storage.server || storage.bootstrap || storage.study || storage.locale) failures.push(`${step} wrote browser storage without an explicit player choice.`);
         if (await page.getByTestId("campaign-study-recorder").count()) failures.push(`${step} exposed the Server-only Study Recorder.`);
         const frontText = await page.getByTestId("campaign-front-door").innerText();
-        if (locale === "en-US" && !frontText.includes("4 Campaign previews")) failures.push(`${step} missed the English Front Door projection.`);
-        if (locale === "zh-CN" && !frontText.includes("4 个 Campaign 预览")) failures.push(`${step} missed the Chinese Front Door projection.`);
+        if (locale === "en-US" && !frontText.includes("12 Campaign previews")) failures.push(`${step} missed the English Front Door projection.`);
+        if (locale === "zh-CN" && !frontText.includes("12 个 Campaign 预览")) failures.push(`${step} missed the Chinese Front Door projection.`);
         await assertNoOverflow(page, step);
         if (width === 320) {
           await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });

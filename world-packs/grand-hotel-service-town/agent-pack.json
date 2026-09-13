@@ -1,0 +1,202 @@
+{
+  "manifest": {
+    "id": "grand-hotel-service-town-agents",
+    "name": "Grand Hotel Service Town Agents",
+    "version": "1.0.0",
+    "schemaVersion": "agent-pack.v1",
+    "createdAt": "2026-08-12T00:00:00.000Z",
+    "description": "Guest identity, night-desk custody, service passages and private leverage."
+  },
+  "agents": [
+    {
+      "id": "npc-gra-1",
+      "name": "Mara Key",
+      "role": "detective",
+      "homeLocationId": "accounts-office",
+      "schedule": {
+        "08:00": "accounts-office",
+        "12:00": "hotel-court",
+        "18:00": "palm-court"
+      },
+      "relationships": {},
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "detective",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "detective",
+      "institutionId": "inst-police",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-gra-2",
+      "name": "Elias Room",
+      "role": "clerk",
+      "homeLocationId": "palm-court",
+      "schedule": {
+        "08:00": "palm-court",
+        "12:00": "hotel-court",
+        "18:00": "night-desk"
+      },
+      "relationships": {
+        "npc-gra-1": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "clerk",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "clerk",
+      "institutionId": "inst-civic",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-gra-3",
+      "name": "Nell Vale",
+      "role": "servant",
+      "homeLocationId": "night-desk",
+      "schedule": {
+        "08:00": "night-desk",
+        "12:00": "hotel-court",
+        "18:00": "luggage-room"
+      },
+      "relationships": {
+        "npc-gra-2": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "servant",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "servant",
+      "institutionId": "inst-family",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-gra-4",
+      "name": "Bram Porter",
+      "role": "dockworker",
+      "homeLocationId": "luggage-room",
+      "schedule": {
+        "08:00": "luggage-room",
+        "12:00": "hotel-court",
+        "18:00": "service-basement"
+      },
+      "relationships": {
+        "npc-gra-3": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "dockworker",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "dockworker",
+      "institutionId": "inst-dock-union",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-gra-5",
+      "name": "Iris Venn",
+      "role": "reporter",
+      "homeLocationId": "service-basement",
+      "schedule": {
+        "08:00": "service-basement",
+        "12:00": "hotel-court",
+        "18:00": "hotel-court"
+      },
+      "relationships": {
+        "npc-gra-4": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "reporter",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "reporter",
+      "institutionId": "inst-media",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-gra-6",
+      "name": "Tomas Bell",
+      "role": "informant",
+      "homeLocationId": "hotel-court",
+      "schedule": {
+        "08:00": "hotel-court",
+        "12:00": "hotel-court",
+        "18:00": "accounts-office"
+      },
+      "relationships": {
+        "npc-gra-5": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "informant",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "informant",
+      "institutionId": "inst-media",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    }
+  ]
+}

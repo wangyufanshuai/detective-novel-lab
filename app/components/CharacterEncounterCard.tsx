@@ -120,7 +120,6 @@ export function CharacterEncounterCard({
         </div>
       )}
 
-      <small className={styles.boundary}>{text(encounter.boundaryLabel)}</small>
     </aside>
   );
 }

@@ -1,80 +1,14 @@
-import { errorResponse, fail, ok, readJson } from "@/app/api/v1/_utils";
-import { makeRuleBoundInterrogation, updateTestimonyWithContradiction } from "@/lib/engine";
-import { generateGuardedNpcReplyWithAudit } from "@/lib/world/ai";
-import { worldRepository } from "@/lib/world/repository";
-import { getRuntimeFactionRelationshipSummary, isRuntimeInvestigationAuthority, recordRuntimeInvestigatorProgressionStep, recordRuntimePlayerResourceCommitmentStep } from "@/app/api/v1/_town-runtime";
+import { POST as interrogate } from "@/app/api/investigation/interrogate/route";
+import { errorResponse, fail, playerOk, type ApiErrorCode } from "@/app/api/v1/_utils";
 
+// Keep the v1 envelope while sharing validation and atomic persistence with
+// the player endpoint. Both entry points must enforce the same evidence rules.
 export async function POST(request: Request) {
   try {
-    const body = await readJson<{ sessionId?: string; characterId?: string; question?: string; evidenceId?: string; provider?: "deepseek" | "siliconflow" | "mock" }>(request, {});
-    if (!body.sessionId || !body.characterId || !body.question) return fail("BAD_REQUEST", "sessionId, characterId, and question are required");
-    const session = worldRepository.getSession(body.sessionId);
-    if (!session) return fail("SESSION_NOT_FOUND", "Session not found", 404);
-    const world = worldRepository.getWorld(session.worldId);
-    const activeCase = worldRepository.getCase(session.caseId);
-    if (!world) return fail("WORLD_NOT_FOUND", "World not found", 404);
-    if (!activeCase) return fail("CASE_NOT_FOUND", "Case not found", 404);
-    const events = worldRepository.getEvents(world.id);
-    const aiResult = await generateGuardedNpcReplyWithAudit({
-      provider: body.provider,
-      world,
-      events,
-      caseFromLog: activeCase,
-      deductionCase: activeCase.deductionCase,
-      characterId: body.characterId,
-      question: body.question,
-      discoveredEvidenceIds: session.discoveredEvidenceIds,
-      evidenceId: body.evidenceId
-    });
-    const testimonyUpdate = updateTestimonyWithContradiction(activeCase.testimonies || [], body.characterId, body.evidenceId);
-    const authoritative = session.playerId !== "auto-player" && isRuntimeInvestigationAuthority(session.worldId, { sessionId: session.id, caseId: session.caseId });
-    if (testimonyUpdate.updated && authoritative) {
-      activeCase.testimonies = testimonyUpdate.testimonies;
-      worldRepository.saveCase(activeCase);
-    }
-    const entry = makeRuleBoundInterrogation(
-      world,
-      events,
-      activeCase.deductionCase,
-      session.id,
-      body.characterId,
-      body.question,
-      session.discoveredEvidenceIds,
-      body.evidenceId,
-      aiResult.content
-    );
-    const next = worldRepository.appendInterrogation(session, entry);
-    const commitmentLane = testimonyUpdate.contradictionHit.hit ? "challenge" : body.evidenceId ? undefined : "question";
-    const investigatorProgression = !authoritative || !commitmentLane
-      ? undefined
-      : recordRuntimeInvestigatorProgressionStep(session.worldId, {
-          sourceKey: `${session.id}:${session.caseId}:${commitmentLane}`,
-          kind: commitmentLane
-        });
-    const playerResourceCommitment = commitmentLane && authoritative
-      ? recordRuntimePlayerResourceCommitmentStep(session.worldId, {
-          sessionId: session.id,
-          caseId: session.caseId,
-          lane: commitmentLane,
-          caseSceneLocationId: activeCase.generationProfile.sceneLocationId || activeCase.deductionCase.scenes[0]?.id
-        })
-      : undefined;
-    const factionRelationship = playerResourceCommitment ? getRuntimeFactionRelationshipSummary(session.worldId) : undefined;
-    return ok({
-      entry,
-      session: next,
-      mock: aiResult.mock,
-      promptAudit: aiResult.promptAudit,
-      dialogueEval: aiResult.dialogueEval,
-      safetyFlags: aiResult.safetyFlags,
-      memoryCount: aiResult.memoryCount,
-      evidenceCount: aiResult.evidenceCount,
-      contradictionHit: testimonyUpdate.contradictionHit,
-      testimonyUpdated: testimonyUpdate.updated,
-      playerResourceCommitment,
-      factionRelationship,
-      investigatorProgression
-    });
+    const response = await interrogate(request);
+    const { ok: succeeded, code, error, ...data } = await response.json();
+    if (!succeeded) return fail((code || "INTERNAL_ERROR") as ApiErrorCode, error, response.status);
+    return playerOk(data);
   } catch (error) {
     return errorResponse(error);
   }

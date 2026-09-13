@@ -141,7 +141,10 @@
 .action:hover { background: #ebc97f; }
 
 @media (min-width: 521px) and (max-width: 900px) {
-  .surface { left: 12px; bottom: 84px; width: min(300px, calc(65% - 18px)); }
+  /* Keep the trigger above the map's timeline scrubber. At the tablet split the
+     scrubber is taller than the desktop offset and otherwise owns the hit
+     point even though the fronts panel renders later in the map area. */
+  .surface { left: 12px; bottom: 124px; width: min(300px, calc(65% - 18px)); }
   .panel { position: fixed; top: 86px; right: 0; bottom: 68px; left: auto; z-index: 109; width: min(320px, 35vw); max-height: none; border-radius: 0; }
   .options { grid-template-columns: 1fr; }
 }

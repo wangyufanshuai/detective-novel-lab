@@ -1,0 +1,37 @@
+/* Local WOFF2 subsets. Derived from Noto SC under SIL OFL 1.1.
+ * Includes GB2312 first-level Chinese plus all characters in the authored source.
+ * Real 400/600 faces; intermediate weights use standard CSS font matching.
+ * Uncovered user-entered characters use the application system-font fallback.
+ */
+
+@font-face {
+  font-family: 'Noto Sans SC';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/noir/noir-sans-sc-regular.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Noto Sans SC';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/noir/noir-sans-sc-semibold.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Noto Serif SC';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/noir/noir-serif-sc-regular.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Noto Serif SC';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/noir/noir-serif-sc-semibold.woff2') format('woff2');
+}

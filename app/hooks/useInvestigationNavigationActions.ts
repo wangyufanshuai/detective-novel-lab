@@ -2,6 +2,7 @@
 
 import type { useInvestigationController } from "@/app/controllers/useInvestigationController";
 import type { GuidedTask, SelectionHighlight } from "@/app/hooks/useGuidedOnboarding";
+import { useAppLocale } from "@/app/localization/locale-context";
 import type {
   DeductionCase,
   Evidence,
@@ -42,6 +43,7 @@ export function useInvestigationNavigationActions({
   selectedCharacter,
   persistentTownMode
 }: InvestigationNavigationActionsInput) {
+  const { text } = useAppLocale();
   const {
     events, activeCase, suspectBoard,
     setInspectorTab, setHighlightedEventId, setSelectedEvidenceId, setSelectedSceneId,
@@ -66,7 +68,7 @@ export function useInvestigationNavigationActions({
     setSelectedCharacterId(actor.id);
     setSelectedSuspectId(actor.id);
     setSelectedSceneId(actor.locationId);
-    setQuestion(`${actor.name}, where were you during the crime window, and what unusual details do you remember?`);
+    setQuestion(text(`${actor.name}, where were you during the crime window, and what unusual details do you remember?`));
     highlightSelection({ characterId: actor.id, locationId: actor.locationId });
     setInspectorTab(persistentTownMode ? "agent" : "investigation");
   }
@@ -115,9 +117,9 @@ export function useInvestigationNavigationActions({
     if (action.targetCharacterId) {
       setSelectedCharacterId(action.targetCharacterId);
       setSelectedSuspectId(action.targetCharacterId);
-      setQuestion(action.kind === "challenge" && action.targetEvidenceId
+      setQuestion(text(action.kind === "challenge" && action.targetEvidenceId
         ? "Please explain this evidence and whether it changes your earlier statement."
-        : "Where were you during the incident window, and what did you observe?");
+        : "Where were you during the incident window, and what did you observe?"));
       highlightSelection({
         locationId: action.targetLocationId,
         evidenceId: action.targetEvidenceId,

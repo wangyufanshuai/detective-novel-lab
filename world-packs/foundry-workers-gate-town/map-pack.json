@@ -1,0 +1,239 @@
+{
+  "manifest": {
+    "id": "foundry-workers-gate-town-map",
+    "name": "Foundry Workers Gate Town Map",
+    "version": "1.0.0",
+    "schemaVersion": "town-map-pack.v1",
+    "description": "Foundry inspection, medical timing, labor leverage and controlled machine access.",
+    "createdAt": "2026-08-12T00:00:00.000Z",
+    "entrypoint": "map.json"
+  },
+  "locations": [
+    {
+      "id": "foundry-square",
+      "name": "Foundry Square",
+      "kind": "public",
+      "description": "Foundry Square exposes a public, reviewable surface for foundry inspection, medical timing, labor leverage and controlled machine access.",
+      "connectedLocationIds": [
+        "worker-gate",
+        "inspection-office"
+      ],
+      "x": -1,
+      "y": 0,
+      "localizedName": {
+        "en-US": "Foundry Square",
+        "zh-CN": "铸造广场"
+      }
+    },
+    {
+      "id": "inspection-office",
+      "name": "Inspection Office",
+      "kind": "work",
+      "description": "Inspection Office exposes a public, reviewable surface for foundry inspection, medical timing, labor leverage and controlled machine access.",
+      "connectedLocationIds": [
+        "foundry-square",
+        "works-infirmary"
+      ],
+      "x": 0,
+      "y": -1,
+      "localizedName": {
+        "en-US": "Inspection Office",
+        "zh-CN": "检查处"
+      }
+    },
+    {
+      "id": "works-infirmary",
+      "name": "Works Infirmary",
+      "kind": "work",
+      "description": "Works Infirmary exposes a public, reviewable surface for foundry inspection, medical timing, labor leverage and controlled machine access.",
+      "connectedLocationIds": [
+        "inspection-office",
+        "machine-hall"
+      ],
+      "x": 1,
+      "y": -1,
+      "localizedName": {
+        "en-US": "Works Infirmary",
+        "zh-CN": "工厂医务室"
+      }
+    },
+    {
+      "id": "machine-hall",
+      "name": "Machine Hall",
+      "kind": "restricted",
+      "description": "Machine Hall exposes a public, reviewable surface for foundry inspection, medical timing, labor leverage and controlled machine access.",
+      "connectedLocationIds": [
+        "works-infirmary",
+        "pay-window"
+      ],
+      "x": 1,
+      "y": 1,
+      "localizedName": {
+        "en-US": "Machine Hall",
+        "zh-CN": "机器大厅"
+      }
+    },
+    {
+      "id": "pay-window",
+      "name": "Pay Window",
+      "kind": "restricted",
+      "description": "Pay Window exposes a public, reviewable surface for foundry inspection, medical timing, labor leverage and controlled machine access.",
+      "connectedLocationIds": [
+        "machine-hall",
+        "worker-gate"
+      ],
+      "x": 0,
+      "y": 2,
+      "localizedName": {
+        "en-US": "Pay Window",
+        "zh-CN": "工资窗口"
+      }
+    },
+    {
+      "id": "worker-gate",
+      "name": "Worker Gatehouse",
+      "kind": "restricted",
+      "description": "Worker Gatehouse exposes a public, reviewable surface for foundry inspection, medical timing, labor leverage and controlled machine access.",
+      "connectedLocationIds": [
+        "pay-window",
+        "foundry-square"
+      ],
+      "x": -1,
+      "y": 1,
+      "localizedName": {
+        "en-US": "Worker Gatehouse",
+        "zh-CN": "工人门房"
+      }
+    }
+  ],
+  "connections": [
+    {
+      "from": "foundry-square",
+      "to": "inspection-office",
+      "kind": "street",
+      "travelMinutes": 3
+    },
+    {
+      "from": "inspection-office",
+      "to": "works-infirmary",
+      "kind": "service-route",
+      "travelMinutes": 4
+    },
+    {
+      "from": "works-infirmary",
+      "to": "machine-hall",
+      "kind": "street",
+      "travelMinutes": 5
+    },
+    {
+      "from": "machine-hall",
+      "to": "pay-window",
+      "kind": "service-route",
+      "travelMinutes": 6
+    },
+    {
+      "from": "pay-window",
+      "to": "worker-gate",
+      "kind": "street",
+      "travelMinutes": 7
+    },
+    {
+      "from": "worker-gate",
+      "to": "foundry-square",
+      "kind": "service-route",
+      "travelMinutes": 8
+    }
+  ],
+  "interactions": [
+    {
+      "id": "inspect-inspection-office",
+      "locationId": "inspection-office",
+      "kind": "search",
+      "label": "Review Inspection Office",
+      "risk": 28,
+      "tags": [
+        "furnace-oath",
+        "witness"
+      ]
+    },
+    {
+      "id": "inspect-works-infirmary",
+      "locationId": "works-infirmary",
+      "kind": "question",
+      "label": "Review Works Infirmary",
+      "risk": 34,
+      "tags": [
+        "furnace-oath",
+        "record"
+      ]
+    },
+    {
+      "id": "inspect-machine-hall",
+      "locationId": "machine-hall",
+      "kind": "work",
+      "label": "Review Machine Hall",
+      "risk": 40,
+      "tags": [
+        "furnace-oath",
+        "witness"
+      ]
+    },
+    {
+      "id": "inspect-pay-window",
+      "locationId": "pay-window",
+      "kind": "search",
+      "label": "Review Pay Window",
+      "risk": 46,
+      "tags": [
+        "furnace-oath",
+        "record"
+      ]
+    },
+    {
+      "id": "inspect-worker-gate",
+      "locationId": "worker-gate",
+      "kind": "question",
+      "label": "Review Worker Gatehouse",
+      "risk": 52,
+      "tags": [
+        "furnace-oath",
+        "witness"
+      ]
+    }
+  ],
+  "spawnPoints": [
+    {
+      "id": "spawn-1",
+      "locationId": "inspection-office",
+      "roleHint": "detective",
+      "weight": 80
+    },
+    {
+      "id": "spawn-2",
+      "locationId": "works-infirmary",
+      "roleHint": "dockworker",
+      "weight": 75
+    },
+    {
+      "id": "spawn-3",
+      "locationId": "machine-hall",
+      "roleHint": "doctor",
+      "weight": 70
+    },
+    {
+      "id": "spawn-4",
+      "locationId": "pay-window",
+      "roleHint": "merchant",
+      "weight": 65
+    }
+  ],
+  "assets": {
+    "presentationKey": "furnace-oath"
+  },
+  "docs": {
+    "localization": {
+      "en-US": "Foundry Workers Gate Town",
+      "zh-CN": "铸造厂工人门小镇"
+    }
+  }
+}

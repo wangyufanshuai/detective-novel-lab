@@ -3,36 +3,9 @@ import type { PersistentTownRuntime, TownCaseType } from "../persistent-town";
 import type { WorldSystemRuntimeActionKind, WorldSystemRuntimeHints } from "../detective-content";
 import { detectiveCampaignForRuntime, type DetectiveCampaignId, type DetectiveCampaignRouteId } from "./campaign-catalog";
 import { MIDNIGHT_CHORUS_CASES } from "./midnight-chorus-campaign";
-
-export type AuthoredCampaignLeadFocus = "search" | "question" | "challenge";
-
-export type AuthoredCampaignCaseDefinition = {
-  campaignId: DetectiveCampaignId;
-  routeId: DetectiveCampaignRouteId;
-  ordinal: 1 | 2 | 3;
-  caseFamily: TownCaseType;
-  title: string;
-  theme: string;
-  publicPremise: string;
-  publicCaseFile: string;
-  causalBridge: string;
-  occupationalPressure: string;
-  evidenceFrame: string;
-  evidenceTitles: {
-    means: string;
-    motive: string;
-    opportunity: string;
-    staging: string;
-    trace: string;
-    exclusion: string;
-  };
-  redHerrings: [string, string];
-  rhythm: ["staging" | "opportunity" | "means" | "motive" | "trace", "staging" | "opportunity" | "means" | "motive" | "trace", "staging" | "opportunity" | "means" | "motive" | "trace", "staging" | "opportunity" | "means" | "motive" | "trace", "staging" | "opportunity" | "means" | "motive" | "trace"];
-  witnessFrame: string;
-  challengeFrame: string;
-  leadFocus: AuthoredCampaignLeadFocus;
-  aftermathLabel: string;
-};
+import { NOIR_EXPANSION_CAMPAIGNS } from "./noir-expansion-campaigns";
+import type { AuthoredCampaignCaseDefinition, AuthoredCampaignLeadFocus } from "./campaign-types";
+export type { AuthoredCampaignCaseDefinition, AuthoredCampaignLeadFocus } from "./campaign-types";
 
 const CASES: readonly AuthoredCampaignCaseDefinition[] = [
   {
@@ -305,7 +278,8 @@ const CASES: readonly AuthoredCampaignCaseDefinition[] = [
     challengeFrame: "Search the source and timing chain together; reputation pressure cannot replace material proof.",
     leadFocus: "search", aftermathLabel: "The correction hearing leaves a permanent public record of source custody and timing."
   },
-  ...MIDNIGHT_CHORUS_CASES
+  ...MIDNIGHT_CHORUS_CASES,
+  ...NOIR_EXPANSION_CAMPAIGNS.flatMap((entry) => entry.cases)
 ] as const;
 
 const evidenceIdByKind = {
@@ -320,7 +294,7 @@ export function listAuthoredCampaignCaseDefinitions() {
   return CASES;
 }
 
-export function getAuthoredCampaignCaseDefinition(campaignId: DetectiveCampaignId, ordinal: number, routeId: DetectiveCampaignRouteId = "baseline") {
+export function getAuthoredCampaignCaseDefinition(campaignId: DetectiveCampaignId | string, ordinal: number, routeId: DetectiveCampaignRouteId = "baseline") {
   return CASES.find((item) => item.campaignId === campaignId && item.routeId === routeId && item.ordinal === ordinal) || null;
 }
 

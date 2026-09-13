@@ -7,8 +7,8 @@ const read = (file) => fs.readFile(path.join(root, file), "utf8");
 const [layout, localeContext, globals, frontDoor, onboarding, workspace, theatre, commandDeck, townMap, encounter, districtFronts] = await Promise.all([
   read("app/layout.tsx"), read("app/localization/locale-context.tsx"), read("app/globals.css"),
   read("app/components/CampaignFrontDoor.tsx"), read("app/components/DetectiveTownUI.tsx"),
-  read("app/components/FinalDetectiveWorkspace.tsx"), read("app/components/CampaignTransitionTheatre.tsx"),
-  read("app/components/CommandDeckShell.tsx"), read("app/components/TownMapSurface.tsx"),
+  read("app/components/CinematicDeductionBoard.tsx"), read("app/components/CampaignTransitionTheatre.tsx"),
+  read("app/components/CommandDeckShell.tsx"), read("app/components/NoirMapStage.tsx"),
   read("app/components/CharacterEncounterCard.tsx"), read("app/components/DistrictStrategicFronts.tsx")
 ]);
 
@@ -27,19 +27,24 @@ assert.match(frontDoor, /event\.key !== "Tab"/);
 assert.match(onboarding, /role="dialog"/);
 assert.match(onboarding, /aria-modal="true"/);
 assert.match(onboarding, /restoreFocusRef/);
-assert.match(workspace, /name="investigation-question"/);
-assert.match(workspace, /name="theory-motive"/);
-assert.match(workspace, /aria-pressed=\{item\.selected\}/);
+assert.match(workspace, /<label[^>]*>[\s\S]*?name="cinematic-challenge-question"/, "The actual shared desk question has a label and stable field name");
+assert.match(workspace, /name="cinematic-theory-motive"/);
+assert.match(workspace, /name="cinematic-theory-method"/);
+assert.match(workspace, /aria-pressed=\{active\}/, "Evidence selection exposes pressed state on the actual shared desk");
 assert.doesNotMatch(workspace, /<main className=\{styles\.context\}/, "Final Detective Workspace does not create a nested main landmark");
 assert.match(theatre, /aria-live=\{presentation\.phase/);
 assert.doesNotMatch(commandDeck, /commandDeckNotifications[^>]*aria-live/);
-assert.match(commandDeck, /id="command-deck-context-drawer"[\s\S]{0,240}inert=\{compactLayout && activePanel !== "context"/);
-assert.match(commandDeck, /focusPanel\(next\)/);
-assert.match(townMap, /className="mapTileHitTarget"/);
-assert.match(townMap, /<button\s+type="button"\s+key=\{marker\.id\}/);
-assert.match(townMap, /<button\s+type="button"\s+key=\{actor\.id\}/);
+assert.match(commandDeck, /inert=\{blockingOverlayActive \|\| transitionVisible \? true : undefined\}/, "The background player workspace is inert beneath the active major overlay");
+assert.match(commandDeck, /viewHeadingRef\.current\?\.focus/);
+assert.match(commandDeck, /navigationRefs\.current\.explore\?\.focus/, "Escape restores focus to the Explore navigation entry");
+assert.match(townMap, /<button[^>]*key=\{place\.id\}/, "Every actual map location is a named native button");
+assert.match(townMap, /<button[^>]*key=\{marker\.id\}/);
+assert.match(townMap, /<button[^>]*key=\{actor\.id\}/);
+assert.match(townMap, /event\.key === "Escape"/);
+assert.match(townMap, /lastTrigger\.current\?\.focus/);
 assert.match(encounter, /aria-label=\{t\("encounter\.aria"/);
-assert.match(districtFronts, /onKeyDown=\{\(event\) => navigateFront/);
+assert.doesNotMatch(commandDeck, /mapToolbar|townDetails/, "The player shell does not retain the retired duplicate map toolbar or drawer");
+assert.match(townMap, /className=\{styles\.mapTools\}/, "The map stage owns the single semantic toolbar");
 
 for (const [file, source] of Object.entries({ frontDoor, onboarding, workspace, townMap, encounter, districtFronts })) {
   assert.doesNotMatch(source, /<div[^>]+onClick=|<span[^>]+onClick=/, `${file} has no new non-semantic click target`);

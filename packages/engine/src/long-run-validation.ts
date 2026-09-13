@@ -52,10 +52,12 @@ export type LongRunValidationConfig = {
   maxExtractionsPerChunk?: number;
   requireCompleteEvidenceCandidates?: boolean;
   requireNewCandidatePair?: boolean;
+  cloneInput?: boolean;
 };
 
 export type CaseContinuityMetric = {
   caseId: string;
+  triggeredEventId?: string;
   tick: number;
   culpritId: string;
   victimId: string;
@@ -88,6 +90,18 @@ export type WorldStabilityTrendPoint = {
   tick: number;
   candidateCount: number;
   validCandidateCount: number;
+};
+
+export type CandidateLifecycleDiagnostic = {
+  tick: number;
+  aliveNpcCount: number;
+  pressureCount: number;
+  ledgerCount: number;
+  completeChainCount: number;
+  triggerReadyChainCount: number;
+  candidateCount: number;
+  validCandidateCount: number;
+  triggerBackedCandidateCount: number;
 };
 
 export type WorldStabilityMetrics = {
@@ -149,6 +163,8 @@ export type LongRunValidationReport = {
   cases: CaseContinuityMetric[];
   performance: TownPerformanceSummary;
   recentCandidateReasons: string[];
+  candidateRejectionReasonCounts: Record<string, number>;
+  candidateLifecycleDiagnostics: CandidateLifecycleDiagnostic[];
   errors: string[];
   warnings: string[];
 };
@@ -707,6 +723,42 @@ function collectRecentCandidateReasons(candidates: CaseCandidate[]) {
     .slice(0, 12);
 }
 
+function collectCandidateRejectionReasonCounts(
+  candidates: CaseCandidate[],
+  counts: Record<string, number>
+) {
+  for (const candidate of candidates) {
+    if (candidate.validation.valid) continue;
+    for (const reason of candidate.validation.failureReasons || candidate.validation.errors || []) {
+      counts[reason] = (counts[reason] || 0) + 1;
+    }
+  }
+}
+
+function countTriggerReadyChains(
+  world: WorldState,
+  runtime: PersistentTownRuntime
+) {
+  const lifecycle = runtime.caseLifecycle;
+  const maturityThreshold = (runtime.campaignCaseTarget || 3) > 3 ? 82 : 90;
+  return (runtime.longChainLedger || []).filter((entry) => {
+    const victimAlive = world.npcs.some((npc) => npc.id === entry.victimId && npc.alive);
+    const culpritCooldown = lifecycle?.caseCooldownByNpcId?.[entry.culpritId] || 0;
+    const victimCooldown = lifecycle?.caseCooldownByNpcId?.[entry.victimId] || 0;
+    const pairCooldown = lifecycle?.casePairCooldown?.[`${entry.culpritId}->${entry.victimId}`] || 0;
+    const alreadyTriggered = (runtime.triggeredCases || []).some((trigger) =>
+      trigger.culpritId === entry.culpritId && trigger.victimId === entry.victimId
+    );
+    return entry.complete &&
+      entry.maturityScore >= maturityThreshold &&
+      victimAlive &&
+      culpritCooldown <= runtime.tick &&
+      victimCooldown <= runtime.tick &&
+      pairCooldown <= runtime.tick &&
+      !alreadyTriggered;
+  }).length;
+}
+
 function percentShare(part: number, total: number) {
   return total <= 0 ? 0 : Math.round((part / total) * 100);
 }
@@ -778,6 +830,7 @@ export function computeCausalMetrics(input: {
     caseTypeDistribution[caseType] = (caseTypeDistribution[caseType] || 0) + 1;
     return {
       caseId: item.caseId,
+      triggeredEventId: item.candidate.triggeredEventId,
       tick: item.tick,
       culpritId: item.candidate.culpritId,
       victimId: item.candidate.victimId,
@@ -928,6 +981,8 @@ export function runMultiCaseSimulation(config: LongRunValidationConfig = {}): Lo
   const warnings: string[] = [];
   const performanceSummary = emptyPerformanceSummary();
   let recentCandidateReasons: string[] = [];
+  const candidateRejectionReasonCounts: Record<string, number> = {};
+  const candidateLifecycleDiagnostics: CandidateLifecycleDiagnostic[] = [];
   const validCandidateCountTrend: WorldStabilityTrendPoint[] = [];
 
   for (let advanced = 0; advanced < tickCount; advanced += chunkSize) {
@@ -940,7 +995,8 @@ export function runMultiCaseSimulation(config: LongRunValidationConfig = {}): Lo
       checkpointEveryTicks: Math.max(1, config.checkpointEveryTicks || 5),
       candidateEveryTicks: Math.max(1, config.candidateEveryTicks || 1),
       actionEveryTicks: Math.max(1, config.actionEveryTicks || 1),
-      indexEventLimit: config.indexEventLimit
+      indexEventLimit: config.indexEventLimit,
+      cloneInput: config.cloneInput === false ? false : undefined
     });
     state.world = result.world;
     state.runtime = result.runtime;
@@ -949,6 +1005,18 @@ export function runMultiCaseSimulation(config: LongRunValidationConfig = {}): Lo
     (state.world as RuntimeWorldState).persistentRuntime = state.runtime;
     const queue = buildTownEmergenceQueue(state.world, state.events, state.runtime);
     recentCandidateReasons = collectRecentCandidateReasons(queue.candidates);
+    collectCandidateRejectionReasonCounts(queue.candidates, candidateRejectionReasonCounts);
+    candidateLifecycleDiagnostics.push({
+      tick: state.runtime.tick,
+      aliveNpcCount: state.world.npcs.filter((npc) => npc.alive).length,
+      pressureCount: state.runtime.longChainLedger?.length || 0,
+      ledgerCount: state.runtime.longChainLedger?.length || 0,
+      completeChainCount: (state.runtime.longChainLedger || []).filter((entry) => entry.complete).length,
+      triggerReadyChainCount: countTriggerReadyChains(state.world, state.runtime),
+      candidateCount: queue.candidates.length,
+      validCandidateCount: queue.validCount,
+      triggerBackedCandidateCount: queue.candidates.filter((candidate) => Boolean(candidate.triggeredEventId)).length
+    });
     validCandidateCountTrend.push({
       tick: state.runtime.tick,
       candidateCount: queue.candidates.length,
@@ -1040,6 +1108,8 @@ export function runMultiCaseSimulation(config: LongRunValidationConfig = {}): Lo
     cases: metrics.continuity,
     performance: performanceSummary,
     recentCandidateReasons,
+    candidateRejectionReasonCounts,
+    candidateLifecycleDiagnostics,
     errors,
     warnings
   };
@@ -1867,14 +1937,18 @@ export function runCampaignBenchmark(config: {
     seed,
     tickCount,
     minimumCaseCount,
-    snapshotEveryTicks: isFiveThousandGate ? 25 : 5,
-    checkpointEveryTicks: isFiveThousandGate ? 100 : 25,
+    // Long-run gates need only periodic rollback evidence. Keeping a snapshot
+    // every 100 ticks preserves checkpoint coverage while avoiding repeated
+    // serialization of the growing event/memory history.
+    snapshotEveryTicks: isFiveThousandGate ? 100 : 5,
+    checkpointEveryTicks: isFiveThousandGate ? 500 : 25,
     candidateEveryTicks: isFiveThousandGate ? 10 : 1,
     actionEveryTicks: isFiveThousandGate ? 3 : 1,
     indexEventLimit: isFiveThousandGate ? 200 : undefined,
     maxExtractionsPerChunk: isFiveThousandGate ? 1 : undefined,
     requireCompleteEvidenceCandidates: isFiveThousandGate,
-    requireNewCandidatePair: false
+    requireNewCandidatePair: false,
+    cloneInput: isFiveThousandGate ? false : undefined
   });
   const quality = buildSimulationQualityReport([seed], {
     tickCount,
@@ -1962,6 +2036,8 @@ export function renderLongRunValidationMarkdown(report: LongRunValidationReport)
     `- Institution decisions: ${report.metrics.worldStability.institutionDecisionCount}`,
     `- Evidence complete cases: ${report.metrics.worldStability.evidenceCompleteCaseCount}`,
     `- Valid candidate trend: ${stableStringify(report.metrics.worldStability.validCandidateCountTrend)}`,
+    `- Candidate rejection histogram: ${stableStringify(report.candidateRejectionReasonCounts)}`,
+    `- Candidate lifecycle diagnostics: ${stableStringify(report.candidateLifecycleDiagnostics.slice(-12))}`,
     "",
     "## Causal Claims",
     "",

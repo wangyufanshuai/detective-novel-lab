@@ -1,0 +1,525 @@
+{
+  "id": "memorial-garden-trust-town-rules",
+  "name": "Memorial Garden Trust Town Rules",
+  "version": "1.0.0",
+  "resources": [
+    {
+      "kind": "police_time",
+      "label": "Police Time",
+      "value": 54,
+      "capacity": 100,
+      "pressure": 52
+    },
+    {
+      "kind": "media_attention",
+      "label": "Media Attention",
+      "value": 48,
+      "capacity": 100,
+      "pressure": 58
+    },
+    {
+      "kind": "family_influence",
+      "label": "Family Influence",
+      "value": 52,
+      "capacity": 100,
+      "pressure": 44
+    },
+    {
+      "kind": "merchant_credit",
+      "label": "Merchant Credit",
+      "value": 50,
+      "capacity": 100,
+      "pressure": 55
+    },
+    {
+      "kind": "medical_capacity",
+      "label": "Medical Capacity",
+      "value": 54,
+      "capacity": 100,
+      "pressure": 36
+    },
+    {
+      "kind": "evidence_integrity",
+      "label": "Evidence Integrity",
+      "value": 74,
+      "capacity": 100,
+      "pressure": 42
+    },
+    {
+      "kind": "court_docket",
+      "label": "Court Docket",
+      "value": 50,
+      "capacity": 100,
+      "pressure": 50
+    },
+    {
+      "kind": "dock_credit",
+      "label": "Service Credit",
+      "value": 48,
+      "capacity": 100,
+      "pressure": 56
+    },
+    {
+      "kind": "informant_trust",
+      "label": "Informant Trust",
+      "value": 46,
+      "capacity": 100,
+      "pressure": 57
+    }
+  ],
+  "institutions": [
+    {
+      "id": "inst-police",
+      "name": "Memorial Garden Trust Town Police Review",
+      "kind": "police",
+      "resources": 48,
+      "reputation": 50,
+      "pressure": 44,
+      "agenda": "Keep memorial trust outcomes reviewable.",
+      "influenceByLocation": {
+        "memorial-square": 52
+      },
+      "trustByNpcId": {
+        "npc-mem-1": 70
+      },
+      "activeCaseIds": [],
+      "policyPressure": 44
+    },
+    {
+      "id": "inst-media",
+      "name": "Memorial Garden Trust Town Public Record Desk",
+      "kind": "media",
+      "resources": 51,
+      "reputation": 52,
+      "pressure": 48,
+      "agenda": "Keep memorial trust outcomes reviewable.",
+      "influenceByLocation": {
+        "solicitor-office": 74,
+        "memorial-square": 52
+      },
+      "trustByNpcId": {
+        "npc-mem-5": 70,
+        "npc-mem-6": 70
+      },
+      "activeCaseIds": [],
+      "policyPressure": 48
+    },
+    {
+      "id": "inst-family",
+      "name": "Memorial Garden Trust Town Household Trust",
+      "kind": "family",
+      "resources": 54,
+      "reputation": 54,
+      "pressure": 52,
+      "agenda": "Keep memorial trust outcomes reviewable.",
+      "influenceByLocation": {
+        "memorial-garden": 74,
+        "memorial-square": 52
+      },
+      "trustByNpcId": {
+        "npc-mem-3": 70
+      },
+      "activeCaseIds": [],
+      "policyPressure": 52
+    },
+    {
+      "id": "inst-commerce",
+      "name": "Memorial Garden Trust Town Commercial Board",
+      "kind": "commerce",
+      "resources": 57,
+      "reputation": 50,
+      "pressure": 56,
+      "agenda": "Keep memorial trust outcomes reviewable.",
+      "influenceByLocation": {
+        "memorial-archive": 74,
+        "memorial-square": 52
+      },
+      "trustByNpcId": {},
+      "activeCaseIds": [],
+      "policyPressure": 56
+    },
+    {
+      "id": "inst-civic",
+      "name": "Memorial Garden Trust Town Civic Records",
+      "kind": "civic",
+      "resources": 48,
+      "reputation": 52,
+      "pressure": 60,
+      "agenda": "Keep memorial trust outcomes reviewable.",
+      "influenceByLocation": {
+        "caretaker-lodge": 74,
+        "memorial-square": 52
+      },
+      "trustByNpcId": {
+        "npc-mem-4": 70
+      },
+      "activeCaseIds": [],
+      "policyPressure": 60
+    },
+    {
+      "id": "inst-medical",
+      "name": "Memorial Garden Trust Town Medical Review",
+      "kind": "medical",
+      "resources": 51,
+      "reputation": 54,
+      "pressure": 44,
+      "agenda": "Keep memorial trust outcomes reviewable.",
+      "influenceByLocation": {
+        "memorial-chapel": 74,
+        "memorial-square": 52
+      },
+      "trustByNpcId": {},
+      "activeCaseIds": [],
+      "policyPressure": 44
+    },
+    {
+      "id": "inst-court",
+      "name": "Memorial Garden Trust Town Public Court",
+      "kind": "court",
+      "resources": 54,
+      "reputation": 50,
+      "pressure": 48,
+      "agenda": "Keep memorial trust outcomes reviewable.",
+      "influenceByLocation": {
+        "memorial-square": 52
+      },
+      "trustByNpcId": {
+        "npc-mem-2": 70
+      },
+      "activeCaseIds": [],
+      "policyPressure": 48
+    },
+    {
+      "id": "inst-dock-union",
+      "name": "Memorial Garden Trust Town Service Guild",
+      "kind": "dock_union",
+      "resources": 57,
+      "reputation": 52,
+      "pressure": 52,
+      "agenda": "Keep memorial trust outcomes reviewable.",
+      "influenceByLocation": {
+        "solicitor-office": 74,
+        "memorial-square": 52
+      },
+      "trustByNpcId": {},
+      "activeCaseIds": [],
+      "policyPressure": 52
+    }
+  ],
+  "professions": [
+    {
+      "npcId": "npc-mem-1",
+      "kind": "detective",
+      "institutionId": "inst-police",
+      "rank": 3,
+      "skills": [
+        "detective",
+        "records"
+      ],
+      "income": 36,
+      "workload": 42
+    },
+    {
+      "npcId": "npc-mem-2",
+      "kind": "lawyer",
+      "institutionId": "inst-court",
+      "rank": 2,
+      "skills": [
+        "lawyer",
+        "records"
+      ],
+      "income": 39,
+      "workload": 46
+    },
+    {
+      "npcId": "npc-mem-3",
+      "kind": "servant",
+      "institutionId": "inst-family",
+      "rank": 1,
+      "skills": [
+        "servant",
+        "records"
+      ],
+      "income": 42,
+      "workload": 50
+    },
+    {
+      "npcId": "npc-mem-4",
+      "kind": "clerk",
+      "institutionId": "inst-civic",
+      "rank": 2,
+      "skills": [
+        "clerk",
+        "records"
+      ],
+      "income": 45,
+      "workload": 54
+    },
+    {
+      "npcId": "npc-mem-5",
+      "kind": "reporter",
+      "institutionId": "inst-media",
+      "rank": 1,
+      "skills": [
+        "reporter",
+        "records"
+      ],
+      "income": 48,
+      "workload": 58
+    },
+    {
+      "npcId": "npc-mem-6",
+      "kind": "informant",
+      "institutionId": "inst-media",
+      "rank": 2,
+      "skills": [
+        "informant",
+        "records"
+      ],
+      "income": 51,
+      "workload": 62
+    }
+  ],
+  "longActionDefinitions": [
+    {
+      "kind": "investigate-scene",
+      "label": "Inspect public scene",
+      "durationTicks": 3,
+      "resourceCosts": {
+        "police_time": 3
+      },
+      "institutionDeltas": {
+        "inst-police": {
+          "resources": -2,
+          "reputation": 2,
+          "pressure": -1
+        }
+      },
+      "publicOpinionDelta": {
+        "trustInPolice": 1
+      },
+      "evidenceContaminationDelta": -5
+    },
+    {
+      "kind": "verify-alibi",
+      "label": "Verify public schedule",
+      "durationTicks": 3,
+      "resourceCosts": {
+        "police_time": 2,
+        "informant_trust": 2
+      },
+      "institutionDeltas": {
+        "inst-police": {
+          "resources": -2,
+          "reputation": 2,
+          "pressure": -1
+        }
+      },
+      "publicOpinionDelta": {
+        "witnessFear": -2
+      },
+      "evidenceContaminationDelta": -3
+    },
+    {
+      "kind": "audit-ledger",
+      "label": "Audit bounded ledger",
+      "durationTicks": 4,
+      "resourceCosts": {
+        "merchant_credit": 3
+      },
+      "institutionDeltas": {
+        "inst-commerce": {
+          "resources": -2,
+          "reputation": 2,
+          "pressure": 1
+        }
+      },
+      "publicOpinionDelta": {
+        "heat": 1
+      },
+      "evidenceContaminationDelta": -4
+    },
+    {
+      "kind": "secure-evidence-locker",
+      "label": "Secure evidence custody",
+      "durationTicks": 3,
+      "requiredInstitutionId": "inst-police",
+      "resourceCosts": {
+        "evidence_integrity": 3,
+        "police_time": 2
+      },
+      "institutionDeltas": {
+        "inst-police": {
+          "resources": -2,
+          "reputation": 2,
+          "pressure": -2
+        }
+      },
+      "publicOpinionDelta": {
+        "trustInPolice": 1
+      },
+      "evidenceContaminationDelta": -8
+    },
+    {
+      "kind": "review-court-record",
+      "label": "Review formal record",
+      "durationTicks": 3,
+      "requiredInstitutionId": "inst-court",
+      "resourceCosts": {
+        "court_docket": 3
+      },
+      "institutionDeltas": {
+        "inst-court": {
+          "resources": -3,
+          "reputation": 3,
+          "pressure": -2
+        }
+      },
+      "publicOpinionDelta": {
+        "heat": 1
+      },
+      "evidenceContaminationDelta": -5
+    },
+    {
+      "kind": "cultivate-informant",
+      "label": "Cultivate public source",
+      "durationTicks": 4,
+      "resourceCosts": {
+        "informant_trust": 4
+      },
+      "institutionDeltas": {
+        "inst-media": {
+          "resources": -2,
+          "reputation": 2,
+          "pressure": 2
+        }
+      },
+      "publicOpinionDelta": {
+        "witnessFear": -3,
+        "rumorVelocity": 1
+      },
+      "evidenceContaminationDelta": -4
+    }
+  ],
+  "randomEvents": [
+    {
+      "id": "memorial-trust-pressure-1",
+      "label": "Trust Solicitor Office pressure",
+      "weight": 20,
+      "tags": [
+        "memorial-trust",
+        "forged-will"
+      ]
+    },
+    {
+      "id": "memorial-trust-pressure-2",
+      "label": "Memorial Garden pressure",
+      "weight": 21,
+      "tags": [
+        "memorial-trust",
+        "family-scandal"
+      ]
+    },
+    {
+      "id": "memorial-trust-pressure-3",
+      "label": "Memorial Archive pressure",
+      "weight": 22,
+      "tags": [
+        "memorial-trust",
+        "burial-record-forgery"
+      ]
+    },
+    {
+      "id": "memorial-trust-pressure-4",
+      "label": "Caretaker Lodge pressure",
+      "weight": 23,
+      "tags": [
+        "memorial-trust",
+        "missing-person"
+      ]
+    }
+  ],
+  "casePressureRules": [
+    {
+      "id": "memorial-trust-case-pressure-1",
+      "resource": "police_time",
+      "threshold": 52,
+      "effect": "forged-will becomes prominent"
+    },
+    {
+      "id": "memorial-trust-case-pressure-2",
+      "resource": "media_attention",
+      "threshold": 55,
+      "effect": "family-scandal becomes prominent"
+    },
+    {
+      "id": "memorial-trust-case-pressure-3",
+      "resource": "evidence_integrity",
+      "threshold": 55,
+      "effect": "burial-record-forgery becomes prominent"
+    },
+    {
+      "id": "memorial-trust-case-pressure-4",
+      "resource": "informant_trust",
+      "threshold": 50,
+      "effect": "missing-person becomes prominent"
+    }
+  ],
+  "evidenceRules": [
+    {
+      "id": "memorial-trust-evidence-1",
+      "kind": "document",
+      "weakContaminationThreshold": 66,
+      "strongProvenanceIntegrityFloor": 56,
+      "relatedCaseTypes": [
+        "forged-will",
+        "family-scandal",
+        "burial-record-forgery"
+      ]
+    },
+    {
+      "id": "memorial-trust-evidence-2",
+      "kind": "testimony",
+      "weakContaminationThreshold": 62,
+      "strongProvenanceIntegrityFloor": 52,
+      "relatedCaseTypes": [
+        "family-scandal",
+        "burial-record-forgery",
+        "missing-person"
+      ]
+    },
+    {
+      "id": "memorial-trust-evidence-3",
+      "kind": "trace",
+      "weakContaminationThreshold": 68,
+      "strongProvenanceIntegrityFloor": 56,
+      "relatedCaseTypes": [
+        "forged-will",
+        "family-scandal",
+        "burial-record-forgery"
+      ]
+    },
+    {
+      "id": "memorial-trust-evidence-4",
+      "kind": "receipt",
+      "weakContaminationThreshold": 68,
+      "strongProvenanceIntegrityFloor": 54,
+      "relatedCaseTypes": [
+        "family-scandal",
+        "burial-record-forgery",
+        "missing-person"
+      ]
+    },
+    {
+      "id": "memorial-trust-evidence-5",
+      "kind": "telegram",
+      "weakContaminationThreshold": 64,
+      "strongProvenanceIntegrityFloor": 52,
+      "relatedCaseTypes": [
+        "forged-will",
+        "family-scandal",
+        "burial-record-forgery"
+      ]
+    }
+  ]
+}

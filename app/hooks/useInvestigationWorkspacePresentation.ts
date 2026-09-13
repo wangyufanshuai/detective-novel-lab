@@ -268,7 +268,8 @@ export function useInvestigationWorkspacePresentation({ investigation, town }: I
     if (inspectorTab === "logic") return { title: t("inspector.caseLogic"), detail: t("inspector.logicDetail"), tone: "logic" };
     if (inspectorTab === "agent") {
       const publicLocation = selectedAgent ? world?.locations.find((location) => location.id === selectedAgent.locationId)?.name : undefined;
-      return { title: t("inspector.persistentTown"), detail: selectedAgent ? `${text(selectedAgent.currentGoal)} / ${text(publicLocation || t("map.publicLocation"))}` : t("inspector.agentDetail"), tone: "logic" };
+      const publicGoal = selectedAgent?.currentGoal || selectedAgent?.nextActionPreview || t("inspector.agentDetail");
+      return { title: t("inspector.persistentTown"), detail: selectedAgent ? `${text(publicGoal)} / ${text(publicLocation || t("map.publicLocation"))}` : t("inspector.agentDetail"), tone: "logic" };
     }
     if (inspectorTab === "people") return { title: t("inspector.people"), detail: t("inspector.peopleDetail"), tone: "people" };
     return { title: t("inspector.developer"), detail: t("inspector.developerDetail"), tone: "developer" };

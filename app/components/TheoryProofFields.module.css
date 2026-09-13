@@ -1,0 +1,9 @@
+.proof { display: grid; gap: 12px; margin: 12px 0; font-size: 12px; line-height: 1.55; }
+.proof p { margin: 0; }
+.proof fieldset { display: grid; gap: 7px; min-width: 0; padding: 10px; border: 1px solid #8b795655; border-radius: 6px; }
+.proof legend { font-weight: 700; padding: 0 4px; }
+.proof .clue { display: flex; align-items: flex-start; gap: 8px; padding: 5px 0; cursor: pointer; }
+.proof .clue input { width: 16px; height: 16px; min-width: 16px; margin: 3px 0; accent-color: #bd9452; }
+.clue span { display: grid; gap: 3px; min-width: 0; }
+.clue small { opacity: .8; overflow-wrap: anywhere; }
+.clue:focus-within { outline: 2px solid #bd9452; outline-offset: 3px; }

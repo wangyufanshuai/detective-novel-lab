@@ -39,6 +39,7 @@ const DIRECTIVE_REQUIRED_INSTITUTION = {
   "secure-evidence-locker": "police",
   "protect-chain-of-custody": "police"
 };
+const CASE_MECHANIC_PROFILES = new Set(["record-custody", "witness-timeline", "forensic-timing", "evidence-chain", "access-control"]);
 
 function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, "utf8"));
@@ -114,6 +115,16 @@ function checkDirectiveResponses(rows, errors) {
       for (const field of ["label", "benefitLabel", "costLabel"]) {
         if (typeof response[field] !== "string" || !response[field].trim()) errors.push(`eventArchetypes ${id} directiveResponses.${choice}.${field} is required.`);
       }
+    }
+  }
+}
+
+function checkMechanicProfiles(rows, errors) {
+  for (const row of rows) {
+    const record = asRecord(row);
+    if (!record?.mechanicProfileId) continue;
+    if (!CASE_MECHANIC_PROFILES.has(String(record.mechanicProfileId))) {
+      errors.push(`caseTypes ${String(record.id || "(missing id)")} mechanicProfileId is invalid.`);
     }
   }
 }
@@ -257,6 +268,7 @@ export function validateDetectiveContentPack(pack) {
   checkRefs(caseTypes, "caseTypes", "evidenceTypeIds", "evidence type", evidenceTypeIds, errors);
   checkRefs(caseTypes, "caseTypes", "roleIds", "role", roleIds, errors);
   checkRefs(caseTypes, "caseTypes", "motiveIds", "motive", motiveIds, errors);
+  checkMechanicProfiles(caseTypes, errors);
   checkRefs(locations, "locations", "caseTypeIds", "case type", caseTypeIds, errors);
   checkRefs(locations, "locations", "evidenceTypeIds", "evidence type", evidenceTypeIds, errors);
   checkRefs(roles, "roles", "motiveIds", "motive", motiveIds, errors);

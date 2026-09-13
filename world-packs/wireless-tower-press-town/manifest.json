@@ -1,0 +1,24 @@
+{
+  "id": "wireless-tower-press-town",
+  "name": "Wireless Tower Press Town",
+  "version": "1.0.0",
+  "schemaVersion": "world-package.v1",
+  "description": "Broadcast rumor, intercepted messages, editorial custody and wireless patrol procedure.",
+  "author": "Detective Novel Lab",
+  "createdAt": "2026-08-12T00:00:00.000Z",
+  "license": "project-local-original",
+  "scenarioPackPath": "scenario-pack.json",
+  "mapPackPath": "map-pack.json",
+  "ruleCatalogPath": "rule-catalog.json",
+  "agentPackPath": "agent-pack.json",
+  "ecosystemCatalogPath": "ecosystem-catalog.json",
+  "expectationsPath": "expectations.json",
+  "localization": {
+    "en-US": "Wireless Tower Press Town",
+    "zh-CN": "无线电塔报社小镇"
+  },
+  "presentation": {
+    "key": "wireless-shadows",
+    "style": "noir-archive"
+  }
+}

@@ -1,0 +1,239 @@
+{
+  "manifest": {
+    "id": "memorial-garden-trust-town-map",
+    "name": "Memorial Garden Trust Town Map",
+    "version": "1.0.0",
+    "schemaVersion": "town-map-pack.v1",
+    "description": "Burial records, inherited access, memorial custody and caretaker testimony.",
+    "createdAt": "2026-08-12T00:00:00.000Z",
+    "entrypoint": "map.json"
+  },
+  "locations": [
+    {
+      "id": "memorial-square",
+      "name": "Memorial Square",
+      "kind": "public",
+      "description": "Memorial Square exposes a public, reviewable surface for burial records, inherited access, memorial custody and caretaker testimony.",
+      "connectedLocationIds": [
+        "memorial-chapel",
+        "solicitor-office"
+      ],
+      "x": -1,
+      "y": 0,
+      "localizedName": {
+        "en-US": "Memorial Square",
+        "zh-CN": "纪念广场"
+      }
+    },
+    {
+      "id": "solicitor-office",
+      "name": "Trust Solicitor Office",
+      "kind": "work",
+      "description": "Trust Solicitor Office exposes a public, reviewable surface for burial records, inherited access, memorial custody and caretaker testimony.",
+      "connectedLocationIds": [
+        "memorial-square",
+        "memorial-garden"
+      ],
+      "x": 0,
+      "y": -1,
+      "localizedName": {
+        "en-US": "Trust Solicitor Office",
+        "zh-CN": "信托律师办公室"
+      }
+    },
+    {
+      "id": "memorial-garden",
+      "name": "Memorial Garden",
+      "kind": "work",
+      "description": "Memorial Garden exposes a public, reviewable surface for burial records, inherited access, memorial custody and caretaker testimony.",
+      "connectedLocationIds": [
+        "solicitor-office",
+        "memorial-archive"
+      ],
+      "x": 1,
+      "y": -1,
+      "localizedName": {
+        "en-US": "Memorial Garden",
+        "zh-CN": "纪念园"
+      }
+    },
+    {
+      "id": "memorial-archive",
+      "name": "Memorial Archive",
+      "kind": "restricted",
+      "description": "Memorial Archive exposes a public, reviewable surface for burial records, inherited access, memorial custody and caretaker testimony.",
+      "connectedLocationIds": [
+        "memorial-garden",
+        "caretaker-lodge"
+      ],
+      "x": 1,
+      "y": 1,
+      "localizedName": {
+        "en-US": "Memorial Archive",
+        "zh-CN": "纪念园档案室"
+      }
+    },
+    {
+      "id": "caretaker-lodge",
+      "name": "Caretaker Lodge",
+      "kind": "restricted",
+      "description": "Caretaker Lodge exposes a public, reviewable surface for burial records, inherited access, memorial custody and caretaker testimony.",
+      "connectedLocationIds": [
+        "memorial-archive",
+        "memorial-chapel"
+      ],
+      "x": 0,
+      "y": 2,
+      "localizedName": {
+        "en-US": "Caretaker Lodge",
+        "zh-CN": "看护人小屋"
+      }
+    },
+    {
+      "id": "memorial-chapel",
+      "name": "Memorial Chapel",
+      "kind": "restricted",
+      "description": "Memorial Chapel exposes a public, reviewable surface for burial records, inherited access, memorial custody and caretaker testimony.",
+      "connectedLocationIds": [
+        "caretaker-lodge",
+        "memorial-square"
+      ],
+      "x": -1,
+      "y": 1,
+      "localizedName": {
+        "en-US": "Memorial Chapel",
+        "zh-CN": "纪念礼堂"
+      }
+    }
+  ],
+  "connections": [
+    {
+      "from": "memorial-square",
+      "to": "solicitor-office",
+      "kind": "street",
+      "travelMinutes": 3
+    },
+    {
+      "from": "solicitor-office",
+      "to": "memorial-garden",
+      "kind": "service-route",
+      "travelMinutes": 4
+    },
+    {
+      "from": "memorial-garden",
+      "to": "memorial-archive",
+      "kind": "street",
+      "travelMinutes": 5
+    },
+    {
+      "from": "memorial-archive",
+      "to": "caretaker-lodge",
+      "kind": "service-route",
+      "travelMinutes": 6
+    },
+    {
+      "from": "caretaker-lodge",
+      "to": "memorial-chapel",
+      "kind": "street",
+      "travelMinutes": 7
+    },
+    {
+      "from": "memorial-chapel",
+      "to": "memorial-square",
+      "kind": "service-route",
+      "travelMinutes": 8
+    }
+  ],
+  "interactions": [
+    {
+      "id": "inspect-solicitor-office",
+      "locationId": "solicitor-office",
+      "kind": "search",
+      "label": "Review Trust Solicitor Office",
+      "risk": 28,
+      "tags": [
+        "memorial-trust",
+        "witness"
+      ]
+    },
+    {
+      "id": "inspect-memorial-garden",
+      "locationId": "memorial-garden",
+      "kind": "question",
+      "label": "Review Memorial Garden",
+      "risk": 34,
+      "tags": [
+        "memorial-trust",
+        "record"
+      ]
+    },
+    {
+      "id": "inspect-memorial-archive",
+      "locationId": "memorial-archive",
+      "kind": "work",
+      "label": "Review Memorial Archive",
+      "risk": 40,
+      "tags": [
+        "memorial-trust",
+        "witness"
+      ]
+    },
+    {
+      "id": "inspect-caretaker-lodge",
+      "locationId": "caretaker-lodge",
+      "kind": "search",
+      "label": "Review Caretaker Lodge",
+      "risk": 46,
+      "tags": [
+        "memorial-trust",
+        "record"
+      ]
+    },
+    {
+      "id": "inspect-memorial-chapel",
+      "locationId": "memorial-chapel",
+      "kind": "question",
+      "label": "Review Memorial Chapel",
+      "risk": 52,
+      "tags": [
+        "memorial-trust",
+        "witness"
+      ]
+    }
+  ],
+  "spawnPoints": [
+    {
+      "id": "spawn-1",
+      "locationId": "solicitor-office",
+      "roleHint": "detective",
+      "weight": 80
+    },
+    {
+      "id": "spawn-2",
+      "locationId": "memorial-garden",
+      "roleHint": "lawyer",
+      "weight": 75
+    },
+    {
+      "id": "spawn-3",
+      "locationId": "memorial-archive",
+      "roleHint": "servant",
+      "weight": 70
+    },
+    {
+      "id": "spawn-4",
+      "locationId": "caretaker-lodge",
+      "roleHint": "clerk",
+      "weight": 65
+    }
+  ],
+  "assets": {
+    "presentationKey": "memorial-trust"
+  },
+  "docs": {
+    "localization": {
+      "en-US": "Memorial Garden Trust Town",
+      "zh-CN": "纪念园信托小镇"
+    }
+  }
+}

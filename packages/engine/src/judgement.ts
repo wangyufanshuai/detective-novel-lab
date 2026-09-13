@@ -1,16 +1,20 @@
 import { deriveSuspectMatrix } from "./validators";
 import type { DeductionCase, Judgement, PlayerTheory } from "./types";
 import { buildDeductionCaseTruthLedger, evaluateCaseProofCoverage } from "./proof-ledger";
+import { evaluateTheoryProof, isPlayerTheoryInput, matchesCanonicalStatement } from "./theory-proof";
 
-function textHits(userText: string, targetText: string) {
-  const user = userText.trim();
-  const target = targetText.trim();
-  if (!user || !target) return false;
-  if (user.length <= 6) return target.includes(user);
-  return user.includes(target.slice(0, 8)) || target.includes(user.slice(0, 8));
-}
+export { isPlayerTheoryInput } from "./theory-proof";
 
 export function judgeTheory(deductionCase: DeductionCase, theory: PlayerTheory, discoveredEvidenceIds: string[]): Judgement {
+  if (!isPlayerTheoryInput(theory)) {
+    return {
+      accepted: false,
+      score: 0,
+      missing: ["Invalid theory format: use culpritId, motive, method, evidenceIds, and optional proof evidence assignments."],
+      contradictions: [],
+      explanation: "Theory rejected: the submission does not match the supported evidence-assignment contract."
+    };
+  }
   const missing: string[] = [];
   const contradictions: string[] = [];
   const discovered = new Set(discoveredEvidenceIds);
@@ -21,12 +25,21 @@ export function judgeTheory(deductionCase: DeductionCase, theory: PlayerTheory, 
     discoveredEvidenceIds,
     selectedEvidenceIds: theory.evidenceIds
   });
+  const proof = theory.proof ? evaluateTheoryProof(deductionCase, proofLedger, theory, discoveredEvidenceIds) : null;
+  const motiveHit = proof ? proof.motiveHit : matchesCanonicalStatement(theory.motive, deductionCase.truth.motive);
+  const methodHit = proof ? proof.methodHit : matchesCanonicalStatement(theory.method, deductionCase.truth.method);
 
   if (theory.culpritId !== deductionCase.truth.culpritId) contradictions.push("The accused culprit does not match the truth.");
-  if (!theory.motive.trim()) missing.push("Missing motive explanation.");
-  else if (!textHits(theory.motive, deductionCase.truth.motive)) missing.push("Motive explanation does not cover the core motive.");
-  if (!theory.method.trim()) missing.push("Missing method explanation.");
-  else if (!textHits(theory.method, deductionCase.truth.method)) missing.push("Method explanation does not cover the core mechanism.");
+  if (proof) missing.push(...proof.missing);
+  else {
+    if (!motiveHit) missing.push("Motive explanation requires a complete canonical statement or structured evidence assignments.");
+    if (!methodHit) missing.push("Method explanation requires a complete canonical statement or structured evidence assignments.");
+  }
+
+  const discoverable = new Set(deductionCase.evidence.filter((item) => item.discoverable).map((item) => item.id));
+  if (theory.evidenceIds.some((id) => !discoverable.has(id) || !discovered.has(id))) {
+    missing.push("Theory evidence must be discoverable and already discovered.");
+  }
 
   for (const id of decisive) {
     if (!discovered.has(id)) missing.push(`Key evidence not discovered: ${id}`);
@@ -46,8 +59,6 @@ export function judgeTheory(deductionCase: DeductionCase, theory: PlayerTheory, 
     }
   }
 
-  const motiveHit = textHits(theory.motive, deductionCase.truth.motive);
-  const methodHit = textHits(theory.method, deductionCase.truth.method);
   const coveredDecisive = decisive.filter((id) => selected.has(id) && discovered.has(id)).length;
   const excludedRows = matrix.filter((row) => !row.isCulprit && row.excludedByEvidenceIds.some((id) => selected.has(id) && discovered.has(id))).length;
   const nonCulprits = matrix.filter((row) => !row.isCulprit).length;

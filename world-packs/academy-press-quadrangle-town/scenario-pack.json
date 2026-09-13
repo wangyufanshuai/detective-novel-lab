@@ -1,0 +1,315 @@
+{
+  "manifest": {
+    "id": "academy-press-quadrangle-town",
+    "name": "Academy Press Quadrangle Town",
+    "version": "1.0.0",
+    "schemaVersion": "scenario-pack.v1",
+    "description": "Academic records, patronage pressure, student testimony and public correction.",
+    "createdAt": "2026-08-12T00:00:00.000Z",
+    "entrypoint": "scenario.json"
+  },
+  "world": {
+    "seed": "academy-press-quadrangle-town",
+    "mode": "advanced",
+    "timelineHours": 96,
+    "locations": [
+      {
+        "id": "college-quadrangle",
+        "name": "College Quadrangle",
+        "kind": "public",
+        "description": "College Quadrangle exposes a public, reviewable surface for academic records, patronage pressure, student testimony and public correction.",
+        "connectedLocationIds": [
+          "senate-chamber",
+          "lecture-hall"
+        ],
+        "x": -1,
+        "y": 0,
+        "localizedName": {
+          "en-US": "College Quadrangle",
+          "zh-CN": "学院方庭"
+        }
+      },
+      {
+        "id": "lecture-hall",
+        "name": "Lecture Hall",
+        "kind": "work",
+        "description": "Lecture Hall exposes a public, reviewable surface for academic records, patronage pressure, student testimony and public correction.",
+        "connectedLocationIds": [
+          "college-quadrangle",
+          "benefactors-room"
+        ],
+        "x": 0,
+        "y": -1,
+        "localizedName": {
+          "en-US": "Lecture Hall",
+          "zh-CN": "讲堂"
+        }
+      },
+      {
+        "id": "benefactors-room",
+        "name": "Benefactors Room",
+        "kind": "work",
+        "description": "Benefactors Room exposes a public, reviewable surface for academic records, patronage pressure, student testimony and public correction.",
+        "connectedLocationIds": [
+          "lecture-hall",
+          "faculty-archive"
+        ],
+        "x": 1,
+        "y": -1,
+        "localizedName": {
+          "en-US": "Benefactors Room",
+          "zh-CN": "赞助人室"
+        }
+      },
+      {
+        "id": "faculty-archive",
+        "name": "Faculty Archive",
+        "kind": "restricted",
+        "description": "Faculty Archive exposes a public, reviewable surface for academic records, patronage pressure, student testimony and public correction.",
+        "connectedLocationIds": [
+          "benefactors-room",
+          "student-press"
+        ],
+        "x": 1,
+        "y": 1,
+        "localizedName": {
+          "en-US": "Faculty Archive",
+          "zh-CN": "教员档案室"
+        }
+      },
+      {
+        "id": "student-press",
+        "name": "Student Press",
+        "kind": "restricted",
+        "description": "Student Press exposes a public, reviewable surface for academic records, patronage pressure, student testimony and public correction.",
+        "connectedLocationIds": [
+          "faculty-archive",
+          "senate-chamber"
+        ],
+        "x": 0,
+        "y": 2,
+        "localizedName": {
+          "en-US": "Student Press",
+          "zh-CN": "学生报社"
+        }
+      },
+      {
+        "id": "senate-chamber",
+        "name": "Senate Chamber",
+        "kind": "restricted",
+        "description": "Senate Chamber exposes a public, reviewable surface for academic records, patronage pressure, student testimony and public correction.",
+        "connectedLocationIds": [
+          "student-press",
+          "college-quadrangle"
+        ],
+        "x": -1,
+        "y": 1,
+        "localizedName": {
+          "en-US": "Senate Chamber",
+          "zh-CN": "评议厅"
+        }
+      }
+    ],
+    "npcs": [
+      {
+        "id": "npc-sch-1",
+        "name": "Ada Quill",
+        "role": "detective",
+        "homeLocationId": "lecture-hall",
+        "schedule": {
+          "08:00": "lecture-hall",
+          "12:00": "college-quadrangle",
+          "18:00": "benefactors-room"
+        },
+        "relationships": {},
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "detective",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-sch-2",
+        "name": "Elias March",
+        "role": "clerk",
+        "homeLocationId": "benefactors-room",
+        "schedule": {
+          "08:00": "benefactors-room",
+          "12:00": "college-quadrangle",
+          "18:00": "faculty-archive"
+        },
+        "relationships": {
+          "npc-sch-1": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "clerk",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-sch-3",
+        "name": "Nora Bell",
+        "role": "reporter",
+        "homeLocationId": "faculty-archive",
+        "schedule": {
+          "08:00": "faculty-archive",
+          "12:00": "college-quadrangle",
+          "18:00": "student-press"
+        },
+        "relationships": {
+          "npc-sch-2": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "reporter",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-sch-4",
+        "name": "Silas Venn",
+        "role": "lawyer",
+        "homeLocationId": "student-press",
+        "schedule": {
+          "08:00": "student-press",
+          "12:00": "college-quadrangle",
+          "18:00": "senate-chamber"
+        },
+        "relationships": {
+          "npc-sch-3": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "lawyer",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-sch-5",
+        "name": "Iris Reed",
+        "role": "informant",
+        "homeLocationId": "senate-chamber",
+        "schedule": {
+          "08:00": "senate-chamber",
+          "12:00": "college-quadrangle",
+          "18:00": "college-quadrangle"
+        },
+        "relationships": {
+          "npc-sch-4": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "informant",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-sch-6",
+        "name": "Tomas Grey",
+        "role": "servant",
+        "homeLocationId": "college-quadrangle",
+        "schedule": {
+          "08:00": "college-quadrangle",
+          "12:00": "college-quadrangle",
+          "18:00": "lecture-hall"
+        },
+        "relationships": {
+          "npc-sch-5": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "servant",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      }
+    ],
+    "institutions": [],
+    "professions": []
+  },
+  "rules": {
+    "enabledModules": [
+      "institutions",
+      "professions",
+      "long-actions",
+      "public-opinion",
+      "evidence-contamination",
+      "case-aftermath"
+    ],
+    "phaseConfig": {
+      "snapshotEveryTicks": 1,
+      "maxRunningLongActions": 8
+    },
+    "thresholds": {
+      "maxEvidenceContamination": 74,
+      "maxPublicOpinionHeat": 88,
+      "minInstitutionTrust": 34
+    },
+    "longActionKinds": [
+      "investigate-scene",
+      "verify-alibi",
+      "audit-ledger",
+      "secure-evidence-locker",
+      "review-court-record",
+      "cultivate-informant"
+    ]
+  },
+  "scenario": {
+    "id": "academy-press-quadrangle-town",
+    "name": "Academy Press Quadrangle Town",
+    "seed": "academy-press-quadrangle-town",
+    "worldOptions": {
+      "mode": "advanced",
+      "npcCount": 6,
+      "timelineHours": 96
+    },
+    "baselineSteps": 8,
+    "branches": [],
+    "passCriteria": {
+      "minValidCandidates": 0,
+      "minEventGrowth": 1,
+      "minMemoryGrowth": 1,
+      "maxBlockedCandidates": 8
+    }
+  },
+  "expectations": {
+    "minValidCandidates": 1,
+    "minEvidenceCoverage": 80,
+    "maxEvidenceContamination": 74,
+    "maxPublicOpinionHeat": 88,
+    "benchmarkPreset": "quick-10"
+  },
+  "assets": {
+    "presentationKey": "scholarly-silence"
+  },
+  "docs": {
+    "localization": {
+      "en-US": "Academy Press Quadrangle Town",
+      "zh-CN": "学院报社方庭小镇"
+    }
+  }
+}

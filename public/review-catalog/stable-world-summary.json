@@ -1,0 +1,100 @@
+{
+  "schemaVersion": "public-stable-world-summary.v1",
+  "generatedAt": "2026-07-08T14:52:29.117Z",
+  "sourceRunId": "stable-world-1000-campaign-validation-stable-town-a-stable-town-b",
+  "sourceKind": "stable-world",
+  "ticks": 1000,
+  "seeds": [
+    "campaign-validation",
+    "stable-town-a",
+    "stable-town-b"
+  ],
+  "seedCount": 3,
+  "gate": {
+    "ok": true,
+    "passedSeedCount": 3,
+    "failedSeedCount": 0,
+    "worstCandidateRepeatRate": 0,
+    "lowestDistinctCaseTypeCount": 8,
+    "lowestSelectedActionKindCount": 8,
+    "highestLargestSelectedActionShare": 31,
+    "lowestInstitutionDecisionCount": 80,
+    "minRuntimeMs": 49051,
+    "maxRuntimeMs": 56176
+  },
+  "deterministicRunHashes": {
+    "campaign-validation": "fnv1a-fddcbe93",
+    "stable-town-a": "fnv1a-0b99b69e",
+    "stable-town-b": "fnv1a-50f1a916"
+  },
+  "diagnostics": {
+    "ok": true,
+    "overallStatus": "watch",
+    "findingCounts": {
+      "ok": 25,
+      "watch": 5,
+      "risk": 0,
+      "blocker": 0
+    },
+    "blockerCount": 0,
+    "riskCount": 0,
+    "watchCount": 5
+  },
+  "regression": {
+    "baselineAvailable": true,
+    "ok": true,
+    "overallStatus": "watch",
+    "deltaCounts": {
+      "improved": 0,
+      "unchanged": 38,
+      "watch": 1,
+      "regressed": 0,
+      "blocked": 0
+    },
+    "blockedCount": 0,
+    "regressedCount": 0,
+    "watchCount": 1
+  },
+  "aggregate": {
+    "repeatRate": 0,
+    "caseTypeCount": 8,
+    "actionKindCount": 8,
+    "largestActionShare": 31,
+    "institutionDecisionCount": 80,
+    "evidenceWarningCount": 0,
+    "laterInfluenceRate": 100
+  },
+  "artifactFiles": [
+    {
+      "name": "manifest.json",
+      "bytes": 3087,
+      "sha256": "c41463764c193835a38b41d565d95b60bbca803ac57e30b33abe018a8fe3c64c"
+    },
+    {
+      "name": "stability-summary.json",
+      "bytes": 2087,
+      "sha256": "5d7046444e674dd4d18b91dcf0fba5d0a7fce4d5b0c8786a9e5aab999cf077cf"
+    },
+    {
+      "name": "diagnostics-report.json",
+      "bytes": 15690,
+      "sha256": "1879e715fc558155fba16a6bc1f5d0df4ff38c6ec56ac7a9279e448f1bc77a9a"
+    },
+    {
+      "name": "regression-report.json",
+      "bytes": 14562,
+      "sha256": "497407d55b967bbb04e20c8eb2c9fa60e07298f34b92c79937b5516379bf69ee"
+    }
+  ],
+  "publicBoundary": {
+    "sanitizedBenchmarkSummary": true,
+    "artifactBodiesIncluded": false,
+    "localPathsIncluded": false,
+    "excludedBodies": [
+      "full quality metrics",
+      "causal metric samples",
+      "raw replay data",
+      "agent state snapshots"
+    ]
+  }
+}

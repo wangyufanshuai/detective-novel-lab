@@ -145,6 +145,8 @@ console.log(JSON.stringify({
   activeActorCount: worldStability.activeActorCount,
   largestActorShare: worldStability.largestActorShare,
   institutionDecisionCount: worldStability.institutionDecisionCount,
+  candidateRejectionReasonCounts: report.report.candidateRejectionReasonCounts,
+  candidateLifecycleTail: report.report.candidateLifecycleDiagnostics.slice(-12),
   deterministicRunHash: report.report.metrics.deterministicRunHash,
   artifactRunId: artifact.runId
 }, null, 2));

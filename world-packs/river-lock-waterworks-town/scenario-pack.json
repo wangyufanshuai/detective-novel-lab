@@ -1,0 +1,315 @@
+{
+  "manifest": {
+    "id": "river-lock-waterworks-town",
+    "name": "River Lock Waterworks Town",
+    "version": "1.0.0",
+    "schemaVersion": "scenario-pack.v1",
+    "description": "Water rights, public permits, floodgate custody and river-household claims.",
+    "createdAt": "2026-08-12T00:00:00.000Z",
+    "entrypoint": "scenario.json"
+  },
+  "world": {
+    "seed": "river-lock-waterworks-town",
+    "mode": "advanced",
+    "timelineHours": 96,
+    "locations": [
+      {
+        "id": "river-square",
+        "name": "River Square",
+        "kind": "public",
+        "description": "River Square exposes a public, reviewable surface for water rights, public permits, floodgate custody and river-household claims.",
+        "connectedLocationIds": [
+          "water-court",
+          "water-ledger"
+        ],
+        "x": -1,
+        "y": 0,
+        "localizedName": {
+          "en-US": "River Square",
+          "zh-CN": "河岸广场"
+        }
+      },
+      {
+        "id": "water-ledger",
+        "name": "Waterworks Ledger Room",
+        "kind": "work",
+        "description": "Waterworks Ledger Room exposes a public, reviewable surface for water rights, public permits, floodgate custody and river-household claims.",
+        "connectedLocationIds": [
+          "river-square",
+          "licensing-counter"
+        ],
+        "x": 0,
+        "y": -1,
+        "localizedName": {
+          "en-US": "Waterworks Ledger Room",
+          "zh-CN": "水务账房"
+        }
+      },
+      {
+        "id": "licensing-counter",
+        "name": "River Licensing Counter",
+        "kind": "work",
+        "description": "River Licensing Counter exposes a public, reviewable surface for water rights, public permits, floodgate custody and river-household claims.",
+        "connectedLocationIds": [
+          "water-ledger",
+          "river-lock"
+        ],
+        "x": 1,
+        "y": -1,
+        "localizedName": {
+          "en-US": "River Licensing Counter",
+          "zh-CN": "河道许可柜台"
+        }
+      },
+      {
+        "id": "river-lock",
+        "name": "River Lock",
+        "kind": "restricted",
+        "description": "River Lock exposes a public, reviewable surface for water rights, public permits, floodgate custody and river-household claims.",
+        "connectedLocationIds": [
+          "licensing-counter",
+          "riverside-house"
+        ],
+        "x": 1,
+        "y": 1,
+        "localizedName": {
+          "en-US": "River Lock",
+          "zh-CN": "河闸"
+        }
+      },
+      {
+        "id": "riverside-house",
+        "name": "Riverside House",
+        "kind": "restricted",
+        "description": "Riverside House exposes a public, reviewable surface for water rights, public permits, floodgate custody and river-household claims.",
+        "connectedLocationIds": [
+          "river-lock",
+          "water-court"
+        ],
+        "x": 0,
+        "y": 2,
+        "localizedName": {
+          "en-US": "Riverside House",
+          "zh-CN": "河岸宅邸"
+        }
+      },
+      {
+        "id": "water-court",
+        "name": "Water Court",
+        "kind": "restricted",
+        "description": "Water Court exposes a public, reviewable surface for water rights, public permits, floodgate custody and river-household claims.",
+        "connectedLocationIds": [
+          "riverside-house",
+          "river-square"
+        ],
+        "x": -1,
+        "y": 1,
+        "localizedName": {
+          "en-US": "Water Court",
+          "zh-CN": "水务法庭"
+        }
+      }
+    ],
+    "npcs": [
+      {
+        "id": "npc-flo-1",
+        "name": "Mara Lock",
+        "role": "detective",
+        "homeLocationId": "water-ledger",
+        "schedule": {
+          "08:00": "water-ledger",
+          "12:00": "river-square",
+          "18:00": "licensing-counter"
+        },
+        "relationships": {},
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "detective",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-flo-2",
+        "name": "Ivo Reed",
+        "role": "clerk",
+        "homeLocationId": "licensing-counter",
+        "schedule": {
+          "08:00": "licensing-counter",
+          "12:00": "river-square",
+          "18:00": "river-lock"
+        },
+        "relationships": {
+          "npc-flo-1": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "clerk",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-flo-3",
+        "name": "Nell Shore",
+        "role": "servant",
+        "homeLocationId": "river-lock",
+        "schedule": {
+          "08:00": "river-lock",
+          "12:00": "river-square",
+          "18:00": "riverside-house"
+        },
+        "relationships": {
+          "npc-flo-2": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "servant",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-flo-4",
+        "name": "Tomas Vale",
+        "role": "lawyer",
+        "homeLocationId": "riverside-house",
+        "schedule": {
+          "08:00": "riverside-house",
+          "12:00": "river-square",
+          "18:00": "water-court"
+        },
+        "relationships": {
+          "npc-flo-3": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "lawyer",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-flo-5",
+        "name": "Edda Mill",
+        "role": "merchant",
+        "homeLocationId": "water-court",
+        "schedule": {
+          "08:00": "water-court",
+          "12:00": "river-square",
+          "18:00": "river-square"
+        },
+        "relationships": {
+          "npc-flo-4": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "merchant",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-flo-6",
+        "name": "Bram Gauge",
+        "role": "dockworker",
+        "homeLocationId": "river-square",
+        "schedule": {
+          "08:00": "river-square",
+          "12:00": "river-square",
+          "18:00": "water-ledger"
+        },
+        "relationships": {
+          "npc-flo-5": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "dockworker",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      }
+    ],
+    "institutions": [],
+    "professions": []
+  },
+  "rules": {
+    "enabledModules": [
+      "institutions",
+      "professions",
+      "long-actions",
+      "public-opinion",
+      "evidence-contamination",
+      "case-aftermath"
+    ],
+    "phaseConfig": {
+      "snapshotEveryTicks": 1,
+      "maxRunningLongActions": 8
+    },
+    "thresholds": {
+      "maxEvidenceContamination": 74,
+      "maxPublicOpinionHeat": 88,
+      "minInstitutionTrust": 34
+    },
+    "longActionKinds": [
+      "investigate-scene",
+      "verify-alibi",
+      "audit-ledger",
+      "secure-evidence-locker",
+      "review-court-record",
+      "cultivate-informant"
+    ]
+  },
+  "scenario": {
+    "id": "river-lock-waterworks-town",
+    "name": "River Lock Waterworks Town",
+    "seed": "river-lock-waterworks-town",
+    "worldOptions": {
+      "mode": "advanced",
+      "npcCount": 6,
+      "timelineHours": 96
+    },
+    "baselineSteps": 8,
+    "branches": [],
+    "passCriteria": {
+      "minValidCandidates": 0,
+      "minEventGrowth": 1,
+      "minMemoryGrowth": 1,
+      "maxBlockedCandidates": 8
+    }
+  },
+  "expectations": {
+    "minValidCandidates": 1,
+    "minEvidenceCoverage": 80,
+    "maxEvidenceContamination": 74,
+    "maxPublicOpinionHeat": 88,
+    "benchmarkPreset": "quick-10"
+  },
+  "assets": {
+    "presentationKey": "floodgate-covenant"
+  },
+  "docs": {
+    "localization": {
+      "en-US": "River Lock Waterworks Town",
+      "zh-CN": "河闸水务小镇"
+    }
+  }
+}

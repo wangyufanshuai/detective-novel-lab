@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import {
   DEFAULT_APP_LOCALE,
   LOCALE_FORMAT_VERSION,
@@ -14,6 +15,7 @@ import {
   type LocaleVariables
 } from "./locale-catalog";
 import { resolveBrowserLocale, type LocalePreference } from "./locale-preference";
+import { localizeCampaignContent } from "./campaign-content-locale";
 
 export { normalizeLocalePreference, resolveBrowserLocale } from "./locale-preference";
 
@@ -48,6 +50,7 @@ function readInitialLocale() {
 }
 
 export function AppLocaleProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
   const [locale, updateLocale] = useState<AppLocale>(DEFAULT_APP_LOCALE);
 
   useEffect(() => {
@@ -69,14 +72,17 @@ export function AppLocaleProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const t = useCallback((key: LocaleMessageKey, variables?: LocaleVariables) => formatLocaleMessage(locale, key, variables), [locale]);
-  const text = useCallback((value: string) => localizePublicText(value, locale), [locale]);
+  const text = useCallback((value: string) => {
+    const publicText = localizePublicText(value, locale);
+    return localizeCampaignContent(publicText, locale) || publicText;
+  }, [locale]);
   const number = useCallback((value: number) => new Intl.NumberFormat(locale).format(value), [locale]);
   const value = useMemo(() => ({ locale, setLocale, t, text, number }), [locale, number, setLocale, t, text]);
 
   return (
     <LocaleContext.Provider value={value}>
       <a className="skipToMain" href="#detective-town-main">{t("locale.skip")}</a>
-      <button
+      {pathname !== "/" && <button
         type="button"
         className="localeSwitcher"
         aria-label={locale === "en-US" ? t("locale.switch.zh") : t("locale.switch.en")}
@@ -84,7 +90,7 @@ export function AppLocaleProvider({ children }: { children: ReactNode }) {
         onClick={() => setLocale(locale === "en-US" ? "zh-CN" : "en-US")}
       >
         <span aria-hidden="true">{locale === "en-US" ? t("locale.current.zh") : t("locale.current.en")}</span>
-      </button>
+      </button>}
       <div id="detective-town-main" tabIndex={-1}>{children}</div>
     </LocaleContext.Provider>
   );

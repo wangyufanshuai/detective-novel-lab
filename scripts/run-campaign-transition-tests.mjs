@@ -125,14 +125,16 @@ for (const relative of [
 const theatreCss = await fs.readFile(path.join(root, "app/components/CampaignTransitionTheatre.module.css"), "utf8");
 assert.match(theatreCss, /\.actions button\s*\{[^}]*min-height:\s*44px/s, "Theatre actions keep a 44px target at every breakpoint");
 assert.match(theatreCss, /@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*animation:\s*none\s*!important/s, "Theatre removes non-essential reduced-motion animation");
-assert.match(theatreCss, /@media\s*\(max-width:\s*520px\)[\s\S]*?\.theatre\s*\{[\s\S]*?order:\s*-3/s, "Compact Theatre remains the first dominant Map Area surface");
 const commandDeckShellSource = await fs.readFile(path.join(root, "app/components/CommandDeckShell.tsx"), "utf8");
 const commandDeckShellCss = await fs.readFile(path.join(root, "app/components/CommandDeckShell.module.css"), "utf8");
 const commandDeckResponsiveCss = await fs.readFile(path.join(root, "app/components/CommandDeckShell.responsive.module.css"), "utf8");
 assert.match(commandDeckShellSource, /viewModel\.runtimeMode === "server" && theatre\.presentation\.visible/, "Static never activates the Server-only Theatre overlay");
-assert.match(commandDeckShellSource, /transitionVisible && <CampaignTransitionTheatre/, "Theatre rendering shares the same Server-only arbitration gate");
+assert.match(commandDeckShellSource, /!blockingOverlayActive && transitionVisible && <div className=\{styles\.transitionStage\}><CampaignTransitionTheatre/, "Theatre shares the Server-only gate and yields to higher-priority recovery overlays");
 assert.match(commandDeckShellSource, /CommandDeckShell\.responsive\.module\.css/, "Command Deck loads its responsive ownership after core styles");
-assert.match(`${commandDeckShellCss}\n${commandDeckResponsiveCss}`, /@media\s*\(max-width:\s*900px\)[\s\S]*data-suspend-context="true"[\s\S]*visibility:\s*hidden/s, "Compact suspended Context cannot visually cover the Theatre");
+assert.match(commandDeckShellSource, /className=\{styles\.playerBody\} inert=\{blockingOverlayActive \|\| transitionVisible \? true : undefined\}/, "The actual player stage cannot compete for focus during Theatre or recovery");
+assert.match(commandDeckShellCss, /\.transitionStage\s*\{[^}]*position:\s*fixed;[^}]*z-index:\s*90;/s, "Theatre occupies the dominant fixed overlay on wide and compact stages");
+assert.match(commandDeckShellCss, /\.transitionStage > :global\(\[data-testid="campaign-transition-theatre"\]\)\s*\{[^}]*position:\s*relative;[^}]*max-height:\s*100%;[^}]*overflow:\s*auto;[^}]*transform:\s*none;/s, "The actual Theatre remains contained and scrollable in its shared overlay");
+assert.doesNotMatch(commandDeckResponsiveCss, /\.transitionStage\s*\{[^}]*(?:display:\s*none|visibility:\s*hidden)/s, "Compact layouts do not suppress the authoritative Theatre");
 
 const authority = { truth: { culpritId: "hidden" }, evidenceCoverage: 34, routeCertificate: "certified", judgement: "pending", candidates: ["a", "b"], npcLegalActions: ["move", "work"] };
 const authorityBefore = structuredClone(authority);

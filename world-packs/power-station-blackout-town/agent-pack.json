@@ -1,0 +1,202 @@
+{
+  "manifest": {
+    "id": "power-station-blackout-town-agents",
+    "name": "Power Station Blackout Town Agents",
+    "version": "1.0.0",
+    "schemaVersion": "agent-pack.v1",
+    "createdAt": "2026-08-12T00:00:00.000Z",
+    "description": "Utility permits, night patrol decisions, switch-house custody and contractor accounts."
+  },
+  "agents": [
+    {
+      "id": "npc-bla-1",
+      "name": "Ada Volt",
+      "role": "detective",
+      "homeLocationId": "permit-office",
+      "schedule": {
+        "08:00": "permit-office",
+        "12:00": "blackout-square",
+        "18:00": "precinct"
+      },
+      "relationships": {},
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "detective",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "detective",
+      "institutionId": "inst-police",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-bla-2",
+      "name": "Silas Wire",
+      "role": "officer",
+      "homeLocationId": "precinct",
+      "schedule": {
+        "08:00": "precinct",
+        "12:00": "blackout-square",
+        "18:00": "switch-house"
+      },
+      "relationships": {
+        "npc-bla-1": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "officer",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "officer",
+      "institutionId": "inst-police",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-bla-3",
+      "name": "Nora Fuse",
+      "role": "clerk",
+      "homeLocationId": "switch-house",
+      "schedule": {
+        "08:00": "switch-house",
+        "12:00": "blackout-square",
+        "18:00": "repair-depot"
+      },
+      "relationships": {
+        "npc-bla-2": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "clerk",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "clerk",
+      "institutionId": "inst-civic",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-bla-4",
+      "name": "Bram Pike",
+      "role": "dockworker",
+      "homeLocationId": "repair-depot",
+      "schedule": {
+        "08:00": "repair-depot",
+        "12:00": "blackout-square",
+        "18:00": "contractor-office"
+      },
+      "relationships": {
+        "npc-bla-3": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "dockworker",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "dockworker",
+      "institutionId": "inst-dock-union",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-bla-5",
+      "name": "Elias Watt",
+      "role": "merchant",
+      "homeLocationId": "contractor-office",
+      "schedule": {
+        "08:00": "contractor-office",
+        "12:00": "blackout-square",
+        "18:00": "blackout-square"
+      },
+      "relationships": {
+        "npc-bla-4": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "merchant",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "merchant",
+      "institutionId": "inst-commerce",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-bla-6",
+      "name": "Iris Vale",
+      "role": "reporter",
+      "homeLocationId": "blackout-square",
+      "schedule": {
+        "08:00": "blackout-square",
+        "12:00": "blackout-square",
+        "18:00": "permit-office"
+      },
+      "relationships": {
+        "npc-bla-5": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "reporter",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "reporter",
+      "institutionId": "inst-media",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    }
+  ]
+}

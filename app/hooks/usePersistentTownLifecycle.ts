@@ -1,4 +1,4 @@
-import { useEffect, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useRef, type Dispatch, type SetStateAction } from "react";
 import type { useCampaignComprehensionStudy } from "@/app/hooks/useCampaignComprehensionStudy";
 import type { useCampaignController } from "@/app/controllers/useCampaignController";
 import type { useInvestigationController } from "@/app/controllers/useInvestigationController";
@@ -81,6 +81,7 @@ export function usePersistentTownLifecycle({
   hydrateCase
 }: UsePersistentTownLifecycleInput) {
   const { t } = useAppLocale();
+  const actionSequence = useRef(0);
   const {
     world,
     setWorld,
@@ -150,6 +151,11 @@ export function usePersistentTownLifecycle({
     setSnapshotDiff,
     setBenchmarkSummary
   } = review;
+
+  function runtimeCommandMeta(label: string) {
+    actionSequence.current += 1;
+    return { actionId: `${label}-${Date.now().toString(36)}-${actionSequence.current}`, sessionRevision: townRuntime?.revision };
+  }
 
   function selectScenarioRunFromRuntime(runtime: PersistentTownRuntime | null | undefined, scenarioId?: string | null, forceSnapshots = false) {
     const runs = runtime?.scenarioRuns || [];
@@ -296,7 +302,7 @@ export function usePersistentTownLifecycle({
     }
     setTownRuntimeBusy(true);
     try {
-      const data = await postV1<{ runtime: PersistentTownRuntime; events: WorldEvent[]; queue: TownEmergenceQueue; world: WorldState }>("/api/v1/command/town/runtime/start", { worldId: world.id, steps: 1 });
+      const data = await postV1<{ runtime: PersistentTownRuntime; events: WorldEvent[]; queue: TownEmergenceQueue; world: WorldState }>("/api/v1/command/town/runtime/start", { worldId: world.id, steps: 1, ...runtimeCommandMeta("town-start") });
       setTownRuntime(data.runtime);
       setTownQueue(data.queue);
       setWorld(data.world);
@@ -335,7 +341,7 @@ export function usePersistentTownLifecycle({
     }
     setTownRuntimeBusy(true);
     try {
-      const data = await postV1<{ runtime: PersistentTownRuntime; events: WorldEvent[]; queue: TownEmergenceQueue; world: WorldState; worldArcDirective?: WorldArcDirectivePublicSummary; worldPressureCascade?: WorldPressureCascadePublicSummary; playerResourceCommitment?: PlayerResourceCommitmentPublicSummary; factionRelationship?: FactionRelationshipPublicSummary; worldEventOffer?: WorldEventOfferPublicSummary; worldInfluenceBudget?: WorldInfluenceBudgetPublicSummary; investigatorProgression?: InvestigatorProgressionPublicSummary; investigatorHeadquarters?: InvestigatorHeadquartersPublicSummary; campaignRecovery?: CampaignRecoveryPublicSummary; arcConvergence?: ArcConvergencePublicSummary; campaignSession?: CampaignSessionPublicSummary; campaignFinaleDebrief?: CampaignFinaleDebriefPublicSummary; townSocialResponse?: TownSocialResponsePublicSummary }>("/api/v1/command/town/runtime/step", { worldId: world.id, steps });
+      const data = await postV1<{ runtime: PersistentTownRuntime; events: WorldEvent[]; queue: TownEmergenceQueue; world: WorldState; worldArcDirective?: WorldArcDirectivePublicSummary; worldPressureCascade?: WorldPressureCascadePublicSummary; playerResourceCommitment?: PlayerResourceCommitmentPublicSummary; factionRelationship?: FactionRelationshipPublicSummary; worldEventOffer?: WorldEventOfferPublicSummary; worldInfluenceBudget?: WorldInfluenceBudgetPublicSummary; investigatorProgression?: InvestigatorProgressionPublicSummary; investigatorHeadquarters?: InvestigatorHeadquartersPublicSummary; campaignRecovery?: CampaignRecoveryPublicSummary; arcConvergence?: ArcConvergencePublicSummary; campaignSession?: CampaignSessionPublicSummary; campaignFinaleDebrief?: CampaignFinaleDebriefPublicSummary; townSocialResponse?: TownSocialResponsePublicSummary }>("/api/v1/command/town/runtime/step", { worldId: world.id, steps, ...runtimeCommandMeta("town-step") });
       setTownRuntime(data.runtime);
       setTownQueue(data.queue);
       setWorld(data.world);

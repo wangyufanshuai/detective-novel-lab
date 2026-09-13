@@ -70,6 +70,22 @@ assert.equal(observePrelude.currentStep.kind, "search", "Observe remains a Field
 assert.equal(observePrelude.currentStep.action.kind, "observe", "the existing Observe action runs before Search");
 assert.equal(observePrelude.currentStep.label, "Observe case window");
 
+const certifiedSearchTarget = build({
+  selectedSceneName: "Unrelated selected place",
+  intake: {
+    progress: progress(),
+    nextAction: {
+      kind: "search",
+      label: "Search certified archive",
+      detail: "Focus the certified archive clue.",
+      buttonLabel: "Search",
+      targetLocationId: "public-archive"
+    }
+  }
+});
+assert.equal(certifiedSearchTarget.currentStep.detail, "Focus the certified archive clue.", "the certified target copy is not replaced by an unrelated map selection");
+assert.equal(certifiedSearchTarget.currentStep.action.targetLocationId, "public-archive", "the certified Search target remains intact");
+
 const rejected = build({
   session: session({ accepted: false, missing: ["motive"], contradictions: [], explanation: "blocked" }),
   recoveryGap: { label: "Motive coverage", detail: "Revise one visible proof obligation." },
@@ -100,6 +116,60 @@ const before = JSON.stringify(frozenInput);
 assert.deepEqual(model.buildCertifiedCaseRhythm(frozenInput), model.buildCertifiedCaseRhythm(structuredClone(frozenInput)), "same safe state yields the same rhythm");
 assert.equal(JSON.stringify(frozenInput), before, "rhythm derivation does not mutate input");
 
+const draftClues = Array.from({ length: 7 }, (_, index) => `discovered-clue-${index + 1}`);
+const draftSession = { ...session(undefined), discoveredEvidenceIds: draftClues };
+const draftIntake = intake(progress({ currentStage: "select-evidence", discoveredEvidence: 7, questionedWitnesses: 1, challengeHitCount: 1, selectedTheoryEvidence: 0, submitReady: true }), "select-evidence");
+const draftInput = { intake: draftIntake, session: draftSession, observedCrimeWindow: true, revealAvailable: false };
+const draftBefore = structuredClone(draftInput);
+const legacyDraft = model.buildCertifiedCaseRhythm(draftInput);
+assert.equal(legacyDraft.completedStepCount, 4, "omitting draft evidence preserves the original server-only fixture contract");
+assert.equal(legacyDraft.currentStep.kind, "select-evidence");
+const selectedDraft = model.buildCertifiedCaseRhythm({ ...draftInput, theoryEvidenceIds: draftClues });
+assert.equal(selectedDraft.progressLabel, "5/7 certified steps", "seven discovered draft selections complete the evidence-selection step");
+assert.equal(selectedDraft.beats.find((beat) => beat.kind === "deduction").metric, "7 clue(s)");
+assert.equal(selectedDraft.currentStep.kind, "submit", "an open public submit gate advances a completed local selection");
+assert.equal(selectedDraft.currentStep.action.kind, "submit", "the actual proposed action advances with its displayed stage");
+const reducedDraft = model.buildCertifiedCaseRhythm({ ...draftInput, theoryEvidenceIds: draftClues.slice(1) });
+assert.equal(reducedDraft.beats.find((beat) => beat.kind === "deduction").metric, "6 clue(s)", "removing a draft clue immediately updates its display count");
+const emptyDraft = model.buildCertifiedCaseRhythm({ ...draftInput, theoryEvidenceIds: [] });
+assert.equal(emptyDraft.progressLabel, "4/7 certified steps");
+assert.equal(emptyDraft.currentStep.kind, "select-evidence", "clearing valid draft choices restores the selection step");
+assert.equal(emptyDraft.beats.find((beat) => beat.kind === "deduction").metric, "0 clue(s)");
+const invalidDraft = model.buildCertifiedCaseRhythm({ ...draftInput, theoryEvidenceIds: ["undiscovered", "unknown", ""] });
+assert.deepEqual(invalidDraft, emptyDraft, "unknown and undiscovered draft IDs do not increase progress or open submission");
+assert.deepEqual(model.buildCertifiedCaseRhythm({ ...draftInput, theoryEvidenceIds: [...draftClues, ...draftClues, "unknown"] }), selectedDraft, "repeated IDs and unknown extras cannot inflate the selection count");
+assert.equal(model.buildCertifiedCaseRhythm({ ...draftInput, theoryEvidenceIds: draftClues, intake: { ...draftIntake, progress: { ...draftIntake.progress, submitReady: false } } }).currentStep.kind, "select-evidence", "draft selections never override a closed public submission gate");
+assert.equal(model.buildCertifiedCaseRhythm({ ...draftInput, theoryEvidenceIds: [], intake: { ...draftIntake, nextAction: { ...draftIntake.nextAction, kind: "submit" }, progress: { ...draftIntake.progress, selectedTheoryEvidence: 7 } } }).currentStep.kind, "select-evidence", "removing local choices overrides stale server selection display");
+assert.equal(model.buildCertifiedCaseRhythm({ ...draftInput, theoryEvidenceIds: draftClues, intake: { ...draftIntake, nextAction: { ...draftIntake.nextAction, kind: "question" } } }).currentStep.kind, "question", "draft selections cannot skip earlier fieldwork");
+assert.deepEqual(draftInput, draftBefore, "draft projection does not mutate the authoritative intake or session");
+
+const memoHookSource = await fs.readFile(path.join(root, "app/hooks/useCertifiedCaseRhythm.ts"), "utf8");
+const memoHookAst = ts.createSourceFile("useCertifiedCaseRhythm.ts", memoHookSource, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+const memoHook = memoHookAst.statements.find((node) => ts.isFunctionDeclaration(node) && node.name?.text === "useCertifiedCaseRhythm");
+assert.ok(memoHook);
+// Execute the actual hook body across renders with React-compatible dependency
+// comparison. This isolates memo invalidation; DOM rendering is tested separately.
+const memoRuntime = ts.transpileModule(`export function createMemoHarness(buildCertifiedCaseRhythm) {
+  let previousDependencies, value, evaluations = 0;
+  function useMemo(compute, dependencies) {
+    if (!previousDependencies || dependencies.some((item, index) => !Object.is(item, previousDependencies[index]))) {
+      previousDependencies = [...dependencies]; value = compute(); evaluations += 1;
+    }
+    return value;
+  }
+  ${memoHook.getText(memoHookAst).replace(/^export\s+/, "")}
+  return { render: useCertifiedCaseRhythm, evaluations: () => evaluations };
+}`, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
+const { createMemoHarness } = await import(`data:text/javascript;base64,${Buffer.from(memoRuntime).toString("base64")}`);
+const memoHarness = createMemoHarness(model.buildCertifiedCaseRhythm);
+const initiallyEmpty = { ...draftInput, theoryEvidenceIds: [] };
+assert.equal(memoHarness.render(initiallyEmpty).completedStepCount, 4);
+assert.equal(memoHarness.render(initiallyEmpty).completedStepCount, 4);
+assert.equal(memoHarness.evaluations(), 1, "unchanged draft references keep their memoized result");
+assert.equal(memoHarness.render({ ...draftInput, theoryEvidenceIds: draftClues }).completedStepCount, 5, "the actual hook invalidates when only draft evidence changes");
+assert.equal(memoHarness.render(initiallyEmpty).currentStep.kind, "select-evidence", "the actual hook invalidates again when those choices are removed");
+assert.equal(memoHarness.evaluations(), 3);
+
 const budgetPass = model.evaluateCertifiedCaseRhythmAutomation(stages.map(([, step]) => ({ stage: step, primaryClicks: 1, panelSwitches: 1, settleMs: 900 })));
 assert.equal(budgetPass.ok, true);
 const budgetFail = model.evaluateCertifiedCaseRhythmAutomation([{ stage: "search", primaryClicks: 3, panelSwitches: 2, settleMs: 3001 }]);
@@ -121,12 +191,48 @@ for (const [label, text] of [["model", source], ["surface", component], ["naviga
 }
 assert.doesNotMatch(source, /localStorage|sessionStorage|indexedDB|setInterval/, "rhythm remains storage/background-free");
 assert.match(component, /Manual First/);
-assert.match(component, /Full certified route/);
+assert.match(component, /Full investigation route/, "expanded route keeps its English label");
+assert.match(component, /完整调查步骤/, "expanded route has its Chinese label");
 assert.match(strategic, /rhythmContextMatch/);
-assert.match(page, /await runCertifiedCaseRhythmStep\(\)/, "Current Action delegates through the rhythm adapter");
-assert.match(actions, /discoverFirstSceneEvidence/);
-assert.match(actions, /runInterrogationTarget/);
-assert.doesNotMatch(actions, /toggleTheoryEvidence|submitTheory/, "Manual First evidence and theory steps only focus their existing workspace");
+const pageAst = ts.createSourceFile("page.tsx", page, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+let rhythmCalls = 0;
+function visitPage(node) {
+  if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "runCertifiedCaseRhythmStep") rhythmCalls += 1;
+  ts.forEachChild(node, visitPage);
+}
+visitPage(pageAst);
+assert.equal(rhythmCalls, 1, "Current Action delegates once through the rhythm adapter, preserving its returned outcome");
+const hookAst = ts.createSourceFile("useCertifiedCaseRhythmActions.ts", actions, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+const hookFunction = hookAst.statements.find((node) => ts.isFunctionDeclaration(node) && node.name?.text === "useCertifiedCaseRhythmActions");
+assert.ok(hookFunction, "execute the actual rhythm action wiring");
+const dispatcherSource = await read("app/campaign/execute-certified-investigation-step.ts");
+// Memoization is a passthrough here; this isolates callback routing, not React lifecycle.
+const callbackRuntime = ts.transpileModule(`${dispatcherSource}\nconst useCallback = (callback) => callback;\n${hookFunction.getText(hookAst)}`, {
+  compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 }
+}).outputText;
+const { useCertifiedCaseRhythmActions } = await import(`data:text/javascript;base64,${Buffer.from(callbackRuntime).toString("base64")}`);
+const routingSamples = [
+  { rhythm: observePrelude, expected: "observe" },
+  { rhythm: certifiedSearchTarget, expected: "discoverFirstSceneEvidence" },
+  { rhythm: { currentStep: { kind: "question", action: { kind: "question", targetCharacterId: "route-witness" } } }, expected: "runInterrogationTarget" },
+  { rhythm: { currentStep: { kind: "challenge", action: { kind: "challenge", targetCharacterId: "route-witness", targetEvidenceId: "route-clue" } } }, expected: "runInterrogationTarget" },
+  { rhythm: stages[4][0], expected: "toggleTheoryEvidence" },
+  { rhythm: stages[5][0], expected: "submit" },
+  { rhythm: rejected, expected: "focus", status: "blocked" }
+];
+for (const sample of routingSamples) {
+  const calls = [];
+  const record = (name) => async (...args) => { calls.push({ name, args }); return { status: "succeeded", detail: name }; };
+  const actionAdapter = Object.fromEntries(["joinCase", "discoverEvidence", "discoverFirstSceneEvidence", "runInterrogationTarget", "toggleTheoryEvidence", "revealSolution"].map((name) => [name, record(name)]));
+  const runner = useCertifiedCaseRhythmActions({
+    rhythm: sample.rhythm, actionAdapter, observeCaseWindow: record("observe"), focusStep: record("focus"),
+    notebookItems: [], discoveredEvidence: [{ id: "route-clue" }], theory: { culpritId: "", motive: "", method: "", evidenceIds: [] },
+    submitTheory: record("submit")
+  });
+  const outcome = await runner.runCurrentStep();
+  assert.deepEqual(calls.map((item) => item.name), [sample.expected], `${sample.rhythm.currentStep.kind} executes only its corresponding shared action`);
+  assert.equal(outcome.status, sample.status || "succeeded", "the rhythm entry preserves the real action result");
+}
 assert.doesNotMatch(navigation.match(/function focusCertifiedStep[\s\S]*?\n  }/m)?.[0] || "", /setTheory|discover|interrogate|submit/, "route focusing does not execute or fill an investigation action");
 assert.match(css, /@media\s*\(max-width:\s*520px\)/);
 
@@ -145,5 +251,5 @@ console.log(JSON.stringify({
   suite: "certified-case-rhythm",
   stages: stages.map(([, step]) => step),
   automationBudget: model.CERTIFIED_CASE_RHYTHM_AUTOMATION_BUDGET,
-  checks: ["determinism", "four-beat-projection", "minimum-recovery", "manual-first-focus", "automation-budget", "public-safety", "request-storage-isolation", "source-budgets"]
+  checks: ["determinism", "four-beat-projection", "draft-evidence-progress", "draft-removal-regression", "draft-discovery-filter", "draft-memo-invalidation", "minimum-recovery", "shared-action-execution", "navigation-focus-only", "automation-budget", "public-safety", "request-storage-isolation", "source-budgets"]
 }));

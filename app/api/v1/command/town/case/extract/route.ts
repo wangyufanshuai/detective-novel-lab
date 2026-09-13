@@ -1,5 +1,5 @@
-import { errorResponse, fail, ok, readJson } from "@/app/api/v1/_utils";
-import { extractCase, getRuntimeCandidate, loadRuntimeWorld, publicWorld } from "@/app/api/v1/_town-runtime";
+import { errorResponse, fail, playerOk, readJson } from "@/app/api/v1/_utils";
+import { extractCase, getRuntimeCandidate, loadRuntimeWorld, publicPlayerCase, publicPlayerWorld, publicTownQueue } from "@/app/api/v1/_town-runtime";
 import { buildPlayableCaseIntake, buildTownEmergenceQueue } from "@/lib/engine";
 
 export async function POST(request: Request) {
@@ -40,12 +40,12 @@ export async function POST(request: Request) {
     }
     if (!result) throw lastCaseError || new Error("CASE_NOT_PLAYABLE: No case candidate passed route integrity.");
     const playableIntake = buildPlayableCaseIntake(result.activeCase, result.events, result.world);
-    return ok({
-      world: publicWorld(result.world),
-      events: result.events,
-      activeCase: result.activeCase,
-      candidate: result.candidate,
-      queue: result.queue,
+    return playerOk({
+      world: publicPlayerWorld(result.world),
+      events: result.events.map((event) => ({ id: event.id, day: event.day, time: event.time, type: event.type, locationId: event.locationId, publicSummary: event.publicSummary })),
+      activeCase: publicPlayerCase(result.activeCase),
+      candidate: publicTownQueue({ ...result.queue, candidates: [result.candidate] }).candidates[0],
+      queue: publicTownQueue(result.queue),
       playableIntake,
       playerResourceCommitment: result.playerResourceCommitment,
       worldLeadCaseHandoff: result.worldLeadCaseHandoff,

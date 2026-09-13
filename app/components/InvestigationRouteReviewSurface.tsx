@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { CommandDeckCollapsible } from "@/app/components/CommandDeckShell";
 import { CampaignResolutionJournal } from "@/app/components/CampaignResolutionLedger";
 import { CertifiedCaseRhythmSurface } from "@/app/components/CertifiedCaseRhythmSurface";
+import { useAppLocale } from "@/app/localization/locale-context";
 import type { CampaignPacingViewModel } from "@/app/campaign/campaign-pacing-model";
 import type { CertifiedCaseRhythmViewModel } from "@/app/campaign/certified-case-rhythm-model";
 import type {
@@ -88,6 +89,7 @@ function GuidedManualRunPanel({ summary, onRunNext }: { summary: GuidedManualRun
 }
 
 function GuidedStepJournalPanel({ entries, campaignPacing }: { entries: GuidedStepJournalEntry[]; campaignPacing?: CampaignPacingViewModel | null }) {
+  const { text } = useAppLocale();
   const visibleEntries = entries.slice(-20).reverse();
   const completedCount = entries.filter((entry) => entry.status === "done").length;
   const completedSteps = Array.from(new Set(entries.filter((entry) => entry.status === "done").map((entry) => entry.step))).join(" ");
@@ -108,16 +110,16 @@ function GuidedStepJournalPanel({ entries, campaignPacing }: { entries: GuidedSt
         <span className={reviewUnlocked ? "pass" : "check"}><b>{reviewUnlocked ? "unlocked" : "locked"}</b>review source</span>
       </div>
       {campaignPacing && <div className={`guidedCampaignPacing ${campaignPacing.status}`} data-testid="guided-campaign-pacing">
-        <span>Campaign context / {campaignPacing.status}</span>
-        <b>{campaignPacing.currentObjective.label}</b>
-        <small>{campaignPacing.whyNow}</small>
-        <em>{campaignPacing.nextAction}</em>
+        <span>Campaign context / {text(campaignPacing.status)}</span>
+        <b>{text(campaignPacing.currentObjective.label)}</b>
+        <small>{text(campaignPacing.whyNow)}</small>
+        <em>{text(campaignPacing.nextAction)}</em>
       </div>}
       <div className="guidedStepJournalEntries">
         {visibleEntries.length ? visibleEntries.map((entry) => (
           <article key={entry.id} className={entry.status}>
-            <span>{entry.step} / {entry.status}</span><b>{entry.label}</b><small>{entry.result}</small><small>{entry.progressDelta}</small>
-            <em>{entry.nextAction}{entry.fallbackUsed ? " / certified fallback used" : ""}</em>
+            <span>{text(entry.step)} / {text(entry.status)}</span><b>{text(entry.label)}</b><small>{text(entry.result)}</small><small>{text(entry.progressDelta)}</small>
+            <em>{text(entry.nextAction)}{entry.fallbackUsed ? ` / ${text("certified fallback used")}` : ""}</em>
           </article>
         )) : (
           <article className="info"><span>ready / info</span><b>Run one guided step</b><small>The journal records only low-spoiler step results for this browser session.</small><em>No repo files, public artifacts, or SQLite schema are written.</em></article>
@@ -145,14 +147,15 @@ export function InvestigationRouteReviewSurface({
   serverPlaythroughProof?: CertifiedPlaythroughProofSummary | null;
   runServerPlaythroughProof?: () => void;
 }) {
+  const { text } = useAppLocale();
   return <>
     <PlayableInvestigationPathPanel steps={steps} rhythm={rhythm} commandDeckMode={commandDeckMode} />
     {worldCampaign}
-    <CommandDeckCollapsible enabled={commandDeckMode} title="Guided run and journal">
+    <CommandDeckCollapsible enabled={commandDeckMode} title={text("Guided run and journal")}>
       {guidedManualRun && runGuidedManualStep && <GuidedManualRunPanel summary={guidedManualRun} onRunNext={runGuidedManualStep} />}
       <GuidedStepJournalPanel entries={guidedStepJournal} campaignPacing={campaignPacing} />
     </CommandDeckCollapsible>
-    <CommandDeckCollapsible enabled={commandDeckMode} title="Proof and source review">
+    <CommandDeckCollapsible enabled={commandDeckMode} title={text("Proof and source review")}>
       {staticPlaythroughProof && runStaticPlaythroughProof && <CertifiedPlaythroughProofPanel proof={staticPlaythroughProof} onRun={runStaticPlaythroughProof} />}
       {serverPlaythroughProof && runServerPlaythroughProof && <CertifiedPlaythroughProofPanel proof={serverPlaythroughProof} onRun={runServerPlaythroughProof} />}
     </CommandDeckCollapsible>

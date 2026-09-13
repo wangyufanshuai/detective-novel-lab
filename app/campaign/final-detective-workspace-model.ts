@@ -26,6 +26,7 @@ export type FinalDetectiveWorkspaceStage =
   | "resolved";
 
 export type FinalDetectiveWorkspaceActionKind =
+  | "observe"
   | "join"
   | "search"
   | "question"
@@ -179,6 +180,14 @@ export type FinalDetectiveWorkspaceInput = {
   revealAvailable?: boolean;
 };
 
+/** Pure selection transition shared by every investigation presentation. */
+export function toggleTheoryEvidenceIds(evidenceIds: readonly string[], evidenceId: string) {
+  const next = new Set(evidenceIds);
+  if (next.has(evidenceId)) next.delete(evidenceId);
+  else next.add(evidenceId);
+  return Array.from(next);
+}
+
 const AUTHORITY_NOTE = "Case truth, evidence coverage, the certified route, judgement, and NPC legal actions remain unchanged.";
 const RAW_IDENTIFIER_PATTERN = /\b(?:case|npc|event|source|location|institution|resource|evidence|scene|session|world|campaign|package|character)-[a-z0-9-]*\d[a-z0-9-]*\b/gi;
 const PRIVATE_FIELD_PATTERN = /\b(?:culpritId|victimId|hiddenTruth|rawBody|agentSnapshot|checkpoint|sqlite|sessionId|caseId|sourceId|eventId|npcId|locationId|institutionId|resourceId|selectedAnswer|playerText)\b/gi;
@@ -239,6 +248,7 @@ function actionKindFor(input: FinalDetectiveWorkspaceInput, stage: FinalDetectiv
     return input.runtimeMode === "server" && input.campaignRecovery?.status === "ready" ? "recover" : "submit";
   }
   if (stage === "source-review" || stage === "resolved") return "review-source";
+  if (input.rhythm?.currentStep.action.kind === "observe") return "observe";
   const step = input.rhythm?.currentStep.kind;
   if (step && step !== "recover") return step;
   return input.session ? "search" : "join";
@@ -307,7 +317,9 @@ function testimonyRows(input: FinalDetectiveWorkspaceInput): FinalDetectiveTesti
         : "Question this witness to record a public statement.",
       selected: record.characterId === input.selectedCharacterId,
       evidenceLabels,
-      contradictionLabels: wasChallenged ? safeList(record.exposedContradictions) : []
+      contradictionLabels: wasChallenged
+        ? safeList(record.exposedContradictions.map((reference) => discoveredTitles.get(reference) || "Exposed testimony contradiction"))
+        : []
     }];
   });
 }
@@ -331,8 +343,11 @@ function theorySummary(input: FinalDetectiveWorkspaceInput, evidence: readonly F
   const accepted = Boolean(input.session?.judgement?.accepted);
   const rejected = Boolean(input.session?.judgement && !accepted);
   const suspectComplete = Boolean(input.theory.culpritId);
-  const motiveComplete = Boolean(input.theory.motive.trim());
-  const methodComplete = Boolean(input.theory.method.trim());
+  const discovered = new Set(input.session?.discoveredEvidenceIds || []);
+  const selected = new Set(input.theory.evidenceIds);
+  const groupComplete = (ids: string[]) => ids.length > 0 && ids.every((id) => discovered.has(id) && selected.has(id));
+  const motiveComplete = input.theory.proof ? groupComplete(input.theory.proof.motiveEvidenceIds) : Boolean(input.theory.motive.trim());
+  const methodComplete = input.theory.proof ? groupComplete(input.theory.proof.methodEvidenceIds) : Boolean(input.theory.method.trim());
   const selectedEvidence = evidence.filter((item) => item.state === "selected");
   const evidenceComplete = selectedEvidence.length > 0;
   const routeReady = input.playableIntake?.progress?.submitReady ?? evidenceComplete;

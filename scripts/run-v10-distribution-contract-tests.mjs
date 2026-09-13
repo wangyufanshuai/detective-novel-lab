@@ -16,12 +16,12 @@ for (const script of [
 ]) assert.equal(typeof packageJson.scripts[script], "string", `package exposes ${script}`);
 
 const gate = read("scripts/run-release-candidate-gate.mjs");
-assert.match(gate, /v10\.0/);
+assert.match(gate, /v11\.0-alpha/, "the shared RC gate reports the current Alpha baseline while retaining v10 distribution compatibility stages");
 assert.match(gate, /next-typegen/);
 assert.match(gate, /run-v10-supply-chain-audit\.mjs/);
 assert.match(gate, /run-v10-distribution-smoke\.mjs/);
 assert.match(gate, /qa:static-reader[\s\S]{0,160}--public-only/, "RC validates the byte-locked public reader without exporting it");
-assert.ok(gate.indexOf('label: "production-build"') < gate.indexOf('label: "campaign-playthrough-24-case"'), "production build precedes production Campaign playthrough");
+assert.ok(gate.indexOf('label: "production-build"') < gate.indexOf('label: "campaign-playthrough-72-case"'), "production build precedes the v11 Alpha production Campaign playthrough");
 for (const forbidden of ["qa:" + "release-local", "public-catalog:" + "build", "dataset:" + "export", "5000", "10000"]) {
   assert.equal(gate.includes(forbidden), false, `v10 gate excludes ${forbidden}`);
 }

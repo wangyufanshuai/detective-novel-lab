@@ -28,6 +28,10 @@ function minutesToTime(minutes: number) {
   return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
 }
 
+function isPersistedSessionId(sessionId?: string) {
+  return Boolean(sessionId && !sessionId.startsWith("session-pending-"));
+}
+
 /** Owns read-only investigation projections without granting presentation code request authority. */
 export function useInvestigationReadQueries(investigation: InvestigationController): InvestigationReadQueryAdapter {
   const {
@@ -66,7 +70,7 @@ export function useInvestigationReadQueries(investigation: InvestigationControll
   const agentApiExample = useMemo(
     () => JSON.stringify({
       createTown: { method: "POST", url: "/api/v1/command/town/create", body: { seed: seedInput, mode, caseMode, caseTemplateId, npcCount: mode === "advanced" ? 30 : caseMode === "generated" ? 20 : 8, timelineHours: mode === "advanced" ? 120 : 24, caseArchetype } },
-      mapSnapshot: world ? { method: "GET", url: `/api/v1/query/world/map?worldId=${world.id}&caseId=${activeCase?.id || ""}&sessionId=${session?.id || ""}&day=1&time=${minutesToTime(timeValue)}` } : null,
+      mapSnapshot: world ? { method: "GET", url: `/api/v1/query/world/map?worldId=${world.id}&caseId=${activeCase?.id || ""}&sessionId=${isPersistedSessionId(session?.id) ? session?.id : ""}&day=1&time=${minutesToTime(timeValue)}` } : null,
       deductionGraph: activeCase ? { method: "GET", url: `/api/v1/query/case/deduction-graph?caseId=${activeCase.id}` } : null,
       interrogate: session ? { method: "POST", url: "/api/v1/command/investigation/interrogate", body: { sessionId: session.id, characterId: selectedCharacterId, question, evidenceId: selectedEvidenceId || undefined } } : null
     }, null, 2),
@@ -88,7 +92,7 @@ export function useInvestigationReadQueries(investigation: InvestigationControll
       time: minutesToTime(timeValue)
     });
     if (activeCase?.id) query.set("caseId", activeCase.id);
-    if (session?.id) query.set("sessionId", session.id);
+    if (session && isPersistedSessionId(session.id)) query.set("sessionId", session.id);
     getV1<{ snapshot: WorldMapSnapshot }>(`/api/v1/query/world/map?${query.toString()}`)
       .then((data) => setSnapshot(data.snapshot))
       .catch(() => {

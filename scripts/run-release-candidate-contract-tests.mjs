@@ -50,7 +50,12 @@ assert.match(smokeSource, /AbortSignal\.(?:any|timeout)/, "API smoke has bounded
 
 const packageJson = JSON.parse(read("package.json"));
 assert.equal(typeof packageJson.scripts["quality:rc"], "string", "package exposes quality:rc");
+assert.equal(typeof packageJson.scripts["test:twelve-campaign-smoke"], "string", "package exposes the PR-scale twelve-Campaign smoke");
+assert.equal(typeof packageJson.scripts["test:seventy-two-case-campaign"], "string", "package exposes the complete 72-case release playthrough");
 const gateSource = read("scripts/run-release-candidate-gate.mjs");
+assert.match(gateSource, /label: "typescript"[^\n]*args: \["tsc", "--noEmit", "--incremental", "false"\]/, "RC type checking cannot rewrite the protected root incremental cache");
+assert.match(gateSource, /test:noir-presentation/, "quality:rc verifies Noir declarations and ready assets");
+assert.match(gateSource, /test:seventy-two-case-campaign/, "quality:rc runs the complete v11 Alpha Campaign matrix");
 for (const forbidden of [
   "qa:" + "release-local",
   "public-catalog:" + "build",

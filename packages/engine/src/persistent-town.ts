@@ -147,9 +147,11 @@ import {
 } from "./town/campaign-session";
 import {
   deriveDetectiveCampaignCaseTypeBonus,
+  campaignLocalizedSafeTextIndex,
   selectedDetectiveCampaignForRuntime
 } from "./town/campaign-catalog";
 export {
+  campaignLocalizedSafeTextIndex,
   deriveDetectiveCampaignCaseTypeBonus,
   detectiveCampaignChapter,
   detectiveCampaignForRuntime,
@@ -167,8 +169,31 @@ export type {
   DetectiveCampaignDefinition,
   DetectiveCampaignId,
   DetectiveCampaignRouteDefinition,
-  DetectiveCampaignRouteId
+  DetectiveCampaignRouteId,
+  DetectiveCampaignVolumeId,
+  LocalizedSafeText
 } from "./town/campaign-catalog";
+export {
+  CAMPAIGN_AUDIO_MANIFESTS,
+  CAMPAIGN_PRESENTATION_MANIFESTS,
+  NOIR_GLOBAL_AUDIO_CUES,
+  auditCampaignPresentationDeclarations,
+  flattenCampaignPresentationAssets,
+  getCampaignPresentationManifest,
+  listCampaignAudioManifests,
+  listCampaignPresentationManifests,
+  presentationManifestForRuntime
+} from "./town/campaign-presentation";
+export type {
+  CampaignAudioManifest,
+  CampaignAudioTrack,
+  CampaignAudioTrackKind,
+  CampaignPresentationAsset,
+  CampaignPresentationAssetKind,
+  CampaignPresentationAssetStatus,
+  CampaignPresentationManifest,
+  NoirGlobalAudioCue
+} from "./town/campaign-presentation";
 import {
   applyAuthoredCampaignCaseTreatment,
   authoredCampaignCaseForRuntime,
@@ -352,6 +377,7 @@ export type {
 } from "./town/social-response";
 import {
   addEventToTownTickIndex,
+  addMemoryToTownTickIndex,
   createTownPerformanceSummary,
   createTownTickIndex,
   normalizeTownExecutionPolicy,
@@ -359,7 +385,8 @@ import {
   type TownExecutionPolicy,
   type TownPerformanceSummary,
   type TownSnapshotMode,
-  type TownTickIndex
+  type TownTickIndex,
+  type TownTickMemoryIndex
 } from "./town/execution";
 export { PERSISTENT_TOWN_PHASE_BOUNDARIES, PERSISTENT_TOWN_TICK_PHASES } from "./town/runtime";
 export type { TownTickPhaseName } from "./town/runtime";
@@ -741,7 +768,18 @@ export type TownCaseType =
   | "dock-witness-swap"
   | "editorial-coercion"
   | "household-escrow"
-  | "permit-forgery";
+  | "permit-forgery"
+  | "signal-tampering"
+  | "safety-inspection-fraud"
+  | "industrial-sabotage"
+  | "water-rights-fraud"
+  | "floodgate-tampering"
+  | "academic-record-forgery"
+  | "patronage-coercion"
+  | "identity-register-fraud"
+  | "utility-sabotage"
+  | "burial-record-forgery"
+  | "signal-interception";
 
 export type EvidenceChainValidationSummary = {
   relatedEvidenceIds: string[];
@@ -1041,8 +1079,57 @@ export const TOWN_CASE_TYPES: TownCaseType[] = [
   "dock-witness-swap",
   "editorial-coercion",
   "household-escrow",
-  "permit-forgery"
+  "permit-forgery",
+  "signal-tampering",
+  "safety-inspection-fraud",
+  "industrial-sabotage",
+  "water-rights-fraud",
+  "floodgate-tampering",
+  "academic-record-forgery",
+  "patronage-coercion",
+  "identity-register-fraud",
+  "utility-sabotage",
+  "burial-record-forgery",
+  "signal-interception"
 ];
+
+const EXPANSION_TOWN_CASE_TYPES = new Set<TownCaseType>([
+  "signal-tampering", "safety-inspection-fraud", "industrial-sabotage", "water-rights-fraud", "floodgate-tampering",
+  "academic-record-forgery", "patronage-coercion", "identity-register-fraud", "utility-sabotage", "burial-record-forgery",
+  "signal-interception"
+]);
+
+export const TOWN_CASE_MECHANIC_PROFILE_BY_TYPE = {
+  "signal-tampering": "evidence-chain",
+  "safety-inspection-fraud": "record-custody",
+  "industrial-sabotage": "access-control",
+  "water-rights-fraud": "record-custody",
+  "floodgate-tampering": "access-control",
+  "academic-record-forgery": "record-custody",
+  "patronage-coercion": "witness-timeline",
+  "identity-register-fraud": "record-custody",
+  "utility-sabotage": "access-control",
+  "burial-record-forgery": "record-custody",
+  "signal-interception": "evidence-chain"
+} as const;
+
+export const TOWN_CASE_MECHANIC_DELEGATE_BY_TYPE: Partial<Record<TownCaseType, TownCaseType>> = {
+  "signal-tampering": "evidence-tampering",
+  "safety-inspection-fraud": "permit-forgery",
+  "industrial-sabotage": "evidence-tampering",
+  "water-rights-fraud": "ledger-fraud",
+  "floodgate-tampering": "evidence-tampering",
+  "academic-record-forgery": "archive-vanishing",
+  "patronage-coercion": "false-testimony",
+  "identity-register-fraud": "forged-will",
+  "utility-sabotage": "evidence-tampering",
+  "burial-record-forgery": "forged-will",
+  "signal-interception": "evidence-tampering"
+};
+
+export function mechanicDelegateForTownCaseType(caseType: TownCaseType): TownCaseType {
+  return TOWN_CASE_MECHANIC_DELEGATE_BY_TYPE[caseType] || caseType;
+}
 
 export type CaseInfluenceTrace = {
   institutionIds: string[];
@@ -1088,6 +1175,10 @@ export type PersistentTownRuntimeReport = {
 export type PersistentTownRuntime = {
   id: string;
   worldId: string;
+  /** Presentation/CAS token returned by player runtime routes. */
+  revision?: string;
+  /** Monotonic persistence revision for command CAS; absent on legacy saves. */
+  commandRevision?: number;
   status: PersistentTownRuntimeStatus;
   currentDay: number;
   currentTime: string;
@@ -1179,6 +1270,8 @@ export type TownEmergenceQueue = {
 export type TownSituationBrief = {
   worldId: string;
   runtimeId: string;
+  /** Stable presentation revision for public clients. */
+  revision: string;
   tick: number;
   status: PersistentTownRuntimeStatus;
   currentPhase: TownTickPhaseName;
@@ -1232,6 +1325,32 @@ export type TownSituationBrief = {
     label: string;
     detail: string;
   }>;
+};
+
+/** Stable spoiler-safe projection consumed by the City Pulse presentation. */
+export type CityPulseWorldProjection = {
+  schemaVersion: "city-pulse.world-projection.v1";
+  revision: string;
+  worldId: string;
+  runtimeId: string;
+  tick: number;
+  status: PersistentTownRuntimeStatus;
+  phase: TownTickPhaseName;
+  objective: { headline: string; nextAction: string };
+  pressure: {
+    urgency: TownSituationBrief["urgency"];
+    highestMaturityScore: number;
+    topLocation?: Omit<TownSituationBrief["hotLocations"][number], "locationId">;
+    topAgent?: Omit<TownSituationBrief["riskAgents"][number], "npcId" | "locationId">;
+  };
+  metrics: {
+    candidateCount: number;
+    validCandidateCount: number;
+    triggeredCaseCount: number;
+    activeNpcCount: number;
+    observationCount: number;
+  };
+  signals: TownSituationBrief["recentSignals"];
 };
 
 export type ScenarioWorldOptions = {
@@ -3743,11 +3862,14 @@ function observationSupportSummary(runtime: PersistentTownRuntime | null | undef
   };
 }
 
-function memoryConfidenceSummary(world: WorldState, eventIds: string[], npcIds: string[] = [], runtime?: PersistentTownRuntime | null): CaseCandidateValidation["memoryConfidence"] {
-  const relevant = (world.memories || []).filter((memory) =>
-    eventIds.includes(memory.eventId) &&
-    (!npcIds.length || npcIds.includes(memory.npcId))
-  );
+function memoryConfidenceSummary(world: WorldState, eventIds: string[], npcIds: string[] = [], runtime?: PersistentTownRuntime | null, index?: TownTickIndex): CaseCandidateValidation["memoryConfidence"] {
+  const source = index
+    ? [
+        ...eventIds.flatMap((eventId) => index.memoryByEventId.get(eventId) || []),
+        ...(world.memories || []).slice(index.indexedMemoryCount).filter((memory) => eventIds.includes(memory.eventId))
+      ]
+    : (world.memories || []).filter((memory) => eventIds.includes(memory.eventId));
+  const relevant = source.filter((memory) => !npcIds.length || npcIds.includes(memory.npcId));
   const strongest = (kind: MemoryKind) => relevant
     .filter((memory) => memory.kind === kind)
     .reduce((max, memory) => Math.max(max, memory.confidence || 0), 0);
@@ -3773,7 +3895,13 @@ function buildStageEventIdsForPressure(world: WorldState, events: WorldEvent[], 
     }
   }
   const pairIds = [pressure.npcId, pressure.targetId];
-  for (const memory of world.memories || []) {
+  const pairMemories = index
+    ? [
+        ...(index.memoryByNpcId.get(pressure.npcId) || []),
+        ...(index.memoryByNpcId.get(pressure.targetId) || [])
+      ]
+    : (world.memories || []);
+  for (const memory of pairMemories) {
     if (!pairIds.includes(memory.npcId)) continue;
     if (!selected.some((event) => event.id === memory.eventId)) continue;
     if (!stageEventIds.memory.includes(memory.eventId)) stageEventIds.memory.push(memory.eventId);
@@ -3798,7 +3926,7 @@ function buildStageEventIdsForPressure(world: WorldState, events: WorldEvent[], 
 
 function summarizeLongChain(world: WorldState, events: WorldEvent[], runtime: PersistentTownRuntime, pressure: SocialPressure, index?: TownTickIndex): TownLongChainLedgerEntry {
   const stageEventIds = buildStageEventIdsForPressure(world, events, pressure, runtime, index);
-  const memoryConfidence = memoryConfidenceSummary(world, Object.values(stageEventIds).flat(), [pressure.npcId, pressure.targetId], runtime);
+  const memoryConfidence = memoryConfidenceSummary(world, Object.values(stageEventIds).flat(), [pressure.npcId, pressure.targetId], runtime, index);
   const chainCompleteness = emptyChainCompleteness();
   for (const stage of Object.keys(chainCompleteness) as CaseChainStage[]) {
     chainCompleteness[stage] = stage === "memory" ? (memoryConfidence?.supportScore || 0) >= 55 : stageEventIds[stage].length > 0;
@@ -4025,14 +4153,16 @@ function chooseCampaignCaseType(baseType: TownCaseType, lifecycle: TownCaseLifec
   const targetDistinct = historyCount >= 4 ? 4 : historyCount >= 2 ? 3 : 2;
   const distinct = counts.size;
   const tick = runtime.tick;
-  const typeScores = TOWN_CASE_TYPES.map((type, index) => {
+  const selectedCampaignTypes = new Set(selectedCampaign.routes.flatMap((route) => route.chapters.flatMap((chapter) => chapter.preferredCaseTypes)));
+  const availableTypes = TOWN_CASE_TYPES.filter((type) => !EXPANSION_TOWN_CASE_TYPES.has(type) || selectedCampaignTypes.has(type));
+  const typeScores = availableTypes.map((type, index) => {
     const cooldownActive = ((lifecycle.caseTypeCooldown || {})[type] || 0) > tick;
     const weight = lifecycle.nextCaseWeights[type] || 1;
     const novelty = counts.has(type) ? 0 : distinct < targetDistinct ? 40 : 5;
     const repeatPenalty = (counts.get(type) || 0) * 12 + (cooldownActive ? 16 : 0);
     const baseBonus = type === baseType ? 4 : 0;
     const campaignBonus = deriveDetectiveCampaignCaseTypeBonus(runtime, type) * 6;
-    const rotation = ((candidateIndex + historyCount + index) % TOWN_CASE_TYPES.length) / 10;
+    const rotation = ((candidateIndex + historyCount + index) % availableTypes.length) / 10;
     return { type, score: weight * 10 + novelty + baseBonus + campaignBonus + rotation - repeatPenalty };
   }).sort((left, right) => right.score - left.score);
   if (distinct < targetDistinct) {
@@ -4428,7 +4558,7 @@ function validateCaseCandidateIndexed(
     supportScore: 0,
     observationIds: []
   };
-  const confidence = candidate.validation.memoryConfidence || memoryConfidenceSummary(world, candidate.riskChainEventIds, [candidate.culpritId, candidate.victimId], runtime) || { direct: 0, deduced: 0, rumor: 0, supportScore: 0 };
+  const confidence = candidate.validation.memoryConfidence || memoryConfidenceSummary(world, candidate.riskChainEventIds, [candidate.culpritId, candidate.victimId], runtime, index) || { direct: 0, deduced: 0, rumor: 0, supportScore: 0 };
   const hasMotive = completeness.motive || candidate.pressureScore >= 7 || sourceEvents.some((event) => event.tags.includes("secret_leak") || event.tags.includes("tension"));
   const hasMeans = completeness.means || events.some((event) => event.actorIds.includes(candidate.culpritId) && (event.tags.includes("means_access") || event.type === "obtain_item"));
   const hasOpportunity = completeness.opportunity || sourceEvents.some((event) => event.tags.includes("opportunity_window") || event.locationId);
@@ -4849,9 +4979,9 @@ export function buildTownSituationBrief(
   const urgency = triggeredCaseCount || activeQueue.validCount ? "critical" : highestMaturityScore >= 70 || (riskAgents[0]?.score || 0) >= 120 ? "elevated" : "stable";
   const triggeredCase = activeRuntime.triggeredCases?.[0];
   const headline = triggeredCase
-    ? `Triggered case: ${(npcById.get(triggeredCase.culpritId)?.name || triggeredCase.culpritId)} -> ${(npcById.get(triggeredCase.victimId)?.name || triggeredCase.victimId)}`
+    ? "案件已从世界事件中涌现"
     : strongestCandidate?.validation.valid
-      ? `Playable case ready: ${(npcById.get(strongestCandidate.culpritId)?.name || strongestCandidate.culpritId)} -> ${(npcById.get(strongestCandidate.victimId)?.name || strongestCandidate.victimId)}`
+      ? "可调查线索已经成形"
       : hotLocations[0]
         ? `Pressure is concentrating at ${hotLocations[0].name}`
         : "Town state is collecting its first observable signals";
@@ -4860,7 +4990,7 @@ export function buildTownSituationBrief(
     recentSignals.push({
       kind: "case",
       label: strongestCandidate.validation.valid ? "Case ready" : "Case chain forming",
-      detail: `${strongestCandidate.culpritId} -> ${strongestCandidate.victimId}; maturity ${strongestCandidate.maturityScore || 0}%`
+      detail: `公开线索链成熟度 ${strongestCandidate.maturityScore || 0}%`
     });
   }
   if (hotLocations[0]) {
@@ -4874,7 +5004,7 @@ export function buildTownSituationBrief(
     recentSignals.push({
       kind: "agent",
       label: `High-risk NPC: ${riskAgents[0].name}`,
-      detail: `secret risk ${riskAgents[0].secretRisk}, relationship pressure ${riskAgents[0].relationshipPressure}, suspicion ${riskAgents[0].suspicion}`
+      detail: `关系压力 ${riskAgents[0].relationshipPressure}，公开风险 ${riskAgents[0].score}`
     });
   }
   if (observationMix.rumor || observationMix.deduced || observationMix.exclusion) {
@@ -4887,6 +5017,7 @@ export function buildTownSituationBrief(
   return {
     worldId: world.id,
     runtimeId: activeRuntime.id,
+    revision: `${world.seed}:${activeRuntime.tick}`,
     tick: activeRuntime.tick,
     status: activeRuntime.status,
     currentPhase,
@@ -4915,9 +5046,37 @@ export function buildTownSituationBrief(
       validCount: activeQueue.validCount,
       triggeredCaseCount,
       highestMaturityScore,
-      strongestCandidateId: strongestCandidate?.id
+      strongestCandidateId: undefined
     },
     recentSignals
+  };
+}
+
+export function buildCityPulseWorldProjection(brief: TownSituationBrief, activeNpcCount: number): CityPulseWorldProjection {
+  const observationCount = Object.values(brief.observationMix).reduce((total, count) => total + count, 0);
+  return {
+    schemaVersion: "city-pulse.world-projection.v1",
+    revision: brief.revision,
+    worldId: brief.worldId,
+    runtimeId: brief.runtimeId,
+    tick: brief.tick,
+    status: brief.status,
+    phase: brief.currentPhase,
+    objective: { headline: brief.headline, nextAction: brief.nextAction },
+    pressure: {
+      urgency: brief.urgency,
+      highestMaturityScore: brief.caseReadiness.highestMaturityScore,
+      topLocation: brief.hotLocations[0] ? (({ locationId: _locationId, ...location }) => location)(brief.hotLocations[0]) : undefined,
+      topAgent: brief.riskAgents[0] ? (({ npcId: _npcId, locationId: _locationId, ...agent }) => agent)(brief.riskAgents[0]) : undefined
+    },
+    metrics: {
+      candidateCount: brief.caseReadiness.candidateCount,
+      validCandidateCount: brief.caseReadiness.validCount,
+      triggeredCaseCount: brief.caseReadiness.triggeredCaseCount,
+      activeNpcCount,
+      observationCount
+    },
+    signals: brief.recentSignals
   };
 }
 
@@ -5338,7 +5497,8 @@ function createTownTickContext(
   baseEvents: WorldEvent[],
   runtime: PersistentTownRuntime,
   createdEvents: WorldEvent[],
-  executionPolicy: TownExecutionPolicy
+  executionPolicy: TownExecutionPolicy,
+  memoryIndex?: TownTickMemoryIndex
 ): TownTickContext {
   runtime.simulationPhases = [...TOWN_TICK_PHASES];
   runtime.pressureLedger ||= [];
@@ -5348,7 +5508,7 @@ function createTownTickContext(
   ensureTownRuleRuntimeState(world, runtime);
   const allEvents = [...baseEvents, ...createdEvents];
   const indexEvents = executionPolicy.indexEventLimit ? allEvents.slice(-executionPolicy.indexEventLimit) : allEvents;
-  const index = createTownTickIndex(world, indexEvents, runtime);
+  const index = createTownTickIndex(world, indexEvents, runtime, memoryIndex);
   if (runtime.performance) runtime.performance.counters.socialPressureRebuildCount += 1;
   return {
     world,
@@ -5805,11 +5965,17 @@ export function advancePersistentTownTick(
     candidateEveryTicks?: number;
     actionEveryTicks?: number;
     indexEventLimit?: number;
+    /**
+     * The caller may opt out of the defensive boundary clone when it owns the
+     * world exclusively (for example, an isolated benchmark run). Production
+     * callers keep the default clone so public state remains immutable.
+     */
+    cloneInput?: boolean;
   } = {}
 ) {
   const executionPolicy = normalizeTownExecutionPolicy(options);
   const startedAt = performance.now();
-  let nextWorld = cloneTownWorldForAdvance(world);
+  let nextWorld = options.cloneInput === false ? world as RuntimeWorld : cloneTownWorldForAdvance(world);
   let runtime = nextWorld.persistentRuntime || createPersistentTownRuntime(nextWorld, events);
   runtime.status = options.status || runtime.status || "running";
   if (executionPolicy.profile) runtime.performance = createTownPerformanceSummary();
@@ -5817,6 +5983,7 @@ export function advancePersistentTownTick(
   const initialMemoryCount = nextWorld.memories?.length || 0;
   const initialObservationCount = runtime.eventObservations?.length || 0;
   const createdEvents: WorldEvent[] = [];
+  let memoryIndex: TownTickMemoryIndex | undefined;
   const steps = Math.max(1, Math.min(60, options.steps || 1));
   let completedSteps = 0;
   for (let step = 0; step < steps; step += 1) {
@@ -5824,7 +5991,15 @@ export function advancePersistentTownTick(
       runtime.status = "completed";
       break;
     }
-    runTownTickPhases(createTownTickContext(nextWorld, events, runtime, createdEvents, executionPolicy));
+    const context = createTownTickContext(nextWorld, events, runtime, createdEvents, executionPolicy, memoryIndex);
+    runTownTickPhases(context);
+    for (const memory of (nextWorld.memories || []).slice(context.index.indexedMemoryCount)) addMemoryToTownTickIndex(context.index, memory);
+    context.index.indexedMemoryCount = (nextWorld.memories || []).length;
+    memoryIndex = {
+      memoryByNpcId: context.index.memoryByNpcId,
+      memoryByEventId: context.index.memoryByEventId,
+      indexedMemoryCount: context.index.indexedMemoryCount
+    };
     completedSteps += 1;
   }
   runtime.updatedAt = new Date().toISOString();

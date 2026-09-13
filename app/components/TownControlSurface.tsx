@@ -1,4 +1,5 @@
 "use client";
+import type { InvestigationActionResult } from "@/app/campaign/investigation-action-result";
 
 import {
   AlertTriangle,
@@ -28,6 +29,7 @@ import { BenchmarkSeedTable, CurrentExperimentPanel, DatasetPackagePanel, Public
 import { TownRuleStatePanel } from "@/app/components/TownRuleStatePanel";
 import { CommandDeckCollapsible, CommandDeckShell } from "@/app/components/CommandDeckShell";
 import { CandidatePlayabilityPreview } from "@/app/components/CandidatePlayabilityPreview";
+import { useInvestigationActionExecution } from "@/app/components/InvestigationActionExecution";
 import type { StrategicCommandAction, StrategicCommandViewModel } from "@/app/campaign/strategic-command-model";
 import type { CampaignCommandBrief } from "@/app/campaign/campaign-command-brief-model";
 import type { SafeContextActionKind } from "@/app/campaign/context-action-resolver";
@@ -423,8 +425,8 @@ export function PlayShell({
   toasts?: ReactNode;
   blockingOverlayActive?: boolean;
   toastVisible?: boolean;
-  onContextAction?: (kind: SafeContextActionKind) => void | Promise<void>;
-  onStrategicAction?: (action: StrategicCommandAction) => void | Promise<void>;
+  onContextAction?: (kind: SafeContextActionKind) => void | InvestigationActionResult | Promise<void | InvestigationActionResult>;
+  onStrategicAction?: (action: StrategicCommandAction) => void | InvestigationActionResult | Promise<void | InvestigationActionResult>;
   onStrategicFrontFocus?: (locationName: string) => void;
 }) {
   if (commandDeck) {
@@ -530,7 +532,7 @@ export function ControlRail({
   loadWorld: () => void;
   playerName: string;
   setPlayerName: (value: string) => void;
-  joinCase: () => void;
+  joinCase: () => Promise<InvestigationActionResult>;
   tickWorld: () => void;
   worldName: string;
   caseTitle: string;
@@ -550,6 +552,17 @@ export function ControlRail({
   switchRuntime: (value: RuntimeMode) => void;
 }) {
   const { number, t, text } = useAppLocale();
+  const runWithResolution = useInvestigationActionExecution();
+  const joinActionLock = useRef(false);
+  async function runJoinCase() {
+    if (busy || joinActionLock.current) return;
+    joinActionLock.current = true;
+    try {
+      await runWithResolution(t("control.join"), joinCase);
+    } finally {
+      joinActionLock.current = false;
+    }
+  }
   const steps: [string, boolean][] = [
     [t("control.observeCrime"), progress.observedCrimeWindow],
     [t("control.join"), progress.joinedInvestigation],
@@ -622,7 +635,7 @@ export function ControlRail({
       <section className="hudPanel">
         <h2>{t("control.investigator")}</h2>
         <label>{t("control.playerName")}<input name="player-name" autoComplete="nickname" value={playerName} onChange={(event) => setPlayerName(event.target.value)} /></label>
-        <button type="button" className="secondaryButton full" onClick={joinCase} disabled={busy}><Users size={16} aria-hidden="true" /> {t("control.join")}</button>
+        <button type="button" className="secondaryButton full" onClick={() => void runJoinCase()} disabled={busy}><Users size={16} aria-hidden="true" /> {t("control.join")}</button>
         <button type="button" className="secondaryButton full" onClick={tickWorld} disabled={busy || runtimeMode === "static-demo"}><Clock size={16} aria-hidden="true" /> {t("control.advanceTown")}</button>
       </section>
 
@@ -632,7 +645,7 @@ export function ControlRail({
         <div><strong>{number(metrics.logic)}</strong><small>{t("control.metric.logic")}</small></div>
         <div><strong>{number(metrics.misdirect)}</strong><small>{t("control.metric.misdirect")}</small></div>
         <div><strong>{metrics.evidence}</strong><small>{t("control.metric.evidence")}</small></div>
-        <div><strong>{metrics.aiEval}</strong><small>{t("control.metric.aiEval")}</small></div>
+        <div><strong>{text(metrics.aiEval)}</strong><small>{t("control.metric.aiEval")}</small></div>
       </section>
 
       <details className="settingsDrawer hudPanel">

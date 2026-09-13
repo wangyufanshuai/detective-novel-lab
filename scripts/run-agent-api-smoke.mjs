@@ -97,10 +97,12 @@ try {
 
   const caseResult = await request("GET", `/api/v1/query/case?caseId=${created.activeCase.id}`);
   const caseFromLog = caseResult.caseFromLog;
-  assert.equal(caseFromLog.deductionCase.truth.culpritId, created.activeCase.deductionCase.truth.culpritId);
+  assert.equal(caseFromLog.deductionCase.truth, undefined, "player case projection must not expose truth");
+  assert.equal(caseFromLog.deductionCase.logicPuzzle, undefined, "player case projection must not expose logic puzzle");
+  assert.equal(caseFromLog.deductionCase.evidence.some((item) => item.title === "密封档案"), true, "unfound evidence remains sealed");
   const graphResult = await request("GET", `/api/v1/query/case/deduction-graph?caseId=${created.activeCase.id}`);
-  assert.equal(graphResult.graph.complete, true);
-  assert.equal(graphResult.suspectBoard.filter((row) => row.status === "culprit").length, 1);
+  assert.equal(graphResult.graph.complete, false, "player deduction graph stays masked before acceptance");
+  assert.equal(graphResult.suspectBoard.filter((row) => row.status === "culprit").length, 0, "player suspect board does not reveal culprit");
 
   const joined = await request("POST", "/api/v1/command/player/join", {
     worldId: created.world.id,
@@ -108,7 +110,7 @@ try {
     displayName: "Agent Smoke"
   });
 
-  const allEvidenceIds = caseFromLog.deductionCase.evidence.map((item) => item.id);
+  const allEvidenceIds = created.activeCase.deductionCase.evidence.map((item) => item.id);
   for (const evidenceId of allEvidenceIds) {
     await request("POST", "/api/v1/command/investigation/discover", {
       sessionId: joined.session.id,
@@ -116,7 +118,7 @@ try {
     });
   }
 
-  const culpritId = caseFromLog.deductionCase.truth.culpritId;
+  const culpritId = created.activeCase.deductionCase.truth.culpritId;
   const interrogated = await request("POST", "/api/v1/command/investigation/interrogate", {
     sessionId: joined.session.id,
     characterId: culpritId,
@@ -137,12 +139,15 @@ try {
     sessionId: joined.session.id,
     theory: {
       culpritId,
-      motive: caseFromLog.deductionCase.truth.motive,
-      method: caseFromLog.deductionCase.truth.method,
+      motive: created.activeCase.deductionCase.truth.motive,
+      method: created.activeCase.deductionCase.truth.method,
       evidenceIds: allEvidenceIds
     }
   });
   assert.equal(correct.judgement.accepted, true);
+  const solvedGraph = await request("GET", `/api/v1/query/case/deduction-graph?caseId=${created.activeCase.id}&sessionId=${joined.session.id}`);
+  assert.equal(solvedGraph.graph.complete, true, "accepted session unlocks the deduction graph");
+  assert.equal(solvedGraph.suspectBoard.filter((row) => row.status === "culprit").length, 1);
 
   console.log("Agent API smoke test passed.");
 } finally {

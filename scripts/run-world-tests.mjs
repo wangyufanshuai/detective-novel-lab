@@ -66,7 +66,7 @@ const detectiveContentPack = {
     "household-letter-surfaced": ["media/chase-headline/pressure-editor", "family/protect-family/summon-family-council"],
     "cargo-route-shift": ["dock_union/trace-cargo/trace-cargo", "dock_union/trace-cargo/inspect-warehouse"]
   }, "all six event archetypes keep the fixed content-driven directive mapping");
-  assert.equal(detectiveContentPack.caseTypes.length, 16, "v5.37 content pack expands to sixteen authored case types");
+  assert.equal(detectiveContentPack.caseTypes.length, 32, "v11 Alpha content pack exposes the complete thirty-two-case-type catalog");
   assert.equal(detectiveContentPack.eventArchetypes.length, 10, "v5.37 content pack expands to ten event archetypes");
   assert.deepEqual(directiveMapping["archive-stamp-conflict"], ["court/review-court-record/review-court-record", "police/allocate-investigation/protect-chain-of-custody"], "archive cluster keeps a deterministic institution-compatible directive mapping");
   assert.deepEqual(directiveMapping["clinic-supply-shortfall"], ["medical/schedule-autopsy/second-medical-opinion", "medical/schedule-autopsy/seal-autopsy-record"], "medical cluster keeps a deterministic institution-compatible directive mapping");
@@ -76,7 +76,7 @@ const detectiveContentPack = {
   assert.equal(["archive-vanishing", "clinic-inventory-gap", "dock-witness-swap", "editorial-coercion", "household-escrow", "permit-forgery"].every((caseTypeId) => engine.TOWN_CASE_TYPES.includes(caseTypeId)), true, "all v5.37 authored case types participate in the real future-case runtime rotation");
   const contentReport = engine.validateDetectiveContentPack(detectiveContentPack);
   assert.equal(contentReport.ok, true, "expanded authored content passes the backward-compatible grammar validator");
-  assert.equal(contentReport.summary.coverage.caseTypesWithEvidence, 16, "every authored case type has evidence coverage");
+  assert.equal(contentReport.summary.coverage.caseTypesWithEvidence, 32, "every v11 Alpha case type has evidence coverage");
   assert.deepEqual(contentReport.summary.authored, { clusterCount: 6, caseTypeCount: 6, eventArchetypeCount: 4, progressionLineCount: 8 }, "content summary exposes safe authored-cluster coverage counts");
   assert.equal(detectiveContentPack.caseTypes.filter((row) => row.authoredCluster).length, 6, "new authored case clusters carry explicit cluster metadata");
   assert.equal(new Set(detectiveContentPack.caseTypes.filter((row) => row.authoredCluster).map((row) => `${row.authoredCluster}:${row.contrastKey}`)).size, 6, "authored contrast keys are unique within their clusters");

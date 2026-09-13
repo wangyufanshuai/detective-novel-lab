@@ -49,6 +49,7 @@ export type CertifiedCaseRhythmViewModel = {
 export type CertifiedCaseRhythmInput = {
   intake?: PlayableCaseIntake | null;
   session: PlayerSession | null;
+  theoryEvidenceIds?: string[];
   selectedSceneName?: string;
   observedCrimeWindow?: boolean;
   revealAvailable: boolean;
@@ -126,7 +127,9 @@ function buildStepAction(step: CertifiedCaseRhythmStepKind, input: CertifiedCase
     return { kind: "observe", label: definition.label, detail, buttonLabel: definition.label };
   }
   const source = input.intake?.nextAction;
-  if (step !== "recover" && source && normalizeStep(source.kind) === step) {
+  const sourceStep = source ? normalizeStep(source.kind) : undefined;
+  const sourceIsStaleObservation = step === "search" && input.observedCrimeWindow === true && source?.kind === "observe";
+  if (step !== "recover" && source && sourceStep === step && !sourceIsStaleObservation) {
     return { ...source, label: safeText(source.label, "Continue certified step", 100), detail: safeText(source.detail, detail) };
   }
   const actionKind = actionKindFor(step);
@@ -148,6 +151,16 @@ function stepCopy(step: CertifiedCaseRhythmStepKind, input: CertifiedCaseRhythmI
   if (step === "search" && input.session && input.observedCrimeWindow === false) {
     const definition = getInvestigationActionDefinition("observe");
     return { label: definition.label, detail: definition.detail, metric: "case window" };
+  }
+  const source = input.intake?.nextAction;
+  const sourceStep = source ? normalizeStep(source.kind) : undefined;
+  const sourceIsStaleObservation = step === "search" && input.observedCrimeWindow === true && source?.kind === "observe";
+  if (step === "search" && source && sourceStep === "search" && !sourceIsStaleObservation) {
+    return {
+      label: safeText(source.label, "Search location", 100),
+      detail: safeText(source.detail, "Inspect the certified route location through the existing Search action."),
+      metric: "location ready"
+    };
   }
   if (step === "search" && input.selectedSceneName) {
     return { label: "Search location", detail: `Focus ${safeText(input.selectedSceneName, "the selected public place", 80)} and use the existing certified Search action.`, metric: "location ready" };
@@ -183,20 +196,22 @@ function defaultProgress(): NonNullable<PlayableCaseIntake["progress"]> {
 
 /** Pure, low-spoiler presentation projection. It does not validate or execute a case action. */
 export function buildCertifiedCaseRhythm(input: CertifiedCaseRhythmInput): CertifiedCaseRhythmViewModel {
-  const progress = input.intake?.progress || defaultProgress();
+  const progress = { ...(input.intake?.progress || defaultProgress()) };
+  if (input.theoryEvidenceIds) {
+    const discovered = new Set(input.session?.discoveredEvidenceIds || []);
+    progress.selectedTheoryEvidence = new Set(input.theoryEvidenceIds.filter((id) => discovered.has(id))).size;
+  }
   const accepted = Boolean(input.session?.judgement?.accepted);
   const rejected = Boolean(input.session?.judgement && !accepted);
   const proposed = normalizeStep(input.intake?.nextAction?.kind)
     || normalizeStep(input.intake?.coach?.stage)
     || normalizeStep(progress.currentStage);
-  const currentKind = rejected ? "recover" : proposed || fallbackStep(input, progress);
-  const status: CertifiedCaseRhythmStatus = !input.intake
-    ? "idle"
-    : rejected
-      ? "recovery"
-      : accepted && input.revealAvailable
-        ? "complete"
-        : "active";
+  let currentKind = rejected ? "recover" : proposed || fallbackStep(input, progress);
+  if (input.theoryEvidenceIds && !accepted && !rejected && (currentKind === "select-evidence" || currentKind === "submit")) {
+    currentKind = progress.selectedTheoryEvidence > 0 && progress.submitReady ? "submit" : "select-evidence";
+  }
+  const status: CertifiedCaseRhythmStatus = !input.intake ? "idle" : rejected ? "recovery"
+    : accepted && input.revealAvailable ? "complete" : "active";
   const copy = stepCopy(currentKind, input);
   const action = buildStepAction(currentKind, input, copy.detail);
   const beat = STEP_BEAT[currentKind];

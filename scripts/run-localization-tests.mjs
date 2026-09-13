@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import ts from "typescript";
+import { execFileSync } from "node:child_process";
 
 const root = process.cwd();
 const runtimeDir = path.join(root, "outputs", "v96-localization-runtime");
@@ -65,4 +66,6 @@ assert.doesNotMatch(localizedSurfaceSources[1], />Strategic Fronts<|>District Op
 assert.doesNotMatch(localizedSurfaceSources[2], /SQLite schema|Low-spoiler solved-case summary only/, "Replay boundaries use localized, implementation-safe copy");
 assert.doesNotMatch(localizedSurfaceSources[3], /\$\{selectedEvent\.locationId\}|\$\{selectedAgent\.locationId\}/, "Inspector summaries never render raw location keys");
 
-console.log(JSON.stringify({ ok: true, suite: "localization", keyCount: validation.keyCount, locales: ["en-US", "zh-CN"] }));
+const visibleCopy = JSON.parse(execFileSync(process.execPath, ["scripts/run-gold-slice-visible-copy-tests.mjs", "--evidence"], { cwd: root, encoding: "utf8" }));
+assert.equal(visibleCopy.ok, true, "observed Gold Slice copy failures stay in the normal localization gate");
+console.log(JSON.stringify({ ok: true, suite: "localization", keyCount: validation.keyCount, locales: ["en-US", "zh-CN"], visibleCopyChecks: visibleCopy.checks }));

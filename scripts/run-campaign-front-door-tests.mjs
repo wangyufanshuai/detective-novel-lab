@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import path from "node:path";
 import ts from "typescript";
+import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { createNoirTestLoader } from "./noir-player-test-loader.mjs";
 import { pathToFileURL } from "node:url";
 
 const root = process.cwd();
@@ -36,10 +39,11 @@ await fs.writeFile(path.join(runtimeDir, "campaign-front-door-model.cjs"), model
 const engine = await import(`${pathToFileURL(path.join(runtimeDir, "index.cjs")).href}?front=${Date.now()}`);
 const model = await import(`${pathToFileURL(path.join(runtimeDir, "campaign-front-door-model.cjs")).href}?front=${Date.now()}`);
 const cards = model.deriveCampaignFrontDoorCards();
-assert.equal(cards.length, 4, "front door exposes exactly four safe Campaign previews");
-assert.deepEqual(cards.map((card) => card.label), ["Town Reckoning", "Harbor Testimony", "Clinic Headlines", "Midnight Chorus"], "Campaign order is stable");
-assert.equal(cards.every((card) => card.routes.length === 2), true, "each Campaign preview exposes two authored routes");
-assert.equal(new Set(cards.flatMap((card) => card.routes.map((route) => route.finaleLabel))).size, 8, "each authored route has a distinct finale");
+assert.equal(cards.length, 12, "front door exposes exactly twelve safe Campaign previews");
+assert.deepEqual(cards.map((card) => card.label), ["Town Reckoning", "Clinic Headlines", "Scholarly Silence", "Memorial Trust", "Harbor Testimony", "Railbound Alibi", "Furnace Oath", "Floodgate Covenant", "Midnight Chorus", "Grand Hotel Register", "Blackout Ledger", "Wireless Shadows"], "Campaign order is stable");
+assert.deepEqual(cards.map((card) => card.volumeId), ["public-records", "public-records", "public-records", "public-records", "moving-city", "moving-city", "moving-city", "moving-city", "midnight-signals", "midnight-signals", "midnight-signals", "midnight-signals"], "Campaigns are grouped into the three archive volumes");
+assert.equal(cards.every((card) => card.routes.length === 2 && card.districtLabel && card.motifLabel), true, "each Campaign preview exposes two routes and a presentation district");
+assert.equal(new Set(cards.flatMap((card) => card.routes.map((route) => route.finaleLabel))).size, 24, "each authored route has a distinct finale");
 for (const card of cards) {
   for (const route of card.routes) {
     assert.equal(route.chapterLabels.length, 3, `${card.label}/${route.label} shows a three-chapter structure`);
@@ -47,11 +51,11 @@ for (const card of cards) {
   }
 }
 assert.deepEqual(model.deriveCampaignFrontDoorCards(), cards, "front door catalog is deterministic");
-assert.equal(model.campaignFrontDoorSelection(cards, 2).selected.label, "Clinic Headlines", "valid selection is retained");
-assert.equal(model.campaignFrontDoorSelection(cards, 3).selected.label, "Midnight Chorus", "fourth Campaign selection is retained");
+assert.equal(model.campaignFrontDoorSelection(cards, 2).selected.label, "Scholarly Silence", "valid selection is retained");
+assert.equal(model.campaignFrontDoorSelection(cards, 11).selected.label, "Wireless Shadows", "twelfth Campaign selection is retained");
 assert.equal(model.campaignFrontDoorSelection(cards, 99).selected.label, "Town Reckoning", "invalid selection falls back deterministically");
-assert.equal(model.campaignFrontDoorSelection(cards, 1, 1).selectedRoute.label, "Chain Protection", "valid counter-route selection is retained");
-assert.equal(model.campaignFrontDoorSelection(cards, 1, 99).selectedRoute.label, "Cargo Testimony", "invalid route selection falls back deterministically");
+assert.equal(model.campaignFrontDoorSelection(cards, 4, 1).selectedRoute.label, "Chain Protection", "valid counter-route selection is retained");
+assert.equal(model.campaignFrontDoorSelection(cards, 4, 99).selectedRoute.label, "Cargo Testimony", "invalid route selection falls back deterministically");
 
 const serialized = JSON.stringify(cards);
 assert.equal(/\b(?:campaignId|routeId|packageId|caseTypeId|worldId|caseId|sessionId|npcId|locationId|sourceId|eventId|culpritId|victimId|hiddenTruth|rawBody)\b/i.test(serialized), false, "public cards contain no internal keys");
@@ -78,12 +82,36 @@ assert.deepEqual(engine.createStaticDemoRuntime("archive-blunt").activeCase.dedu
 const componentSource = await fs.readFile(path.join(root, "app", "components", "CampaignFrontDoor.tsx"), "utf8");
 const localeCatalogSource = await fs.readFile(path.join(root, "app", "localization", "locale-catalog.ts"), "utf8");
 assert.doesNotMatch(componentSource, /\bfetch\s*\(|\bpostV1\s*\(|\bpostJson\s*\(/, "Front Door presentation cannot issue requests");
-assert.match(componentSource, /t\("front\.preview\.boundary"\)/, "Static preview consumes the localized Server-only route boundary");
-assert.match(localeCatalogSource, /"front\.preview\.boundary": "Server-only route choice \/ start \/ continue"/, "English locale retains the explicit Static route boundary");
+assert.match(componentSource, /archiveIndex/, "Front Door uses a volume archive index");
+assert.match(componentSource, /campaign-front-door-dossier/, "Front Door renders one selected dossier");
+const { load: loadComponent } = createNoirTestLoader(root);
+const { CampaignFrontDoor } = loadComponent("app/components/CampaignFrontDoor.tsx");
+const renderFrontDoor = (overrides = {}) => renderToStaticMarkup(React.createElement(CampaignFrontDoor, {
+  runtimeMode: "server", open: true, cards, selectedIndex: 0, selectedRouteIndex: 0,
+  busy: false, status: "", canContinue: true, onSelect() {}, onSelectRoute() {}, onStart() {}, onContinue() {}, onDismiss() {}, ...overrides
+}));
+const staticMarkup = renderFrontDoor({ runtimeMode: "static-demo" });
+assert.equal((staticMarkup.match(/data-testid="campaign-front-door-card"/g) || []).length, 12, "Static renders all twelve real preview cards");
+assert.doesNotMatch(staticMarkup, /<button|role="dialog"|campaign-front-door-start|campaign-front-door-continue|campaign-front-door-route-choice/, "Actual Static branch has no route-selection/start/continue command controls");
+assert.match(staticMarkup, /完整游戏|full game/, "Static copy explains the playable-game boundary in player language");
+for (const [campaignIndex, card] of cards.entries()) {
+  for (const routeIndex of [0, 1]) {
+    const rendered = renderFrontDoor({ selectedIndex: campaignIndex, selectedRouteIndex: routeIndex });
+    assert.equal((rendered.match(/data-testid="campaign-front-door-card"/g) || []).length, 12, "All campaigns share the same real archive component");
+    assert.equal((rendered.match(/data-testid="campaign-front-door-dossier"/g) || []).length, 1, `${card.label} renders exactly one selected dossier`);
+    assert.equal((rendered.match(/data-testid="campaign-front-door-route"/g) || []).length, 2, `${card.label} exposes its two real routes`);
+    assert.equal((rendered.match(/aria-pressed="true"/g) || []).length, 2, "One campaign and one route are selected");
+    assert.match(rendered, /role="dialog" aria-modal="true"/, "The real archive retains its modal accessibility contract");
+    for (const label of card.routes[routeIndex].chapterLabels) assert.ok(rendered.includes(renderToStaticMarkup(React.createElement("span", null, label)).slice(6, -7)), `The selected route renders ${label}`);
+  }
+}
+assert.equal(renderFrontDoor({ open: false }), "", "A closed Front Door leaves no hidden player DOM");
+const busyMarkup = renderFrontDoor({ busy: true });
+assert.equal((busyMarkup.match(/<button/g) || []).length, (busyMarkup.match(/<button[^>]*disabled=""/g) || []).length, "Every real archive action is disabled during launch");
 const frontDoorCss = await fs.readFile(path.join(root, "app", "components", "CampaignFrontDoor.module.css"), "utf8");
 const routeCss = await fs.readFile(path.join(root, "app", "components", "CampaignFrontDoor.routes.module.css"), "utf8");
 assert.match(frontDoorCss, /composes:\s*routeChoice\s+from\s+"\.\/CampaignFrontDoor\.routes\.module\.css"/, "route styles use the explicit composition boundary");
 assert.equal(frontDoorCss.split(/\r?\n/).length < 360, true, "Front Door shell CSS stays below 360 lines");
 assert.equal(routeCss.split(/\r?\n/).length < 160, true, "Front Door route CSS stays below 160 lines");
 
-console.log(JSON.stringify({ ok: true, campaigns: cards.map((card) => card.label), routeCount: cards.flatMap((card) => card.routes).length, tests: ["four-safe-cards", "eight-safe-routes", "determinism", "selection", "public-safe", "pre-extraction-rebind", "route-freeze", "first-extraction-freeze", "truth-isolation", "static-boundary", "css-ownership"] }));
+console.log(JSON.stringify({ ok: true, campaigns: cards.map((card) => card.label), routeCount: cards.flatMap((card) => card.routes).length, tests: ["twelve-safe-cards", "twenty-four-safe-routes", "determinism", "selection", "public-safe", "pre-extraction-rebind", "route-freeze", "first-extraction-freeze", "truth-isolation", "static-boundary", "24-route-real-react-render", "closed-no-dom", "busy-actions-disabled", "css-ownership"] }));

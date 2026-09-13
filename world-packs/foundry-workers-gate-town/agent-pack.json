@@ -1,0 +1,202 @@
+{
+  "manifest": {
+    "id": "foundry-workers-gate-town-agents",
+    "name": "Foundry Workers Gate Town Agents",
+    "version": "1.0.0",
+    "schemaVersion": "agent-pack.v1",
+    "createdAt": "2026-08-12T00:00:00.000Z",
+    "description": "Foundry inspection, medical timing, labor leverage and controlled machine access."
+  },
+  "agents": [
+    {
+      "id": "npc-fur-1",
+      "name": "Ada Flint",
+      "role": "detective",
+      "homeLocationId": "inspection-office",
+      "schedule": {
+        "08:00": "inspection-office",
+        "12:00": "foundry-square",
+        "18:00": "works-infirmary"
+      },
+      "relationships": {},
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "detective",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "detective",
+      "institutionId": "inst-police",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-fur-2",
+      "name": "Bram Holt",
+      "role": "dockworker",
+      "homeLocationId": "works-infirmary",
+      "schedule": {
+        "08:00": "works-infirmary",
+        "12:00": "foundry-square",
+        "18:00": "machine-hall"
+      },
+      "relationships": {
+        "npc-fur-1": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "dockworker",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "dockworker",
+      "institutionId": "inst-dock-union",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-fur-3",
+      "name": "Clara Voss",
+      "role": "doctor",
+      "homeLocationId": "machine-hall",
+      "schedule": {
+        "08:00": "machine-hall",
+        "12:00": "foundry-square",
+        "18:00": "pay-window"
+      },
+      "relationships": {
+        "npc-fur-2": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "doctor",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "doctor",
+      "institutionId": "inst-medical",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-fur-4",
+      "name": "Elias Forge",
+      "role": "merchant",
+      "homeLocationId": "pay-window",
+      "schedule": {
+        "08:00": "pay-window",
+        "12:00": "foundry-square",
+        "18:00": "worker-gate"
+      },
+      "relationships": {
+        "npc-fur-3": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "merchant",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "merchant",
+      "institutionId": "inst-commerce",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-fur-5",
+      "name": "Nora Pike",
+      "role": "clerk",
+      "homeLocationId": "worker-gate",
+      "schedule": {
+        "08:00": "worker-gate",
+        "12:00": "foundry-square",
+        "18:00": "foundry-square"
+      },
+      "relationships": {
+        "npc-fur-4": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "clerk",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "clerk",
+      "institutionId": "inst-civic",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-fur-6",
+      "name": "Jon Reed",
+      "role": "informant",
+      "homeLocationId": "foundry-square",
+      "schedule": {
+        "08:00": "foundry-square",
+        "12:00": "foundry-square",
+        "18:00": "inspection-office"
+      },
+      "relationships": {
+        "npc-fur-5": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "informant",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "informant",
+      "institutionId": "inst-media",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    }
+  ]
+}

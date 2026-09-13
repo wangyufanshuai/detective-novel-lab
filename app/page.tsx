@@ -3,11 +3,14 @@ import { useMemo, useState } from "react";
 import { CampaignFrontDoor } from "@/app/components/CampaignFrontDoor";
 import { CaseAuthoringWorkbench } from "@/app/components/CaseAuthoringWorkbench";
 import { InvestigationGraphSurface } from "@/app/components/InvestigationGraphSurface";
+import { FirstCaseSolutionReview } from "@/app/components/FirstCaseSolutionReview";
+import { isFirstCaseSolutionReview } from "@/app/campaign/first-case-solution-review-model";
 import { CampaignStudySurface, PersistentTownModeSurface } from "@/app/components/HomeModeSurfaces";
 import { InvestigationPanel } from "@/app/components/InvestigationSurface";
 import { WorldGraphWorkbench } from "@/app/components/NovelWorldWorkbench";
 import { AgentControlPanel } from "@/app/components/TownReviewSurface";
-import { ControlRail, PlayShell, ToastStack } from "@/app/components/TownControlSurface";
+import { ControlRail, ToastStack } from "@/app/components/TownControlSurface";
+import { CommandDeckShell, type NoirPlayerView } from "@/app/components/CommandDeckShell";
 import { TownMapStage } from "@/app/components/TownMapSurface";
 import { buildStrategicCommandViewModel, executeStrategicActionDispatchAsync, type StrategicCommandAction } from "@/app/campaign/strategic-command-model";
 import { deriveCampaignFrontDoorCards } from "@/app/campaign/campaign-front-door-model";
@@ -39,7 +42,9 @@ import { useCampaignLaunchActions } from "@/app/hooks/useCampaignLaunchActions";
 import { useWorkspaceLifecycleEffects } from "@/app/hooks/useWorkspaceLifecycleEffects";
 import { useManualReplayDrillActions } from "@/app/hooks/useManualReplayDrillActions";
 import { useWorldCampaignPresentation } from "@/app/hooks/useWorldCampaignPresentation";
+import { useNoirAudioDirector } from "@/app/hooks/useNoirAudioDirector";
 import { useCampaignCommandBrief } from "@/app/hooks/useCampaignCommandBrief";
+import { useAppLocale } from "@/app/localization/locale-context";
 import { useCampaignController } from "@/app/controllers/useCampaignController";
 import { useInvestigationController } from "@/app/controllers/useInvestigationController";
 import { useReplayController } from "@/app/controllers/useReplayController";
@@ -49,11 +54,13 @@ import { useAuthoringController } from "@/app/controllers/useAuthoringController
 import { downloadTextFile, resolveRuntimeMode } from "@/app/lib/client-runtime";
 import { CAMPAIGN_STUDY_EXPORT_FILE, type CampaignStudyStage, type CampaignStudyWorldChoice } from "@/lib/campaign-comprehension-study";
 import {
-  CaseLogicPanel, CausalTracePanel, DeveloperPanel, EmergenceProofPanel, EventLogPanel, InspectorRail, OnboardingOverlay, ProofTourPanel, SuspectBoardPanel
+  CaseLogicPanel, CausalTracePanel, DeveloperPanel, EmergenceProofPanel, EventLogPanel, OnboardingOverlay, ProofTourPanel, SuspectBoardPanel
 } from "@/app/components/DetectiveTownUI";
 import {
   deriveMapInteractiveTargets,
-  listCaseTemplates
+  listCaseTemplates,
+  listDetectiveCampaignDefinitions,
+  getCampaignPresentationManifest
 } from "@/lib/engine";
 import type {
   InvestigationProgress,
@@ -114,6 +121,11 @@ function timeToMinutes(time: string) {
   return hours * 60 + minutes;
 }
 export default function Home() {
+  const { t, text } = useAppLocale();
+  const [playerNavigationRequest, setPlayerNavigationRequest] = useState<{ view: NoirPlayerView; sequence: number }>({ view: "explore", sequence: 0 });
+  function requestPlayerView(view: NoirPlayerView) {
+    setPlayerNavigationRequest((current) => ({ view, sequence: current.sequence + 1 }));
+  }
   const investigation = useInvestigationController(initialProgress);
   const {
     world, setWorld, events, setEvents, activeCase, setActiveCase, session, setSession, setSessions,
@@ -226,7 +238,7 @@ export default function Home() {
     busy
   });
   const guidedManualRun = guidedManual.viewModel;
-  const caseRhythm = useCertifiedCaseRhythm({ intake: playableIntake, session, observedCrimeWindow: progress.observedCrimeWindow, selectedSceneName: selectedScene?.name, revealAvailable: Boolean(revealText), recoveryGap: gapCards[0], recoveryAdvice: nextStepAdvice });
+  const caseRhythm = useCertifiedCaseRhythm({ intake: playableIntake, session, theoryEvidenceIds: theory.evidenceIds, observedCrimeWindow: progress.observedCrimeWindow, selectedSceneName: selectedScene?.name, revealAvailable: Boolean(revealText), recoveryGap: gapCards[0], recoveryAdvice: nextStepAdvice });
   const suggestedAction = caseRhythm.suggestedAction;
   const campaignStudyWorldChoices = useMemo<Partial<Record<CampaignStudyWorldChoice, boolean>>>(() => ({
     "world-lead": worldLead?.status === "pending",
@@ -266,6 +278,11 @@ export default function Home() {
     recoveryReady: campaignRecovery?.status === "ready",
     readyWorldChoices: campaignStudyWorldChoices
   });
+  const selectedCampaignPresentationKey = campaignSession?.campaignLabel || townRuntime?.campaignSessionSummary?.campaignLabel
+    ? listDetectiveCampaignDefinitions().find((definition) => definition.label === (campaignSession?.campaignLabel || townRuntime?.campaignSessionSummary?.campaignLabel))?.presentationKey
+    : campaignFrontDoorCards[frontDoorSelection]?.presentationKey;
+  const selectedCampaignPresentation = getCampaignPresentationManifest(selectedCampaignPresentationKey);
+  const noirAudio = useNoirAudioDirector({ runtimeMode, presentationKey: selectedCampaignPresentationKey });
   const investigationReadQueries = useInvestigationReadQueries(investigation);
   const worldSessionActions = useWorldSessionActions({
     investigation,
@@ -410,7 +427,7 @@ export default function Home() {
     revealSolution
   } = certifiedInvestigationActions;
   function observeCaseWindow() { setInspectorTab("events"); setProgress((current) => ({ ...current, observedCrimeWindow: true })); }
-  const { runCurrentStep: runCertifiedCaseRhythmStep } = useCertifiedCaseRhythmActions({ rhythm: caseRhythm, actionAdapter: certifiedInvestigationActions, focusStep: focusCertifiedStep, observeCaseWindow });
+  const { runCurrentStep: runCertifiedCaseRhythmStep } = useCertifiedCaseRhythmActions({ rhythm: caseRhythm, actionAdapter: certifiedInvestigationActions, focusStep: focusCertifiedStep, observeCaseWindow, notebookItems: evidenceNotebook, discoveredEvidence, theory, selectedCharacterId, selectedEvidenceId, question, submitTheory });
   const certifiedPlaythroughActions = useCertifiedPlaythroughActions({
     investigation,
     replay,
@@ -455,10 +472,10 @@ export default function Home() {
       canContinue={Boolean(continueWorldId)}
       onSelect={(index) => {
         setFrontDoorSelection(index);
-        setFrontDoorStatus(`${campaignFrontDoorCards[index]?.label || "Campaign"} selected. Review its three chapters, then start a clean local town.`);
+        setFrontDoorStatus(t("front.status.selectedCampaign", { campaign: text(campaignFrontDoorCards[index]?.label || "Campaign") }));
       }}
-      onSelectRoute={(index) => { setFrontDoorRouteSelection(index); setFrontDoorStatus(`${campaignFrontDoorCards[frontDoorSelection]?.routes[index]?.label || "Route"} selected for this three-case Campaign.`); }}
-      onStart={() => void startSelectedCampaign()}
+      onSelectRoute={(index) => { setFrontDoorRouteSelection(index); setFrontDoorStatus(t("front.status.selectedRoute", { route: text(campaignFrontDoorCards[frontDoorSelection]?.routes[index]?.label || "Route") })); }}
+      onStart={() => { void noirAudio.unlock(); void startSelectedCampaign(); }}
       onContinue={() => void continueSavedCampaign()}
       onDismiss={() => setFrontDoorOpen(false)}
     />
@@ -524,7 +541,8 @@ export default function Home() {
   });
   const campaignCommandBrief = useCampaignCommandBrief(commandDeck);
   async function handleStrategicCommand(action: StrategicCommandAction) {
-    if (action.kind === "certified-investigation" && action.target === "show-investigation") await runCertifiedCaseRhythmStep();
+    if (action.kind === "certified-investigation" && action.target === "show-investigation") return runCertifiedCaseRhythmStep();
+    if (action.target === "context-action" && action.contextActionKind) return commandDeckContext.onAction(action.contextActionKind);
     await executeStrategicActionDispatchAsync(action, {
       contextAction: (kind) => commandDeckContext.onAction(kind),
       openCampaign: () => setFrontDoorOpen(true),
@@ -612,8 +630,18 @@ export default function Home() {
   return (
     <>
     {campaignStudyRecorder}
-    <PlayShell
-      commandDeck={commandDeck}
+    <CommandDeckShell
+      key={`${runtimeMode}:${world?.id || "none"}:${activeCase?.id || "none"}`}
+      viewModel={commandDeck}
+      activeInspectorTab={inspectorTab}
+      navigationRequest={playerNavigationRequest}
+      onInspectorTabChange={setInspectorTab}
+      onOpenCampaign={() => setFrontDoorOpen(true)}
+      audio={{
+        muted: noirAudio.settings.muted, lowSensory: noirAudio.settings.lowSensory, master: noirAudio.settings.master,
+        onToggleMuted: noirAudio.toggleMuted, onToggleLowSensory: noirAudio.toggleLowSensory,
+        onMasterVolume: (volume) => noirAudio.setBusVolume("master", volume), onUnlock: noirAudio.unlock
+      }}
       commandBrief={campaignCommandBrief}
       guidedJournal={guidedStepJournal}
       control={(
@@ -639,7 +667,7 @@ export default function Home() {
           loadWorld={() => void worldSessionActions.loadWorld()}
           playerName={playerName}
           setPlayerName={setPlayerName}
-          joinCase={() => void joinCase()}
+          joinCase={joinCase}
           tickWorld={() => void worldSessionActions.tickWorld()}
           worldName={world?.name || "\u672a\u521b\u5efa\u5c0f\u9547"}
           caseTitle={activeCase?.deductionCase.title || "Detective Town Showcase"}
@@ -672,7 +700,7 @@ export default function Home() {
         {runtimeMode === "static-demo" ? campaignFrontDoorSurface : null}
         </>
       )}
-      toasts={<ToastStack toasts={toasts} onDismiss={dismissToast} />}
+      toasts={<ToastStack toasts={toasts.slice(-1)} onDismiss={dismissToast} />}
       toastVisible={toasts.length > 0}
       blockingOverlayActive={Boolean(runtimeMode === "server" && frontDoorOpen || onboarding.overlayOpen)}
       map={(
@@ -697,7 +725,11 @@ export default function Home() {
           onMarkerClick={handleMarker}
           onActorClick={handleActor}
           onLocationAction={(locationId) => { setSelectedSceneId(locationId); setSelectedCharacterId(""); setSelectedEvidenceId(""); setInspectorTab("investigation"); }}
-          onEncounterAction={commandDeckContext.onAction}
+          onEncounterAction={async (kind) => {
+            const result = await commandDeckContext.onAction(kind);
+            if (kind === "question" || kind === "challenge") requestPlayerView("deduction");
+            return result;
+          }}
           onEncounterDismiss={() => setSelectedCharacterId("")}
           replaying={replaying}
           setReplaying={setReplaying}
@@ -707,14 +739,11 @@ export default function Home() {
           setTimeValue={setTimeValue}
           timeToMinutes={timeToMinutes}
           minutesToTime={minutesToTime}
+          campaignMapPath={selectedCampaignPresentation.map.status === "ready" ? selectedCampaignPresentation.map.path : undefined}
+          campaignMapReady={selectedCampaignPresentation.map.status === "ready"}
         />
       )}
-      inspector={(
-        <InspectorRail
-          activeTab={inspectorTab}
-          setActiveTab={setInspectorTab}
-          summary={inspectorSummary}
-          tabs={[
+      panels={[
             {
               id: "events",
               label: "\u4e8b\u4ef6",
@@ -738,9 +767,10 @@ export default function Home() {
                 <InvestigationPanel
                   playableIntake={playableIntake}
                   caseRhythm={caseRhythm}
+                  observeCaseWindow={observeCaseWindow}
                   onIntakeNextAction={handleIntakeNextAction}
                   notebookItems={evidenceNotebook}
-                  onNotebookAction={handleNotebookAction}
+                  onNotebookAction={(item, action) => { handleNotebookAction(item, action); if (action === "source") requestPlayerView("explore"); }}
                   selectedSceneName={selectedScene?.name || "\u9009\u62e9\u5730\u56fe\u5730\u70b9"}
                   discoveredEvidence={discoveredEvidence}
                   evidenceImpacts={evidenceImpacts}
@@ -760,7 +790,7 @@ export default function Home() {
                   theory={theory}
                   setTheory={setTheory}
                   playerTheoryEvidence={playerTheoryEvidence}
-                  submitTheory={() => void submitTheory()}
+                  submitTheory={submitTheory}
                   revealText={revealText}
                   gapCards={gapCards}
                   onGapSelect={handleGapCard}
@@ -815,6 +845,8 @@ export default function Home() {
                   proofCoverage={caseProofCoverage}
                   routeCertificate={caseRouteCertificate}
                   proofTourSteps={proofTourSteps}
+                  lowSensory={noirAudio.settings.lowSensory}
+                  onToggleLowSensory={noirAudio.toggleLowSensory}
                   busy={busy}
                   commandDeckMode={Boolean(commandDeck) && runtimeMode === "server"}
                 />
@@ -823,7 +855,9 @@ export default function Home() {
             {
               id: "logic",
               label: "\u903b\u8f91",
-              content: (
+              content: isFirstCaseSolutionReview(runtimeMode, campaignSession || townRuntime?.campaignSessionSummary, activeCase?.deductionCase.title) ? (
+                <FirstCaseSolutionReview accepted={Boolean(session?.judgement?.accepted && session.caseId === activeCase?.id && session.worldId === world?.id)} revealText={revealText} />
+              ) : (
                 <div className="stackedInspector">
                   <CaseLogicPanel
                     accepted={Boolean(session?.judgement?.accepted)}
@@ -949,9 +983,7 @@ export default function Home() {
                 />
               )
             }
-          ]}
-        />
-      )}
+      ]}
       overlay={(
         <>
           {runtimeMode === "server" ? campaignFrontDoorSurface : null}

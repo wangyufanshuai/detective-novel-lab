@@ -1,8 +1,10 @@
-import { errorResponse, fail, ok, readJson } from "@/app/api/v1/_utils";
+import { errorResponse, fail, adminOk, adminGuard, readJson } from "@/app/api/v1/_utils";
 import { persistRuntimeWorld, loadRuntimeWorld, publicRuntime } from "@/app/api/v1/_town-runtime";
 
 export async function POST(request: Request) {
   try {
+    const unauthorized = adminGuard(request);
+    if (unauthorized) return unauthorized;
     const body = await readJson<{ worldId?: string }>(request, {});
     if (!body.worldId) return fail("BAD_REQUEST", "worldId is required");
     const loaded = loadRuntimeWorld(body.worldId);
@@ -11,7 +13,7 @@ export async function POST(request: Request) {
     loaded.runtime.updatedAt = new Date().toISOString();
     loaded.world.persistentRuntime = loaded.runtime;
     persistRuntimeWorld(loaded.world);
-    return ok({ runtime: publicRuntime(loaded.runtime) });
+    return adminOk({ runtime: publicRuntime(loaded.runtime) });
   } catch (error) {
     return errorResponse(error);
   }

@@ -7,16 +7,25 @@ const host = "127.0.0.1";
 const DATA_ROOT = path.resolve(process.cwd(), "data");
 
 export async function findAvailableLocalPort() {
-  return new Promise((resolve, reject) => {
-    const probe = net.createServer();
-    probe.unref();
-    probe.once("error", reject);
-    probe.listen(0, host, () => {
-      const address = probe.address();
-      const port = typeof address === "object" && address ? address.port : 0;
-      probe.close((error) => error ? reject(error) : resolve(port));
+  for (let attempt = 0; attempt < 64; attempt += 1) {
+    const candidate = 12_000 + Math.floor(Math.random() * 36_000);
+    const available = await new Promise((resolve, reject) => {
+      const probe = net.createServer();
+      probe.unref();
+      probe.once("error", (error) => {
+        if (error?.code === "EADDRINUSE" || error?.code === "EACCES") resolve(false);
+        else reject(error);
+      });
+      probe.listen(candidate, host, () => {
+        probe.close((error) => error ? reject(error) : resolve(true));
+      });
     });
-  });
+    // Next.js and browsers reject several well-known or unsafe ports even when
+    // the OS reports them as available (for example NFS on 2049). Keep RC
+    // harnesses in an unprivileged range above those reserved assignments.
+    if (available) return candidate;
+  }
+  throw new Error("Could not allocate a browser-safe local RC port after 64 attempts.");
 }
 
 function assertInsideData(target) {
@@ -100,6 +109,10 @@ export async function startReleaseCandidateServer({ prefix = "rc-server", mode =
     env: {
       ...process.env,
       ...env,
+      // The workspace keeps `.next` on a junction. Next resolves the real
+      // build path before loading the app, so make the workspace dependencies
+      // discoverable from that resolved drive as well.
+      NODE_PATH: [path.join(process.cwd(), "node_modules"), process.env.NODE_PATH].filter(Boolean).join(path.delimiter),
       AI_PROVIDER: "mock",
       DEEPSEEK_API_KEY: "",
       SILICONFLOW_API_KEY: "",

@@ -96,7 +96,7 @@ export const caseGalleryStorageKey = "detective-town-case-gallery-v1";
 const caseTemplates = listCaseTemplates();
 export const detectiveContentPack: DetectiveContentPack = {
   manifest: detectiveManifest as DetectiveContentPack["manifest"],
-  caseTypes: detectiveCaseTypes,
+  caseTypes: detectiveCaseTypes as DetectiveContentPack["caseTypes"],
   locations: detectiveLocations,
   roles: detectiveRoles,
   motives: detectiveMotives,

@@ -1,0 +1,24 @@
+{
+  "id": "memorial-garden-trust-town",
+  "name": "Memorial Garden Trust Town",
+  "version": "1.0.0",
+  "schemaVersion": "world-package.v1",
+  "description": "Burial records, inherited access, memorial custody and caretaker testimony.",
+  "author": "Detective Novel Lab",
+  "createdAt": "2026-08-12T00:00:00.000Z",
+  "license": "project-local-original",
+  "scenarioPackPath": "scenario-pack.json",
+  "mapPackPath": "map-pack.json",
+  "ruleCatalogPath": "rule-catalog.json",
+  "agentPackPath": "agent-pack.json",
+  "ecosystemCatalogPath": "ecosystem-catalog.json",
+  "expectationsPath": "expectations.json",
+  "localization": {
+    "en-US": "Memorial Garden Trust Town",
+    "zh-CN": "纪念园信托小镇"
+  },
+  "presentation": {
+    "key": "memorial-trust",
+    "style": "noir-archive"
+  }
+}

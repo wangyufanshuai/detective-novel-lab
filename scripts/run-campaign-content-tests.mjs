@@ -34,13 +34,13 @@ async function loadEngine() {
 
 const engine = await loadEngine();
 const campaigns = engine.listDetectiveCampaignDefinitions();
-assert.equal(campaigns.length, 4, "v9.5 exposes four player-facing Campaign families");
-assert.deepEqual(campaigns.map((campaign) => campaign.routes.length), [2, 2, 2, 2], "every Campaign exposes an original and counter route");
+assert.equal(campaigns.length, 12, "the v11.0-alpha baseline exposes twelve player-facing Campaign families");
+assert.deepEqual(campaigns.map((campaign) => campaign.routes.length), Array(12).fill(2), "every Campaign exposes an original and counter route");
 const routeMatrix = campaigns.flatMap((campaign) => campaign.routes.map((route) => ({ campaign, route })));
-assert.equal(routeMatrix.length, 8, "four Campaigns expose eight stable authored routes");
+assert.equal(routeMatrix.length, 24, "twelve Campaigns expose twenty-four stable authored routes");
 assert.equal(routeMatrix.every(({ route }) => route.chapters.length === 3), true, "every authored route remains exactly three chapters");
-assert.equal(new Set(routeMatrix.map(({ route }) => route.finaleCaseType)).size, 8, "all eight routes use distinct finale case families");
-assert.equal(new Set(routeMatrix.map(({ route }) => route.chapters.flatMap((chapter) => chapter.preferredCaseTypes).join("|"))).size, 8, "route chapter matrices are not copies of one another");
+assert.equal(new Set(routeMatrix.map(({ route }) => route.finaleCaseType)).size, 24, "all twenty-four routes use distinct finale case families");
+assert.equal(new Set(routeMatrix.map(({ route }) => route.chapters.flatMap((chapter) => chapter.preferredCaseTypes).join("|"))).size, 24, "route chapter matrices are not copies of one another");
 for (const campaign of campaigns) {
   assert.notDeepEqual(
     campaign.routes[0].chapters.map((chapter) => chapter.preferredCaseTypes),
@@ -53,7 +53,15 @@ const packageExpectations = [
   ["city-hall-merchant-debt-town", "town-reckoning"],
   ["dock-court-market-town", "harbor-testimony"],
   ["hospital-family-press-town", "clinic-headlines"],
-  ["theatre-market-night-town", "midnight-chorus"]
+  ["theatre-market-night-town", "midnight-chorus"],
+  ["railway-signal-yard-town", "railbound-alibi"],
+  ["foundry-workers-gate-town", "furnace-oath"],
+  ["river-lock-waterworks-town", "floodgate-covenant"],
+  ["academy-press-quadrangle-town", "scholarly-silence"],
+  ["grand-hotel-service-town", "grand-hotel-register"],
+  ["power-station-blackout-town", "blackout-ledger"],
+  ["memorial-garden-trust-town", "memorial-trust"],
+  ["wireless-tower-press-town", "wireless-shadows"]
 ];
 
 for (const [packageId, campaignId] of packageExpectations) {
@@ -149,5 +157,5 @@ console.log(JSON.stringify({
   ok: true,
   campaigns: publicPreviews.map((campaign) => campaign.label),
   routeCount: routeMatrix.length,
-  tests: ["four-campaigns", "eight-routes", "twenty-four-treatments", "paired-route-sequences", "distinct-structure", "determinism", "binding-freeze", "route-freeze", "bounded-preference", "distinct-finales", "route-certificate", "auto-solve", "evidence-coverage", "authority-isolation", "reused-case-cycle", "public-safe"]
+  tests: ["twelve-campaigns", "twenty-four-routes", "seventy-two-treatments", "paired-route-sequences", "distinct-structure", "determinism", "binding-freeze", "route-freeze", "bounded-preference", "distinct-finales", "route-certificate", "auto-solve", "evidence-coverage", "authority-isolation", "reused-case-cycle", "public-safe"]
 }));

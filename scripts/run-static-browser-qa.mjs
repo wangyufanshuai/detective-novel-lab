@@ -674,7 +674,7 @@ async function verifyStaticPage(page, baseUrl) {
       hasAppliedSafeDiffCleared: !text.includes("Applied safe diff"),
       hasContentSeedTrail: text.includes("Content Seed Undo"),
       hasContentCoverage: lowerText.includes("compatible evidence") && lowerText.includes("compatible roles") && lowerText.includes("avg risk"),
-      hasExpandedAuthoredContent: /16\s*case types/i.test(expansionText) && /10\s*events/i.test(expansionText) && /8\s*growth lines/i.test(expansionText) && /6\s*authored clusters/i.test(expansionText),
+      hasExpandedAuthoredContent: /32\s*case types/i.test(expansionText) && /10\s*events/i.test(expansionText) && /8\s*growth lines/i.test(expansionText) && /6\s*authored clusters/i.test(expansionText),
       hasWorldSystemAuthoring: lowerText.includes("resource pressure") && lowerText.includes("event risk") && lowerText.includes("growth stages") && lowerText.includes("world-system labels"),
       hasLocalBoundaryCopy: lowerText.includes("localstorage only") && lowerText.includes("does not write repo json") && lowerText.includes("/api/*"),
       hasGalleryBackupStatus: text.includes("Loaded \"Before Content Seed -"),

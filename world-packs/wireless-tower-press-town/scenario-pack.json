@@ -1,0 +1,315 @@
+{
+  "manifest": {
+    "id": "wireless-tower-press-town",
+    "name": "Wireless Tower Press Town",
+    "version": "1.0.0",
+    "schemaVersion": "scenario-pack.v1",
+    "description": "Broadcast rumor, intercepted messages, editorial custody and wireless patrol procedure.",
+    "createdAt": "2026-08-12T00:00:00.000Z",
+    "entrypoint": "scenario.json"
+  },
+  "world": {
+    "seed": "wireless-tower-press-town",
+    "mode": "advanced",
+    "timelineHours": 96,
+    "locations": [
+      {
+        "id": "wireless-square",
+        "name": "Wireless Square",
+        "kind": "public",
+        "description": "Wireless Square exposes a public, reviewable surface for broadcast rumor, intercepted messages, editorial custody and wireless patrol procedure.",
+        "connectedLocationIds": [
+          "patrol-post",
+          "broadcast-studio"
+        ],
+        "x": -1,
+        "y": 0,
+        "localizedName": {
+          "en-US": "Wireless Square",
+          "zh-CN": "无线广场"
+        }
+      },
+      {
+        "id": "broadcast-studio",
+        "name": "Broadcast Studio",
+        "kind": "work",
+        "description": "Broadcast Studio exposes a public, reviewable surface for broadcast rumor, intercepted messages, editorial custody and wireless patrol procedure.",
+        "connectedLocationIds": [
+          "wireless-square",
+          "newsroom"
+        ],
+        "x": 0,
+        "y": -1,
+        "localizedName": {
+          "en-US": "Broadcast Studio",
+          "zh-CN": "广播室"
+        }
+      },
+      {
+        "id": "newsroom",
+        "name": "Wireless Newsroom",
+        "kind": "work",
+        "description": "Wireless Newsroom exposes a public, reviewable surface for broadcast rumor, intercepted messages, editorial custody and wireless patrol procedure.",
+        "connectedLocationIds": [
+          "broadcast-studio",
+          "transmitter-room"
+        ],
+        "x": 1,
+        "y": -1,
+        "localizedName": {
+          "en-US": "Wireless Newsroom",
+          "zh-CN": "无线电新闻室"
+        }
+      },
+      {
+        "id": "transmitter-room",
+        "name": "Transmitter Room",
+        "kind": "restricted",
+        "description": "Transmitter Room exposes a public, reviewable surface for broadcast rumor, intercepted messages, editorial custody and wireless patrol procedure.",
+        "connectedLocationIds": [
+          "newsroom",
+          "telephone-exchange"
+        ],
+        "x": 1,
+        "y": 1,
+        "localizedName": {
+          "en-US": "Transmitter Room",
+          "zh-CN": "发射机房"
+        }
+      },
+      {
+        "id": "telephone-exchange",
+        "name": "Telephone Exchange",
+        "kind": "restricted",
+        "description": "Telephone Exchange exposes a public, reviewable surface for broadcast rumor, intercepted messages, editorial custody and wireless patrol procedure.",
+        "connectedLocationIds": [
+          "transmitter-room",
+          "patrol-post"
+        ],
+        "x": 0,
+        "y": 2,
+        "localizedName": {
+          "en-US": "Telephone Exchange",
+          "zh-CN": "电话交换所"
+        }
+      },
+      {
+        "id": "patrol-post",
+        "name": "Wireless Patrol Post",
+        "kind": "restricted",
+        "description": "Wireless Patrol Post exposes a public, reviewable surface for broadcast rumor, intercepted messages, editorial custody and wireless patrol procedure.",
+        "connectedLocationIds": [
+          "telephone-exchange",
+          "wireless-square"
+        ],
+        "x": -1,
+        "y": 1,
+        "localizedName": {
+          "en-US": "Wireless Patrol Post",
+          "zh-CN": "无线巡查岗"
+        }
+      }
+    ],
+    "npcs": [
+      {
+        "id": "npc-wir-1",
+        "name": "Ada Wave",
+        "role": "detective",
+        "homeLocationId": "broadcast-studio",
+        "schedule": {
+          "08:00": "broadcast-studio",
+          "12:00": "wireless-square",
+          "18:00": "newsroom"
+        },
+        "relationships": {},
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "detective",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-wir-2",
+        "name": "Iris Quill",
+        "role": "reporter",
+        "homeLocationId": "newsroom",
+        "schedule": {
+          "08:00": "newsroom",
+          "12:00": "wireless-square",
+          "18:00": "transmitter-room"
+        },
+        "relationships": {
+          "npc-wir-1": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "reporter",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-wir-3",
+        "name": "Nora Bell",
+        "role": "clerk",
+        "homeLocationId": "transmitter-room",
+        "schedule": {
+          "08:00": "transmitter-room",
+          "12:00": "wireless-square",
+          "18:00": "telephone-exchange"
+        },
+        "relationships": {
+          "npc-wir-2": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "clerk",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-wir-4",
+        "name": "Silas Vale",
+        "role": "officer",
+        "homeLocationId": "telephone-exchange",
+        "schedule": {
+          "08:00": "telephone-exchange",
+          "12:00": "wireless-square",
+          "18:00": "patrol-post"
+        },
+        "relationships": {
+          "npc-wir-3": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "officer",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-wir-5",
+        "name": "Elias Reed",
+        "role": "informant",
+        "homeLocationId": "patrol-post",
+        "schedule": {
+          "08:00": "patrol-post",
+          "12:00": "wireless-square",
+          "18:00": "wireless-square"
+        },
+        "relationships": {
+          "npc-wir-4": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "informant",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-wir-6",
+        "name": "Tomas Venn",
+        "role": "lawyer",
+        "homeLocationId": "wireless-square",
+        "schedule": {
+          "08:00": "wireless-square",
+          "12:00": "wireless-square",
+          "18:00": "broadcast-studio"
+        },
+        "relationships": {
+          "npc-wir-5": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "lawyer",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      }
+    ],
+    "institutions": [],
+    "professions": []
+  },
+  "rules": {
+    "enabledModules": [
+      "institutions",
+      "professions",
+      "long-actions",
+      "public-opinion",
+      "evidence-contamination",
+      "case-aftermath"
+    ],
+    "phaseConfig": {
+      "snapshotEveryTicks": 1,
+      "maxRunningLongActions": 8
+    },
+    "thresholds": {
+      "maxEvidenceContamination": 74,
+      "maxPublicOpinionHeat": 88,
+      "minInstitutionTrust": 34
+    },
+    "longActionKinds": [
+      "investigate-scene",
+      "verify-alibi",
+      "audit-ledger",
+      "secure-evidence-locker",
+      "review-court-record",
+      "cultivate-informant"
+    ]
+  },
+  "scenario": {
+    "id": "wireless-tower-press-town",
+    "name": "Wireless Tower Press Town",
+    "seed": "wireless-tower-press-town",
+    "worldOptions": {
+      "mode": "advanced",
+      "npcCount": 6,
+      "timelineHours": 96
+    },
+    "baselineSteps": 8,
+    "branches": [],
+    "passCriteria": {
+      "minValidCandidates": 0,
+      "minEventGrowth": 1,
+      "minMemoryGrowth": 1,
+      "maxBlockedCandidates": 8
+    }
+  },
+  "expectations": {
+    "minValidCandidates": 1,
+    "minEvidenceCoverage": 80,
+    "maxEvidenceContamination": 74,
+    "maxPublicOpinionHeat": 88,
+    "benchmarkPreset": "quick-10"
+  },
+  "assets": {
+    "presentationKey": "wireless-shadows"
+  },
+  "docs": {
+    "localization": {
+      "en-US": "Wireless Tower Press Town",
+      "zh-CN": "无线电塔报社小镇"
+    }
+  }
+}

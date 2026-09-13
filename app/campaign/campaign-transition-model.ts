@@ -93,12 +93,17 @@ function beatKind(input: CampaignBeatInput): CampaignBeatKind {
 
 function defaultPhase(input: CampaignBeatInput): CampaignBeatPhase {
   if (input.lifecycle?.state === "resolving" || input.lifecycle?.state === "selected") return "action-resolving";
-  if (input.lifecycle?.state === "succeeded" || input.lifecycle?.state === "failed-safe" || input.signal && input.signal !== "none") return "immediate-result";
+  if (input.lifecycle || input.signal && input.signal !== "none") return "immediate-result";
   return "idle";
 }
 
+function unsuccessful(input: CampaignBeatInput) {
+  const state = input.lifecycle?.state;
+  return state === "rejected" || state === "blocked" || state === "cancelled" || state === "failed-safe";
+}
+
 function tone(input: CampaignBeatInput, phase: CampaignBeatPhase, kind: CampaignBeatKind): CampaignBeatPresentation["tone"] {
-  if (input.lifecycle?.state === "failed-safe" || input.command.presentationFeedback.state === "blocked") return "warning";
+  if (unsuccessful(input) || !input.lifecycle && input.command.presentationFeedback.state === "blocked") return "warning";
   if (kind === "campaign-completed" || kind === "finale-ready" || phase === "next-objective") return "success";
   if (phase === "action-resolving") return "focus";
   return "info";
@@ -125,13 +130,16 @@ function phaseTitle(input: CampaignBeatInput, phase: CampaignBeatPhase, kind: Ca
   const action = input.lifecycle?.action;
   if (phase === "action-resolving") return safeText(action?.label, "Resolving the current action");
   if (phase === "immediate-result") {
-    if (input.lifecycle?.state === "failed-safe") return "Action returned safely";
+    if (input.lifecycle?.state === "failed-safe") return "Action not confirmed";
+    if (input.lifecycle?.state === "rejected") return "The investigation did not support this claim";
+    if (input.lifecycle?.state === "blocked") return "Action not available yet";
+    if (input.lifecycle?.state === "cancelled") return "Action cancelled";
     if (kind === "chapter-transition") return safeText(input.command.campaignProgress.chapterLabel, "The next chapter is ready");
     if (kind === "finale-ready") return "The Finale route is ready";
     if (kind === "campaign-completed") return "Campaign route completed";
-    return safeText(input.command.outcomeFeedback.immediate.label, "Immediate result");
+    return safeText(action?.label || input.command.outcomeFeedback.immediate.label, "Immediate result");
   }
-  if (phase === "world-consequence") return safeText(input.command.worldConsequenceTimeline.headline, "World consequence");
+  if (phase === "world-consequence") return input.lifecycle?.worldChange !== undefined ? "World consequence" : safeText(input.command.worldConsequenceTimeline.headline, "World consequence");
   if (phase === "next-objective") return safeText(input.command.primaryAction?.label || input.command.currentObjective.title, "Next objective");
   return kindLabel(kind);
 }
@@ -139,7 +147,7 @@ function phaseTitle(input: CampaignBeatInput, phase: CampaignBeatPhase, kind: Ca
 function phaseDetail(input: CampaignBeatInput, phase: CampaignBeatPhase) {
   if (phase === "action-resolving") return safeText(input.lifecycle?.detail, "The existing typed handler is resolving without changing presentation authority.");
   if (phase === "immediate-result") return safeText(input.lifecycle?.detail || input.command.outcomeFeedback.immediate.detail, "The existing command returned a safe visible result.");
-  if (phase === "world-consequence") return safeText(input.command.worldConsequenceTimeline.summary || input.command.outcomeFeedback.world.detail, "The public world context remains stable.");
+  if (phase === "world-consequence") return safeText(input.lifecycle?.worldChange ?? (input.command.worldConsequenceTimeline.summary || input.command.outcomeFeedback.world.detail), "The public world context remains stable.");
   if (phase === "next-objective") return safeText(input.command.primaryAction?.detail || input.command.outcomeFeedback.next.detail, "Continue with the next legal action.");
   return "";
 }
@@ -194,8 +202,9 @@ export function deriveCampaignBeatPresentation(input: CampaignBeatInput): Campai
   const kind = beatKind(input);
   const pacing = input.command.campaignPacing;
   const action = input.lifecycle?.action;
-  const hasWorldConsequence = input.command.worldConsequenceTimeline.state !== "empty"
-    && input.lifecycle?.state !== "failed-safe";
+  const hasWorldConsequence = input.lifecycle?.worldChange !== undefined
+    ? input.lifecycle.worldChange !== "No persistent world change" && !["blocked", "cancelled", "failed-safe"].includes(input.lifecycle.state)
+    : input.command.worldConsequenceTimeline.state !== "empty" && !unsuccessful(input);
   const fairnessLabel = safeText(pacing?.safeForecast.unchangedAuthority, FAIRNESS_FALLBACK);
   return {
     visible: phase !== "idle" && phase !== "dismissed",
@@ -208,13 +217,15 @@ export function deriveCampaignBeatPresentation(input: CampaignBeatInput): Campai
     eyebrow: kindLabel(kind),
     title: phaseTitle(input, phase, kind),
     detail: phaseDetail(input, phase),
-    supportingDetail: phase === "world-consequence"
-      ? safeText(pacing?.safeForecast.whatChanges, input.command.outcomeFeedback.world.detail)
+    supportingDetail: unsuccessful(input)
+      ? safeText(input.lifecycle?.detail, "Review the result before retrying.")
+      : phase === "world-consequence"
+      ? safeText(input.lifecycle?.worldChange ?? pacing?.safeForecast.whatChanges, input.command.outcomeFeedback.world.detail)
       : phase === "next-objective"
         ? safeText(pacing?.whyNow, input.command.currentObjective.nextAction)
         : safeText(action?.benefitLabel || input.command.presentationFeedback.label, "Existing authority confirmed"),
     focusLabel: safeText(input.command.selectedContext?.label || pacing?.value.primarySurface || input.command.campaignProgress.chapterLabel, "Public town context", 100),
-    benefitLabel: safeText(action?.benefitLabel || input.command.outcomeFeedback.immediate.detail, "The existing route advances.", 180),
+    benefitLabel: unsuccessful(input) ? "No successful outcome has been confirmed." : safeText(action?.benefitLabel || input.command.outcomeFeedback.immediate.detail, "The existing route advances.", 180),
     costLabel: safeText(action?.costLabel || pacing?.safeForecast.visibleSurface, "No additional world cost is created by this presentation.", 180),
     fairnessLabel,
     nextObjective: safeText(input.command.primaryAction?.detail || pacing?.nextAction || input.command.currentObjective.nextAction, "Continue the next legal action."),

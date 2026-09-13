@@ -111,11 +111,22 @@ export type DeductionCase = {
   logicPuzzle: LogicPuzzle;
 };
 
+/** Evidence assignments, verified against the private truth ledger at submission. */
+export type PlayerTheoryProof = {
+  motiveEvidenceIds: string[];
+  /** Evidence for the means/tool; timeline and exclusions remain in evidenceIds. */
+  methodEvidenceIds: string[];
+};
+
 export type PlayerTheory = {
   culpritId: string;
+  /** With proof, this is an optional note: use an empty string to omit it. */
   motive: string;
+  /** With proof, this is an optional note: use an empty string to omit it. */
   method: string;
   evidenceIds: string[];
+  /** When absent, legacy submissions require complete canonical statements. */
+  proof?: PlayerTheoryProof;
 };
 
 export type TimelineContradiction = {

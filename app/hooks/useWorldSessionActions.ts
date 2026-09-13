@@ -169,6 +169,7 @@ export function useWorldSessionActions({
   }
 
   function hydrateStatic(state: DemoRuntimeState, resetTime = true) {
+    if (state.world.id !== world?.id || state.activeCase.id !== activeCase?.id) setLastAiSafety(null);
     setWorld(state.world);
     setEvents(state.events);
     setActiveCase(state.activeCase);
@@ -190,6 +191,10 @@ export function useWorldSessionActions({
   }
 
   function hydrateCase(data: HydratedCasePayload) {
+    // Load/create/extract responses carry no reviewed answer. Reusing one from
+    // a previous case or session would incorrectly present it as this answer.
+    setRevealText("");
+    setLastAiSafety(null);
     setWorld(data.world);
     setTownRuntime((data.world as WorldState & { persistentRuntime?: PersistentTownRuntime }).persistentRuntime || null);
     if (data.events) setEvents(data.events);
@@ -324,7 +329,10 @@ export function useWorldSessionActions({
       setWorld(data.world);
       setEvents((items) => [...items, ...data.events]);
       setActiveCase(data.activeCase);
-      setRevealText("");
+      if (data.world.id !== world.id || data.activeCase.id !== activeCase?.id) {
+        setRevealText("");
+        setLastAiSafety(null);
+      }
       setStatus(t("status.worldAdvanced"));
       campaignStudy.recordMeaningfulAction();
     } catch {
@@ -337,6 +345,8 @@ export function useWorldSessionActions({
 
   function switchRuntime(next: RuntimeMode) {
     if (next === runtimeMode) return;
+    setRevealText("");
+    setLastAiSafety(null);
     setRuntimeMode(next);
     setReplaying(false);
     setFrontDoorOpen(true);

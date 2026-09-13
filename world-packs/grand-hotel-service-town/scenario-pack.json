@@ -1,0 +1,315 @@
+{
+  "manifest": {
+    "id": "grand-hotel-service-town",
+    "name": "Grand Hotel Service Town",
+    "version": "1.0.0",
+    "schemaVersion": "scenario-pack.v1",
+    "description": "Guest identity, night-desk custody, service passages and private leverage.",
+    "createdAt": "2026-08-12T00:00:00.000Z",
+    "entrypoint": "scenario.json"
+  },
+  "world": {
+    "seed": "grand-hotel-service-town",
+    "mode": "advanced",
+    "timelineHours": 96,
+    "locations": [
+      {
+        "id": "hotel-court",
+        "name": "Hotel Court",
+        "kind": "public",
+        "description": "Hotel Court exposes a public, reviewable surface for guest identity, night-desk custody, service passages and private leverage.",
+        "connectedLocationIds": [
+          "service-basement",
+          "accounts-office"
+        ],
+        "x": -1,
+        "y": 0,
+        "localizedName": {
+          "en-US": "Hotel Court",
+          "zh-CN": "饭店前庭"
+        }
+      },
+      {
+        "id": "accounts-office",
+        "name": "Accounts Office",
+        "kind": "work",
+        "description": "Accounts Office exposes a public, reviewable surface for guest identity, night-desk custody, service passages and private leverage.",
+        "connectedLocationIds": [
+          "hotel-court",
+          "palm-court"
+        ],
+        "x": 0,
+        "y": -1,
+        "localizedName": {
+          "en-US": "Accounts Office",
+          "zh-CN": "账房"
+        }
+      },
+      {
+        "id": "palm-court",
+        "name": "Palm Court",
+        "kind": "work",
+        "description": "Palm Court exposes a public, reviewable surface for guest identity, night-desk custody, service passages and private leverage.",
+        "connectedLocationIds": [
+          "accounts-office",
+          "night-desk"
+        ],
+        "x": 1,
+        "y": -1,
+        "localizedName": {
+          "en-US": "Palm Court",
+          "zh-CN": "棕榈庭"
+        }
+      },
+      {
+        "id": "night-desk",
+        "name": "Night Desk",
+        "kind": "restricted",
+        "description": "Night Desk exposes a public, reviewable surface for guest identity, night-desk custody, service passages and private leverage.",
+        "connectedLocationIds": [
+          "palm-court",
+          "luggage-room"
+        ],
+        "x": 1,
+        "y": 1,
+        "localizedName": {
+          "en-US": "Night Desk",
+          "zh-CN": "夜间前台"
+        }
+      },
+      {
+        "id": "luggage-room",
+        "name": "Luggage Room",
+        "kind": "restricted",
+        "description": "Luggage Room exposes a public, reviewable surface for guest identity, night-desk custody, service passages and private leverage.",
+        "connectedLocationIds": [
+          "night-desk",
+          "service-basement"
+        ],
+        "x": 0,
+        "y": 2,
+        "localizedName": {
+          "en-US": "Luggage Room",
+          "zh-CN": "行李房"
+        }
+      },
+      {
+        "id": "service-basement",
+        "name": "Service Basement",
+        "kind": "restricted",
+        "description": "Service Basement exposes a public, reviewable surface for guest identity, night-desk custody, service passages and private leverage.",
+        "connectedLocationIds": [
+          "luggage-room",
+          "hotel-court"
+        ],
+        "x": -1,
+        "y": 1,
+        "localizedName": {
+          "en-US": "Service Basement",
+          "zh-CN": "服务地下室"
+        }
+      }
+    ],
+    "npcs": [
+      {
+        "id": "npc-gra-1",
+        "name": "Mara Key",
+        "role": "detective",
+        "homeLocationId": "accounts-office",
+        "schedule": {
+          "08:00": "accounts-office",
+          "12:00": "hotel-court",
+          "18:00": "palm-court"
+        },
+        "relationships": {},
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "detective",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-gra-2",
+        "name": "Elias Room",
+        "role": "clerk",
+        "homeLocationId": "palm-court",
+        "schedule": {
+          "08:00": "palm-court",
+          "12:00": "hotel-court",
+          "18:00": "night-desk"
+        },
+        "relationships": {
+          "npc-gra-1": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "clerk",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-gra-3",
+        "name": "Nell Vale",
+        "role": "servant",
+        "homeLocationId": "night-desk",
+        "schedule": {
+          "08:00": "night-desk",
+          "12:00": "hotel-court",
+          "18:00": "luggage-room"
+        },
+        "relationships": {
+          "npc-gra-2": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "servant",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-gra-4",
+        "name": "Bram Porter",
+        "role": "dockworker",
+        "homeLocationId": "luggage-room",
+        "schedule": {
+          "08:00": "luggage-room",
+          "12:00": "hotel-court",
+          "18:00": "service-basement"
+        },
+        "relationships": {
+          "npc-gra-3": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "dockworker",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-gra-5",
+        "name": "Iris Venn",
+        "role": "reporter",
+        "homeLocationId": "service-basement",
+        "schedule": {
+          "08:00": "service-basement",
+          "12:00": "hotel-court",
+          "18:00": "hotel-court"
+        },
+        "relationships": {
+          "npc-gra-4": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "reporter",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-gra-6",
+        "name": "Tomas Bell",
+        "role": "informant",
+        "homeLocationId": "hotel-court",
+        "schedule": {
+          "08:00": "hotel-court",
+          "12:00": "hotel-court",
+          "18:00": "accounts-office"
+        },
+        "relationships": {
+          "npc-gra-5": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "informant",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      }
+    ],
+    "institutions": [],
+    "professions": []
+  },
+  "rules": {
+    "enabledModules": [
+      "institutions",
+      "professions",
+      "long-actions",
+      "public-opinion",
+      "evidence-contamination",
+      "case-aftermath"
+    ],
+    "phaseConfig": {
+      "snapshotEveryTicks": 1,
+      "maxRunningLongActions": 8
+    },
+    "thresholds": {
+      "maxEvidenceContamination": 74,
+      "maxPublicOpinionHeat": 88,
+      "minInstitutionTrust": 34
+    },
+    "longActionKinds": [
+      "investigate-scene",
+      "verify-alibi",
+      "audit-ledger",
+      "secure-evidence-locker",
+      "review-court-record",
+      "cultivate-informant"
+    ]
+  },
+  "scenario": {
+    "id": "grand-hotel-service-town",
+    "name": "Grand Hotel Service Town",
+    "seed": "grand-hotel-service-town",
+    "worldOptions": {
+      "mode": "advanced",
+      "npcCount": 6,
+      "timelineHours": 96
+    },
+    "baselineSteps": 8,
+    "branches": [],
+    "passCriteria": {
+      "minValidCandidates": 0,
+      "minEventGrowth": 1,
+      "minMemoryGrowth": 1,
+      "maxBlockedCandidates": 8
+    }
+  },
+  "expectations": {
+    "minValidCandidates": 1,
+    "minEvidenceCoverage": 80,
+    "maxEvidenceContamination": 74,
+    "maxPublicOpinionHeat": 88,
+    "benchmarkPreset": "quick-10"
+  },
+  "assets": {
+    "presentationKey": "grand-hotel-register"
+  },
+  "docs": {
+    "localization": {
+      "en-US": "Grand Hotel Service Town",
+      "zh-CN": "大饭店服务小镇"
+    }
+  }
+}

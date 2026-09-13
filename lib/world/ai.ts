@@ -336,6 +336,7 @@ export async function generateGuardedNpcReply(input: {
   if (!config.apiKey || !context.character) return "";
   const response = await fetch(`${config.baseUrl.replace(/\/$/, "")}/chat/completions`, {
     method: "POST",
+    signal: AbortSignal.timeout(20_000),
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${config.apiKey}` },
     body: JSON.stringify({
       model: config.model,

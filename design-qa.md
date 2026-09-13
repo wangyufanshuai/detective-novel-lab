@@ -1,67 +1,25 @@
-# Design QA: Interactive Director Command Center
+# City Pulse design QA
 
-Status: passed
+Reference: `C:\Users\86137\.codex\generated_images\01a076cd-1852-7340-a873-021d55e3c6b3\exec-62ddbec9-704a-4962-8722-c7335c0feb1c.png`
 
-## Scope
+Implementation: `app/components/WorldConsoleSurface.tsx` and `app/styles/world-console.css`
 
-- Surface: Persistent Agent Town full-width command center only.
-- Reference: user-provided Product Design image `C:\WINDOWS\TEMP\codex-clipboard-c36ba965-4f6a-4730-aeca-00e067d25a93.png`.
-- Note: the original temporary reference file expired before final artifact generation. The visual target was inspected from the conversation attachment, and the comparison artifact records that constraint.
+## Review
+
+- The living town map is the visual main event on desktop; the map measured 1241×600 at the 1440px browser check and page overflow was 0px.
+- The selected “城市脉搏 / City Pulse” identity is visible in the world HUD and the map carries the narrative line “城市有记忆，而你，正在聆听。”
+- Situation and character projections are floating field notes over the map, while timeline, settlement, queue and replay remain progressive disclosures below the scene.
+- The existing map artwork and interactive location, event and actor controls remain real DOM elements; no text was baked into the image.
+- Mobile rules return the overlays to normal flow and preserve the existing compact controls, focus styles, reduced-motion behavior and touch target contract.
 
 ## Evidence
 
-- Desktop main screenshot: `test-results/qa-screenshots/command-center-desktop-1920x1080.png`
-- Desktop action-bias screenshot: `test-results/qa-screenshots/command-center-action-bias-1920x1080.png`
-- Pixel 7 mobile screenshot: `test-results/qa-screenshots/command-center-pixel-7.png`
-- Static demo production screenshot: `test-results/qa-screenshots/static-demo-production-1920.png`
-- Design comparison artifact: `test-results/qa-screenshots/design-comparison.png`
+- `outputs/detective-world-simulation-goal10-20260912/visual-acceptance.json`
+- `outputs/detective-world-simulation-goal10-20260912/world-console-1440x900.png`
+- Browser check at `http://127.0.0.1:23640/?runtime=server&lang=zh-CN`: brand `城市脉搏`, hero copy present, map 1241×600, overflow 0.
 
-## Product Design Checks
+## Remaining follow-up
 
-| Check | Result | Notes |
-| --- | --- | --- |
-| Dark detective RPG visual system | Passed | Black-gold frame system, warm amber emphasis, red phase/risk and green pass states are present. |
-| Full-width command layout | Passed | HUD, left archive/control rail, map, scene feed, NPC dossier/action rail, candidate board, memory/time/benchmark modules are present. |
-| Generated high-fidelity assets | Passed | Replaced placeholder SVGs with generated WebP map, crest, and 8 NPC portraits under `public/command-center/`. |
-| Functional navigation | Passed | Left map/action/memory/queue/time menu changes focus and supports mobile collapse. |
-| Map interactions | Passed | Zoom, reset, drag pan, NPC/evidence/event filters, and data-driven overlays work in E2E. |
-| Action cards | Passed | Expanded scoring, risk, director bias, reasons, expected impact, and "bias next Tick" action are visible. |
-| Scenario/Time Machine continuity | Passed | Existing scenario, snapshot, diff, rollback cancel, benchmark, and extraction flows remain available. |
-| Chinese UI copy | Passed | Core command-center labels and scoring reasons are Chinese. Raw fact ids remain as technical identifiers by design. |
-| Mobile layout | Passed | Pixel 7 viewport has no page-level horizontal overflow and shows compact HUD before the map. |
-| Static demo isolation | Passed | Production static demo made 0 `/api/*` requests and had 0 console/page errors. |
+The generated reference includes pressure gauges and bespoke objective/event cards that are not authoritative fields in the current world projection. Those should only be added after the simulation exposes matching public metrics; this pass keeps the UI truthful to the existing kernel.
 
-## Issues Found And Fixed
-
-| Severity | Issue | Fix |
-| --- | --- | --- |
-| P1 | Mobile HUD occupied too much vertical space and delayed the map too far. | Added compact mobile HUD grid and module ordering so the map appears immediately after the HUD. |
-| P2 | Some action scoring reasons still appeared in English. | Added Chinese mapping for witness exposure, rumor memory, alibi pressure, cover-up urgency, and director bias. |
-| P2 | Action-bias state was not visible enough after clicking. | Added visible pending state, director-bias score, and deterministic next-tick score bump in action cards. |
-
-## Browser And Runtime QA
-
-- Static demo production QA: passed.
-  - `/api/*` requests: 0
-  - console/page errors: 0
-  - horizontal overflow: 0
-- Server runtime command-center QA: covered by Playwright desktop/mobile E2E and final screenshots.
-- Chrome/browser plugin note: in-app browser was used for static demo inspection. Server runtime screenshots and interaction QA used Playwright because the folded settings entry was not reliably reachable through the browser plugin coordinate layer.
-
-## Validation
-
-- `npm run test`: passed.
-- `npm run build`: passed.
-- `npm run eval`: passed.
-- `npm run benchmark:emergence`: passed, 20/20 seeds, 100% pass rate.
-- `npm run test:e2e`: passed, 24/24.
-- `node scripts/run-agent-api-smoke.mjs`: passed.
-- `node scripts/run-novel-agent-api-smoke.mjs`: passed.
-- `node scripts/run-persistent-town-api-smoke.mjs`: passed.
-- `node scripts/run-scenario-runner-api-smoke.mjs`: passed.
-- `node scripts/run-sdk-client-smoke.mjs`: passed.
-- Docker smoke: blocked by local environment. Docker CLI is installed, but the Docker Desktop Linux daemon pipe is unavailable.
-
-## Final Result
-
-passed
+final result: passed

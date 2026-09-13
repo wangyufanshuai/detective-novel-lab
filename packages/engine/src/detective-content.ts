@@ -1,4 +1,5 @@
 import type { InstitutionStrategy, LongActionKind, TownInstitutionKind } from "./town-rules";
+import type { TownCaseMechanicProfileId } from "./town/campaign-types";
 
 export type DetectiveContentManifest = {
   id: string;
@@ -21,6 +22,7 @@ export type DetectiveCaseTypeRow = {
   authoredCluster?: string;
   contrastKey?: string;
   campaignTags?: string[];
+  mechanicProfileId?: TownCaseMechanicProfileId;
 };
 
 export type DetectiveLocationRow = {

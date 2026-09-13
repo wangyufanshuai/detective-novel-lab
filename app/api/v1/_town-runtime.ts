@@ -100,6 +100,7 @@ import {
   validateTownMapPack,
   validateTownRuleCatalog,
   validatePlayableCaseRoute,
+  type CaseFromLog,
   type CaseCandidate,
   type DetectiveContentPack,
   type DetectiveCampaignRouteId,
@@ -234,8 +235,21 @@ export function loadRuntimeWorld(worldId: string) {
   return { world, events, runtime };
 }
 
-export function persistRuntimeWorld(world: RuntimeWorld, eventsToAdd: WorldEvent[] = []) {
-  worldRepository.saveWorldBundle({ world, events: eventsToAdd });
+export function persistRuntimeWorld(world: RuntimeWorld, eventsToAdd: WorldEvent[] = [], activeCase: CaseFromLog | null = null) {
+  if (world.persistentRuntime) {
+    const expectedRevision = world.persistentRuntime.commandRevision || 0;
+    world.persistentRuntime.commandRevision = expectedRevision + 1;
+    const saved = worldRepository.saveWorldBundleIfRuntimeRevision({ world, events: eventsToAdd, activeCase, expectedRevision });
+    if (!saved) {
+      if (!worldRepository.getWorld(world.id)) {
+        worldRepository.saveWorldBundle({ world, events: eventsToAdd, activeCase });
+      } else {
+        throw new Error("RUNTIME_REVISION_CONFLICT: The town changed before this command could be committed.");
+      }
+    }
+    return world;
+  }
+  worldRepository.saveWorldBundle({ world, events: eventsToAdd, activeCase });
   return world;
 }
 
@@ -570,8 +584,7 @@ export function extractCase(world: RuntimeWorld, events: WorldEvent[], candidate
       ...nextWorld.persistentRuntime.candidates.filter((item) => item.id !== nextCandidate.id)
     ];
   }
-  persistRuntimeWorld(nextWorld, result.events.filter((event) => !events.some((existing) => existing.id === event.id)));
-  worldRepository.saveCase(result.activeCase);
+  persistRuntimeWorld(nextWorld, result.events.filter((event) => !events.some((existing) => existing.id === event.id)), result.activeCase);
   return {
     ...result,
     candidate: nextCandidate,
@@ -628,6 +641,260 @@ export function publicRuntime(runtime: PersistentTownRuntime) {
     campaignFinaleDebrief: runtime.campaignFinaleDebrief || toCampaignFinaleDebriefPublicSummary(runtime),
     snapshots: (runtime.snapshots || []).map(publicSnapshot)
   };
+}
+
+/** Player-safe queue: candidate identity is retained for an explicit extract
+ * command, while culprit/victim/source/memory lineage never crosses the API. */
+export function publicTownQueue(queue: ReturnType<typeof buildTownEmergenceQueue>) {
+  return {
+    runtimeId: queue.runtimeId,
+    worldId: queue.worldId,
+    status: queue.status,
+    validCount: queue.validCount,
+    blockedCount: queue.blockedCount,
+    nextAction: queue.nextAction,
+    candidates: queue.candidates.map((candidate) => ({
+      id: candidate.id,
+      worldId: candidate.worldId,
+      tick: candidate.tick,
+      status: candidate.status,
+      pressureScore: candidate.pressureScore,
+      maturityScore: candidate.maturityScore,
+      chainStageTags: candidate.chainStageTags,
+      caseType: candidate.caseType,
+      validation: {
+        valid: candidate.validation.valid,
+        hardLogicValid: candidate.validation.hardLogicValid,
+        uniqueCulprit: candidate.validation.uniqueCulprit,
+        worldBackedEvidence: candidate.validation.worldBackedEvidence,
+        memoryScopedTestimony: candidate.validation.memoryScopedTestimony,
+        nonCulpritExcluded: candidate.validation.nonCulpritExcluded,
+        timelineClosed: candidate.validation.timelineClosed,
+        chainStages: candidate.validation.chainStages,
+        chainCompleteness: candidate.validation.chainCompleteness,
+        errors: [],
+        warnings: []
+      }
+    }))
+  };
+  }
+
+/**
+ * Player case projection. The investigation UI still receives the public
+ * scene, suspect and evidence shape it already knows, while truth/source
+ * ledgers stay server-side until the judgement gate is crossed.
+ */
+export function publicPlayerCase(caseFromLog: CaseFromLog) {
+  const source = caseFromLog.deductionCase;
+  return {
+    ...caseFromLog,
+    sourceEventIds: [],
+    triggeredEventId: undefined,
+    sourceCandidateId: undefined,
+    generationProfile: {
+      ...caseFromLog.generationProfile,
+      victimId: "",
+      culpritId: "",
+      witnessId: "",
+      focusSuspectIds: [],
+      motiveEventId: "",
+      meansEventId: "",
+      opportunityEventId: "",
+      deathEventId: "",
+      stagingEventId: "",
+      traceEventId: "",
+      groupAlibiEventId: "",
+      decisiveEvidenceIds: []
+    },
+    sourceMap: {
+      motiveEvidenceId: "",
+      meansEvidenceId: "",
+      opportunityEvidenceId: "",
+      stagingEvidenceId: "",
+      traceEvidenceId: "",
+      groupAlibiEvidenceId: "",
+      sourceEventIds: [],
+      evidenceSourceEventIds: {},
+      extractionEventSourceIds: {},
+      chainStageSourceEventIds: {},
+      memorySourceIds: [],
+      observationSourceIds: []
+    },
+    testimonies: caseFromLog.testimonies.map((testimony) => ({
+      ...testimony,
+      memoryIds: [],
+      exposedContradictions: []
+    })),
+    qualityReport: {
+      ...caseFromLog.qualityReport,
+      candidateAnalysis: [],
+      reasoningTrace: [],
+      warnings: []
+    },
+    causalTrace: undefined,
+    deductionCase: {
+      ...source,
+      truth: {
+        culpritId: "",
+        motive: "",
+        method: "",
+        opportunity: "",
+        decisiveEvidenceIds: [],
+        trueTimeline: []
+      },
+      characters: source.characters.map((character) => ({
+        ...character,
+        secret: "",
+        motive: "",
+        means: "",
+        opportunity: "",
+        isCulprit: false,
+        knowledgeScope: [],
+        liePolicy: "",
+        contradictionTriggers: []
+      })),
+      evidence: source.evidence.map((evidence) => ({
+        ...evidence,
+        trueMeaning: "",
+        isKey: false,
+        supportsConclusion: [],
+        contradicts: []
+      })),
+      logicPuzzle: {
+        ...source.logicPuzzle,
+        suspectMatrix: source.logicPuzzle.suspectMatrix.map((row) => ({
+          ...row,
+          motive: false,
+          means: false,
+          opportunity: false,
+          excludedByEvidenceIds: [],
+          completeAndUnexcluded: false,
+          isCulprit: false
+        })),
+        exclusionChains: [],
+        criticalReasoningChain: [],
+        redHerrings: []
+      }
+    },
+    validation: {
+      ...caseFromLog.validation,
+      worldErrors: [],
+      worldWarnings: [],
+      issues: [],
+      sourceEventIds: []
+    }
+  } as unknown as CaseFromLog;
+}
+
+/** Monotonic compare-and-swap token for a loaded town runtime. */
+export function runtimeRevision(runtime: PersistentTownRuntime) {
+  return `${runtime.id}:${runtime.commandRevision || 0}:${runtime.tick}`;
+}
+
+/** Explicit player runtime projection. Admin/review tools keep using
+ * publicRuntime; the player path receives aggregates and public activity only. */
+export function publicPlayerRuntime(runtime: PersistentTownRuntime) {
+    return {
+      id: runtime.id,
+      worldId: runtime.worldId,
+      revision: runtimeRevision(runtime),
+    status: runtime.status,
+    currentDay: runtime.currentDay,
+    currentTime: runtime.currentTime,
+    tickIntervalMinutes: runtime.tickIntervalMinutes,
+    maxTicks: runtime.maxTicks,
+    tick: runtime.tick,
+    agentStates: runtime.agentStates.map((agent) => ({
+      npcId: agent.npcId,
+      locationId: agent.locationId,
+      relationshipPressure: agent.relationshipPressure,
+      secretRisk: agent.secretRisk,
+      fatigue: agent.fatigue,
+      alertness: agent.alertness,
+      nextActionPreview: agent.nextActionPreview,
+      propagatedMemoryCount: agent.propagatedMemoryCount
+    })),
+    decisionTraces: runtime.decisionTraces.slice(-12).map((trace) => ({
+      id: trace.id,
+      tick: trace.tick,
+      day: trace.day,
+      time: trace.time,
+      npcId: trace.npcId,
+      selectedCandidateId: trace.selectedCandidateId,
+      candidates: trace.candidates.map((candidate) => ({
+        id: candidate.id,
+        kind: candidate.kind,
+        targetLocationId: candidate.targetLocationId,
+        description: candidate.description,
+        legal: candidate.legal
+      }))
+    })),
+    candidates: publicTownQueue({
+      runtimeId: runtime.id,
+      worldId: runtime.worldId,
+      status: runtime.status,
+      candidates: runtime.candidates,
+      validCount: runtime.candidates.filter((candidate) => candidate.validation.valid).length,
+      blockedCount: runtime.candidates.filter((candidate) => !candidate.validation.valid).length,
+      nextAction: "继续观察世界，等待下一条公开线索。"
+    }).candidates,
+    interventions: [],
+    reports: runtime.reports.map((report) => ({ tick: report.tick, status: report.status, eventIds: [], decisionIds: [], candidateIds: [] })),
+    pressureLedger: [],
+    eventObservations: [],
+    socialProfiles: [],
+    relationshipLedger: [],
+    locationProfiles: runtime.locationProfiles?.map((profile) => ({
+      locationId: profile.locationId,
+      heat: profile.heat,
+      security: profile.security,
+      footTraffic: profile.footTraffic,
+      resourcePressure: profile.resourcePressure,
+      factionInfluence: profile.factionInfluence
+    })),
+    simulationPhases: runtime.simulationPhases,
+    caseLifecycle: runtime.caseLifecycle,
+    worldSystemHintSummary: runtime.worldSystemHintSummary,
+    worldPressureCascadeSummary: runtime.worldPressureCascadeSummary || toWorldPressureCascadePublicSummary(runtime),
+    worldInfluenceBudgetSummary: toWorldInfluenceBudgetPublicSummary(runtime),
+    worldLeadPreview: runtime.worldLeadPreview,
+    worldLeadOutcomeSummary: runtime.worldLeadOutcomeSummary,
+    worldArcSummary: runtime.worldArcSummary,
+    worldArcDirectiveSummary: runtime.worldArcDirectiveSummary,
+    playerResourceCommitmentSummary: runtime.playerResourceCommitmentSummary,
+    factionRelationshipSummary: runtime.factionRelationshipSummary,
+    worldEventOfferSummary: runtime.worldEventOfferSummary,
+    investigatorProgressionSummary: runtime.investigatorProgressionSummary,
+    investigatorHeadquartersSummary: runtime.investigatorHeadquartersSummary,
+    campaignRecoverySummary: runtime.campaignRecoverySummary,
+    arcConvergenceSummary: runtime.arcConvergenceSummary,
+    campaignSessionSummary: runtime.campaignSessionSummary,
+    campaignFinaleDebrief: runtime.campaignFinaleDebrief,
+    townSocialResponseSummary: runtime.townSocialResponseSummary,
+    createdAt: runtime.createdAt,
+    updatedAt: runtime.updatedAt
+  } as unknown as PersistentTownRuntime;
+}
+
+export function publicPlayerWorld(world: RuntimeWorld) {
+  return {
+    id: world.id,
+    seed: world.seed,
+    name: world.name,
+    mode: world.mode,
+    timelineHours: world.timelineHours,
+    day: world.day,
+    currentTime: world.currentTime,
+    plannedArchetype: world.plannedArchetype,
+    locations: world.locations,
+    npcs: world.npcs.map((npc) => ({ id: npc.id, name: npc.name, role: npc.role, skills: npc.skills || [], homeLocationId: npc.homeLocationId, alive: npc.alive })),
+    memories: [],
+    simulationReports: [],
+    activeCaseId: world.activeCaseId,
+    createdAt: world.createdAt,
+    updatedAt: world.updatedAt,
+    persistentRuntime: world.persistentRuntime ? publicPlayerRuntime(world.persistentRuntime) : undefined
+  } as unknown as RuntimeWorld;
 }
 
 export function publicWorld(world: RuntimeWorld) {

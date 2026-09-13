@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { resolveSafeContextActions, type SafeContextActionKind } from "@/app/campaign/context-action-resolver";
 import { createInvestigationTurnState, transitionInvestigationTurn } from "@/app/campaign/investigation-turn-model";
 import type { CertifiedInvestigationActionAdapter } from "@/app/hooks/useCertifiedInvestigationActions";
+import type { InvestigationActionResult } from "@/app/campaign/investigation-action-result";
 import { createDefaultTownRuleCatalog, type PersistentTownRuntime, type WorldState } from "@/lib/engine";
 
 export function deriveCommandDeckInstitutionName(world: WorldState | null, runtime: PersistentTownRuntime | null, npcId: string) {
@@ -43,7 +44,7 @@ type CommandDeckContextInput = {
   onSelectEvidence: (evidenceId: string) => void;
   onShowInspector: (tab: "investigation" | "logic" | "agent") => void;
   onShowEvents: () => void | Promise<void>;
-  onSubmitTheory: () => void | Promise<void>;
+  onSubmitTheory: () => InvestigationActionResult | void | Promise<InvestigationActionResult | void>;
 };
 
 export function useCommandDeckContext(input: CommandDeckContextInput) {
@@ -112,49 +113,63 @@ export function useCommandDeckContext(input: CommandDeckContextInput) {
   const firstEvidenceId = input.discoveredEvidenceIds[0];
   const selectedEvidenceId = input.selectedEvidenceId;
 
-  const onAction = useCallback(async (kind: SafeContextActionKind) => {
+  const onAction = useCallback(async (kind: SafeContextActionKind): Promise<InvestigationActionResult> => {
     const handlers = callbacks.current;
     const action = actions.find((item) => item.kind === kind);
-    if (!action?.enabled) return;
+    if (!action?.enabled) return { status: "blocked", detail: action?.disabledReason || "Choose an available action for the current investigation." };
     setTurnState((current) => transitionInvestigationTurn(current, { type: "start-action", actionKind: kind, actionLabel: action.label }));
     try {
       switch (action.handlerKey) {
-        case "joinCase": await handlers.actionAdapter.joinCase(); break;
-        case "showEvents": await handlers.onShowEvents(); break;
-        case "discoverSceneEvidence": if (input.selectedSceneId) await handlers.actionAdapter.discoverFirstSceneEvidence(input.selectedSceneId); break;
+        case "joinCase": return await handlers.actionAdapter.joinCase();
+        case "showEvents":
+          await handlers.onShowEvents();
+          return { status: "succeeded", detail: "The event timeline is ready to review." };
+        case "discoverSceneEvidence":
+          if (!input.selectedSceneId) return { status: "blocked", detail: "Select a location before searching for evidence." };
+          return await handlers.actionAdapter.discoverFirstSceneEvidence(input.selectedSceneId);
         case "interrogateCharacter":
-          if (!input.selectedCharacter?.id) handlers.onShowInspector("investigation");
-          else await handlers.actionAdapter.runInterrogationTarget(input.selectedCharacter.id, undefined, input.questionText);
-          break;
+          if (!input.selectedCharacter?.id) return { status: "blocked", detail: "Select a character before asking a question." };
+          return await handlers.actionAdapter.runInterrogationTarget(input.selectedCharacter.id, undefined, input.questionText);
         case "challengeTestimony": {
           const evidenceId = selectedEvidenceId || firstEvidenceId;
-          if (!evidenceId) handlers.onShowInspector("investigation");
-          else {
-            handlers.onSelectEvidence(evidenceId);
-            await handlers.actionAdapter.runInterrogationTarget(
-              input.selectedCharacter?.id || "",
-              evidenceId,
-              "Please explain this evidence and whether it changes your earlier statement."
-            );
-          }
-          break;
+          if (!input.selectedCharacter?.id || !evidenceId || !input.discoveredEvidenceIds.includes(evidenceId)) return { status: "blocked", detail: "Select a character and discovered evidence before challenging testimony." };
+          handlers.onSelectEvidence(evidenceId);
+          return await handlers.actionAdapter.runInterrogationTarget(
+            input.selectedCharacter.id,
+            evidenceId,
+            "Please explain this evidence and whether it changes your earlier statement."
+          );
         }
         case "toggleTheoryEvidence":
-          if (selectedEvidenceId) handlers.actionAdapter.toggleTheoryEvidence(selectedEvidenceId);
+          if (!selectedEvidenceId || !input.discoveredEvidenceIds.includes(selectedEvidenceId)) return { status: "blocked", detail: "Select discovered evidence before adding it to the theory." };
+          handlers.actionAdapter.toggleTheoryEvidence(selectedEvidenceId);
           handlers.onShowInspector("investigation");
-          break;
-        case "submitTheory": await handlers.onSubmitTheory(); break;
-        case "showConclusion": handlers.onShowInspector("logic"); break;
-        case "showTheory": handlers.onShowInspector("investigation"); break;
-        case "showInstitution": handlers.onShowInspector("agent"); break;
+          return { status: "succeeded", detail: "The theory evidence selection was updated." };
+        case "submitTheory":
+          return (await handlers.onSubmitTheory()) || { status: "blocked", detail: "The theory has no confirmed submission result. Review the investigation before continuing." };
+        case "showConclusion":
+          handlers.onShowInspector("logic");
+          return { status: "succeeded", detail: "The conclusion review is open." };
+        case "showTheory":
+          handlers.onShowInspector("investigation");
+          return { status: "succeeded", detail: "The theory workspace is open." };
+        case "showInstitution":
+          handlers.onShowInspector("agent");
+          return { status: "succeeded", detail: "The institution review is open." };
         case "showRecovery":
-        case "showInvestigation": handlers.onShowInspector("investigation"); break;
-        default: break;
+        case "showInvestigation":
+          handlers.onShowInspector("investigation");
+          return { status: "succeeded", detail: "The investigation workspace is open." };
+        default: return { status: "blocked", detail: "This action is not available in the current investigation." };
       }
+    } catch {
+      return { status: "failed", detail: "The action could not finish. Please review the investigation and try again." };
     } finally {
+      // This clears presentation execution state; the returned result is the
+      // only authority for success, rejection, cancellation, or failure.
       setTurnState((current) => transitionInvestigationTurn(current, { type: "finish-action", objectiveKey: objectiveKeyRef.current }));
     }
-  }, [actions, firstEvidenceId, input.questionText, input.selectedCharacter?.id, input.selectedSceneId, selectedEvidenceId]);
+  }, [actions, firstEvidenceId, input.discoveredEvidenceIds, input.questionText, input.selectedCharacter?.id, input.selectedSceneId, selectedEvidenceId]);
 
   return { actions, selectedContext, onAction, turnState };
 }

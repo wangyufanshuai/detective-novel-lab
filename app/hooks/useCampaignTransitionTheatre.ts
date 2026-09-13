@@ -21,6 +21,7 @@ type TheatreState = {
 export function useCampaignTransitionTheatre(command: StrategicCommandViewModel, lifecycle?: StrategicActionLifecycle) {
   const [state, setState] = useState<TheatreState>({ phase: "idle", signal: "none", sequence: 0 });
   const previousLifecycleState = useRef(lifecycle?.state);
+  const previousLifecycleSequence = useRef(lifecycle?.sequence);
   const previousFeedbackSignature = useRef(command.presentationFeedback.signature);
   const previousCampaign = useRef(campaignProgressSignature(command));
   const suppressCurrentCompletion = useRef(false);
@@ -28,25 +29,27 @@ export function useCampaignTransitionTheatre(command: StrategicCommandViewModel,
   useEffect(() => {
     const previous = previousLifecycleState.current;
     const current = lifecycle?.state;
+    const sequenceChanged = previousLifecycleSequence.current !== lifecycle?.sequence;
+    previousLifecycleSequence.current = lifecycle?.sequence;
     previousLifecycleState.current = current;
-    if (current === previous) return;
+    if (current === previous && !sequenceChanged) return;
     if (current === "resolving") {
       suppressCurrentCompletion.current = false;
       setState((value) => ({ phase: "action-resolving", signal: "none", sequence: value.sequence + 1 }));
-    } else if (current === "succeeded" || current === "failed-safe") {
+    } else if (current === "succeeded" || current === "rejected" || current === "blocked" || current === "cancelled" || current === "failed-safe") {
       if (suppressCurrentCompletion.current) {
         suppressCurrentCompletion.current = false;
         return;
       }
       setState((value) => ({ ...value, phase: "immediate-result", signal: "none" }));
     }
-  }, [lifecycle?.state]);
+  }, [lifecycle?.state, lifecycle?.sequence]);
 
   useEffect(() => {
     const feedback = command.presentationFeedback;
     const changed = previousFeedbackSignature.current !== feedback.signature;
     previousFeedbackSignature.current = feedback.signature;
-    if (!changed || lifecycle?.state === "resolving" || lifecycle?.state === "selected") return;
+    if (!changed || lifecycle?.action) return;
     if (feedback.state === "resolving") {
       suppressCurrentCompletion.current = false;
       setState((value) => ({ phase: "action-resolving", signal: "none", sequence: value.sequence + 1 }));

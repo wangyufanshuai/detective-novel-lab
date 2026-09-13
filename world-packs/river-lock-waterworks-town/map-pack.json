@@ -1,0 +1,239 @@
+{
+  "manifest": {
+    "id": "river-lock-waterworks-town-map",
+    "name": "River Lock Waterworks Town Map",
+    "version": "1.0.0",
+    "schemaVersion": "town-map-pack.v1",
+    "description": "Water rights, public permits, floodgate custody and river-household claims.",
+    "createdAt": "2026-08-12T00:00:00.000Z",
+    "entrypoint": "map.json"
+  },
+  "locations": [
+    {
+      "id": "river-square",
+      "name": "River Square",
+      "kind": "public",
+      "description": "River Square exposes a public, reviewable surface for water rights, public permits, floodgate custody and river-household claims.",
+      "connectedLocationIds": [
+        "water-court",
+        "water-ledger"
+      ],
+      "x": -1,
+      "y": 0,
+      "localizedName": {
+        "en-US": "River Square",
+        "zh-CN": "河岸广场"
+      }
+    },
+    {
+      "id": "water-ledger",
+      "name": "Waterworks Ledger Room",
+      "kind": "work",
+      "description": "Waterworks Ledger Room exposes a public, reviewable surface for water rights, public permits, floodgate custody and river-household claims.",
+      "connectedLocationIds": [
+        "river-square",
+        "licensing-counter"
+      ],
+      "x": 0,
+      "y": -1,
+      "localizedName": {
+        "en-US": "Waterworks Ledger Room",
+        "zh-CN": "水务账房"
+      }
+    },
+    {
+      "id": "licensing-counter",
+      "name": "River Licensing Counter",
+      "kind": "work",
+      "description": "River Licensing Counter exposes a public, reviewable surface for water rights, public permits, floodgate custody and river-household claims.",
+      "connectedLocationIds": [
+        "water-ledger",
+        "river-lock"
+      ],
+      "x": 1,
+      "y": -1,
+      "localizedName": {
+        "en-US": "River Licensing Counter",
+        "zh-CN": "河道许可柜台"
+      }
+    },
+    {
+      "id": "river-lock",
+      "name": "River Lock",
+      "kind": "restricted",
+      "description": "River Lock exposes a public, reviewable surface for water rights, public permits, floodgate custody and river-household claims.",
+      "connectedLocationIds": [
+        "licensing-counter",
+        "riverside-house"
+      ],
+      "x": 1,
+      "y": 1,
+      "localizedName": {
+        "en-US": "River Lock",
+        "zh-CN": "河闸"
+      }
+    },
+    {
+      "id": "riverside-house",
+      "name": "Riverside House",
+      "kind": "restricted",
+      "description": "Riverside House exposes a public, reviewable surface for water rights, public permits, floodgate custody and river-household claims.",
+      "connectedLocationIds": [
+        "river-lock",
+        "water-court"
+      ],
+      "x": 0,
+      "y": 2,
+      "localizedName": {
+        "en-US": "Riverside House",
+        "zh-CN": "河岸宅邸"
+      }
+    },
+    {
+      "id": "water-court",
+      "name": "Water Court",
+      "kind": "restricted",
+      "description": "Water Court exposes a public, reviewable surface for water rights, public permits, floodgate custody and river-household claims.",
+      "connectedLocationIds": [
+        "riverside-house",
+        "river-square"
+      ],
+      "x": -1,
+      "y": 1,
+      "localizedName": {
+        "en-US": "Water Court",
+        "zh-CN": "水务法庭"
+      }
+    }
+  ],
+  "connections": [
+    {
+      "from": "river-square",
+      "to": "water-ledger",
+      "kind": "street",
+      "travelMinutes": 3
+    },
+    {
+      "from": "water-ledger",
+      "to": "licensing-counter",
+      "kind": "service-route",
+      "travelMinutes": 4
+    },
+    {
+      "from": "licensing-counter",
+      "to": "river-lock",
+      "kind": "street",
+      "travelMinutes": 5
+    },
+    {
+      "from": "river-lock",
+      "to": "riverside-house",
+      "kind": "service-route",
+      "travelMinutes": 6
+    },
+    {
+      "from": "riverside-house",
+      "to": "water-court",
+      "kind": "street",
+      "travelMinutes": 7
+    },
+    {
+      "from": "water-court",
+      "to": "river-square",
+      "kind": "service-route",
+      "travelMinutes": 8
+    }
+  ],
+  "interactions": [
+    {
+      "id": "inspect-water-ledger",
+      "locationId": "water-ledger",
+      "kind": "search",
+      "label": "Review Waterworks Ledger Room",
+      "risk": 28,
+      "tags": [
+        "floodgate-covenant",
+        "witness"
+      ]
+    },
+    {
+      "id": "inspect-licensing-counter",
+      "locationId": "licensing-counter",
+      "kind": "question",
+      "label": "Review River Licensing Counter",
+      "risk": 34,
+      "tags": [
+        "floodgate-covenant",
+        "record"
+      ]
+    },
+    {
+      "id": "inspect-river-lock",
+      "locationId": "river-lock",
+      "kind": "work",
+      "label": "Review River Lock",
+      "risk": 40,
+      "tags": [
+        "floodgate-covenant",
+        "witness"
+      ]
+    },
+    {
+      "id": "inspect-riverside-house",
+      "locationId": "riverside-house",
+      "kind": "search",
+      "label": "Review Riverside House",
+      "risk": 46,
+      "tags": [
+        "floodgate-covenant",
+        "record"
+      ]
+    },
+    {
+      "id": "inspect-water-court",
+      "locationId": "water-court",
+      "kind": "question",
+      "label": "Review Water Court",
+      "risk": 52,
+      "tags": [
+        "floodgate-covenant",
+        "witness"
+      ]
+    }
+  ],
+  "spawnPoints": [
+    {
+      "id": "spawn-1",
+      "locationId": "water-ledger",
+      "roleHint": "detective",
+      "weight": 80
+    },
+    {
+      "id": "spawn-2",
+      "locationId": "licensing-counter",
+      "roleHint": "clerk",
+      "weight": 75
+    },
+    {
+      "id": "spawn-3",
+      "locationId": "river-lock",
+      "roleHint": "servant",
+      "weight": 70
+    },
+    {
+      "id": "spawn-4",
+      "locationId": "riverside-house",
+      "roleHint": "lawyer",
+      "weight": 65
+    }
+  ],
+  "assets": {
+    "presentationKey": "floodgate-covenant"
+  },
+  "docs": {
+    "localization": {
+      "en-US": "River Lock Waterworks Town",
+      "zh-CN": "河闸水务小镇"
+    }
+  }
+}

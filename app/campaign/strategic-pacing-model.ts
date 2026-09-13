@@ -5,18 +5,22 @@ import type {
 
 export type StrategicPacingPhase = "brief" | "inspect" | "choose" | "execute" | "resolve" | "advance";
 export type StrategicPacingFocusTarget = "map" | "character" | "institution" | "investigation" | "world-choice" | "result";
-export type StrategicActionLifecycleState = "selected" | "resolving" | "succeeded" | "blocked" | "failed-safe";
-export type StrategicSafeOutcomeState = Extract<StrategicActionLifecycleState, "succeeded" | "blocked" | "failed-safe">;
+export type StrategicActionLifecycleState = "selected" | "resolving" | "succeeded" | "rejected" | "blocked" | "cancelled" | "failed-safe";
+export type StrategicSafeOutcomeState = Exclude<StrategicActionLifecycleState, "selected" | "resolving">;
 
 export type StrategicActionLifecycle = {
   state: StrategicActionLifecycleState;
+  sequence?: number;
   action?: StrategicCommandAction;
   detail?: string;
+  worldChange?: string;
 };
 
 export type StrategicSafeOutcome = {
   signature: string;
   state: StrategicSafeOutcomeState;
+  actionLabel?: string;
+  worldChange?: string;
   immediateResult: string;
   worldConsequence: string;
   nextObjective: string;
@@ -116,8 +120,8 @@ function focusForAction(command: StrategicCommandViewModel, action?: StrategicCo
 }
 
 function derivePhase(command: StrategicCommandViewModel, lifecycle: StrategicActionLifecycle | undefined, primaryAction: StrategicCommandAction | undefined): StrategicPacingPhase {
+  if (lifecycle && isTerminalActionState(lifecycle.state)) return "resolve";
   if (lifecycle?.state === "resolving" || command.presentationFeedback.state === "resolving") return "execute";
-  if (lifecycle?.state === "succeeded" || lifecycle?.state === "blocked" || lifecycle?.state === "failed-safe") return "resolve";
   if (command.presentationFeedback.state === "updated" || command.presentationFeedback.state === "completed" || command.presentationFeedback.state === "blocked") return "resolve";
   if (lifecycle?.state === "selected") return "execute";
   if (primaryAction?.kind === "advance-town" && command.advanceState.state === "ready") return "advance";
@@ -177,7 +181,8 @@ export function appendRecentSafeOutcome(history: readonly StrategicSafeOutcome[]
 }
 
 export function deriveCurrentSafeOutcome(command: StrategicCommandViewModel, lifecycle?: StrategicActionLifecycle): StrategicSafeOutcome | undefined {
-  const state: StrategicSafeOutcomeState | undefined = lifecycle?.state === "succeeded" || lifecycle?.state === "blocked" || lifecycle?.state === "failed-safe"
+  if (lifecycle?.state === "selected" || lifecycle?.state === "resolving") return undefined;
+  const state: StrategicSafeOutcomeState | undefined = lifecycle && isTerminalActionState(lifecycle.state)
     ? lifecycle.state
     : command.presentationFeedback.state === "blocked"
       ? "blocked"
@@ -187,16 +192,26 @@ export function deriveCurrentSafeOutcome(command: StrategicCommandViewModel, lif
   if (!state) return undefined;
   const focusTarget = focusForAction(command, lifecycle?.action);
   const immediateResult = lifecycle?.detail || command.outcomeFeedback.immediate.detail;
-  const worldConsequence = command.outcomeFeedback.world.detail;
+  const actionLabel = lifecycle?.action?.label || command.outcomeFeedback.immediate.label;
+  const worldChange = lifecycle?.worldChange;
+  const worldConsequence = worldChange ?? (state === "succeeded" ? command.outcomeFeedback.world.detail : "No world change has been confirmed for this action.");
   const nextObjective = command.outcomeFeedback.next.detail;
   return {
-    signature: stableSafeSignature([state, immediateResult, worldConsequence, nextObjective, focusTarget]),
+    signature: lifecycle?.action
+      ? stableSafeSignature([String(lifecycle.sequence || 0), state, actionLabel, immediateResult])
+      : stableSafeSignature([state, actionLabel, immediateResult, worldConsequence, nextObjective, focusTarget]),
     state,
+    actionLabel,
+    ...(worldChange !== undefined ? { worldChange } : {}),
     immediateResult,
     worldConsequence,
     nextObjective,
     focusTarget
   };
+}
+
+export function isTerminalActionState(state: StrategicActionLifecycleState): state is StrategicSafeOutcomeState {
+  return state !== "selected" && state !== "resolving";
 }
 
 /**

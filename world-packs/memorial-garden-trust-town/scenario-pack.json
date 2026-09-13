@@ -1,0 +1,315 @@
+{
+  "manifest": {
+    "id": "memorial-garden-trust-town",
+    "name": "Memorial Garden Trust Town",
+    "version": "1.0.0",
+    "schemaVersion": "scenario-pack.v1",
+    "description": "Burial records, inherited access, memorial custody and caretaker testimony.",
+    "createdAt": "2026-08-12T00:00:00.000Z",
+    "entrypoint": "scenario.json"
+  },
+  "world": {
+    "seed": "memorial-garden-trust-town",
+    "mode": "advanced",
+    "timelineHours": 96,
+    "locations": [
+      {
+        "id": "memorial-square",
+        "name": "Memorial Square",
+        "kind": "public",
+        "description": "Memorial Square exposes a public, reviewable surface for burial records, inherited access, memorial custody and caretaker testimony.",
+        "connectedLocationIds": [
+          "memorial-chapel",
+          "solicitor-office"
+        ],
+        "x": -1,
+        "y": 0,
+        "localizedName": {
+          "en-US": "Memorial Square",
+          "zh-CN": "纪念广场"
+        }
+      },
+      {
+        "id": "solicitor-office",
+        "name": "Trust Solicitor Office",
+        "kind": "work",
+        "description": "Trust Solicitor Office exposes a public, reviewable surface for burial records, inherited access, memorial custody and caretaker testimony.",
+        "connectedLocationIds": [
+          "memorial-square",
+          "memorial-garden"
+        ],
+        "x": 0,
+        "y": -1,
+        "localizedName": {
+          "en-US": "Trust Solicitor Office",
+          "zh-CN": "信托律师办公室"
+        }
+      },
+      {
+        "id": "memorial-garden",
+        "name": "Memorial Garden",
+        "kind": "work",
+        "description": "Memorial Garden exposes a public, reviewable surface for burial records, inherited access, memorial custody and caretaker testimony.",
+        "connectedLocationIds": [
+          "solicitor-office",
+          "memorial-archive"
+        ],
+        "x": 1,
+        "y": -1,
+        "localizedName": {
+          "en-US": "Memorial Garden",
+          "zh-CN": "纪念园"
+        }
+      },
+      {
+        "id": "memorial-archive",
+        "name": "Memorial Archive",
+        "kind": "restricted",
+        "description": "Memorial Archive exposes a public, reviewable surface for burial records, inherited access, memorial custody and caretaker testimony.",
+        "connectedLocationIds": [
+          "memorial-garden",
+          "caretaker-lodge"
+        ],
+        "x": 1,
+        "y": 1,
+        "localizedName": {
+          "en-US": "Memorial Archive",
+          "zh-CN": "纪念园档案室"
+        }
+      },
+      {
+        "id": "caretaker-lodge",
+        "name": "Caretaker Lodge",
+        "kind": "restricted",
+        "description": "Caretaker Lodge exposes a public, reviewable surface for burial records, inherited access, memorial custody and caretaker testimony.",
+        "connectedLocationIds": [
+          "memorial-archive",
+          "memorial-chapel"
+        ],
+        "x": 0,
+        "y": 2,
+        "localizedName": {
+          "en-US": "Caretaker Lodge",
+          "zh-CN": "看护人小屋"
+        }
+      },
+      {
+        "id": "memorial-chapel",
+        "name": "Memorial Chapel",
+        "kind": "restricted",
+        "description": "Memorial Chapel exposes a public, reviewable surface for burial records, inherited access, memorial custody and caretaker testimony.",
+        "connectedLocationIds": [
+          "caretaker-lodge",
+          "memorial-square"
+        ],
+        "x": -1,
+        "y": 1,
+        "localizedName": {
+          "en-US": "Memorial Chapel",
+          "zh-CN": "纪念礼堂"
+        }
+      }
+    ],
+    "npcs": [
+      {
+        "id": "npc-mem-1",
+        "name": "Mara Ash",
+        "role": "detective",
+        "homeLocationId": "solicitor-office",
+        "schedule": {
+          "08:00": "solicitor-office",
+          "12:00": "memorial-square",
+          "18:00": "memorial-garden"
+        },
+        "relationships": {},
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "detective",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-mem-2",
+        "name": "Elias Venn",
+        "role": "lawyer",
+        "homeLocationId": "memorial-garden",
+        "schedule": {
+          "08:00": "memorial-garden",
+          "12:00": "memorial-square",
+          "18:00": "memorial-archive"
+        },
+        "relationships": {
+          "npc-mem-1": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "lawyer",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-mem-3",
+        "name": "Nell Moss",
+        "role": "servant",
+        "homeLocationId": "memorial-archive",
+        "schedule": {
+          "08:00": "memorial-archive",
+          "12:00": "memorial-square",
+          "18:00": "caretaker-lodge"
+        },
+        "relationships": {
+          "npc-mem-2": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "servant",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-mem-4",
+        "name": "Silas Reed",
+        "role": "clerk",
+        "homeLocationId": "caretaker-lodge",
+        "schedule": {
+          "08:00": "caretaker-lodge",
+          "12:00": "memorial-square",
+          "18:00": "memorial-chapel"
+        },
+        "relationships": {
+          "npc-mem-3": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "clerk",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-mem-5",
+        "name": "Iris Vale",
+        "role": "reporter",
+        "homeLocationId": "memorial-chapel",
+        "schedule": {
+          "08:00": "memorial-chapel",
+          "12:00": "memorial-square",
+          "18:00": "memorial-square"
+        },
+        "relationships": {
+          "npc-mem-4": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "reporter",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      },
+      {
+        "id": "npc-mem-6",
+        "name": "Tomas Bell",
+        "role": "informant",
+        "homeLocationId": "memorial-square",
+        "schedule": {
+          "08:00": "memorial-square",
+          "12:00": "memorial-square",
+          "18:00": "solicitor-office"
+        },
+        "relationships": {
+          "npc-mem-5": "public work contact"
+        },
+        "secret": "Keeps a private concern separate from certified evidence.",
+        "motiveSeed": "protect reviewable work",
+        "skills": [
+          "informant",
+          "records"
+        ],
+        "memoryEventIds": [],
+        "liePolicy": "answers from public records",
+        "alive": true
+      }
+    ],
+    "institutions": [],
+    "professions": []
+  },
+  "rules": {
+    "enabledModules": [
+      "institutions",
+      "professions",
+      "long-actions",
+      "public-opinion",
+      "evidence-contamination",
+      "case-aftermath"
+    ],
+    "phaseConfig": {
+      "snapshotEveryTicks": 1,
+      "maxRunningLongActions": 8
+    },
+    "thresholds": {
+      "maxEvidenceContamination": 74,
+      "maxPublicOpinionHeat": 88,
+      "minInstitutionTrust": 34
+    },
+    "longActionKinds": [
+      "investigate-scene",
+      "verify-alibi",
+      "audit-ledger",
+      "secure-evidence-locker",
+      "review-court-record",
+      "cultivate-informant"
+    ]
+  },
+  "scenario": {
+    "id": "memorial-garden-trust-town",
+    "name": "Memorial Garden Trust Town",
+    "seed": "memorial-garden-trust-town",
+    "worldOptions": {
+      "mode": "advanced",
+      "npcCount": 6,
+      "timelineHours": 96
+    },
+    "baselineSteps": 8,
+    "branches": [],
+    "passCriteria": {
+      "minValidCandidates": 0,
+      "minEventGrowth": 1,
+      "minMemoryGrowth": 1,
+      "maxBlockedCandidates": 8
+    }
+  },
+  "expectations": {
+    "minValidCandidates": 1,
+    "minEvidenceCoverage": 80,
+    "maxEvidenceContamination": 74,
+    "maxPublicOpinionHeat": 88,
+    "benchmarkPreset": "quick-10"
+  },
+  "assets": {
+    "presentationKey": "memorial-trust"
+  },
+  "docs": {
+    "localization": {
+      "en-US": "Memorial Garden Trust Town",
+      "zh-CN": "纪念园信托小镇"
+    }
+  }
+}

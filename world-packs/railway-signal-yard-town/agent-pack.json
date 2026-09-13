@@ -1,0 +1,202 @@
+{
+  "manifest": {
+    "id": "railway-signal-yard-town-agents",
+    "name": "Railway Signal Yard Town Agents",
+    "version": "1.0.0",
+    "schemaVersion": "agent-pack.v1",
+    "createdAt": "2026-08-12T00:00:00.000Z",
+    "description": "Railway permits, signal procedure, porter testimony and timetable custody."
+  },
+  "agents": [
+    {
+      "id": "npc-rai-1",
+      "name": "Mara Bell",
+      "role": "detective",
+      "homeLocationId": "permit-desk",
+      "schedule": {
+        "08:00": "permit-desk",
+        "12:00": "station-square",
+        "18:00": "rail-archive"
+      },
+      "relationships": {},
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "detective",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "detective",
+      "institutionId": "inst-police",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-rai-2",
+      "name": "Silas Reed",
+      "role": "clerk",
+      "homeLocationId": "rail-archive",
+      "schedule": {
+        "08:00": "rail-archive",
+        "12:00": "station-square",
+        "18:00": "signal-cabin"
+      },
+      "relationships": {
+        "npc-rai-1": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "clerk",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "clerk",
+      "institutionId": "inst-civic",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-rai-3",
+      "name": "Nell Porter",
+      "role": "dockworker",
+      "homeLocationId": "signal-cabin",
+      "schedule": {
+        "08:00": "signal-cabin",
+        "12:00": "station-square",
+        "18:00": "freight-platform"
+      },
+      "relationships": {
+        "npc-rai-2": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "dockworker",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "dockworker",
+      "institutionId": "inst-dock-union",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-rai-4",
+      "name": "Iris Vale",
+      "role": "reporter",
+      "homeLocationId": "freight-platform",
+      "schedule": {
+        "08:00": "freight-platform",
+        "12:00": "station-square",
+        "18:00": "porter-tunnel"
+      },
+      "relationships": {
+        "npc-rai-3": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "reporter",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "reporter",
+      "institutionId": "inst-media",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-rai-5",
+      "name": "Tomas Grey",
+      "role": "officer",
+      "homeLocationId": "porter-tunnel",
+      "schedule": {
+        "08:00": "porter-tunnel",
+        "12:00": "station-square",
+        "18:00": "station-square"
+      },
+      "relationships": {
+        "npc-rai-4": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "officer",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "officer",
+      "institutionId": "inst-police",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    },
+    {
+      "id": "npc-rai-6",
+      "name": "Elian Cross",
+      "role": "informant",
+      "homeLocationId": "station-square",
+      "schedule": {
+        "08:00": "station-square",
+        "12:00": "station-square",
+        "18:00": "permit-desk"
+      },
+      "relationships": {
+        "npc-rai-5": "public work contact"
+      },
+      "secret": "Keeps a private concern separate from certified evidence.",
+      "motiveSeed": "protect reviewable work",
+      "skills": [
+        "informant",
+        "records"
+      ],
+      "memoryEventIds": [],
+      "liePolicy": "answers from public records",
+      "alive": true,
+      "profession": "informant",
+      "institutionId": "inst-media",
+      "publicMotive": "preserve a reviewable public account",
+      "visibleClues": [
+        "tracks one public schedule and one controlled route"
+      ],
+      "resourceNeeds": {
+        "evidence_integrity": 3
+      }
+    }
+  ]
+}
