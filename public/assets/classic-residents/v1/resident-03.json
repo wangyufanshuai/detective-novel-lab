@@ -1,0 +1,30 @@
+{
+  "schema": "classic-resident-runtime.v1",
+  "status": "art-candidate",
+  "actorId": "resident-03",
+  "id": "rb-xu-zhiwei",
+  "name": "许知微",
+  "role": "旧书修复师",
+  "sourceSha256": "5a8f219e2b01ef186a7b07326ee8f7f29c84b918052ca422ec5eddfedb9258ad",
+  "asset": {
+    "url": "/assets/classic-residents/v1/resident-03.glb",
+    "sha256": "2c3ac07133eb4dc561eac2bf470a8e61a83253249c9a27e57c7f8423f7e48333",
+    "bytes": 359756
+  },
+  "animation": {
+    "idle": "Idle",
+    "walk": "Walk",
+    "strideMeters": 0.8950055694580078,
+    "walkDurationSeconds": 0.8
+  },
+  "playerSpeed": 1.118756936736959,
+  "triangles": 31140,
+  "materialCount": 11,
+  "bones": 20,
+  "units": "metres",
+  "forwardAxis": "glTF +Z",
+  "worldBound": false,
+  "humanArtApproved": false,
+  "license": "CC0-1.0 anatomy; project-authored clothing, hair, props and animation",
+  "licenseNoticeUrl": "/assets/classic-residents/v1/LICENSE.ASSETS.md"
+}

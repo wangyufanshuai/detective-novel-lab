@@ -1,0 +1,899 @@
+{
+  "schema": "classic-art-scene.v1",
+  "floor": 0.18,
+  "bounds": [
+    -21.3,
+    12.3,
+    -8.5,
+    6.6
+  ],
+  "player": {
+    "spawn": [
+      4.2,
+      -3.75
+    ],
+    "height": 1.79,
+    "radius": 0.26,
+    "speed": 1.55
+  },
+  "colliders": [
+    {
+      "id": "open-door-leaf",
+      "center": [
+        2.945,
+        0.68
+      ],
+      "size": [
+        0.12,
+        1.28
+      ],
+      "angle": 0
+    },
+    {
+      "id": "inn-left",
+      "center": [
+        2,
+        3.4
+      ],
+      "size": [
+        0.34,
+        6.8
+      ],
+      "angle": 0
+    },
+    {
+      "id": "inn-back",
+      "center": [
+        6.4,
+        6.8
+      ],
+      "size": [
+        8.8,
+        0.34
+      ],
+      "angle": 0
+    },
+    {
+      "id": "inn-right",
+      "center": [
+        10.8,
+        3.4
+      ],
+      "size": [
+        0.34,
+        6.8
+      ],
+      "angle": 0
+    },
+    {
+      "id": "inn-front-left",
+      "center": [
+        2.45,
+        0
+      ],
+      "size": [
+        0.9,
+        0.34
+      ],
+      "angle": 0
+    },
+    {
+      "id": "inn-front-right",
+      "center": [
+        7.6,
+        0
+      ],
+      "size": [
+        6.4,
+        0.34
+      ],
+      "angle": 0
+    },
+    {
+      "id": "fireplace",
+      "center": [
+        8.05,
+        6.16
+      ],
+      "size": [
+        2.3,
+        1.3
+      ],
+      "angle": 0
+    },
+    {
+      "id": "chair-west",
+      "center": [
+        6.25,
+        3.22
+      ],
+      "size": [
+        1.15,
+        1.05
+      ],
+      "angle": 1.6322572826776622
+    },
+    {
+      "id": "chair-east",
+      "center": [
+        9.15,
+        3.65
+      ],
+      "size": [
+        1.15,
+        1.05
+      ],
+      "angle": -1.3554386270971586
+    },
+    {
+      "id": "tea-table",
+      "center": [
+        7.66,
+        3.34
+      ],
+      "size": [
+        1.16,
+        1.16
+      ],
+      "angle": 0
+    },
+    {
+      "id": "writing-desk",
+      "center": [
+        5.2,
+        5.89
+      ],
+      "size": [
+        1.82,
+        0.85
+      ],
+      "angle": 0
+    },
+    {
+      "id": "side-console",
+      "center": [
+        2.77,
+        3.97
+      ],
+      "size": [
+        0.68,
+        1.45
+      ],
+      "angle": 0
+    },
+    {
+      "id": "valise",
+      "center": [
+        9.98,
+        5.65
+      ],
+      "size": [
+        0.58,
+        0.44
+      ],
+      "angle": 0
+    },
+    {
+      "id": "street-lamp",
+      "center": [
+        11.65,
+        -2.04
+      ],
+      "size": [
+        0.44,
+        0.44
+      ],
+      "angle": 0
+    },
+    {
+      "id": "bookshop-bench",
+      "center": [
+        -5.09,
+        -0.94
+      ],
+      "size": [
+        1.82,
+        0.7
+      ],
+      "angle": 0
+    },
+    {
+      "id": "outside-case",
+      "center": [
+        4.95,
+        -0.64
+      ],
+      "size": [
+        0.67,
+        0.44
+      ],
+      "angle": 0
+    },
+    {
+      "id": "planter10.26",
+      "center": [
+        10.26,
+        -0.65
+      ],
+      "size": [
+        0.72,
+        0.72
+      ],
+      "angle": 0
+    },
+    {
+      "id": "planter-6.65",
+      "center": [
+        -6.65,
+        -0.54
+      ],
+      "size": [
+        0.72,
+        0.72
+      ],
+      "angle": 0
+    },
+    {
+      "id": "reading-lamp",
+      "center": [
+        9.99,
+        4.76
+      ],
+      "size": [
+        0.55,
+        0.55
+      ],
+      "angle": 0
+    },
+    {
+      "id": "window-drapery",
+      "center": [
+        7.57,
+        0.3
+      ],
+      "size": [
+        6.1,
+        0.56
+      ],
+      "angle": 0
+    },
+    {
+      "id": "shop-side--6.43",
+      "center": [
+        -6.43,
+        3.15
+      ],
+      "size": [
+        0.44,
+        5.7
+      ],
+      "angle": 0
+    },
+    {
+      "id": "shop-side-1.23",
+      "center": [
+        1.23,
+        3.15
+      ],
+      "size": [
+        0.44,
+        5.7
+      ],
+      "angle": 0
+    },
+    {
+      "id": "shop-rear",
+      "center": [
+        -2.6,
+        6
+      ],
+      "size": [
+        7.65,
+        0.49
+      ],
+      "angle": 0
+    },
+    {
+      "id": "shop-front-left",
+      "center": [
+        -3.8975,
+        0.3
+      ],
+      "size": [
+        5.055,
+        0.32
+      ],
+      "angle": 0
+    },
+    {
+      "id": "shop-front-right",
+      "center": [
+        0.5775,
+        0.3
+      ],
+      "size": [
+        1.295,
+        0.32
+      ],
+      "angle": 0
+    },
+    {
+      "id": "shop-window-display",
+      "center": [
+        -3.9,
+        0.765
+      ],
+      "size": [
+        4.1,
+        1.07
+      ],
+      "angle": 0
+    },
+    {
+      "id": "shop-open-leaf",
+      "center": [
+        -0.125,
+        1.045
+      ],
+      "size": [
+        0.11,
+        1.18
+      ],
+      "angle": 0
+    },
+    {
+      "id": "shop-case-travel",
+      "center": [
+        -5.24,
+        5.6
+      ],
+      "size": [
+        1.42,
+        0.5900000000000001
+      ],
+      "angle": 0
+    },
+    {
+      "id": "shop-case-history",
+      "center": [
+        -3.86,
+        5.6
+      ],
+      "size": [
+        1.42,
+        0.5900000000000001
+      ],
+      "angle": 0
+    },
+    {
+      "id": "shop-case-fiction",
+      "center": [
+        -2.48,
+        5.6
+      ],
+      "size": [
+        1.42,
+        0.5900000000000001
+      ],
+      "angle": 0
+    },
+    {
+      "id": "shop-case-maps",
+      "center": [
+        -6.03,
+        2.55
+      ],
+      "size": [
+        1.7799999999999998,
+        0.5900000000000001
+      ],
+      "angle": 1.5707963267948966
+    },
+    {
+      "id": "shop-case-essays",
+      "center": [
+        -6.03,
+        4.4
+      ],
+      "size": [
+        1.7799999999999998,
+        0.5900000000000001
+      ],
+      "angle": 1.5707963267948966
+    },
+    {
+      "id": "shop-reading-table",
+      "center": [
+        -3.5,
+        2.8
+      ],
+      "size": [
+        1.34,
+        1.34
+      ],
+      "angle": 0
+    },
+    {
+      "id": "shop-reading-chair-north",
+      "center": [
+        -3.5,
+        3.98
+      ],
+      "size": [
+        0.6,
+        0.66
+      ],
+      "angle": 0
+    },
+    {
+      "id": "shop-reading-chair-west",
+      "center": [
+        -4.7,
+        2.55
+      ],
+      "size": [
+        0.6,
+        0.66
+      ],
+      "angle": 1.5707963267948966
+    },
+    {
+      "id": "shop-counter",
+      "center": [
+        -0.25,
+        3.5300000000000002
+      ],
+      "size": [
+        0.86,
+        2.25
+      ],
+      "angle": 0
+    },
+    {
+      "id": "shop-parcel-shelf",
+      "center": [
+        0.8139999475479127,
+        1.96
+      ],
+      "size": [
+        0.74,
+        0.51
+      ],
+      "angle": -1.5707963267948966
+    },
+    {
+      "id": "station-track-boundary",
+      "center": [
+        -14.25,
+        8.13
+      ],
+      "size": [
+        14.8,
+        2.4
+      ],
+      "angle": 0
+    },
+    {
+      "id": "station-door-leaf--1",
+      "center": [
+        -9.825000000000001,
+        0.86
+      ],
+      "size": [
+        0.2,
+        0.98
+      ],
+      "angle": 0
+    },
+    {
+      "id": "station-door-leaf-1",
+      "center": [
+        -8.275,
+        0.86
+      ],
+      "size": [
+        0.2,
+        0.98
+      ],
+      "angle": 0
+    },
+    {
+      "id": "station-front-left",
+      "center": [
+        -13.940000000000001,
+        0.3
+      ],
+      "size": [
+        8.18,
+        0.36
+      ],
+      "angle": 0
+    },
+    {
+      "id": "station-front-right",
+      "center": [
+        -7.76,
+        0.3
+      ],
+      "size": [
+        0.98,
+        0.36
+      ],
+      "angle": 0
+    },
+    {
+      "id": "station-side--17.85",
+      "center": [
+        -17.85,
+        3.32
+      ],
+      "size": [
+        0.34,
+        6.4
+      ],
+      "angle": 0
+    },
+    {
+      "id": "station-side--7.45",
+      "center": [
+        -7.45,
+        3.32
+      ],
+      "size": [
+        0.34,
+        6.4
+      ],
+      "angle": 0
+    },
+    {
+      "id": "station-rear",
+      "center": [
+        -12.65,
+        6.34
+      ],
+      "size": [
+        10.76,
+        0.34
+      ],
+      "angle": 0
+    },
+    {
+      "id": "station-bench-front",
+      "center": [
+        -15.45,
+        1.62
+      ],
+      "size": [
+        3.53,
+        0.78
+      ],
+      "angle": 3.141592653589793
+    },
+    {
+      "id": "station-bench-rear",
+      "center": [
+        -15.45,
+        4.12
+      ],
+      "size": [
+        3.53,
+        0.78
+      ],
+      "angle": 0
+    },
+    {
+      "id": "station-ticket-counter",
+      "center": [
+        -10.44,
+        4.29
+      ],
+      "size": [
+        4.359999999999999,
+        0.8
+      ],
+      "angle": 0
+    },
+    {
+      "id": "station-luggage-rack",
+      "center": [
+        -15.4,
+        5.85
+      ],
+      "size": [
+        3.43,
+        0.64
+      ],
+      "angle": 0
+    },
+    {
+      "id": "station-ticket-desk",
+      "center": [
+        -8.35,
+        5.65
+      ],
+      "size": [
+        0.86,
+        0.8200000000000001
+      ],
+      "angle": 0
+    },
+    {
+      "id": "station-luggage-trolley",
+      "center": [
+        -12.2,
+        1.26
+      ],
+      "size": [
+        0.83,
+        1.2
+      ],
+      "angle": 0
+    }
+  ],
+  "interior": {
+    "bounds": [
+      2.18,
+      10.62,
+      0.18,
+      6.62
+    ],
+    "door": [
+      3.65,
+      0
+    ],
+    "cutawayLayers": [
+      "inn_upper",
+      "inn_front",
+      "ceiling",
+      "inn_side_cutaway"
+    ]
+  },
+  "interactions": [
+    {
+      "id": "arrival",
+      "label": "进入会客室",
+      "position": [
+        3.65,
+        -0.48
+      ],
+      "description": "门洞真实连通街道和旅馆；穿过门廊即可入内。",
+      "roomId": null
+    },
+    {
+      "id": "letters",
+      "label": "观察书桌",
+      "position": [
+        4.78,
+        5.16
+      ],
+      "description": "桌面的信纸、墨水与抽屉体现旅馆的书信往来。本样板尚未将它们绑定为案件线索。",
+      "roomId": "inn"
+    },
+    {
+      "id": "tea",
+      "label": "观察茶桌",
+      "position": [
+        7.66,
+        2.4
+      ],
+      "description": "两张皮椅围着茶桌，背后的壁灯与阅读灯形成会客照明。列车时刻牌属于本次美术陈设。",
+      "roomId": "inn"
+    },
+    {
+      "id": "books",
+      "label": "查看书店橱窗",
+      "position": [
+        -3.7,
+        -0.6
+      ],
+      "description": "真实橱窗后连接可进入的旧书店。沿街走到右侧门口，可以入店查看藏书与翻书桌。",
+      "roomId": null
+    },
+    {
+      "id": "shop-arrival",
+      "label": "进入旧书店",
+      "position": [
+        -0.72,
+        -0.2
+      ],
+      "roomId": null,
+      "description": "真实门洞连通街道与书店。沿入口通道走进去，可以查看书架、翻书桌和柜台。"
+    },
+    {
+      "id": "shop-reading",
+      "label": "翻阅地图册",
+      "position": [
+        -2.3,
+        2.8
+      ],
+      "roomId": "bookshop",
+      "description": "摊开的地图册放在翻书桌上。这里的路线与书籍属于当前布景，还没有被写成正式案件线索。"
+    },
+    {
+      "id": "shop-counter",
+      "label": "查看订书簿",
+      "position": [
+        -1.12,
+        3.3
+      ],
+      "roomId": "bookshop",
+      "description": "柜台上放着订书簿、书写用具与黄铜铃；柜台后留有店员通道。本轮先验证空间与观察操作。"
+    },
+    {
+      "id": "shop-shelves",
+      "label": "浏览旧藏书架",
+      "position": [
+        -3.9,
+        4.83
+      ],
+      "roomId": "bookshop",
+      "description": "旧藏分成旅行、历史和小说几类，每一层都有独立装订与书脊。书名分类是美术陈设，不会揭露隐藏案件信息。"
+    },
+    {
+      "id": "station-arrival",
+      "label": "进入河湾车站",
+      "position": [
+        -9.05,
+        -0.2
+      ],
+      "roomId": null,
+      "description": "拱门后是候车长椅与售票处。沿敞开的双扇门走进去，可以查看候车区、票务柜台和行李架。"
+    },
+    {
+      "id": "station-waiting",
+      "label": "观察候车区",
+      "position": [
+        -15.45,
+        2.86
+      ],
+      "roomId": "station",
+      "description": "两排木长椅相向布置，背墙上挂着车站时钟。钟面属于当前场景陈设，尚未与世界时间和列车事件同步。"
+    },
+    {
+      "id": "station-tickets",
+      "label": "查看售票窗口",
+      "position": [
+        -10.44,
+        3.75
+      ],
+      "roomId": "station",
+      "description": "黄铜格栅留有两个递送窗口，台上摆着票盒与收据。陈设尚未构成案件证据；柜台西侧留有通往工作人员区域的通道。"
+    },
+    {
+      "id": "station-luggage",
+      "label": "查看行李架",
+      "position": [
+        -15.35,
+        5.04
+      ],
+      "roomId": "station",
+      "description": "皮箱放在有支脚的木条行李架上。此处先验证观察和行走，行李的归属与运送记录将在世界规则接入后产生。"
+    }
+  ],
+  "actorPivots": {
+    "body": [
+      0,
+      0,
+      0
+    ],
+    "leg_left": [
+      -0.115,
+      0,
+      0.9
+    ],
+    "leg_right": [
+      0.115,
+      0,
+      0.9
+    ],
+    "arm_left": [
+      -0.287,
+      0,
+      1.45
+    ],
+    "arm_right": [
+      0.287,
+      0,
+      1.45
+    ]
+  },
+  "binding": "three-room-art-navigation-only",
+  "interiors": [
+    {
+      "bounds": [
+        2.18,
+        10.62,
+        0.18,
+        6.62
+      ],
+      "door": [
+        3.65,
+        0
+      ],
+      "cutawayLayers": [
+        "inn_upper",
+        "inn_front",
+        "ceiling",
+        "inn_side_cutaway"
+      ],
+      "id": "inn",
+      "label": "铁路旅馆会客室"
+    },
+    {
+      "id": "bookshop",
+      "label": "格雷福德旧书店",
+      "bounds": [
+        -6.28,
+        1.08,
+        0.46,
+        5.83
+      ],
+      "door": [
+        -0.72,
+        0.3
+      ],
+      "cutawayLayers": [
+        "bookshop_upper",
+        "bookshop_front",
+        "bookshop_side_cutaway",
+        "bookshop_ceiling",
+        "inn_upper",
+        "inn_front",
+        "inn_side_cutaway",
+        "ceiling",
+        "inn_neighbor_cutaway"
+      ]
+    },
+    {
+      "id": "station",
+      "label": "河湾车站候车室",
+      "bounds": [
+        -17.68,
+        -7.62,
+        0.48,
+        6.17
+      ],
+      "door": [
+        -9.05,
+        0.3
+      ],
+      "cutawayLayers": [
+        "station_front",
+        "station_side_cutaway",
+        "station_ceiling",
+        "station_roof",
+        "shop_neighbor_cutaway",
+        "shop_neighbor_furniture",
+        "bookshop_upper",
+        "bookshop_front",
+        "bookshop_side_cutaway",
+        "bookshop_ceiling",
+        "inn_upper",
+        "inn_front",
+        "inn_side_cutaway",
+        "ceiling",
+        "inn_neighbor_cutaway"
+      ]
+    }
+  ],
+  "camera": {
+    "overview": {
+      "sourceCoordinates": true,
+      "target": [
+        -4.5,
+        0.6,
+        2.8
+      ],
+      "offset": [
+        19,
+        -29,
+        17.4
+      ],
+      "verticalSize": 24.6,
+      "horizontalSize": 47
+    }
+  },
+  "assetSha256": "54a288968cf7be1364f3c92cec396e7cf0eca1ecb044e3bffbcd0ec54180b27b",
+  "sourceSha256": "e21bd1729226abaaaf3099d93a3d3da74025af431708bfbc09c5908c894fba99",
+  "status": "unexported-layout-candidate"
+}

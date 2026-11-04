@@ -1,0 +1,150 @@
+{
+  "schema": "classic-resident-runtime.v1",
+  "status": "art-motion-candidate",
+  "actorId": "resident-08",
+  "id": "rb-lin-ali",
+  "name": "林阿梨",
+  "role": "旅馆老板",
+  "sourceSha256": "dc357e841504b3f8477d4d38d965293cfc1a020d9abc2e7c38c058ef5a770673",
+  "asset": {
+    "url": "/assets/classic-motion/v2-step15/resident-08.glb",
+    "sha256": "e3c14d417ad17c42c7fe2bdbfe5d653e5426aef08c58fab1b6198935431f0b7e",
+    "bytes": 1222772
+  },
+  "animation": {
+    "idle": "Idle",
+    "walk": "Walk",
+    "strideMeters": 0.8683684730529785,
+    "walkDurationSeconds": 0.8
+  },
+  "playerSpeed": 1.0854605993340731,
+  "units": "metres",
+  "forwardAxis": "glTF +Z",
+  "worldBound": false,
+  "humanArtApproved": false,
+  "license": "CC0-1.0 anatomy, skin and fitted features; project-authored clothing, bun hair and animation",
+  "licenseNoticeUrl": "/assets/classic-occupations/v2/LICENSE.ASSETS.md",
+  "construction": "Retained authored anatomy, clothing, hand and work actions; independent fitted garment morphs and explicit retreat, turn and approach clips. See source-bound step-15 reviews.",
+  "handArticulation": {
+    "jointNames": [
+      "finger_L_1_1",
+      "finger_L_1_2",
+      "finger_L_1_3",
+      "finger_L_2_1",
+      "finger_L_2_2",
+      "finger_L_2_3",
+      "finger_L_3_1",
+      "finger_L_3_2",
+      "finger_L_3_3",
+      "finger_L_4_1",
+      "finger_L_4_2",
+      "finger_L_4_3",
+      "finger_L_5_1",
+      "finger_L_5_2",
+      "finger_L_5_3",
+      "finger_R_1_1",
+      "finger_R_1_2",
+      "finger_R_1_3",
+      "finger_R_2_1",
+      "finger_R_2_2",
+      "finger_R_2_3",
+      "finger_R_3_1",
+      "finger_R_3_2",
+      "finger_R_3_3",
+      "finger_R_4_1",
+      "finger_R_4_2",
+      "finger_R_4_3",
+      "finger_R_5_1",
+      "finger_R_5_2",
+      "finger_R_5_3"
+    ],
+    "kind": "authored-tripod-writing-grip",
+    "objectGrasping": true
+  },
+  "idleForearmClearanceRadians": {
+    "forearm_L": 0.04
+  },
+  "gazeArticulation": {
+    "jointNames": [
+      "eye_L",
+      "eye_R"
+    ],
+    "headJoint": "head"
+  },
+  "workAction": {
+    "id": "reconcile-guest-register",
+    "label": "核对住客登记",
+    "clip": "ReconcileRegister",
+    "propClip": "WriteRegister_Prop",
+    "propAnchor": "occupation_pen_anchor",
+    "durationSeconds": 10,
+    "workstation": {
+      "url": "/assets/classic-occupations/v2/workstation.glb",
+      "sha256": "9a28fe0f55f1e90d30e66072099ff5f617db13de9e3f2cfa3f50fcd687a18802",
+      "bytes": 6152936
+    },
+    "collider": {
+      "center": [
+        0.0,
+        -0.36182020604610443
+      ],
+      "size": [
+        0.7478823065757751,
+        0.4703662693500519
+      ]
+    }
+  },
+  "motionPreview": {
+    "rootNode": "movement_actor",
+    "clips": [
+      "BackAway",
+      "TurnLeft",
+      "ApproachWork"
+    ],
+    "maximumGroundingLiftMeters": 0.012
+  },
+  "clips": [
+    {
+      "clip": "Idle",
+      "seconds": 3.0,
+      "channels": 157,
+      "animatedWeightChannels": 1,
+      "individualExportSha256": "5a87ded057933a865a767cea71ead002ce141969e91b8cd64d5c09c92d3f3095"
+    },
+    {
+      "clip": "Walk",
+      "seconds": 0.8,
+      "channels": 157,
+      "animatedWeightChannels": 1,
+      "individualExportSha256": "5a4eee898dd88ba9578099c6006c04892599dc3ff8a861c14e903fc2e81805f5"
+    },
+    {
+      "clip": "ReconcileRegister",
+      "seconds": 10,
+      "channels": 157,
+      "animatedWeightChannels": 1,
+      "individualExportSha256": "29010924cbfd0b691fbdcaf51370dd146258a9cd2dc7ec150f49208686d68578"
+    },
+    {
+      "clip": "BackAway",
+      "seconds": 2.0,
+      "channels": 159,
+      "animatedWeightChannels": 1,
+      "individualExportSha256": "43fcb15ba08845a51fdd8f31b97b5723c05f9d5017eb2c37d4d79267c66a01f7"
+    },
+    {
+      "clip": "ApproachWork",
+      "seconds": 2.0,
+      "channels": 159,
+      "animatedWeightChannels": 1,
+      "individualExportSha256": "acdaf4faa07fb0b3a7455471f1674a51fc62cb20862f0782f64306bdab53eecf"
+    },
+    {
+      "clip": "TurnLeft",
+      "seconds": 1.6,
+      "channels": 159,
+      "animatedWeightChannels": 1,
+      "individualExportSha256": "245a8dc248104aedc7cf09236958b5b47fad5094f408d3b250d077ffc3e020ec"
+    }
+  ]
+}

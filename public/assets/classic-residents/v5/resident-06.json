@@ -1,0 +1,31 @@
+{
+  "schema": "classic-resident-runtime.v1",
+  "status": "art-candidate",
+  "actorId": "resident-06",
+  "id": "rb-gu-yuanshan",
+  "name": "顾远山",
+  "role": "车站值班员",
+  "sourceSha256": "880c2f095a8535c162f22a2aaa33c14c530655f3fd0d05f017e848ebeda31317",
+  "asset": {
+    "url": "/assets/classic-residents/v5/resident-06.glb",
+    "sha256": "6d29c4f7344fe87de8bfeaa9ba55e96ef4e79b96e2cd1b09c45c751c1d7f78ca",
+    "bytes": 4323252
+  },
+  "animation": {
+    "idle": "Idle",
+    "walk": "Walk",
+    "strideMeters": 0.9376248550415038,
+    "walkDurationSeconds": 0.8
+  },
+  "playerSpeed": 1.172031076581576,
+  "triangles": 57472,
+  "materialCount": 11,
+  "bones": 20,
+  "units": "metres",
+  "forwardAxis": "glTF +Z",
+  "worldBound": false,
+  "humanArtApproved": false,
+  "license": "CC0-1.0 anatomical and portrait data plus MRT suit artwork; original project fitting, cap, pockets, shoes, skeleton and animation",
+  "licenseNoticeUrl": "/assets/classic-residents/v5/LICENSE.ASSETS.md",
+  "construction": "CC0 MRT double-breasted tailoring independently fitted to the original character and skeleton, preserving source UVs. Original curved welt pockets and neck/hem fitting. Preserved portrait features, cap and shoes. No runtime cloth or Agent decisions."
+}

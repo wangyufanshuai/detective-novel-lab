@@ -1,0 +1,140 @@
+{
+  "schema": "classic-resident-runtime.v1",
+  "status": "art-motion-candidate",
+  "actorId": "resident-06",
+  "id": "rb-gu-yuanshan",
+  "name": "顾远山",
+  "role": "车站值班员",
+  "sourceSha256": "a1ef9bb550ef9f4ada8012ad38ed897644bd33374b730fae1cd7d147696ad61d",
+  "asset": {
+    "url": "/assets/classic-motion/v2-step15/resident-06.glb",
+    "sha256": "87b5da3bc0b74cf03e84c361af3e550f25097a9142c10ddf6759247c5825e66f",
+    "bytes": 5943584
+  },
+  "animation": {
+    "idle": "Idle",
+    "walk": "Walk",
+    "strideMeters": 0.9376248550415038,
+    "walkDurationSeconds": 0.8
+  },
+  "playerSpeed": 1.172031076581576,
+  "units": "metres",
+  "forwardAxis": "glTF +Z",
+  "worldBound": false,
+  "humanArtApproved": false,
+  "license": "CC0-1.0 anatomical and portrait data plus MRT suit artwork; original project fitting, cap, pockets, shoes, skeleton and animation",
+  "licenseNoticeUrl": "/assets/classic-occupations/v1/LICENSE.ASSETS.md",
+  "construction": "Retained authored anatomy, clothing, hand and work actions; independent fitted garment morphs and explicit retreat, turn and approach clips. See source-bound step-15 reviews.",
+  "handArticulation": {
+    "jointNames": [
+      "finger_L_1_1",
+      "finger_L_1_2",
+      "finger_L_1_3",
+      "finger_L_2_1",
+      "finger_L_2_2",
+      "finger_L_2_3",
+      "finger_L_3_1",
+      "finger_L_3_2",
+      "finger_L_3_3",
+      "finger_L_4_1",
+      "finger_L_4_2",
+      "finger_L_4_3",
+      "finger_L_5_1",
+      "finger_L_5_2",
+      "finger_L_5_3",
+      "finger_R_1_1",
+      "finger_R_1_2",
+      "finger_R_1_3",
+      "finger_R_2_1",
+      "finger_R_2_2",
+      "finger_R_2_3",
+      "finger_R_3_1",
+      "finger_R_3_2",
+      "finger_R_3_3",
+      "finger_R_4_1",
+      "finger_R_4_2",
+      "finger_R_4_3",
+      "finger_R_5_1",
+      "finger_R_5_2",
+      "finger_R_5_3"
+    ],
+    "kind": "authored-relaxed-fingers",
+    "objectGrasping": false
+  },
+  "idleForearmClearanceRadians": {},
+  "workAction": {
+    "id": "verify-timetable",
+    "label": "核对时刻表",
+    "clip": "VerifyTimetable",
+    "durationSeconds": 10,
+    "propAnchor": "occupation_document_anchor",
+    "workstation": {
+      "url": "/assets/classic-occupations/v1/workstation.glb",
+      "sha256": "27eb32fbb23153043261c4c7eab2fdfc3138758a383ad433427c5b8a42ea3466",
+      "bytes": 6106960
+    },
+    "collider": {
+      "center": [
+        0.0,
+        -0.4974295347929001
+      ],
+      "size": [
+        0.37413185834884644,
+        0.36665037274360657
+      ]
+    }
+  },
+  "motionPreview": {
+    "rootNode": "movement_actor",
+    "clips": [
+      "BackAway",
+      "TurnLeft",
+      "ApproachWork"
+    ],
+    "maximumGroundingLiftMeters": 0.012
+  },
+  "clips": [
+    {
+      "clip": "Idle",
+      "seconds": 3.0,
+      "channels": 151,
+      "animatedWeightChannels": 1,
+      "individualExportSha256": "248a1c90949fcbe0c3055ecf4a6220fbbaa77d9e1a1b6f6cfe23580adeb3c37e"
+    },
+    {
+      "clip": "Walk",
+      "seconds": 0.8,
+      "channels": 151,
+      "animatedWeightChannels": 1,
+      "individualExportSha256": "ce2372cbe87119e03e738a4085947401b918b3bd3f6e1df7d2c3dd68f38804ea"
+    },
+    {
+      "clip": "VerifyTimetable",
+      "seconds": 10,
+      "channels": 151,
+      "animatedWeightChannels": 1,
+      "individualExportSha256": "17d8b143fa25de0a8f2b4e845d5b9c02313f4f71eac4448fc2dd2701884055c7"
+    },
+    {
+      "clip": "BackAway",
+      "seconds": 2.0,
+      "channels": 153,
+      "animatedWeightChannels": 1,
+      "individualExportSha256": "e6c9b22b97706d6d2c3e58292ae7faee06f70174a9c649bdf4cc19bedd81e290"
+    },
+    {
+      "clip": "ApproachWork",
+      "seconds": 2.0,
+      "channels": 153,
+      "animatedWeightChannels": 1,
+      "individualExportSha256": "ca329c9d1219be5a53de231d3eb6cd0e7f9e4ea17b735a34034e778baa4d42db"
+    },
+    {
+      "clip": "TurnLeft",
+      "seconds": 1.6,
+      "channels": 153,
+      "animatedWeightChannels": 1,
+      "individualExportSha256": "229ce2a15e3f15f970aa68675b779e518d993d4cd01343505d599e67d2dc4595"
+    }
+  ]
+}

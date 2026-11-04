@@ -1,0 +1,347 @@
+{
+  "schema": "classic-art-scene.v1",
+  "floor": 0.18,
+  "bounds": [
+    -10.8,
+    12.3,
+    -8.5,
+    6.6
+  ],
+  "player": {
+    "spawn": [
+      4.2,
+      -3.75
+    ],
+    "height": 1.79,
+    "radius": 0.26,
+    "speed": 2.25
+  },
+  "colliders": [
+    {
+      "id": "open-door-leaf",
+      "center": [
+        2.945,
+        0.68
+      ],
+      "size": [
+        0.12,
+        1.28
+      ],
+      "angle": 0
+    },
+    {
+      "id": "inn-left",
+      "center": [
+        2,
+        3.4
+      ],
+      "size": [
+        0.34,
+        6.8
+      ],
+      "angle": 0
+    },
+    {
+      "id": "inn-back",
+      "center": [
+        6.4,
+        6.8
+      ],
+      "size": [
+        8.8,
+        0.34
+      ],
+      "angle": 0
+    },
+    {
+      "id": "inn-right",
+      "center": [
+        10.8,
+        3.4
+      ],
+      "size": [
+        0.34,
+        6.8
+      ],
+      "angle": 0
+    },
+    {
+      "id": "inn-front-left",
+      "center": [
+        2.45,
+        0
+      ],
+      "size": [
+        0.9,
+        0.34
+      ],
+      "angle": 0
+    },
+    {
+      "id": "inn-front-right",
+      "center": [
+        7.6,
+        0
+      ],
+      "size": [
+        6.4,
+        0.34
+      ],
+      "angle": 0
+    },
+    {
+      "id": "bookshop",
+      "center": [
+        -2.6,
+        3.15
+      ],
+      "size": [
+        7.65,
+        6.02
+      ],
+      "angle": 0
+    },
+    {
+      "id": "platform-boundary",
+      "center": [
+        -8.6,
+        4.7
+      ],
+      "size": [
+        3.5,
+        7
+      ],
+      "angle": 0
+    },
+    {
+      "id": "fireplace",
+      "center": [
+        8.05,
+        6.16
+      ],
+      "size": [
+        2.3,
+        1.3
+      ],
+      "angle": 0
+    },
+    {
+      "id": "chair-west",
+      "center": [
+        6.25,
+        3.22
+      ],
+      "size": [
+        1.05,
+        1.05
+      ],
+      "angle": 1.6322572826776622
+    },
+    {
+      "id": "chair-east",
+      "center": [
+        9.15,
+        3.65
+      ],
+      "size": [
+        1.05,
+        1.05
+      ],
+      "angle": -1.3554386270971586
+    },
+    {
+      "id": "tea-table",
+      "center": [
+        7.66,
+        3.34
+      ],
+      "size": [
+        1.16,
+        1.16
+      ],
+      "angle": 0
+    },
+    {
+      "id": "writing-desk",
+      "center": [
+        5.2,
+        5.89
+      ],
+      "size": [
+        1.82,
+        0.85
+      ],
+      "angle": 0
+    },
+    {
+      "id": "side-console",
+      "center": [
+        2.77,
+        3.97
+      ],
+      "size": [
+        0.68,
+        1.45
+      ],
+      "angle": 0
+    },
+    {
+      "id": "valise",
+      "center": [
+        9.98,
+        5.65
+      ],
+      "size": [
+        0.58,
+        0.44
+      ],
+      "angle": 0
+    },
+    {
+      "id": "street-lamp",
+      "center": [
+        11.65,
+        -2.04
+      ],
+      "size": [
+        0.44,
+        0.44
+      ],
+      "angle": 0
+    },
+    {
+      "id": "bookshop-bench",
+      "center": [
+        -5.09,
+        -0.94
+      ],
+      "size": [
+        1.82,
+        0.7
+      ],
+      "angle": 0
+    },
+    {
+      "id": "outside-case",
+      "center": [
+        4.95,
+        -0.64
+      ],
+      "size": [
+        0.67,
+        0.44
+      ],
+      "angle": 0
+    },
+    {
+      "id": "planter10.26",
+      "center": [
+        10.26,
+        -0.65
+      ],
+      "size": [
+        0.72,
+        0.72
+      ],
+      "angle": 0
+    },
+    {
+      "id": "planter-6.65",
+      "center": [
+        -6.65,
+        -0.54
+      ],
+      "size": [
+        0.72,
+        0.72
+      ],
+      "angle": 0
+    }
+  ],
+  "interior": {
+    "bounds": [
+      2.18,
+      10.62,
+      0.18,
+      6.62
+    ],
+    "door": [
+      3.65,
+      0
+    ],
+    "cutawayLayers": [
+      "inn_upper",
+      "inn_front",
+      "ceiling",
+      "inn_side_cutaway"
+    ]
+  },
+  "interactions": [
+    {
+      "id": "arrival",
+      "label": "进入会客室",
+      "position": [
+        3.65,
+        -0.48
+      ],
+      "description": "门洞真实连通街道和旅馆；穿过门廊即可入内。"
+    },
+    {
+      "id": "letters",
+      "label": "观察书桌",
+      "position": [
+        4.78,
+        5.16
+      ],
+      "description": "信纸、墨水与旅行时刻表是本次美术样板的陈设，尚未绑定案件。"
+    },
+    {
+      "id": "tea",
+      "label": "观察茶桌",
+      "position": [
+        7.66,
+        2.4
+      ],
+      "description": "面对茶桌的两张皮椅构成会客区，入口动线沿房间左侧经过。"
+    },
+    {
+      "id": "books",
+      "label": "查看书店橱窗",
+      "position": [
+        -3.7,
+        -0.6
+      ],
+      "description": "有进深的橱窗陈列。书店内部不在本次可进入范围。"
+    }
+  ],
+  "actorPivots": {
+    "body": [
+      0,
+      0,
+      0
+    ],
+    "leg_left": [
+      -0.115,
+      0,
+      0.9
+    ],
+    "leg_right": [
+      0.115,
+      0,
+      0.9
+    ],
+    "arm_left": [
+      -0.287,
+      0,
+      1.45
+    ],
+    "arm_right": [
+      0.287,
+      0,
+      1.45
+    ]
+  },
+  "binding": "art-sample-only",
+  "assetSha256": "c08f6e837c57aff35cba0f6dc0697699f099c7c5b425a891d16bac601e7e9c13",
+  "sourceSha256": "52d1ddda0adea7b1fb9af2aea99beb6a182f4ffa83357b718943a5b4de66876b"
+}

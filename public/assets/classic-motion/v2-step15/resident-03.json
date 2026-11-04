@@ -1,0 +1,155 @@
+{
+  "schema": "classic-resident-runtime.v1",
+  "status": "art-motion-candidate",
+  "actorId": "resident-03",
+  "id": "rb-xu-zhiwei",
+  "name": "许知微",
+  "role": "旧书修复师",
+  "sourceSha256": "59609c65728b5af4870a06ef15630372252e382781de372f1c9c5ee93077c88a",
+  "asset": {
+    "url": "/assets/classic-motion/v2-step15/resident-03.glb",
+    "sha256": "957030ded52e906e7601c61917cf3400065b4a61d8279add75de2cbf7c43723c",
+    "bytes": 7485232
+  },
+  "animation": {
+    "idle": "Idle",
+    "walk": "Walk",
+    "strideMeters": 0.8950055694580078,
+    "walkDurationSeconds": 0.8
+  },
+  "playerSpeed": 1.118756936736959,
+  "units": "metres",
+  "forwardAxis": "glTF +Z",
+  "worldBound": false,
+  "humanArtApproved": false,
+  "license": "CC0-1.0 anatomy, skin and fitted features; project-authored clothing, bun hair and animation",
+  "licenseNoticeUrl": "/assets/classic-residents/v10/LICENSE.ASSETS.md",
+  "construction": "Retained authored anatomy, clothing, hand and work actions; independent fitted garment morphs and explicit retreat, turn and approach clips. See source-bound step-15 reviews.",
+  "handArticulation": {
+    "jointNames": [
+      "finger_L_1_1",
+      "finger_L_1_2",
+      "finger_L_1_3",
+      "finger_L_2_1",
+      "finger_L_2_2",
+      "finger_L_2_3",
+      "finger_L_3_1",
+      "finger_L_3_2",
+      "finger_L_3_3",
+      "finger_L_4_1",
+      "finger_L_4_2",
+      "finger_L_4_3",
+      "finger_L_5_1",
+      "finger_L_5_2",
+      "finger_L_5_3",
+      "finger_R_1_1",
+      "finger_R_1_2",
+      "finger_R_1_3",
+      "finger_R_2_1",
+      "finger_R_2_2",
+      "finger_R_2_3",
+      "finger_R_3_1",
+      "finger_R_3_2",
+      "finger_R_3_3",
+      "finger_R_4_1",
+      "finger_R_4_2",
+      "finger_R_4_3",
+      "finger_R_5_1",
+      "finger_R_5_2",
+      "finger_R_5_3"
+    ],
+    "kind": "authored-relaxed-and-book-grip",
+    "objectGrasping": true
+  },
+  "idleForearmClearanceRadians": {
+    "forearm_L": 0.04
+  },
+  "workAction": {
+    "id": "inspect-book",
+    "label": "查看旧书动作",
+    "clip": "InspectBook",
+    "propClip": "Animation",
+    "durationSeconds": 8,
+    "workstation": {
+      "url": "/assets/classic-residents/v9/workstation.glb",
+      "sha256": "3b27f178979455826c092ace14d50d0dd569b94093f0464e6261436d24a5d953",
+      "bytes": 6087604
+    },
+    "collider": {
+      "center": [
+        0.0,
+        -0.3263041153550148
+      ],
+      "size": [
+        0.4031254053115845,
+        0.31698112189769745
+      ]
+    },
+    "binding": "authored-kinematic-contact",
+    "pageTurning": false,
+    "physicsSimulation": false
+  },
+  "gazeArticulation": {
+    "jointNames": [
+      "eye_L",
+      "eye_R"
+    ],
+    "headJoint": "head",
+    "kind": "authored-book-attention",
+    "blink": false,
+    "worldBound": false
+  },
+  "motionPreview": {
+    "rootNode": "movement_actor",
+    "clips": [
+      "BackAway",
+      "TurnLeft",
+      "ApproachWork"
+    ],
+    "maximumGroundingLiftMeters": 0.012
+  },
+  "clips": [
+    {
+      "clip": "Idle",
+      "seconds": 3.0,
+      "channels": 157,
+      "animatedWeightChannels": 1,
+      "individualExportSha256": "f9576fbd88dd63e4be87622328eb5bbfb875729ec852d33f13b353b06aa27ad2"
+    },
+    {
+      "clip": "Walk",
+      "seconds": 0.8,
+      "channels": 157,
+      "animatedWeightChannels": 1,
+      "individualExportSha256": "a36ef97451b03594d87571a97411c4e76319abd762b444ea12bca31e237a095c"
+    },
+    {
+      "clip": "InspectBook",
+      "seconds": 8,
+      "channels": 157,
+      "animatedWeightChannels": 1,
+      "individualExportSha256": "82e6d68683147d8259ece17c5b35e2df3a26530201e83beb29db02653233d328"
+    },
+    {
+      "clip": "BackAway",
+      "seconds": 2.0,
+      "channels": 159,
+      "animatedWeightChannels": 1,
+      "individualExportSha256": "1bda37c13a64575c37be76f1c28b62364e64dc8d778aaa9250ac598f7aa68356"
+    },
+    {
+      "clip": "ApproachWork",
+      "seconds": 2.0,
+      "channels": 159,
+      "animatedWeightChannels": 1,
+      "individualExportSha256": "1790cbf5d590087ac4b7f50cc267a218143225cea6a9c2d90e56b9e061de6375"
+    },
+    {
+      "clip": "TurnLeft",
+      "seconds": 1.6,
+      "channels": 159,
+      "animatedWeightChannels": 1,
+      "individualExportSha256": "c8999866cd68bd8d7d0d0d020f9eb170ffac1332b85797ad5e03c1869e729cb3"
+    }
+  ]
+}

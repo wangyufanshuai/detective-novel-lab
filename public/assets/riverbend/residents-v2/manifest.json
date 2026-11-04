@@ -1,0 +1,26 @@
+{
+  "schema": "riverbend-resident-runtime.v2",
+  "baseAssetSha256": "763d45d4c549d51e96953ffc099950dd2511d31c1567d9bf9686ee6e687acbc3",
+  "sourceSha256": "d07e6fec1d76440d8a0ac0eca806a2b18148c8cb04bd6fe9bb4be1de868e6c8d",
+  "asset": {
+    "url": "/assets/riverbend/residents-v2/residents.glb",
+    "sha256": "1d7e64273443616fee178d9caae2bf130e9be572b042a181d06deecad3e45038",
+    "bytes": 624548
+  },
+  "actors": 12,
+  "jointsPerActor": 7,
+  "collisionRadius": 0.63,
+  "humanArtApproved": false,
+  "rights": {
+    "geometry": "project-local-original",
+    "textures": "none",
+    "thirdPartyModels": []
+  },
+  "proofs": {
+    "authoring-receipt.json": "50231009a1861b063d8dd854723463246099a13df23752c629d87657ff02826e",
+    "render-receipt.json": "011571e4ed38dec28418af290558f338c2b405c4451228614764f0d08d9af8e3",
+    "function-review.json": "3239cf1341725864611da694df9a68085888d07ecd1bbfa07e8494d19dc2d225",
+    "form-review.json": "c56ca1f731b01db5324eb50cad171d8a0228d309dffbca4665a3ea2826e57b47",
+    "visual-review.json": "e19b559b56833ea86c8680d20e87b1ae9af1ca42e2c48c523b9b7f130186e061"
+  }
+}

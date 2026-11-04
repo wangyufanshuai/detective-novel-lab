@@ -1,0 +1,31 @@
+{
+  "schema": "classic-resident-runtime.v1",
+  "status": "art-candidate",
+  "actorId": "resident-06",
+  "id": "rb-gu-yuanshan",
+  "name": "顾远山",
+  "role": "车站值班员",
+  "sourceSha256": "b2354fe206a2dd6fc8ee263b7f67a8930f98b0d539f97db44d86120148d1c727",
+  "asset": {
+    "url": "/assets/classic-residents/v7/resident-06.glb",
+    "sha256": "866e77a8e9da14192189e5f9decafc9a4ad512e7d7e68f6de898e4295426ed11",
+    "bytes": 2904616
+  },
+  "animation": {
+    "idle": "Idle",
+    "walk": "Walk",
+    "strideMeters": 0.9376248550415038,
+    "walkDurationSeconds": 0.8
+  },
+  "playerSpeed": 1.172031076581576,
+  "triangles": 58752,
+  "materialCount": 11,
+  "bones": 20,
+  "units": "metres",
+  "forwardAxis": "glTF +Z",
+  "worldBound": false,
+  "humanArtApproved": false,
+  "license": "CC0-1.0 anatomical and portrait data plus MRT suit artwork; original project fitting, cap, pockets, shoes, skeleton and animation",
+  "licenseNoticeUrl": "/assets/classic-residents/v7/LICENSE.ASSETS.md",
+  "construction": "Preserved v6 face and cloth materials with sloped shoulder crowns, lower posterior collar endpoints and reduced short-jacket hem motion. Original rest skeleton, clip names and durations retained; Walk coat-tail motion revised. No runtime cloth or Agent decisions."
+}

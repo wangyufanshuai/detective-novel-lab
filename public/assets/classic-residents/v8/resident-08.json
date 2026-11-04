@@ -1,0 +1,70 @@
+{
+  "schema": "classic-resident-runtime.v1",
+  "status": "art-candidate",
+  "actorId": "resident-08",
+  "id": "rb-lin-ali",
+  "name": "林阿梨",
+  "role": "旅馆老板",
+  "sourceSha256": "352fe09cc1dc79fd41d8e8ca96ab245bc0cfe037b51d113dc47a2b463f8e46e9",
+  "asset": {
+    "url": "/assets/classic-residents/v8/resident-08.glb",
+    "sha256": "3d1b0708b35ebcc2804e611ceb3876999d247213f1b048e726ba52747da881ac",
+    "bytes": 960664
+  },
+  "animation": {
+    "idle": "Idle",
+    "walk": "Walk",
+    "strideMeters": 0.8683684730529785,
+    "walkDurationSeconds": 0.8
+  },
+  "playerSpeed": 1.0854605993340731,
+  "triangles": 58532,
+  "materialCount": 12,
+  "bones": 50,
+  "units": "metres",
+  "forwardAxis": "glTF +Z",
+  "worldBound": false,
+  "humanArtApproved": false,
+  "license": "CC0-1.0 anatomy, skin and fitted features; project-authored clothing, bun hair and animation",
+  "licenseNoticeUrl": "/assets/classic-residents/v8/LICENSE.ASSETS.md",
+  "construction": "Retained mesh, portrait and clothing with thirty anatomical finger bones, normalized hand weights and relaxed finger posing. The skirt outfits also receive a small left Idle elbow clearance adjustment. No object grasping or Agent decisions.",
+  "handArticulation": {
+    "jointNames": [
+      "finger_L_1_1",
+      "finger_L_1_2",
+      "finger_L_1_3",
+      "finger_L_2_1",
+      "finger_L_2_2",
+      "finger_L_2_3",
+      "finger_L_3_1",
+      "finger_L_3_2",
+      "finger_L_3_3",
+      "finger_L_4_1",
+      "finger_L_4_2",
+      "finger_L_4_3",
+      "finger_L_5_1",
+      "finger_L_5_2",
+      "finger_L_5_3",
+      "finger_R_1_1",
+      "finger_R_1_2",
+      "finger_R_1_3",
+      "finger_R_2_1",
+      "finger_R_2_2",
+      "finger_R_2_3",
+      "finger_R_3_1",
+      "finger_R_3_2",
+      "finger_R_3_3",
+      "finger_R_4_1",
+      "finger_R_4_2",
+      "finger_R_4_3",
+      "finger_R_5_1",
+      "finger_R_5_2",
+      "finger_R_5_3"
+    ],
+    "kind": "authored-relaxed-fingers",
+    "objectGrasping": false
+  },
+  "idleForearmClearanceRadians": {
+    "forearm_L": 0.04
+  }
+}

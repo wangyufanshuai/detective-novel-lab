@@ -1,0 +1,100 @@
+{
+  "schema": "classic-resident-runtime.v1",
+  "status": "art-candidate",
+  "actorId": "resident-08",
+  "id": "rb-lin-ali",
+  "name": "林阿梨",
+  "role": "旅馆老板",
+  "sourceSha256": "479e96cf9b38d94909cf4e2032f8a95887ea5bfd3e8c56eb8c21ff73543bbd32",
+  "asset": {
+    "url": "/assets/classic-occupations/v2/resident-08.glb",
+    "sha256": "dac7041269dd1abd221db9fc906349b87665a80f8e60dd99e1a5a57582f301e8",
+    "bytes": 999316
+  },
+  "animation": {
+    "idle": "Idle",
+    "walk": "Walk",
+    "strideMeters": 0.8683684730529785,
+    "walkDurationSeconds": 0.8
+  },
+  "playerSpeed": 1.0854605993340731,
+  "triangles": 58532,
+  "materialCount": 12,
+  "bones": 52,
+  "units": "metres",
+  "forwardAxis": "glTF +Z",
+  "worldBound": false,
+  "humanArtApproved": false,
+  "license": "CC0-1.0 anatomy, skin and fitted features; project-authored clothing, bun hair and animation",
+  "licenseNoticeUrl": "/assets/classic-occupations/v2/LICENSE.ASSETS.md",
+  "construction": "Original ten-second pen pickup, writing and return. Repaired blouse and capelet tailoring, linen cuffs and 2 eye controls. Retained topology, UV, anatomy, materials, original rest bones and Idle/Walk body motion. Register markings are decorative.",
+  "handArticulation": {
+    "jointNames": [
+      "finger_L_1_1",
+      "finger_L_1_2",
+      "finger_L_1_3",
+      "finger_L_2_1",
+      "finger_L_2_2",
+      "finger_L_2_3",
+      "finger_L_3_1",
+      "finger_L_3_2",
+      "finger_L_3_3",
+      "finger_L_4_1",
+      "finger_L_4_2",
+      "finger_L_4_3",
+      "finger_L_5_1",
+      "finger_L_5_2",
+      "finger_L_5_3",
+      "finger_R_1_1",
+      "finger_R_1_2",
+      "finger_R_1_3",
+      "finger_R_2_1",
+      "finger_R_2_2",
+      "finger_R_2_3",
+      "finger_R_3_1",
+      "finger_R_3_2",
+      "finger_R_3_3",
+      "finger_R_4_1",
+      "finger_R_4_2",
+      "finger_R_4_3",
+      "finger_R_5_1",
+      "finger_R_5_2",
+      "finger_R_5_3"
+    ],
+    "kind": "authored-tripod-writing-grip",
+    "objectGrasping": true
+  },
+  "idleForearmClearanceRadians": {
+    "forearm_L": 0.04
+  },
+  "gazeArticulation": {
+    "jointNames": [
+      "eye_L",
+      "eye_R"
+    ],
+    "headJoint": "head"
+  },
+  "workAction": {
+    "id": "reconcile-guest-register",
+    "label": "核对住客登记",
+    "clip": "ReconcileRegister",
+    "propClip": "WriteRegister_Prop",
+    "propAnchor": "occupation_pen_anchor",
+    "durationSeconds": 10,
+    "workstation": {
+      "url": "/assets/classic-occupations/v2/workstation.glb",
+      "sha256": "9a28fe0f55f1e90d30e66072099ff5f617db13de9e3f2cfa3f50fcd687a18802",
+      "bytes": 6152936
+    },
+    "collider": {
+      "center": [
+        0.0,
+        -0.36182020604610443
+      ],
+      "size": [
+        0.7478823065757751,
+        0.4703662693500519
+      ]
+    }
+  }
+}

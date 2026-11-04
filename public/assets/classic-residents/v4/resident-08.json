@@ -1,0 +1,31 @@
+{
+  "schema": "classic-resident-runtime.v1",
+  "status": "art-candidate",
+  "actorId": "resident-08",
+  "id": "rb-lin-ali",
+  "name": "林阿梨",
+  "role": "旅馆老板",
+  "sourceSha256": "64ddd7bab83f27784609620e8c4ac33326d3d5ffff42f56b37427b508470b0dc",
+  "asset": {
+    "url": "/assets/classic-residents/v4/resident-08.glb",
+    "sha256": "0a75478398f15d210db8d9558f668c6798a6bf0baca49cfcdc087a1343dc1809",
+    "bytes": 903476
+  },
+  "animation": {
+    "idle": "Idle",
+    "walk": "Walk",
+    "strideMeters": 0.8683684730529785,
+    "walkDurationSeconds": 0.8
+  },
+  "playerSpeed": 1.0854605993340731,
+  "triangles": 58532,
+  "materialCount": 12,
+  "bones": 20,
+  "units": "metres",
+  "forwardAxis": "glTF +Z",
+  "worldBound": false,
+  "humanArtApproved": false,
+  "license": "CC0-1.0 anatomy, skin and fitted features; project-authored clothing, bun hair and animation",
+  "licenseNoticeUrl": "/assets/classic-residents/v4/LICENSE.ASSETS.md",
+  "construction": "Original continuous scalp, chignon and collar; Blender-settled shoulder cape and skirt frozen into the retained skeleton. Preserved CC0 anatomical and portrait data. No runtime cloth or Agent decisions."
+}

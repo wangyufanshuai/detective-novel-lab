@@ -1,0 +1,34 @@
+{
+  "schema": "riverbend-runtime-asset.v1",
+  "sourceSha256": "cf3124649d1f11e6990e198cf063b3236d2974cf8b79d5ba18307d5ed31c4551",
+  "asset": {
+    "url": "/assets/riverbend/v1/town.glb",
+    "sha256": "763d45d4c549d51e96953ffc099950dd2511d31c1567d9bf9686ee6e687acbc3",
+    "bytes": 6972984
+  },
+  "navigation": {
+    "url": "/assets/riverbend/v1/navigation.json",
+    "sha256": "5a4e134d19c00dde86b08fa1ecbaf1e690a6b5a8be23380823c848408a2a0593"
+  },
+  "sourceObjects": 3701,
+  "exportedMeshes": 120,
+  "authoredTriangles": 166184,
+  "exporterSha256": "23044d718fe4e55d7fb2a554e9a7c7e28123977e76084fcb8110b62f26d2d49e",
+  "proofs": {
+    "authoring-receipt.json": "0cc170087c33ee03716d7518070a77bbf5113422048d714f218a0aa0aefc7718",
+    "render-receipt.json": "e0da401ce0afb6f69998a0b74a1601bbcdc56666f1bc8e062885ea7ee66a304b",
+    "function-review.json": "e1acf759c456b36412afd70171ae720b7d3c55fbb2cbb0004e85e0d77f0efb15",
+    "form-review.json": "55007cc307ed738114f3701053843bf2fa6e9dc140e0ebcb127158e026cebae4",
+    "visual-review.json": "4ba51fb090e3604162407e38f914dbce796b59933d3bf922bbc00d33c6ef92f2"
+  },
+  "status": "local-exploration-preview",
+  "humanArtApproved": false,
+  "rights": {
+    "geometry": "project-local-original",
+    "textures": "none",
+    "thirdPartyModels": []
+  },
+  "lighting": "Browser directional and ambient lighting; no baked lightmap",
+  "residentBinding": "unbound art placeholders",
+  "caseIntegrated": false
+}

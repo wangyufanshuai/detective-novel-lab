@@ -1,0 +1,63 @@
+{
+  "schema": "classic-resident-cast.v1",
+  "worldBound": false,
+  "sceneAssetSha256": "4a06314a399bfb19b8fc624c60bca8fba4fa4a232941c4028fb9a52c306e29ed",
+  "entries": [
+    {
+      "actorId": "resident-03",
+      "name": "许知微",
+      "role": "旧书修复师",
+      "manifestUrl": "/assets/classic-residents/v10/resident-03.json",
+      "manifestSha256": "a0eb2451295ea98701fd3cf90b0672c5b7b8dd1daf296d97766b791869d4baf3",
+      "yaw": 0,
+      "roomId": "bookshop",
+      "position": [
+        0.55,
+        4.95
+      ],
+      "observationPosition": [
+        -0.65,
+        4.97
+      ],
+      "appearanceDescription": "许知微 · 旧书修复师。细框眼镜、深色短发与工作围裙；口袋里收着修复刷。"
+    },
+    {
+      "actorId": "resident-06",
+      "name": "顾远山",
+      "role": "车站值班员",
+      "manifestUrl": "/assets/classic-occupations/v1/resident-06.json",
+      "manifestSha256": "a1e42256e0b095b429c952f1324d84734c0ceb6fb162ea56bb0d8de6b2d56f42",
+      "yaw": 0,
+      "roomId": "station",
+      "position": [
+        -9.25,
+        5.52
+      ],
+      "observationPosition": [
+        -9.25,
+        3.72
+      ],
+      "appearanceDescription": "顾远山 · 车站值班员。深蓝灰制服、铜色纽扣与有帽檐的值班帽。"
+    },
+    {
+      "actorId": "resident-08",
+      "name": "林阿梨",
+      "role": "旅馆老板",
+      "manifestUrl": "/assets/classic-occupations/v2/resident-08.json",
+      "manifestSha256": "0e02d67712b52b6dcf88783fdea08a33c8c5065a9014de170f3976774740373a",
+      "yaw": 0,
+      "roomId": "inn",
+      "position": [
+        5.05,
+        1.1
+      ],
+      "observationPosition": [
+        4.65,
+        1.72
+      ],
+      "appearanceDescription": "林阿梨 · 旅馆老板。盘起的发髻、宽披肩、胸针与长裙。"
+    }
+  ],
+  "presentation": "Three classical residents with authored work gestures; accepted world work controls playback and visibility.",
+  "retainedCastSha256": "3e5117bb740828c1ef3c81644880d73598dd8c8d553a7aa1d26d648d4841d7e9"
+}

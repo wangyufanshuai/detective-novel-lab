@@ -1,0 +1,62 @@
+{
+  "schema": "classic-resident-cast.v1",
+  "worldBound": false,
+  "sceneAssetSha256": "86c53c7751a375193b0dbd9ca1e9fc18dd27707710fb151c44100267a0be685f",
+  "entries": [
+    {
+      "actorId": "resident-03",
+      "name": "许知微",
+      "role": "旧书修复师",
+      "manifestUrl": "/assets/classic-residents/v2/resident-03.json",
+      "manifestSha256": "a25b210f2257b3701011dca8fcb7cbc7a1c66dcd8ecca32c9ef96c8cf054ccd1",
+      "yaw": 0,
+      "roomId": "bookshop",
+      "position": [
+        0.55,
+        4.95
+      ],
+      "observationPosition": [
+        -0.65,
+        4.97
+      ],
+      "appearanceDescription": "许知微 · 旧书修复师。细框眼镜、深色短发与工作围裙；口袋里收着修复刷。"
+    },
+    {
+      "actorId": "resident-06",
+      "name": "顾远山",
+      "role": "车站值班员",
+      "manifestUrl": "/assets/classic-residents/v1/resident-06.json",
+      "manifestSha256": "55ac8a2b887471cf17bd7effdc8a5a497d99df32ac260321775497af05cb2dfb",
+      "yaw": 0,
+      "roomId": "station",
+      "position": [
+        -9.25,
+        5.52
+      ],
+      "observationPosition": [
+        -9.25,
+        3.72
+      ],
+      "appearanceDescription": "顾远山 · 车站值班员。深蓝灰制服、铜色纽扣与有帽檐的值班帽。"
+    },
+    {
+      "actorId": "resident-08",
+      "name": "林阿梨",
+      "role": "旅馆老板",
+      "manifestUrl": "/assets/classic-residents/v1/resident-08.json",
+      "manifestSha256": "7212bb258357cf2f3907638a3843739c8dd57e176a941dddc36162ed7f0e48a9",
+      "yaw": 0,
+      "roomId": "inn",
+      "position": [
+        5.05,
+        1.1
+      ],
+      "observationPosition": [
+        4.65,
+        1.72
+      ],
+      "appearanceDescription": "林阿梨 · 旅馆老板。盘起的发髻、宽披肩、胸针与长裙。"
+    }
+  ],
+  "presentation": "Three authored stationary art placements. Restorer uses the second tailoring pass; station worker and innkeeper retain first-pass assets. Idle only; no Agent decisions or testimony."
+}

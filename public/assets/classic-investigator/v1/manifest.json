@@ -1,0 +1,33 @@
+{
+  "schema": "classic-investigator-runtime.v1",
+  "status": "original-skinned-art-candidate",
+  "sourceSha256": "655652dfd1003ef4114f7fbe15f5e104a3cfc6213d88883e301d3c2461bdffd8",
+  "asset": {
+    "url": "/assets/classic-investigator/v1/investigator.glb",
+    "sha256": "df916077fcc65e446da2e985947890b8299897d93f692297b0a431786ad25853",
+    "bytes": 740608
+  },
+  "animation": {
+    "idle": "Idle",
+    "walk": "Walk",
+    "strideMeters": 0.96,
+    "walkDurationSeconds": 0.8
+  },
+  "playerSpeed": 1.55,
+  "triangles": 54061,
+  "bones": 20,
+  "materialCount": 15,
+  "units": "metres",
+  "forwardAxis": "glTF +Z",
+  "footOrigin": "floor at local Y=0",
+  "maxAnimatedHeight": 1.9004013538360596,
+  "sceneCompanion": "/assets/classic-railway/v1/manifest.json",
+  "worldBound": false,
+  "humanArtApproved": false,
+  "rights": "Original procedural geometry and mathematical wool textures. No external meshes, images, fonts or character identities.",
+  "limits": [
+    "Original stylized realism study, not final cinematic character fidelity.",
+    "Authored skin and secondary coat motion; no cloth or hand IK simulation.",
+    "Only one character; the twelve residents have not been replaced."
+  ]
+}

@@ -1,0 +1,303 @@
+{
+  "schema": "classic-bookshop-runtime.v1",
+  "status": "local-art-and-navigation-sample",
+  "sourceSha256": "c5fa8589dd996f94d7593093b0e55b2b4a6d45909aa3986f753ac72c818ee3c8",
+  "asset": {
+    "url": "/assets/classic-bookshop/v1/classic-street.glb",
+    "sha256": "07a5affd09090ce6f50e4a6c03d989ad5906d64b64210b98c87691eb3b6a6c6b",
+    "bytes": 11475880
+  },
+  "navigation": {
+    "url": "/assets/classic-bookshop/v1/navigation.json",
+    "sha256": "738e7edc7318c40506652c5b72746d387b3192f1f2928b1e9a46ed8fdfca220d"
+  },
+  "sourceTriangles": 447037,
+  "exportedMaterialMeshes": 149,
+  "lights": [
+    {
+      "id": "inn_lantern_2.4",
+      "position": [
+        2.4,
+        -0.65,
+        2.2
+      ],
+      "color": "#ffd9a2",
+      "runtimeIntensity": 13,
+      "distance": 3.6,
+      "sourceWatts": 17
+    },
+    {
+      "id": "inn_lantern_4.9",
+      "position": [
+        4.9,
+        -0.65,
+        2.2
+      ],
+      "color": "#ffd9a2",
+      "runtimeIntensity": 13,
+      "distance": 3.6,
+      "sourceWatts": 17
+    },
+    {
+      "id": "inn_lantern_10.38",
+      "position": [
+        10.38,
+        -0.65,
+        2.2
+      ],
+      "color": "#ffd9a2",
+      "runtimeIntensity": 13,
+      "distance": 3.6,
+      "sourceWatts": 17
+    },
+    {
+      "id": "sitting-room-pendant",
+      "position": [
+        7.66,
+        3.34,
+        2.6300000000000003
+      ],
+      "color": "#ffe3bb",
+      "sourceWatts": 160,
+      "runtimeIntensity": 60,
+      "distance": 8
+    },
+    {
+      "id": "street_lamp_head",
+      "position": [
+        11.65,
+        -2.49,
+        3.47
+      ],
+      "color": "#ffd9a2",
+      "runtimeIntensity": 13,
+      "distance": 3.6,
+      "sourceWatts": 17
+    },
+    {
+      "id": "console-lamp-light",
+      "position": [
+        2.78,
+        3.53,
+        1.5025
+      ],
+      "color": "#ffd39a",
+      "sourceWatts": 28,
+      "runtimeIntensity": 12,
+      "distance": 3.1
+    },
+    {
+      "id": "reading-lamp-light",
+      "position": [
+        9.99,
+        4.76,
+        1.8
+      ],
+      "color": "#ffd39a",
+      "sourceWatts": 40,
+      "runtimeIntensity": 19,
+      "distance": 3.5
+    },
+    {
+      "id": "wall-sconce-6.76",
+      "position": [
+        6.76,
+        6.25,
+        2.52
+      ],
+      "color": "#ffd39a",
+      "sourceWatts": 13,
+      "runtimeIntensity": 7.0,
+      "distance": 2.5
+    },
+    {
+      "id": "wall-sconce-9.37",
+      "position": [
+        9.37,
+        6.25,
+        2.52
+      ],
+      "color": "#ffd39a",
+      "sourceWatts": 13,
+      "runtimeIntensity": 7.0,
+      "distance": 2.5
+    },
+    {
+      "id": "hearth-embers",
+      "position": [
+        8.05,
+        6.12,
+        0.47
+      ],
+      "color": "#ff5620",
+      "sourceWatts": 9,
+      "runtimeIntensity": 1.3,
+      "distance": 1.4
+    },
+    {
+      "id": "shop-counter-lamp",
+      "position": [
+        -0.22,
+        3.96,
+        1.4699999999999998
+      ],
+      "color": "#ffd39a",
+      "sourceWatts": 18,
+      "runtimeIntensity": 7,
+      "distance": 2.4
+    },
+    {
+      "id": "shop-pendant--3.5",
+      "position": [
+        -3.5,
+        2.8,
+        2.535
+      ],
+      "color": "#ffd39a",
+      "sourceWatts": 135,
+      "runtimeIntensity": 18,
+      "distance": 5
+    },
+    {
+      "id": "shop-pendant--1.1",
+      "position": [
+        -1.1,
+        4.65,
+        2.535
+      ],
+      "color": "#ffd39a",
+      "sourceWatts": 135,
+      "runtimeIntensity": 18,
+      "distance": 5
+    },
+    {
+      "id": "shop-window-daylight",
+      "position": [
+        -3.9000000953674316,
+        1.2200000286102295,
+        1.8300000429153442
+      ],
+      "color": "#c2d9ff",
+      "sourceWatts": 300,
+      "sourceType": "AREA",
+      "runtimeIntensity": 7,
+      "distance": 5,
+      "note": "Runtime point approximation of window fill; not physical equivalence."
+    }
+  ],
+  "exporterSha256": "57ec61356c3be9812a64db6b8cb5f472b640c69abcd11ae6a4be78cf86602b3f",
+  "proofs": {
+    "authoring-receipt.json": "d33b7fc7f1b5ede52ee74fe235b8024b53a742ea28772596143f5eada24b8744",
+    "render-receipt.json": "96850bb5989edb8d5514f2163f5b6e138b5df3b5a57de59f5f1a8b5fabc73b78",
+    "function-review.json": "49724f1eca58b247386d6948a92f9641308da360da430c0ad2047ea1366a0bde",
+    "form-review.json": "71c1e8e5b6d41e59659c8bd637f353e4e298b401cc161c514b12f3f5e545cffe",
+    "scene-contract.json": "151120550fc9f0c4e4389f0cacbc738f075340b30487a71f3c26d8dd13e0d439",
+    "lighting.json": "62d7c44dbee52536bc47494586114947497e56ad27988691bee9ef5f55caba76"
+  },
+  "worldBound": false,
+  "humanArtApproved": false,
+  "fontDependency": {
+    "name": "Railway Serif Study",
+    "license": "SIL-OFL-1.1",
+    "allSignsVerified": true
+  },
+  "thirdPartyAssets": [
+    {
+      "id": "wood_table_001",
+      "provider": "Poly Haven",
+      "page": "https://polyhaven.com/a/wood_table_001",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "maps": {
+        "color": {
+          "path": "licensed/wood_table_001/color.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/wood_table_001/wood_table_001_diff_1k.jpg",
+          "sourceMd5": "56652a7339b16a76afad20d3585f66ea",
+          "sha256": "460dd08d240f4a1f02982415048c3c5c200f385db212da18dc7e2df68bf4d0be",
+          "bytes": 215573
+        },
+        "normal": {
+          "path": "licensed/wood_table_001/normal.png",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/wood_table_001/wood_table_001_nor_gl_1k.png",
+          "sourceMd5": "e34b6eb7939a0f99bd11740f8d85a56c",
+          "sha256": "3d1dc2cc14cd9a3d2bc0035560aa715f4f8786902b4b72e78135f1d097428f98",
+          "bytes": 4961551
+        },
+        "roughness": {
+          "path": "licensed/wood_table_001/roughness.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/wood_table_001/wood_table_001_rough_1k.jpg",
+          "sourceMd5": "05b60bd20a1cc4355c5d73a99b245d44",
+          "sha256": "a2ca9ae89dfe7b8e2e5e92f0aa43467845417de8a50205b5852ef0d57c7624f9",
+          "bytes": 237261
+        }
+      }
+    },
+    {
+      "id": "leather_red_02",
+      "provider": "Poly Haven",
+      "page": "https://polyhaven.com/a/leather_red_02",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "maps": {
+        "color": {
+          "path": "licensed/leather_red_02/color.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/leather_red_02/leather_red_02_coll1_1k.jpg",
+          "sourceMd5": "a91110dd3cea1bfb5d8f34b5c3c6536d",
+          "sha256": "8b4f967175754b7224c98cfb3f048105dbf3dd7b265c6954f7729ef0f2691112",
+          "bytes": 1002834
+        },
+        "normal": {
+          "path": "licensed/leather_red_02/normal.png",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/leather_red_02/leather_red_02_nor_gl_1k.png",
+          "sourceMd5": "15f5f55e8f81441bf42ddf535f512bd0",
+          "sha256": "d151b48d5e0e21b4e9057c4624d921dcc5483682e62a77bb20f7bea18d92ddb7",
+          "bytes": 2270810
+        },
+        "roughness": {
+          "path": "licensed/leather_red_02/roughness.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/leather_red_02/leather_red_02_rough_1k.jpg",
+          "sourceMd5": "7c65693a61e330144bd9b5949e64a4a6",
+          "sha256": "dd3b860a9510a44fd857c04e0c8cc63ea1f944c25abe9bdcbf844cc4a22c88d8",
+          "bytes": 879217
+        }
+      }
+    },
+    {
+      "id": "railway-serif-study",
+      "source": "public/fonts/noir/noir-serif-sc-regular.woff2",
+      "sourceSha256": "d82ece560e9b19d2cea7a23068863e42a4d54269af8fbdc47f3cd19719026623",
+      "license": "SIL-OFL-1.1",
+      "licensePath": "licensed/font-OFL.txt",
+      "licenseSha256": "5e0da210fb04058a8c0087985d2d456b931c2579811a49655721d3cf0c36b6d6",
+      "modification": "Latin sign subset and WOFF2-to-SFNT conversion; renamed Railway Serif Study; copyright records retained.",
+      "path": "licensed/railway-serif-study.ttf",
+      "sha256": "a4be2bb54e3844349290c7c4243f01d351b5572fe61a7acbd022a73c099f348e"
+    }
+  ],
+  "materialProvenanceSha256": "aeb0a6b02c15620e0e7d1459a1f037d255375c96dfe26e641627b18fde607c8c",
+  "licenseDocuments": [
+    "/assets/classic-bookshop/v1/CREDITS.md",
+    "/assets/classic-bookshop/v1/font-OFL.txt"
+  ],
+  "runtimeFixtureCalibration": {
+    "overrides": {
+      "hearth-embers": {
+        "color": "#ff5620",
+        "runtimeIntensity": 1.3
+      }
+    },
+    "reason": "Retain the reviewed localized ember tint. Window area emitter is approximated by an explicitly recorded point source. Artistic calibration, not radiometric equivalence."
+  },
+  "lighting": "Runtime PBR with hemisphere/key/fixture lights, RoomEnvironment reflections and reduced-resolution GTAO. No baked-lightmap or offline-render equivalence claim.",
+  "rawAsset": {
+    "path": "meshes/classic-street-raw.glb",
+    "sha256": "ce9bf9e2020b260f1e0cb3a7e44ab1be25aeb264b3dfe28c934fdb9840c46cc7",
+    "bytes": 46573852
+  },
+  "optimization": {
+    "path": "runtime/optimization.json",
+    "sha256": "8fddead7c1adeab018d833a95a33113dfea73c00a19627316fad8f32ddf6d30a",
+    "decoder": "Three.js bundled MeshoptDecoder",
+    "textures": "512px; WebP base color, PNG normal"
+  }
+}

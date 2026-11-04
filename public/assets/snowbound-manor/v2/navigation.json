@@ -1,0 +1,347 @@
+{
+  "schema": "snowbound-manor-scene.v1",
+  "units": "metres",
+  "coordinateSystem": "Blender Z-up; glTF maps (x,y,z) to (x,z,-y)",
+  "floor": 0.264,
+  "bounds": [
+    -5.7,
+    5.7,
+    -9.5,
+    9.65
+  ],
+  "player": {
+    "spawn": [
+      0,
+      -7.8
+    ],
+    "radius": 0.27,
+    "height": 1.79,
+    "speed": 1.85
+  },
+  "colliders": [
+    {
+      "id": "west-wall",
+      "center": [
+        -5.85,
+        5
+      ],
+      "size": [
+        0.32,
+        10
+      ],
+      "angle": 0
+    },
+    {
+      "id": "east-wall",
+      "center": [
+        5.85,
+        5
+      ],
+      "size": [
+        0.32,
+        10
+      ],
+      "angle": 0
+    },
+    {
+      "id": "rear-wall",
+      "center": [
+        0,
+        9.85
+      ],
+      "size": [
+        12,
+        0.32
+      ],
+      "angle": 0
+    },
+    {
+      "id": "front-left",
+      "center": [
+        -3.65,
+        0
+      ],
+      "size": [
+        4.7,
+        0.42
+      ],
+      "angle": 0
+    },
+    {
+      "id": "front-right",
+      "center": [
+        3.65,
+        0
+      ],
+      "size": [
+        4.7,
+        0.42
+      ],
+      "angle": 0
+    },
+    {
+      "id": "front-leaf-left",
+      "center": [
+        -1.25,
+        0.69
+      ],
+      "size": [
+        0.12,
+        1.26
+      ],
+      "angle": 0
+    },
+    {
+      "id": "front-leaf-right",
+      "center": [
+        1.25,
+        0.69
+      ],
+      "size": [
+        0.12,
+        1.26
+      ],
+      "angle": 0
+    },
+    {
+      "id": "sofa",
+      "center": [
+        -1.7,
+        6.85
+      ],
+      "size": [
+        0.96,
+        2.72
+      ],
+      "angle": 0
+    },
+    {
+      "id": "chair-6.1",
+      "center": [
+        1.8,
+        6.1
+      ],
+      "size": [
+        0.86,
+        0.79
+      ],
+      "angle": -1.8507963267948966
+    },
+    {
+      "id": "chair-7.85",
+      "center": [
+        1.7,
+        7.85
+      ],
+      "size": [
+        0.86,
+        0.79
+      ],
+      "angle": -1.3207963267948966
+    },
+    {
+      "id": "tea-table",
+      "center": [
+        0.2,
+        6.9
+      ],
+      "size": [
+        0.74,
+        0.74
+      ],
+      "angle": 0
+    },
+    {
+      "id": "side-table",
+      "center": [
+        -2.37,
+        4.85
+      ],
+      "size": [
+        0.76,
+        0.76
+      ],
+      "angle": 0
+    },
+    {
+      "id": "arrival-console",
+      "center": [
+        -4.55,
+        1.45
+      ],
+      "size": [
+        0.61,
+        1.57
+      ],
+      "angle": 0
+    },
+    {
+      "id": "luggage",
+      "center": [
+        3.95,
+        1.2
+      ],
+      "size": [
+        0.96,
+        0.54
+      ],
+      "angle": 0
+    },
+    {
+      "id": "hearth",
+      "center": [
+        0,
+        9.4
+      ],
+      "size": [
+        3.35,
+        1.05
+      ],
+      "angle": 0
+    },
+    {
+      "id": "bookcase-4.2",
+      "center": [
+        -4.2,
+        9.44
+      ],
+      "size": [
+        1.73,
+        0.66
+      ],
+      "angle": 0
+    },
+    {
+      "id": "bookcase4.2",
+      "center": [
+        4.2,
+        9.44
+      ],
+      "size": [
+        1.73,
+        0.66
+      ],
+      "angle": 0
+    }
+  ],
+  "interior": {
+    "bounds": [
+      -5.74,
+      5.74,
+      0.16,
+      9.74
+    ],
+    "door": [
+      0,
+      0
+    ],
+    "cutawayLayers": [
+      "ceiling",
+      "upper",
+      "hall_front",
+      "hall_east"
+    ]
+  },
+  "interactions": [
+    {
+      "id": "hearth",
+      "label": "壁炉与座钟",
+      "position": [
+        0,
+        8.5
+      ],
+      "description": "火还在燃烧，座钟与会客区构成大厅中心。本版为美术陈设，未绑定案件。",
+      "roomId": "hall"
+    },
+    {
+      "id": "register",
+      "label": "来客登记簿",
+      "position": [
+        -3.8,
+        1.45
+      ],
+      "description": "入口的来客登记簿。未来接入住客身份与到访时间，本版没有生成证词。",
+      "roomId": "hall"
+    },
+    {
+      "id": "tea",
+      "label": "会客茶桌",
+      "position": [
+        0.2,
+        6.05
+      ],
+      "description": "座椅朝向同一交谈区域，两侧留有通行空间。",
+      "roomId": "hall"
+    },
+    {
+      "id": "luggage",
+      "label": "旅行箱",
+      "position": [
+        3.1,
+        1.2
+      ],
+      "description": "住客抵达后的行李陈设，未关联任何案件证据。",
+      "roomId": "hall"
+    },
+    {
+      "id": "dining",
+      "label": "餐厅入口",
+      "position": [
+        -5.0,
+        3.0
+      ],
+      "description": "通向山庄西翼餐厅；本次样板只开放大厅。",
+      "roomId": "hall"
+    },
+    {
+      "id": "guest",
+      "label": "客房廊道入口",
+      "position": [
+        5.0,
+        3.0
+      ],
+      "description": "通向客房廊道；房间与住客行动将在后续接入。",
+      "roomId": "hall"
+    }
+  ],
+  "binding": "art-sample-only",
+  "sourceSha256": "fc5995aec9a986922177f91d12d3f7e3f0ce0b8cbcc729bbc71b5c122d64854e",
+  "assetSha256": "ec406329b2ddefcb0bc472b148e8bdaa5518b2465e0168b57aa5e87db32e8576",
+  "interiors": [
+    {
+      "bounds": [
+        -5.74,
+        5.74,
+        0.16,
+        9.74
+      ],
+      "door": [
+        0,
+        0
+      ],
+      "cutawayLayers": [
+        "ceiling",
+        "upper",
+        "hall_front",
+        "hall_east"
+      ],
+      "id": "hall",
+      "label": "壁炉大厅"
+    }
+  ],
+  "runtimeGround": {
+    "exterior": 0.04,
+    "porch": 0.3,
+    "interior": 0.264,
+    "porchBounds": [
+      -2.25,
+      2.25,
+      -4.9,
+      0.16
+    ]
+  },
+  "allowedAssetSha256": [
+    "ec406329b2ddefcb0bc472b148e8bdaa5518b2465e0168b57aa5e87db32e8576",
+    "b4a91307149d1bc369453eeb20cac021fa87d604c9939a62d375d0bb4389cca9"
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "schema": "classic-resident-runtime.v1",
+  "status": "art-candidate",
+  "actorId": "resident-03",
+  "id": "rb-xu-zhiwei",
+  "name": "许知微",
+  "role": "旧书修复师",
+  "sourceSha256": "00d435971915297ed3148f5c246efc26bd5f1e8945de26fb4344731b6dd0c33b",
+  "asset": {
+    "url": "/assets/classic-residents/v3/resident-03.glb",
+    "sha256": "37da06e57f35bcb94b1b1581318e77ae3381e6f96013bbf6342d664dcce9b9dd",
+    "bytes": 4941900
+  },
+  "animation": {
+    "idle": "Idle",
+    "walk": "Walk",
+    "strideMeters": 0.8950055694580078,
+    "walkDurationSeconds": 0.8
+  },
+  "playerSpeed": 1.118756936736959,
+  "triangles": 36668,
+  "materialCount": 11,
+  "bones": 20,
+  "units": "metres",
+  "forwardAxis": "glTF +Z",
+  "worldBound": false,
+  "humanArtApproved": false,
+  "license": "CC0-1.0 anatomy, skin and fitted features; project-authored clothing, bun hair and animation",
+  "licenseNoticeUrl": "/assets/classic-residents/v3/LICENSE.ASSETS.md",
+  "construction": "Source anatomical UVs, fitted CC0 eyes and features, original clothing and retained animation. No Agent decisions or runtime cloth."
+}

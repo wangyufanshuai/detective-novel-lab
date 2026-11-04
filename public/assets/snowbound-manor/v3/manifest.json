@@ -1,0 +1,420 @@
+{
+  "schema": "snowbound-browser-candidate.v1",
+  "sourceSha256": "527f02e580e2bf0be21c1148cc0c8c22b876fbb103faa096f35262dcf905a3dd",
+  "asset": {
+    "url": "/assets/snowbound-manor/v3/manor-high.glb",
+    "sha256": "52acac5bd1374fa3ebd90b0730c71779a4a25b3f842f2a05b1cce833fccb91e9",
+    "bytes": 34435016,
+    "maxTextureDimension": 1024,
+    "imageCount": 46,
+    "decodedRGBABytesEstimate": 117440512,
+    "triangles": 1337617,
+    "primitives": 98
+  },
+  "tiers": {
+    "high": {
+      "url": "/assets/snowbound-manor/v3/manor-high.glb",
+      "sha256": "52acac5bd1374fa3ebd90b0730c71779a4a25b3f842f2a05b1cce833fccb91e9",
+      "bytes": 34435016,
+      "maxTextureDimension": 1024,
+      "imageCount": 46,
+      "decodedRGBABytesEstimate": 117440512,
+      "triangles": 1337617,
+      "primitives": 98
+    },
+    "balanced": {
+      "url": "/assets/snowbound-manor/v3/manor-balanced.glb",
+      "sha256": "3709dd2a583364d4daafc73657b2ea8064e975ef9be2530140924c14166383eb",
+      "bytes": 32425188,
+      "maxTextureDimension": 512,
+      "imageCount": 46,
+      "decodedRGBABytesEstimate": 48234496,
+      "triangles": 1337617,
+      "primitives": 98
+    }
+  },
+  "navigation": {
+    "url": "/assets/snowbound-manor/v3/navigation.json",
+    "sha256": "8ca92ee226ff9e0819e4057abc3f73d32ce28c1109eeb0aa8a7e150d45b50336"
+  },
+  "fixtures": [
+    {
+      "id": "hearth_fire",
+      "type": "POINT",
+      "position": [
+        0,
+        9.48,
+        0.8
+      ],
+      "sourceWatts": 70.0,
+      "color": [
+        1,
+        0.34,
+        0.08
+      ],
+      "size": 0.5,
+      "target": null
+    },
+    {
+      "id": "firebox_bounce",
+      "type": "AREA",
+      "position": [
+        0,
+        9.5,
+        0.95
+      ],
+      "sourceWatts": 48.0,
+      "color": [
+        1,
+        0.43,
+        0.16
+      ],
+      "size": 1.6,
+      "target": [
+        0,
+        6.2,
+        0.5
+      ]
+    },
+    {
+      "id": "reading_lamp_light",
+      "type": "POINT",
+      "position": [
+        -2.37,
+        4.85,
+        1.42
+      ],
+      "sourceWatts": 30.0,
+      "color": [
+        1,
+        0.64,
+        0.31
+      ],
+      "size": 0.12,
+      "target": null
+    },
+    {
+      "id": "arrival_lamp_light",
+      "type": "POINT",
+      "position": [
+        -4.55,
+        1.55,
+        1.6549999999999998
+      ],
+      "sourceWatts": 30.0,
+      "color": [
+        1,
+        0.64,
+        0.31
+      ],
+      "size": 0.12,
+      "target": null
+    },
+    {
+      "id": "chandelier3.25",
+      "type": "POINT",
+      "position": [
+        0,
+        3.25,
+        3.1475
+      ],
+      "sourceWatts": 52.0,
+      "color": [
+        1,
+        0.72,
+        0.43
+      ],
+      "size": 0.55,
+      "target": null
+    },
+    {
+      "id": "chandelier7.1",
+      "type": "POINT",
+      "position": [
+        0,
+        7.1,
+        3.1475
+      ],
+      "sourceWatts": 52.0,
+      "color": [
+        1,
+        0.72,
+        0.43
+      ],
+      "size": 0.55,
+      "target": null
+    },
+    {
+      "id": "porch_lantern-1.72",
+      "type": "POINT",
+      "position": [
+        -1.72,
+        -2.79,
+        2.35
+      ],
+      "sourceWatts": 42.0,
+      "color": [
+        1,
+        0.62,
+        0.28
+      ],
+      "size": 0.16,
+      "target": null
+    },
+    {
+      "id": "porch_lantern1.72",
+      "type": "POINT",
+      "position": [
+        1.72,
+        -2.79,
+        2.35
+      ],
+      "sourceWatts": 42.0,
+      "color": [
+        1,
+        0.62,
+        0.28
+      ],
+      "size": 0.16,
+      "target": null
+    },
+    {
+      "id": "storm_sky",
+      "type": "AREA",
+      "position": [
+        -9,
+        -8,
+        22
+      ],
+      "sourceWatts": 1300.0,
+      "color": [
+        0.52,
+        0.68,
+        1
+      ],
+      "size": 30,
+      "target": [
+        0,
+        3,
+        0
+      ]
+    },
+    {
+      "id": "back_snow_sky",
+      "type": "AREA",
+      "position": [
+        7,
+        16,
+        19
+      ],
+      "sourceWatts": 850.0,
+      "color": [
+        0.48,
+        0.62,
+        0.85
+      ],
+      "size": 20,
+      "target": [
+        0,
+        4,
+        2
+      ]
+    },
+    {
+      "id": "front_window_-3.8",
+      "type": "AREA",
+      "position": [
+        -3.8,
+        0.13,
+        2.45
+      ],
+      "sourceWatts": 55.0,
+      "color": [
+        0.55,
+        0.72,
+        1
+      ],
+      "size": 1.5,
+      "target": [
+        -3.8,
+        4,
+        1
+      ]
+    },
+    {
+      "id": "front_window_3.8",
+      "type": "AREA",
+      "position": [
+        3.8,
+        0.13,
+        2.45
+      ],
+      "sourceWatts": 55.0,
+      "color": [
+        0.55,
+        0.72,
+        1
+      ],
+      "size": 1.5,
+      "target": [
+        3.8,
+        4,
+        1
+      ]
+    },
+    {
+      "id": "side_window_-5.65",
+      "type": "AREA",
+      "position": [
+        -5.65,
+        7.3,
+        2.45
+      ],
+      "sourceWatts": 58.0,
+      "color": [
+        0.56,
+        0.72,
+        1
+      ],
+      "size": 1.6,
+      "target": [
+        0,
+        6,
+        1
+      ]
+    },
+    {
+      "id": "side_window_5.65",
+      "type": "AREA",
+      "position": [
+        5.65,
+        7.3,
+        2.45
+      ],
+      "sourceWatts": 58.0,
+      "color": [
+        0.56,
+        0.72,
+        1
+      ],
+      "size": 1.6,
+      "target": [
+        0,
+        6,
+        1
+      ]
+    },
+    {
+      "id": "arrival_ambient",
+      "type": "AREA",
+      "position": [
+        0,
+        -0.18,
+        2.05
+      ],
+      "sourceWatts": 70.0,
+      "color": [
+        0.56,
+        0.72,
+        1
+      ],
+      "size": 2.0,
+      "target": [
+        0,
+        4,
+        1.2
+      ]
+    }
+  ],
+  "fixturesSha256": "6de005fc753c95ed41ca855d9ef85e69d4b8dc0682f5a267cca90f99277fba4d",
+  "lighting": "Indirect diffuse on named architecture receivers; calibrated runtime direct fixtures; no complete Cycles equivalence.",
+  "humanArtApproved": false,
+  "agentWorldBound": false,
+  "exporterSha256": "800724ff4c449c39ea1b0126c5cf7d9697a21bb1676c7f7c719db03f4c65fa23",
+  "optimizerSha256": "d4fc8b7b50d904375efd60896815fd1e6150950815bbf1de9ec43ba03b8cc9bd",
+  "validationSha256": "589fb64a5abf0f1e324f56a052ea756d40eac672186eed7f7bf43029f2cc9b51",
+  "thirdPartyProvenanceSha256": "23fbec5a7f93627fb0cc6b301e1c067f78bc251ddaca93d8f207dc0bd97281ae",
+  "licenseDocuments": [
+    "/assets/snowbound-manor/v3/CREDITS.md",
+    "/assets/snowbound-manor/v3/font-OFL.txt"
+  ],
+  "fire": {
+    "schema": "manor-fire-field.v1",
+    "kind": "original-authored-volume-not-fluid-simulation",
+    "seed": 1932,
+    "size": [
+      128,
+      64,
+      64
+    ],
+    "order": "z-y-x",
+    "format": "unorm8",
+    "atlasTiles": [
+      8,
+      8
+    ],
+    "position": [
+      0,
+      10.17,
+      0.83
+    ],
+    "dimensions": [
+      1.62,
+      0.62,
+      0.92
+    ],
+    "densityMultiplier": 0.04,
+    "emissionMultiplier": 20,
+    "temperature": [
+      1350,
+      1350
+    ],
+    "binary": {
+      "path": "hearth-density.r8",
+      "sha256": "030024e2216c5469420eb6e3db9affec0145c57d5a0f2ccf8b0e52fa05e2f467",
+      "bytes": 524288
+    },
+    "atlas": {
+      "path": "hearth-density.png",
+      "sha256": "4feff6cbbdac78785ba77c0b0d629860237b3d0e9ba1900d8e86bb435f30582c"
+    },
+    "generatorSha256": "6cd34d43653b0a7b17f1d254485112abb4fdb96933e3971033a90cd74e875387",
+    "url": "/assets/snowbound-manor/v3/hearth-density.r8",
+    "sha256": "030024e2216c5469420eb6e3db9affec0145c57d5a0f2ccf8b0e52fa05e2f467"
+  },
+  "lightmap": {
+    "sourceSha256": "527f02e580e2bf0be21c1148cc0c8c22b876fbb103faa096f35262dcf905a3dd",
+    "inputSha256": "3c1ed9127d657f150d65240f28f46a67a49d03c9c58052923571dbf94221b05e",
+    "sha256": "566b0e85c277f5ec607c3784ba3251ba91a945fa02a9b4470bdf2abf37a72e4e",
+    "bytes": 6340579,
+    "width": 2048,
+    "height": 2048,
+    "colorSpace": "linear",
+    "storage": "RGB binary16, ZIP",
+    "maxAbsoluteError": 0.0,
+    "generatorSha256": "dcb3813047c1c5c554f288cb1505eb3168bcd6abb3752f944f9d3172c2fb9401",
+    "denoise": {
+      "schema": "manor-lightmap-denoise.v1",
+      "inputSha256": "3c1ed9127d657f150d65240f28f46a67a49d03c9c58052923571dbf94221b05e",
+      "output": "runtime/denoised/indirect-denoisedlightmap.exr",
+      "sha256": "566b0e85c277f5ec607c3784ba3251ba91a945fa02a9b4470bdf2abf37a72e4e",
+      "generatorSha256": "542c6d8f6725a820a2899de124ab7869773b2f9ddfd4a9837889f39b6a7c3c8b",
+      "method": "Blender compositor OIDN high, HDR; indirect illumination only, no guide textures",
+      "scope": "Noise reduction for a static lighting candidate; no exact pixel/energy parity claim."
+    },
+    "errorScope": "binary16 conversion of already denoised lighting",
+    "url": "/assets/snowbound-manor/v3/indirect-light.exr",
+    "intensity": 3.141592653589793,
+    "flipY": true,
+    "channel": 1
+  },
+  "authoredTextureLedgerSha256": "07ac7e512998da91950de4d3304cab0fab8e54849338e08dc671464049e5fd81",
+  "weather": {
+    "kind": "authored-crosswind-particles",
+    "physicalSimulation": false,
+    "particles": {
+      "high": 4800,
+      "balanced": 2200
+    }
+  }
+}

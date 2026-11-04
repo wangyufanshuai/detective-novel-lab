@@ -1,0 +1,30 @@
+{
+  "schema": "classic-resident-runtime.v1",
+  "status": "art-candidate",
+  "actorId": "resident-06",
+  "id": "rb-gu-yuanshan",
+  "name": "顾远山",
+  "role": "车站值班员",
+  "sourceSha256": "9da1f0c07c07a161724ecff92bb8e11294de112360ad7aa75164c32fe688a06e",
+  "asset": {
+    "url": "/assets/classic-residents/v1/resident-06.glb",
+    "sha256": "f3f1277d0469605e8385aa8d1f9bd48f26a561bc07ce32257d4eb07d811821a3",
+    "bytes": 441256
+  },
+  "animation": {
+    "idle": "Idle",
+    "walk": "Walk",
+    "strideMeters": 0.9376248550415038,
+    "walkDurationSeconds": 0.8
+  },
+  "playerSpeed": 1.172031076581576,
+  "triangles": 40540,
+  "materialCount": 11,
+  "bones": 20,
+  "units": "metres",
+  "forwardAxis": "glTF +Z",
+  "worldBound": false,
+  "humanArtApproved": false,
+  "license": "CC0-1.0 anatomy; project-authored clothing, hair, props and animation",
+  "licenseNoticeUrl": "/assets/classic-residents/v1/LICENSE.ASSETS.md"
+}

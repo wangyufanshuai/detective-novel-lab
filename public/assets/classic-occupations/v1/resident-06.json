@@ -1,0 +1,90 @@
+{
+  "schema": "classic-resident-runtime.v1",
+  "status": "art-candidate",
+  "actorId": "resident-06",
+  "id": "rb-gu-yuanshan",
+  "name": "顾远山",
+  "role": "车站值班员",
+  "sourceSha256": "4b164fd8fdd0c1c488a70c9cbd3234fd93759d721bdd02cfc4301c7ff37dec6e",
+  "asset": {
+    "url": "/assets/classic-occupations/v1/resident-06.glb",
+    "sha256": "6b6a6dae1a436d6d0ec0fa644df4689a9d5bd38c4ddcafd58fa3d806f99110a5",
+    "bytes": 2998600
+  },
+  "animation": {
+    "idle": "Idle",
+    "walk": "Walk",
+    "strideMeters": 0.9376248550415038,
+    "walkDurationSeconds": 0.8
+  },
+  "playerSpeed": 1.172031076581576,
+  "triangles": 58752,
+  "materialCount": 11,
+  "bones": 50,
+  "units": "metres",
+  "forwardAxis": "glTF +Z",
+  "worldBound": false,
+  "humanArtApproved": false,
+  "license": "CC0-1.0 anatomical and portrait data plus MRT suit artwork; original project fitting, cap, pockets, shoes, skeleton and animation",
+  "licenseNoticeUrl": "/assets/classic-occupations/v1/LICENSE.ASSETS.md",
+  "construction": "Original timetable rack and authored pointing loop. Retained topology, UV, anatomy, textures and rest bones. Rebound jacket shoulders and skirts; Idle/Walk shoulders abducted by 0.11 rad for coat clearance. Original leg animation retained.",
+  "handArticulation": {
+    "jointNames": [
+      "finger_L_1_1",
+      "finger_L_1_2",
+      "finger_L_1_3",
+      "finger_L_2_1",
+      "finger_L_2_2",
+      "finger_L_2_3",
+      "finger_L_3_1",
+      "finger_L_3_2",
+      "finger_L_3_3",
+      "finger_L_4_1",
+      "finger_L_4_2",
+      "finger_L_4_3",
+      "finger_L_5_1",
+      "finger_L_5_2",
+      "finger_L_5_3",
+      "finger_R_1_1",
+      "finger_R_1_2",
+      "finger_R_1_3",
+      "finger_R_2_1",
+      "finger_R_2_2",
+      "finger_R_2_3",
+      "finger_R_3_1",
+      "finger_R_3_2",
+      "finger_R_3_3",
+      "finger_R_4_1",
+      "finger_R_4_2",
+      "finger_R_4_3",
+      "finger_R_5_1",
+      "finger_R_5_2",
+      "finger_R_5_3"
+    ],
+    "kind": "authored-relaxed-fingers",
+    "objectGrasping": false
+  },
+  "idleForearmClearanceRadians": {},
+  "workAction": {
+    "id": "verify-timetable",
+    "label": "核对时刻表",
+    "clip": "VerifyTimetable",
+    "durationSeconds": 10,
+    "propAnchor": "occupation_document_anchor",
+    "workstation": {
+      "url": "/assets/classic-occupations/v1/workstation.glb",
+      "sha256": "27eb32fbb23153043261c4c7eab2fdfc3138758a383ad433427c5b8a42ea3466",
+      "bytes": 6106960
+    },
+    "collider": {
+      "center": [
+        0.0,
+        -0.4974295347929001
+      ],
+      "size": [
+        0.37413185834884644,
+        0.36665037274360657
+      ]
+    }
+  }
+}

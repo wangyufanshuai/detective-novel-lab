@@ -1,0 +1,31 @@
+{
+  "schema": "classic-resident-runtime.v1",
+  "status": "art-candidate",
+  "actorId": "resident-06",
+  "id": "rb-gu-yuanshan",
+  "name": "顾远山",
+  "role": "车站值班员",
+  "sourceSha256": "fef8e7184a7c22d2a872ab17dc743e92e6ceee84af4c443112b342c05bcd4d4d",
+  "asset": {
+    "url": "/assets/classic-residents/v3/resident-06.glb",
+    "sha256": "ae38d69b69342f476c2160f2e7bdb4566f44ce8c0f34689f3f5804cb3da7130b",
+    "bytes": 2007304
+  },
+  "animation": {
+    "idle": "Idle",
+    "walk": "Walk",
+    "strideMeters": 0.9376248550415038,
+    "walkDurationSeconds": 0.8
+  },
+  "playerSpeed": 1.172031076581576,
+  "triangles": 32020,
+  "materialCount": 11,
+  "bones": 20,
+  "units": "metres",
+  "forwardAxis": "glTF +Z",
+  "worldBound": false,
+  "humanArtApproved": false,
+  "license": "CC0-1.0 anatomy, skin and fitted features; project-authored clothing, bun hair and animation",
+  "licenseNoticeUrl": "/assets/classic-residents/v3/LICENSE.ASSETS.md",
+  "construction": "Source anatomical UVs, fitted CC0 eyes and features, original clothing and retained animation. No Agent decisions or runtime cloth."
+}

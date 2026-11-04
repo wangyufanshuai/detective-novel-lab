@@ -1,0 +1,106 @@
+{
+  "schema": "classic-railway-runtime.v1",
+  "status": "local-art-and-navigation-sample",
+  "sourceSha256": "52d1ddda0adea7b1fb9af2aea99beb6a182f4ffa83357b718943a5b4de66876b",
+  "asset": {
+    "url": "/assets/classic-railway/v1/classic-railway.glb",
+    "sha256": "c08f6e837c57aff35cba0f6dc0697699f099c7c5b425a891d16bac601e7e9c13",
+    "bytes": 8116072
+  },
+  "navigation": {
+    "url": "/assets/classic-railway/v1/navigation.json",
+    "sha256": "7640c41527c3c35f65e8d8d8a6cdbdd0d70d1b75237fd4035d59b95c03bce38a"
+  },
+  "sourceTriangles": 292677,
+  "exportedMaterialMeshes": 97,
+  "lights": [
+    {
+      "id": "inn_lantern_2.4",
+      "position": [
+        2.4,
+        -0.65,
+        2.2
+      ],
+      "color": "#ffd9a2",
+      "runtimeIntensity": 13,
+      "distance": 3.6,
+      "sourceWatts": 17
+    },
+    {
+      "id": "inn_lantern_4.9",
+      "position": [
+        4.9,
+        -0.65,
+        2.2
+      ],
+      "color": "#ffd9a2",
+      "runtimeIntensity": 13,
+      "distance": 3.6,
+      "sourceWatts": 17
+    },
+    {
+      "id": "inn_lantern_10.38",
+      "position": [
+        10.38,
+        -0.65,
+        2.2
+      ],
+      "color": "#ffd9a2",
+      "runtimeIntensity": 13,
+      "distance": 3.6,
+      "sourceWatts": 17
+    },
+    {
+      "id": "sitting-room-pendant",
+      "position": [
+        7.66,
+        3.34,
+        2.6300000000000003
+      ],
+      "color": "#ffe3bb",
+      "sourceWatts": 160,
+      "runtimeIntensity": 60,
+      "distance": 8
+    },
+    {
+      "id": "street_lamp_head",
+      "position": [
+        11.65,
+        -2.49,
+        3.47
+      ],
+      "color": "#ffd9a2",
+      "runtimeIntensity": 13,
+      "distance": 3.6,
+      "sourceWatts": 17
+    }
+  ],
+  "exporterSha256": "271686e9a0caf2198bc4d15a862c7949d9a8cd9c9b29053c597feb56539c1ba6",
+  "proofs": {
+    "authoring-receipt.json": "a2e6eab6359c3f7c09b9ec401c2d50e8f4b6ac394c6b16c6721c71b8345394ca",
+    "render-receipt.json": "53f540231b618aae4760876ba73777f304bce718268a8ec39c28e4df62c8b41f",
+    "function-review.json": "5c655a78bb072a9f0c209b8afbe5fb93e123a0b583b79881698f545b7049f5f3",
+    "form-review.json": "9a1f9055bbf2f9ead53e6636c6ee0e276685146a1666c4b7f88a4c13a64e1fd7",
+    "scene-contract.json": "8b42623ab3424541961f0197f7c3853063d44fae0e26de78e67dd25b9ce20c73",
+    "lighting.json": "10f6eea9bc1ea09fdea2c2f1ba09d03662830423709c9fc68655e30035698c1a"
+  },
+  "worldBound": false,
+  "humanArtApproved": false,
+  "fontDependency": {
+    "name": "Georgia Regular",
+    "source": "Installed Windows font, converted to sign outlines in the GLB; packed in local authoring source by Blender",
+    "licenseReview": "not reviewed for distribution; this delivery is a local art sample"
+  },
+  "lighting": "Runtime PBR with hemisphere/key/fixture lights, RoomEnvironment reflections and reduced-resolution GTAO. No baked-lightmap or offline-render equivalence claim.",
+  "rawAsset": {
+    "path": "meshes/classic-railway-raw.glb",
+    "sha256": "2b6714a20acaf6559d422da1683b67e72cf662c850ad043da9904c8ed1f9da94",
+    "bytes": 28322116
+  },
+  "optimization": {
+    "path": "runtime/optimization.json",
+    "sha256": "b8138384d5f3e2d58fa4a2182074a4fadeee3d922bc88e67e42e5a0460cbe248",
+    "decoder": "Three.js bundled MeshoptDecoder",
+    "textures": "512px; WebP base color, PNG normal"
+  }
+}

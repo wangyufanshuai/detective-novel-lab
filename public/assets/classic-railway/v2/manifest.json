@@ -1,0 +1,257 @@
+{
+  "schema": "classic-railway-runtime.v2",
+  "status": "local-art-and-navigation-sample",
+  "sourceSha256": "0032d8201d58393302d7f2928d63cc5dacbb43fc994988be36166f21772b0495",
+  "asset": {
+    "url": "/assets/classic-railway/v2/classic-railway.glb",
+    "sha256": "a107c65a7939a3d97e91639a48ab206de80bde33e2b272e6975efb2a758575e1",
+    "bytes": 9736384
+  },
+  "navigation": {
+    "url": "/assets/classic-railway/v2/navigation.json",
+    "sha256": "7010c7b61076761a4bb32a033468991da06fcf25471cae11e4784ee46748c7bc"
+  },
+  "sourceTriangles": 352607,
+  "exportedMaterialMeshes": 113,
+  "lights": [
+    {
+      "id": "inn_lantern_2.4",
+      "position": [
+        2.4,
+        -0.65,
+        2.2
+      ],
+      "color": "#ffd9a2",
+      "runtimeIntensity": 13,
+      "distance": 3.6,
+      "sourceWatts": 17
+    },
+    {
+      "id": "inn_lantern_4.9",
+      "position": [
+        4.9,
+        -0.65,
+        2.2
+      ],
+      "color": "#ffd9a2",
+      "runtimeIntensity": 13,
+      "distance": 3.6,
+      "sourceWatts": 17
+    },
+    {
+      "id": "inn_lantern_10.38",
+      "position": [
+        10.38,
+        -0.65,
+        2.2
+      ],
+      "color": "#ffd9a2",
+      "runtimeIntensity": 13,
+      "distance": 3.6,
+      "sourceWatts": 17
+    },
+    {
+      "id": "sitting-room-pendant",
+      "position": [
+        7.66,
+        3.34,
+        2.6300000000000003
+      ],
+      "color": "#ffe3bb",
+      "sourceWatts": 160,
+      "runtimeIntensity": 60,
+      "distance": 8
+    },
+    {
+      "id": "street_lamp_head",
+      "position": [
+        11.65,
+        -2.49,
+        3.47
+      ],
+      "color": "#ffd9a2",
+      "runtimeIntensity": 13,
+      "distance": 3.6,
+      "sourceWatts": 17
+    },
+    {
+      "id": "console-lamp-light",
+      "position": [
+        2.78,
+        3.53,
+        1.5025
+      ],
+      "color": "#ffd39a",
+      "sourceWatts": 28,
+      "runtimeIntensity": 12,
+      "distance": 3.1
+    },
+    {
+      "id": "reading-lamp-light",
+      "position": [
+        9.99,
+        4.76,
+        1.8
+      ],
+      "color": "#ffd39a",
+      "sourceWatts": 40,
+      "runtimeIntensity": 19,
+      "distance": 3.5
+    },
+    {
+      "id": "wall-sconce-6.76",
+      "position": [
+        6.76,
+        6.25,
+        2.52
+      ],
+      "color": "#ffd39a",
+      "sourceWatts": 13,
+      "runtimeIntensity": 7.0,
+      "distance": 2.5
+    },
+    {
+      "id": "wall-sconce-9.37",
+      "position": [
+        9.37,
+        6.25,
+        2.52
+      ],
+      "color": "#ffd39a",
+      "sourceWatts": 13,
+      "runtimeIntensity": 7.0,
+      "distance": 2.5
+    },
+    {
+      "id": "hearth-embers",
+      "position": [
+        8.05,
+        6.12,
+        0.47
+      ],
+      "color": "#ff5620",
+      "sourceWatts": 9,
+      "runtimeIntensity": 1.3,
+      "distance": 1.4
+    }
+  ],
+  "exporterSha256": "41fcab2d2b695e96ca3e6449d356bf18eb8ca54f93d34ac3695184f6c76f2551",
+  "proofs": {
+    "authoring-receipt.json": "7024956ef53aec8a3a4ba0fae7b12502707788754f1c150110b8a580fe8e2573",
+    "render-receipt.json": "97ac591a0ea9db7d13d356011fcd946d46664832fae1db171b3a5eca4825dbd5",
+    "function-review.json": "3b9c731724e82ccced17779456be2f5200b418432d839087870e9bd6282c479b",
+    "form-review.json": "ecb2bd7ec7642660a35ba1638475d50742f29e4abaabb77747c9569bd7b4c5f0",
+    "scene-contract.json": "1fc3062f17496aa58e19f52e862119105e4d60cec56a131db5d6f90478152f60",
+    "lighting.json": "cf1022c0d346638ea64a0a924513804664d6ca50ddc974aa58711c4fc11259c9"
+  },
+  "worldBound": false,
+  "humanArtApproved": false,
+  "fontDependency": {
+    "name": "Railway Serif Study",
+    "license": "SIL-OFL-1.1",
+    "provenance": "licensed/provenance.json",
+    "licensePath": "licensed/font-OFL.txt",
+    "allSignFontsVerified": true
+  },
+  "lighting": "Runtime PBR with hemisphere/key/fixture lights, RoomEnvironment reflections and reduced-resolution GTAO. No baked-lightmap or offline-render equivalence claim.",
+  "baseExporterSha256": "271686e9a0caf2198bc4d15a862c7949d9a8cd9c9b29053c597feb56539c1ba6",
+  "thirdPartyAssets": [
+    {
+      "id": "wood_table_001",
+      "provider": "Poly Haven",
+      "page": "https://polyhaven.com/a/wood_table_001",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "maps": {
+        "color": {
+          "path": "licensed/wood_table_001/color.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/wood_table_001/wood_table_001_diff_1k.jpg",
+          "sourceMd5": "56652a7339b16a76afad20d3585f66ea",
+          "sha256": "460dd08d240f4a1f02982415048c3c5c200f385db212da18dc7e2df68bf4d0be",
+          "bytes": 215573
+        },
+        "normal": {
+          "path": "licensed/wood_table_001/normal.png",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/wood_table_001/wood_table_001_nor_gl_1k.png",
+          "sourceMd5": "e34b6eb7939a0f99bd11740f8d85a56c",
+          "sha256": "3d1dc2cc14cd9a3d2bc0035560aa715f4f8786902b4b72e78135f1d097428f98",
+          "bytes": 4961551
+        },
+        "roughness": {
+          "path": "licensed/wood_table_001/roughness.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/wood_table_001/wood_table_001_rough_1k.jpg",
+          "sourceMd5": "05b60bd20a1cc4355c5d73a99b245d44",
+          "sha256": "a2ca9ae89dfe7b8e2e5e92f0aa43467845417de8a50205b5852ef0d57c7624f9",
+          "bytes": 237261
+        }
+      }
+    },
+    {
+      "id": "leather_red_02",
+      "provider": "Poly Haven",
+      "page": "https://polyhaven.com/a/leather_red_02",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "maps": {
+        "color": {
+          "path": "licensed/leather_red_02/color.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/leather_red_02/leather_red_02_coll1_1k.jpg",
+          "sourceMd5": "a91110dd3cea1bfb5d8f34b5c3c6536d",
+          "sha256": "8b4f967175754b7224c98cfb3f048105dbf3dd7b265c6954f7729ef0f2691112",
+          "bytes": 1002834
+        },
+        "normal": {
+          "path": "licensed/leather_red_02/normal.png",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/leather_red_02/leather_red_02_nor_gl_1k.png",
+          "sourceMd5": "15f5f55e8f81441bf42ddf535f512bd0",
+          "sha256": "d151b48d5e0e21b4e9057c4624d921dcc5483682e62a77bb20f7bea18d92ddb7",
+          "bytes": 2270810
+        },
+        "roughness": {
+          "path": "licensed/leather_red_02/roughness.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/leather_red_02/leather_red_02_rough_1k.jpg",
+          "sourceMd5": "7c65693a61e330144bd9b5949e64a4a6",
+          "sha256": "dd3b860a9510a44fd857c04e0c8cc63ea1f944c25abe9bdcbf844cc4a22c88d8",
+          "bytes": 879217
+        }
+      }
+    },
+    {
+      "id": "railway-serif-study",
+      "source": "public/fonts/noir/noir-serif-sc-regular.woff2",
+      "sourceSha256": "d82ece560e9b19d2cea7a23068863e42a4d54269af8fbdc47f3cd19719026623",
+      "license": "SIL-OFL-1.1",
+      "licensePath": "licensed/font-OFL.txt",
+      "licenseSha256": "5e0da210fb04058a8c0087985d2d456b931c2579811a49655721d3cf0c36b6d6",
+      "modification": "Latin sign subset and WOFF2-to-SFNT conversion; renamed Railway Serif Study; copyright records retained.",
+      "path": "licensed/railway-serif-study.ttf",
+      "sha256": "a4be2bb54e3844349290c7c4243f01d351b5572fe61a7acbd022a73c099f348e"
+    }
+  ],
+  "materialProvenanceSha256": "aeb0a6b02c15620e0e7d1459a1f037d255375c96dfe26e641627b18fde607c8c",
+  "licenseDocuments": [
+    "/assets/classic-railway/v2/CREDITS.md",
+    "/assets/classic-railway/v2/font-OFL.txt"
+  ],
+  "rawAsset": {
+    "path": "meshes/classic-railway-raw.glb",
+    "sha256": "f2ec887e0f974057453eb2726fd8b7cb01d58e8a896c8db4681e2380bea88dc8",
+    "bytes": 40676972
+  },
+  "optimization": {
+    "path": "runtime/optimization.json",
+    "sha256": "9215c1be2c514a69c55c502ce1fad21f6d8542e04d328f236a8066a0d224862c",
+    "decoder": "Three.js bundled MeshoptDecoder",
+    "textures": "512px; WebP base color, PNG normal"
+  },
+  "runtimeFixtureCalibration": {
+    "scriptSha256": "c78363f20e7127354f85d4890b2f3c9490ce3fb68498957b357f692af9ceb26c",
+    "overrides": {
+      "hearth-embers": {
+        "color": "#ff5620",
+        "runtimeIntensity": 1.3
+      }
+    },
+    "reason": "Keep a localized warm ember source in the cutaway WebGL view; artistic calibration, not radiometric or offline-render equivalence."
+  }
+}

@@ -1,0 +1,105 @@
+{
+  "schema": "classic-resident-runtime.v1",
+  "status": "art-candidate",
+  "actorId": "resident-03",
+  "id": "rb-xu-zhiwei",
+  "name": "许知微",
+  "role": "旧书修复师",
+  "sourceSha256": "4b3606d8dfebe3d2d0e8102933dab9ae4bc16f0c019e9abcd2fd33081a847c91",
+  "asset": {
+    "url": "/assets/classic-residents/v10/resident-03.glb",
+    "sha256": "845923949031887d4671350fd1ed2cede65afab855735271b32c0211e0c8bd07",
+    "bytes": 5039284
+  },
+  "animation": {
+    "idle": "Idle",
+    "walk": "Walk",
+    "strideMeters": 0.8950055694580078,
+    "walkDurationSeconds": 0.8
+  },
+  "playerSpeed": 1.118756936736959,
+  "triangles": 36668,
+  "materialCount": 11,
+  "bones": 52,
+  "units": "metres",
+  "forwardAxis": "glTF +Z",
+  "worldBound": false,
+  "humanArtApproved": false,
+  "license": "CC0-1.0 anatomy, skin and fitted features; project-authored clothing, bun hair and animation",
+  "licenseNoticeUrl": "/assets/classic-residents/v10/LICENSE.ASSETS.md",
+  "construction": "Retained anatomy, topology, UV, textures and 50 rest bones. Resculpted connected blouse with harmonic shoulder and elbow skin weights. Added two eye bones and book-aware head pitch to the authored work action. Workstation and hand paths retain v9.",
+  "handArticulation": {
+    "jointNames": [
+      "finger_L_1_1",
+      "finger_L_1_2",
+      "finger_L_1_3",
+      "finger_L_2_1",
+      "finger_L_2_2",
+      "finger_L_2_3",
+      "finger_L_3_1",
+      "finger_L_3_2",
+      "finger_L_3_3",
+      "finger_L_4_1",
+      "finger_L_4_2",
+      "finger_L_4_3",
+      "finger_L_5_1",
+      "finger_L_5_2",
+      "finger_L_5_3",
+      "finger_R_1_1",
+      "finger_R_1_2",
+      "finger_R_1_3",
+      "finger_R_2_1",
+      "finger_R_2_2",
+      "finger_R_2_3",
+      "finger_R_3_1",
+      "finger_R_3_2",
+      "finger_R_3_3",
+      "finger_R_4_1",
+      "finger_R_4_2",
+      "finger_R_4_3",
+      "finger_R_5_1",
+      "finger_R_5_2",
+      "finger_R_5_3"
+    ],
+    "kind": "authored-relaxed-and-book-grip",
+    "objectGrasping": true
+  },
+  "idleForearmClearanceRadians": {
+    "forearm_L": 0.04
+  },
+  "workAction": {
+    "id": "inspect-book",
+    "label": "查看旧书动作",
+    "clip": "InspectBook",
+    "propClip": "Animation",
+    "durationSeconds": 8,
+    "workstation": {
+      "url": "/assets/classic-residents/v9/workstation.glb",
+      "sha256": "3b27f178979455826c092ace14d50d0dd569b94093f0464e6261436d24a5d953",
+      "bytes": 6087604
+    },
+    "collider": {
+      "center": [
+        0.0,
+        -0.3263041153550148
+      ],
+      "size": [
+        0.4031254053115845,
+        0.31698112189769745
+      ]
+    },
+    "binding": "authored-kinematic-contact",
+    "pageTurning": false,
+    "physicsSimulation": false
+  },
+  "gazeArticulation": {
+    "jointNames": [
+      "eye_L",
+      "eye_R"
+    ],
+    "headJoint": "head",
+    "kind": "authored-book-attention",
+    "blink": false,
+    "worldBound": false
+  }
+}

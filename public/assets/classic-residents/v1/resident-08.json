@@ -1,0 +1,30 @@
+{
+  "schema": "classic-resident-runtime.v1",
+  "status": "art-candidate",
+  "actorId": "resident-08",
+  "id": "rb-lin-ali",
+  "name": "林阿梨",
+  "role": "旅馆老板",
+  "sourceSha256": "a8a096f9d01e7e7115aa29a70169e76a75e3b08ede92a42ee5c9dec3d57ad5fa",
+  "asset": {
+    "url": "/assets/classic-residents/v1/resident-08.glb",
+    "sha256": "6d6fbc8e81e3bed74594b033aa04469a9bd53a174feb827ac495ec5430b051ba",
+    "bytes": 461256
+  },
+  "animation": {
+    "idle": "Idle",
+    "walk": "Walk",
+    "strideMeters": 0.8683684730529785,
+    "walkDurationSeconds": 0.8
+  },
+  "playerSpeed": 1.0854605993340731,
+  "triangles": 43156,
+  "materialCount": 11,
+  "bones": 20,
+  "units": "metres",
+  "forwardAxis": "glTF +Z",
+  "worldBound": false,
+  "humanArtApproved": false,
+  "license": "CC0-1.0 anatomy; project-authored clothing, hair, props and animation",
+  "licenseNoticeUrl": "/assets/classic-residents/v1/LICENSE.ASSETS.md"
+}

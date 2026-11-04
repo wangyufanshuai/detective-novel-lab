@@ -1,0 +1,31 @@
+{
+  "schema": "classic-resident-runtime.v1",
+  "status": "art-candidate",
+  "actorId": "resident-08",
+  "id": "rb-lin-ali",
+  "name": "林阿梨",
+  "role": "旅馆老板",
+  "sourceSha256": "93879ad8a6ed13d142081cf734318f63c2dab893edbef979c09384d673f75e46",
+  "asset": {
+    "url": "/assets/classic-residents/v3/resident-08.glb",
+    "sha256": "8e3a7cc9ce0db79af75b9524e74cc61ff365508dd5b90a7960dfb64ccb3cfd25",
+    "bytes": 693288
+  },
+  "animation": {
+    "idle": "Idle",
+    "walk": "Walk",
+    "strideMeters": 0.8683684730529785,
+    "walkDurationSeconds": 0.8
+  },
+  "playerSpeed": 1.0854605993340731,
+  "triangles": 31624,
+  "materialCount": 13,
+  "bones": 20,
+  "units": "metres",
+  "forwardAxis": "glTF +Z",
+  "worldBound": false,
+  "humanArtApproved": false,
+  "license": "CC0-1.0 anatomy, skin and fitted features; project-authored clothing, bun hair and animation",
+  "licenseNoticeUrl": "/assets/classic-residents/v3/LICENSE.ASSETS.md",
+  "construction": "Source anatomical UVs, fitted CC0 eyes and features, original clothing and retained animation. No Agent decisions or runtime cloth."
+}

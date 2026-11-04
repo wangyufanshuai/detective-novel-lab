@@ -1,0 +1,151 @@
+{
+  "schema": "classic-resident-runtime.v1",
+  "status": "art-motion-candidate",
+  "actorId": "resident-08",
+  "id": "rb-lin-ali",
+  "name": "林阿梨",
+  "role": "旅馆老板",
+  "sourceSha256": "f95ce4ef2c4a6f07d09fbe996537907573912106bbc448f2169ff929ae52b9f3",
+  "asset": {
+    "url": "/assets/classic-motion/v2-step16-cape/resident-08.glb",
+    "sha256": "9f979cd51b8e5e49c95edf76809a8cd7765e08aa316e4f6c30f14db1738b8858",
+    "bytes": 1232036
+  },
+  "animation": {
+    "idle": "Idle",
+    "walk": "Walk",
+    "strideMeters": 0.8683684730529785,
+    "walkDurationSeconds": 0.8
+  },
+  "playerSpeed": 1.0854605993340731,
+  "units": "metres",
+  "forwardAxis": "glTF +Z",
+  "worldBound": false,
+  "humanArtApproved": false,
+  "license": "CC0-1.0 anatomy, skin and fitted features; project-authored clothing, bun hair and animation",
+  "licenseNoticeUrl": "/assets/classic-occupations/v2/LICENSE.ASSETS.md",
+  "construction": "Retained character with a narrower continuous double-sided cape and a revised lower-elbow approach/release. Six authored clips with the existing writing contact path and prop timing; skeleton, UVs and materials retained. See source-bound reviews.",
+  "handArticulation": {
+    "jointNames": [
+      "finger_L_1_1",
+      "finger_L_1_2",
+      "finger_L_1_3",
+      "finger_L_2_1",
+      "finger_L_2_2",
+      "finger_L_2_3",
+      "finger_L_3_1",
+      "finger_L_3_2",
+      "finger_L_3_3",
+      "finger_L_4_1",
+      "finger_L_4_2",
+      "finger_L_4_3",
+      "finger_L_5_1",
+      "finger_L_5_2",
+      "finger_L_5_3",
+      "finger_R_1_1",
+      "finger_R_1_2",
+      "finger_R_1_3",
+      "finger_R_2_1",
+      "finger_R_2_2",
+      "finger_R_2_3",
+      "finger_R_3_1",
+      "finger_R_3_2",
+      "finger_R_3_3",
+      "finger_R_4_1",
+      "finger_R_4_2",
+      "finger_R_4_3",
+      "finger_R_5_1",
+      "finger_R_5_2",
+      "finger_R_5_3"
+    ],
+    "kind": "authored-tripod-writing-grip",
+    "objectGrasping": true
+  },
+  "idleForearmClearanceRadians": {
+    "forearm_L": 0.04
+  },
+  "gazeArticulation": {
+    "jointNames": [
+      "eye_L",
+      "eye_R"
+    ],
+    "headJoint": "head"
+  },
+  "workAction": {
+    "id": "reconcile-guest-register",
+    "label": "核对住客登记",
+    "clip": "ReconcileRegister",
+    "propClip": "WriteRegister_Prop",
+    "propAnchor": "occupation_pen_anchor",
+    "durationSeconds": 10,
+    "workstation": {
+      "url": "/assets/classic-occupations/v2/workstation.glb",
+      "sha256": "9a28fe0f55f1e90d30e66072099ff5f617db13de9e3f2cfa3f50fcd687a18802",
+      "bytes": 6152936
+    },
+    "collider": {
+      "center": [
+        0.0,
+        -0.36182020604610443
+      ],
+      "size": [
+        0.7478823065757751,
+        0.4703662693500519
+      ]
+    }
+  },
+  "motionPreview": {
+    "rootNode": "movement_actor",
+    "clips": [
+      "BackAway",
+      "TurnLeft",
+      "ApproachWork"
+    ],
+    "maximumGroundingLiftMeters": 0.012
+  },
+  "clips": [
+    {
+      "clip": "Idle",
+      "seconds": 3.0,
+      "channels": 157,
+      "animatedWeightChannels": 1,
+      "individualExportSha256": "b9a7957eb5f159d647a61407600200c629471d101d6bcfed1bcf880d99e26e21"
+    },
+    {
+      "clip": "Walk",
+      "seconds": 0.8,
+      "channels": 157,
+      "animatedWeightChannels": 1,
+      "individualExportSha256": "f3aa2b713fcbf351d890b2026d489c80b5bda620be6dfae31f87ea2f9e211276"
+    },
+    {
+      "clip": "ReconcileRegister",
+      "seconds": 10,
+      "channels": 157,
+      "animatedWeightChannels": 1,
+      "individualExportSha256": "80cb97a9af2d77e2288158947ca59edb85655e3d2e40d2355bb878173f223314"
+    },
+    {
+      "clip": "BackAway",
+      "seconds": 2.0,
+      "channels": 159,
+      "animatedWeightChannels": 1,
+      "individualExportSha256": "f19f94e85dee216771046ef6a71b7a710d3ee6487354b7d873677f8d84042928"
+    },
+    {
+      "clip": "ApproachWork",
+      "seconds": 2.0,
+      "channels": 159,
+      "animatedWeightChannels": 1,
+      "individualExportSha256": "3aa03d8272a57d0c31ff9464a6478bec7c09b32643ab607790e2dd05019f7a71"
+    },
+    {
+      "clip": "TurnLeft",
+      "seconds": 1.6,
+      "channels": 159,
+      "animatedWeightChannels": 1,
+      "individualExportSha256": "57c66754b830202bd9cd052fea4cf847103e624e5d66e58b9406cd5a0951b504"
+    }
+  ],
+  "sourceReviews": "docs/3d-town/classic-motion-v2/step-16/cape-17"
+}

@@ -1,0 +1,31 @@
+{
+  "schema": "classic-resident-runtime.v1",
+  "status": "art-candidate",
+  "actorId": "resident-03",
+  "id": "rb-xu-zhiwei",
+  "name": "许知微",
+  "role": "旧书修复师",
+  "sourceSha256": "2a9b32ea282689a898da8c20446a765606385cfb0a106bf8baaf7b9332baa91d",
+  "asset": {
+    "url": "/assets/classic-residents/v2/resident-03.glb",
+    "sha256": "40536c0671a0fde41afb90f098f8e8565522cdfd0528a2568de990dd20f59659",
+    "bytes": 424316
+  },
+  "animation": {
+    "idle": "Idle",
+    "walk": "Walk",
+    "strideMeters": 0.8950055694580078,
+    "walkDurationSeconds": 0.8
+  },
+  "playerSpeed": 1.118756936736959,
+  "triangles": 38636,
+  "materialCount": 10,
+  "bones": 20,
+  "units": "metres",
+  "forwardAxis": "glTF +Z",
+  "worldBound": false,
+  "humanArtApproved": false,
+  "license": "CC0-1.0 anatomy; project-authored clothing, hair, props and animation",
+  "licenseNoticeUrl": "/assets/classic-residents/v2/LICENSE.ASSETS.md",
+  "construction": "Directly shaped blouse; authoring-time settled skirt/apron; natural Idle. No runtime cloth or autonomous actions."
+}
