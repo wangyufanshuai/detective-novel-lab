@@ -37,6 +37,9 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "output",
+    "docs/3d-town",
+    "docs/3d-rooms"
   ]
 }
