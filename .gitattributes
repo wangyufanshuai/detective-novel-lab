@@ -6,3 +6,7 @@
 *.ts text eol=lf
 *.tsx text eol=lf
 *.svg text eol=lf
+public/assets/**/*.exr filter=lfs diff=lfs merge=lfs -text
+public/assets/**/*.r8 filter=lfs diff=lfs merge=lfs -text
+public/3d-rooms/**/*.glb filter=lfs diff=lfs merge=lfs -text
+public/assets/**/*.glb filter=lfs diff=lfs merge=lfs -text

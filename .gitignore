@@ -17,3 +17,14 @@ dev-mmo.err.log
 test-results/
 playwright-report/
 blob-report/
+
+# Generated outputs and local caches (B consolidation, 2026-11-04)
+output/
+scripts/__pycache__/
+*.pyc
+tsconfig.tsbuildinfo
+docs/*.log
+
+# Blender source/render workspaces (~14 GB): back up outside git
+docs/3d-town/
+docs/3d-rooms/
