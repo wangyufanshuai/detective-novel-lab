@@ -128,7 +128,9 @@ if (!benchmarkMode) {
   assert.equal(report.metrics.evidenceGraph.warnings.length, 0, report.metrics.evidenceGraph.warnings.join("; "));
   assert.equal(report.performance.totalMs <= maxRuntimeMs, true, `long run must complete within ${maxRuntimeMs}ms, actual ${Math.round(report.performance.totalMs)}ms`);
   if (seed === "long-run-validation" && ticks === 100 && minimumCases === 3) {
-    assert.equal(report.metrics.deterministicRunHash, "fnv1a-3cc999fd", "default long-run deterministic hash matches the reviewed v4.8 semantic baseline");
+    // The trigger identity fix intentionally changes the reviewed semantic
+    // baseline: a replayed trigger can no longer be counted as a new case.
+    assert.equal(report.metrics.deterministicRunHash, "fnv1a-3374875d", "default long-run deterministic hash matches the reviewed post-trigger-identity baseline");
   }
   assert.equal(report.ok, true, report.errors.join("; "));
 }

@@ -57,6 +57,9 @@ try {
     method: "POST",
     body: JSON.stringify({ worldId: explicitCreated.world.id, packageId: "dock-court-market-town", campaignRouteId: "counter-route" })
   });
+  assert.equal(dockCampaignSelection.currentExperiment.worldPackageReceipt?.schema, "world-package-receipt.v1", "WorldPackage selection persists a package receipt");
+  assert.equal(dockCampaignSelection.currentExperiment.worldPackageReceipt?.contentHash, dockCampaignSelection.currentExperiment.worldPackageHash, "package receipt content hash matches the selected experiment");
+  assert.equal(dockCampaignSelection.currentExperiment.worldPackageReceipt?.files.every((file) => /^[a-f0-9]{64}$/.test(file.sha256)), true, "package receipt carries per-file SHA-256 hashes");
   assert.equal(dockCampaignSelection.campaignSession.campaignLabel, "Harbor Testimony", "dock WorldPackage selects the second authored campaign before extraction");
   assert.equal(dockCampaignSelection.campaignSession.routeLabel, "Chain Protection", "dock WorldPackage binds the safe counter-route label before extraction");
   assert.equal(dockCampaignSelection.arcConvergence.finaleLabel, "Custody Tribunal", "dock counter route exposes its safe differentiated finale");
@@ -90,17 +93,13 @@ try {
   });
   assert.equal(started.runtime.status, "running", "runtime starts running");
   assert.equal(started.runtime.agentStates.length, 20, "runtime creates 20 agent states by default");
-  assert.equal(started.runtime.socialProfiles.length, 20, "runtime exposes one social profile per generated NPC");
+  assert.equal(started.runtime.socialProfiles.length, 0, "player runtime keeps the social ledger private");
   assert.equal(started.runtime.locationProfiles.length > 0, true, "runtime exposes location pressure profiles");
-  assert.ok(started.runtime.agentStates[0].socialProfile?.dominantTrait, "agent states expose social profile summaries");
+  assert.equal(started.runtime.agentStates[0].socialProfile, undefined, "player agent states omit operator social profile details");
   assert.ok(started.runtime.decisionTraces.length > 0, "runtime creates decisions");
-  assert.ok(started.runtime.decisionTraces[0].phases?.includes("extract-candidates"), "decision traces expose simulation phases");
-  assert.ok(started.runtime.decisionTraces[0].observationIds?.length, "decision traces expose event observations");
-  assert.ok(started.runtime.eventObservations?.length > 0, "runtime exposes event observation index");
-  assert.ok(started.runtime.relationshipLedger?.length > 0, "runtime exposes relationship ledger changes");
-  assert.ok(started.runtime.locationLedger?.length > 0, "runtime exposes location ledger changes");
-  assert.ok(started.runtime.decisionTraces[0].consequence?.actionKind, "decision traces expose action consequences");
-  assert.ok(started.runtime.decisionTraces[0].consequence?.socialShift, "decision traces expose social consequences");
+  assert.equal(started.runtime.eventObservations?.length, 0, "player runtime omits the operator observation index");
+  assert.equal(started.runtime.relationshipLedger?.length, 0, "player runtime omits the relationship ledger");
+  assert.equal(started.runtime.locationLedger, undefined, "player runtime omits the location ledger");
 
   const stepped = await request("/api/v1/command/town/runtime/step", {
     method: "POST",
@@ -111,6 +110,10 @@ try {
   const agents = await request(`/api/v1/query/town/agents?worldId=${encodeURIComponent(worldId)}`);
   assert.ok(agents.agents.length > 0, "agents query returns states");
   assert.ok("propagatedMemoryCount" in agents.agents[0], "agent states expose propagated memory count");
+  assert.equal(agents.agents[0].currentGoal, undefined, "public agent observation omits private goals");
+  assert.equal(agents.agents[0].knownFactIds, undefined, "public agent observation omits private known facts");
+  assert.equal(agents.agents[0].resources, undefined, "public agent observation omits private resources");
+  assert.equal(agents.agents[0].socialProfile, undefined, "public agent observation omits social profile internals");
   const actorId = agents.agents[0].npcId;
 
   const agent = await request(`/api/v1/query/town/agent?worldId=${encodeURIComponent(worldId)}&npcId=${encodeURIComponent(actorId)}`);
@@ -118,6 +121,8 @@ try {
   assert.ok(Number.isFinite(agent.candidates[0].score.socialAffinity), "agent query exposes social action affinity");
   assert.ok(Number.isFinite(agent.candidates[0].score.locationHeat), "agent query exposes location heat scoring");
   assert.ok(agent.candidates.some((candidate) => ["investigate", "spread-rumor", "seek-alibi", "pressure", "cover-up"].includes(candidate.kind)), "agent query returns core simulation actions");
+  assert.equal(agent.agent.currentGoal, undefined, "single-agent observation omits private goals");
+  assert.equal(agent.trace?.observedEventIds, undefined, "single-agent trace omits private source event ids");
 
   const brief = await request(`/api/v1/query/town/brief?worldId=${encodeURIComponent(worldId)}`);
   assert.equal(brief.brief.worldId, worldId, "town brief returns the selected world");
@@ -127,6 +132,46 @@ try {
   assert.equal(brief.brief.arcConvergence.status, "locked", "fresh Server Runtime exposes a safe locked convergence summary");
   assert.equal(brief.brief.campaignSession.status, "opening", "fresh Server Runtime opens one safe three-case campaign journey");
   assert.equal(/caseId|tick|signalKey|sourceKey|culprit|evidenceId|internal-/i.test(JSON.stringify(brief.brief.arcConvergence)), false, "Situation Brief convergence omits internal bindings and truth material");
+
+  const capabilities = await request(`/api/v1/query/town/agent-capabilities?worldId=${encodeURIComponent(worldId)}`);
+  assert.equal(capabilities.manifest.schema, "agent-control.v1", "agent capability discovery exposes a versioned control contract");
+  assert.equal(capabilities.manifest.compatibility.randomSourceVersion, "persistent-town-lcg.v1", "agent capability discovery exposes replay random source compatibility");
+  assert.equal(capabilities.manifest.commands.find((command) => command.id === "commit.intervention")?.status, "implemented", "agent capability discovery advertises the CAS-bound commit command");
+
+  const commitBody = {
+    worldId,
+    actionId: "agent-api-smoke-commit-1",
+    expectedRevision: capabilities.world.revision,
+    reason: "Use the current brief to test one auditable counterfactual.",
+    sourceRefs: [`brief:${worldId}`],
+    intervention: { actorId, kind: "resource", value: "resource:agent-commit" }
+  };
+  const committed = await request("/api/v1/command/town/agent/commit", {
+    method: "POST",
+    body: JSON.stringify(commitBody)
+  });
+  assert.equal(committed.schema, "agent-control.v1", "agent commit returns the control contract schema");
+  assert.equal(committed.replayed, false, "first agent commit is applied once");
+  assert.equal(committed.intervention.actionId, commitBody.actionId, "agent commit persists the stable action id");
+  assert.equal(committed.runtime.socialProfiles.length, 20, "admin runtime exposes one social profile per generated NPC");
+  assert.ok(committed.runtime.agentStates[0].socialProfile?.dominantTrait, "admin agent states expose social profile summaries");
+  assert.ok(committed.runtime.decisionTraces[0].phases?.includes("extract-candidates"), "admin decision traces expose simulation phases");
+  assert.ok(committed.runtime.decisionTraces[0].observationIds?.length, "admin decision traces expose event observations");
+  assert.ok(committed.runtime.eventObservations?.length > 0, "admin runtime exposes event observation index");
+  assert.ok(committed.runtime.relationshipLedger?.length > 0, "admin runtime exposes relationship ledger changes");
+  assert.ok(committed.runtime.locationLedger?.length > 0, "admin runtime exposes location ledger changes");
+  assert.ok(committed.runtime.decisionTraces[0].consequence?.actionKind, "admin decision traces expose action consequences");
+  assert.ok(committed.runtime.decisionTraces[0].consequence?.socialShift, "admin decision traces expose social consequences");
+  const replayedCommit = await request("/api/v1/command/town/agent/commit", {
+    method: "POST",
+    body: JSON.stringify(commitBody)
+  });
+  assert.equal(replayedCommit.replayed, true, "repeating the same action id returns the original intervention without a second mutation");
+  const staleCommit = await requestFailure("/api/v1/command/town/agent/commit", {
+    method: "POST",
+    body: JSON.stringify({ ...commitBody, actionId: "agent-api-smoke-stale-1" })
+  });
+  assert.equal(staleCommit.code, "RUNTIME_REVISION_CONFLICT", "a new commit with a stale revision is rejected");
 
   const biased = await request("/api/v1/command/town/agent/intervene", {
     method: "POST",
@@ -158,15 +203,18 @@ try {
   }
   assert.ok(candidate.id, "candidate id is available");
   assert.equal(candidate.validation.valid, true, "at least one valid candidate emerges before extraction");
-  assert.ok(candidate.triggeredEventId, "valid candidate is backed by a real triggered case event");
+  assert.equal(candidate.triggeredEventId, undefined, "player candidate projection hides the source event id");
   assert.equal(Object.values(candidate.chainCompleteness || {}).every(Boolean), true, "candidate exposes complete six-stage chain");
-  assert.equal(candidate.validation.memoryConfidence.supportScore >= 55, true, "candidate exposes weighted memory support");
-  assert.equal(candidate.validation.observationSupport.supportScore >= 55, true, "candidate exposes observation-backed support");
   assert.ok(Array.isArray(candidate.chainStageTags), "candidate exposes chain stage tags");
-  assert.ok(Array.isArray(candidate.validation.failureReasons), "candidate exposes validation failure reasons");
+  assert.equal(candidate.validation.failureReasons, undefined, "player candidate projection hides validation internals");
 
   const proof = await request(`/api/v1/query/town/emergence-proof?worldId=${encodeURIComponent(worldId)}&candidateId=${encodeURIComponent(candidate.id)}`);
   assert.equal(proof.candidate.id, candidate.id, "proof returns selected candidate");
+  const sourceTriggeredEventId = proof.candidate.triggeredEventId;
+  assert.ok(sourceTriggeredEventId, "review proof confirms that the valid candidate is backed by a real triggered case event");
+  assert.equal(proof.candidate.validation.memoryConfidence.supportScore >= 55, true, "review proof exposes weighted memory support");
+  assert.equal(proof.candidate.validation.observationSupport.supportScore >= 55, true, "review proof exposes observation-backed support");
+  assert.ok(Array.isArray(proof.candidate.validation.failureReasons), "review proof exposes validation failure reasons");
 
   const extracted = await request("/api/v1/command/town/case/extract", {
     method: "POST",
@@ -188,24 +236,33 @@ try {
   assert.equal(extracted.playableIntake.coach.stage, "join", "playable intake exposes investigation coach");
   assert.equal(extracted.playableIntake.coach.coverage.routeCertified, true, "coach reports route certificate state");
   assert.equal(extracted.playableIntake.coach.coverage.autoSolvePassed, true, "coach reports auto-solve state");
+  const reviewedExtracted = await request(`/api/v1/query/case?caseId=${encodeURIComponent(extracted.activeCase.id)}&mode=review&includeIntake=true`);
+  assert.equal(reviewedExtracted.caseFromLog.id, extracted.activeCase.id, "admin review query returns the source-backed case");
+  const privateTruth = reviewedExtracted.caseFromLog.deductionCase.truth;
+  assert.ok(privateTruth.culpritId && privateTruth.motive && privateTruth.method, "admin review query returns complete case truth");
   assert.equal(extracted.worldArc.status, "active", "successful extraction binds a case-scoped world arc");
   assert.equal(extracted.worldArc.completedStages, 0, "new case-scoped world arc starts before its first accepted lead outcome");
   assert.equal(["locked", "forming"].includes(extracted.arcConvergence.status), true, "case extraction returns the safe campaign convergence state");
   assert.equal(extracted.campaignSession.status, "case-active", "first successful extraction activates campaign case one");
   assert.equal(extracted.campaignSession.progressLabel, "0/3 campaign cases closed", "campaign extraction exposes only bounded progress");
   assert.equal(/\bnpc-\d+\b|\bev-[a-z0-9-]+\b|\b(?:case|evidence|event|source)-[a-z0-9-]*\d[a-z0-9-]*\b/i.test(JSON.stringify(extracted.worldArc)), false, "world arc extraction summary omits raw ids and sources");
-  assert.equal(JSON.stringify(extracted.playableIntake).includes(extracted.activeCase.deductionCase.truth.culpritId), false, "playable intake does not leak culprit id before solve");
-  assert.equal(extracted.activeCase.triggeredEventId, candidate.triggeredEventId, "extracted case preserves the triggered event id");
-  assert.equal(extracted.activeCase.sourceCandidateId, candidate.id, "extracted case preserves the source candidate id");
+  assert.equal(JSON.stringify(extracted.playableIntake).includes(privateTruth.culpritId), false, "playable intake does not leak culprit id before solve");
+  assert.equal(extracted.activeCase.triggeredEventId, undefined, "player case projection hides the triggered event id");
+  assert.equal(extracted.activeCase.sourceCandidateId, undefined, "player case projection hides the source candidate id");
+  assert.equal(reviewedExtracted.caseFromLog.triggeredEventId, sourceTriggeredEventId, "admin review case preserves the triggered event id");
+  assert.equal(reviewedExtracted.caseFromLog.sourceCandidateId, candidate.id, "admin review case preserves the source candidate id");
   assert.equal(extracted.events.filter((event) => event.type === "death").length, 1, "extraction response contains one selected death event");
   assert.equal(extracted.activeCase.qualityReport.worldBackedEvidence, true, "extracted case keeps world-backed evidence quality");
   assert.equal(extracted.activeCase.qualityReport.nonCulpritExcluded, true, "extracted case excludes non-culprits");
   assert.equal(extracted.activeCase.qualityReport.reasoningTraceComplete, true, "extracted case has complete reasoning trace");
+  assert.deepEqual(extracted.activeCase.sourceMap.evidenceSourceEventIds, {}, "player case projection hides evidence source mappings");
+  assert.deepEqual(extracted.activeCase.sourceMap.memorySourceIds, [], "player case projection hides memory source mappings");
+  assert.deepEqual(extracted.activeCase.sourceMap.observationSourceIds, [], "player case projection hides observation source mappings");
   for (const evidenceId of ["ev-motive", "ev-means", "ev-opportunity", "ev-staging", "ev-trace", "ev-town-rollcall"]) {
-    assert.ok(extracted.activeCase.sourceMap.evidenceSourceEventIds?.[evidenceId]?.length, `${evidenceId} maps to original persistent source events`);
+    assert.ok(reviewedExtracted.caseFromLog.sourceMap.evidenceSourceEventIds?.[evidenceId]?.length, `${evidenceId} maps to original persistent source events`);
   }
-  assert.ok(extracted.activeCase.sourceMap.memorySourceIds?.length, "extracted case exposes memory source ids");
-  assert.ok(extracted.activeCase.sourceMap.observationSourceIds?.length, "extracted case exposes observation source ids");
+  assert.ok(reviewedExtracted.caseFromLog.sourceMap.memorySourceIds?.length, "admin review case exposes memory source ids");
+  assert.ok(reviewedExtracted.caseFromLog.sourceMap.observationSourceIds?.length, "admin review case exposes observation source ids");
 
   const queriedCase = await request(`/api/v1/query/case?caseId=${encodeURIComponent(extracted.activeCase.id)}&includeIntake=true`);
   assert.equal(queriedCase.caseFromLog.id, extracted.activeCase.id, "case query returns saved extracted case");
@@ -216,7 +273,7 @@ try {
   assert.ok(queriedCase.playableIntake.nextAction.buttonLabel, "case query rebuilds next action");
   assert.equal(queriedCase.playableIntake.nextAction.coachStepId, queriedCase.playableIntake.coach.nextStep.id, "case query next action is backed by coach");
   assert.equal(queriedCase.playableIntake.coach.stage, "join", "case query rebuilds coach state");
-  assert.equal(JSON.stringify(queriedCase.playableIntake.coach).includes(extracted.activeCase.deductionCase.truth.culpritId), false, "case query coach stays low-spoiler before solve");
+  assert.equal(JSON.stringify(queriedCase.playableIntake.coach).includes(privateTruth.culpritId), false, "case query coach stays low-spoiler before solve");
 
   const proofLedger = await request(`/api/v1/query/case/proof-ledger?caseId=${encodeURIComponent(extracted.activeCase.id)}&includeCertificate=true`);
   assert.equal(proofLedger.ledger.caseId, extracted.activeCase.id, "proof ledger query returns the saved case ledger");
@@ -225,7 +282,7 @@ try {
   assert.ok(proofLedger.coverage.gaps.length, "proof ledger query exposes sessionless coverage gaps");
   assert.equal(proofLedger.certificate.routeCertified, true, "proof ledger query can include route certificate");
   assert.equal(proofLedger.certificate.steps.some((item) => item.evidenceIds.length > 0), false, "sessionless route certificate hides evidence ids");
-  assert.equal(JSON.stringify(proofLedger).includes(extracted.activeCase.deductionCase.truth.culpritId), false, "sessionless proof ledger query stays low-spoiler");
+  assert.equal(JSON.stringify(proofLedger).includes(privateTruth.culpritId), false, "sessionless proof ledger query stays low-spoiler");
 
   const stateBeforeAutoSolve = await request(`/api/v1/query/world/state?worldId=${encodeURIComponent(worldId)}`);
   const sessionCountBeforeAutoSolve = stateBeforeAutoSolve.sessions.length;
@@ -237,7 +294,7 @@ try {
   assert.equal(autoSolveDryRun.summary.routeCertified, true, "auto-solve dry-run reports route certificate");
   assert.equal(autoSolveDryRun.summary.autoTheoryAccepted, true, "auto-solve dry-run reports accepted theory");
   assert.equal(autoSolveDryRun.summary.proofCoverageComplete, true, "auto-solve dry-run closes proof coverage");
-  assert.equal(JSON.stringify(autoSolveDryRun).includes(extracted.activeCase.deductionCase.truth.culpritId), false, "default auto-solve response stays low-spoiler");
+  assert.equal(JSON.stringify(autoSolveDryRun).includes(privateTruth.culpritId), false, "default auto-solve response stays low-spoiler");
   const stateAfterDryRun = await request(`/api/v1/query/world/state?worldId=${encodeURIComponent(worldId)}`);
   assert.equal(stateAfterDryRun.sessions.length, sessionCountBeforeAutoSolve, "auto-solve dry-run does not persist a session");
 
@@ -428,9 +485,9 @@ try {
     body: JSON.stringify({
       sessionId: joined.session.id,
       theory: {
-        culpritId: extracted.activeCase.deductionCase.truth.culpritId,
-        motive: extracted.activeCase.deductionCase.truth.motive,
-        method: extracted.activeCase.deductionCase.truth.method,
+        culpritId: privateTruth.culpritId,
+        motive: privateTruth.motive,
+        method: privateTruth.method,
         evidenceIds: allEvidenceIds
       }
     })
@@ -540,9 +597,9 @@ try {
     body: JSON.stringify({
       sessionId: replayJoined.session.id,
       theory: {
-        culpritId: extracted.activeCase.deductionCase.truth.culpritId,
-        motive: extracted.activeCase.deductionCase.truth.motive,
-        method: extracted.activeCase.deductionCase.truth.method,
+        culpritId: privateTruth.culpritId,
+        motive: privateTruth.motive,
+        method: privateTruth.method,
         evidenceIds: allEvidenceIds
       }
     })
@@ -611,8 +668,8 @@ try {
   assert.equal(directiveRelationship.status, "changed", "completed directive returns the updated safe faction standing summary");
   assert.equal(directiveOffer.status, "offered", "completed directive prepares one player-readable world event opportunity");
   assert.equal(/world-event-offer|world-arc-directive|eventArchetypeId|institutionKind|longActionKind|createdAtTick|expiresAtTick/i.test(JSON.stringify(directiveOffer)), false, "offer summary strips internal source, action, institution, and deadline keys");
-  assert.equal(directiveEvents.filter((event) => event.tags?.includes("directive_start")).length, 1, "API flow emits exactly one successful directive start event");
-  assert.equal(directiveEvents.filter((event) => event.tags?.includes("directive_complete")).length, 1, "API flow emits exactly one directive completion event");
+  assert.ok(directiveEvents.length > 0, "the directive lifecycle publishes player-readable world events");
+  assert.equal(directiveEvents.some((event) => "tags" in event), false, "player directive events strip internal lifecycle tags");
   const offerTick = (await request(`/api/v1/query/town/runtime?worldId=${encodeURIComponent(worldId)}`)).runtime.tick;
   const acceptedOffer = await request("/api/v1/command/town/runtime/step", {
     method: "POST",
@@ -632,8 +689,10 @@ try {
     offerStatus = advancedOffer.worldEventOffer;
   }
   assert.ok(["completed", "failed"].includes(offerStatus.status), `accepted offer reaches a terminal safe state (${offerStatus.progressLabel || "no progress label"})`);
-  assert.equal(offerEvents.filter((event) => event.tags?.includes("offer_start")).length, offerStatus.status === "completed" ? 1 : 0, "offer start event matches the resource-gated lifecycle");
-  assert.equal(offerEvents.filter((event) => event.tags?.includes("offer_complete")).length, offerStatus.status === "completed" ? 1 : 0, "offer completion event matches the resource-gated lifecycle");
+  assert.equal(offerEvents.some((event) => "tags" in event), false, "player opportunity events strip internal lifecycle tags");
+  if (offerStatus.status === "completed") {
+    assert.ok(offerEvents.length > 0, "the completed opportunity publishes player-readable world events");
+  }
   if (offerStatus.status === "failed") {
     assert.match(offerStatus.progressLabel, /resource unavailable/i, "resource-gated failure explains the safe prerequisite category");
   }
@@ -713,6 +772,8 @@ try {
   assert.equal(runtimeWithConsumedHandoff.runtime.worldPressureCascadeSummary.status, "consumed", "consumed pressure state persists through the safe runtime summary");
 
   async function solveCampaignCase(casePayload, label) {
+    const reviewed = await request(`/api/v1/query/case?caseId=${encodeURIComponent(casePayload.activeCase.id)}&mode=review&includeIntake=true`);
+    const truth = reviewed.caseFromLog.deductionCase.truth;
     const campaignJoin = await request("/api/v1/command/player/join", {
       method: "POST",
       body: JSON.stringify({ worldId, caseId: casePayload.activeCase.id, displayName: `Campaign ${label}` })
@@ -737,9 +798,9 @@ try {
       body: JSON.stringify({
         sessionId: campaignJoin.session.id,
         theory: {
-          culpritId: casePayload.activeCase.deductionCase.truth.culpritId,
-          motive: casePayload.activeCase.deductionCase.truth.motive,
-          method: casePayload.activeCase.deductionCase.truth.method,
+          culpritId: truth.culpritId,
+          motive: truth.motive,
+          method: truth.method,
           evidenceIds
         }
       })

@@ -1,0 +1,9 @@
+"""Compare the declared morph field with actual key deltas and skinned points."""
+from pathlib import Path
+import argparse,bpy,hashlib,json,sys
+from mathutils import Vector
+ROOT=Path(__file__).resolve().parents[1];p=argparse.ArgumentParser();p.add_argument('--pilot',default='step-13');a=p.parse_args(sys.argv[sys.argv.index('--')+1:]if'--'in sys.argv else[]);P=ROOT/'docs/3d-town/classic-motion-v2'/a.pilot;source=P/'resident-03/resident.blend';bpy.ops.wm.open_mainfile(filepath=str(source));body=bpy.data.objects['rb-xu-zhiwei_skin'];rig=bpy.data.objects['rb-xu-zhiwei_rig'];action=bpy.data.actions['Walk'];rig.animation_data.action=action;rig.animation_data.action_slot=action.slots[0];bpy.context.scene.frame_set(1);bpy.context.view_layer.update();e=body.evaluated_get(bpy.context.evaluated_depsgraph_get());m=e.to_mesh();index=7331;v=body.data.vertices[index];basis=body.data.shape_keys.key_blocks[0];keys=[]
+for key in body.data.shape_keys.key_blocks:
+ keys.append({'name':key.name,'value':key.value,'relativeKey':key.relative_key.name,'point':list(key.data[index].co),'delta':list(key.data[index].co-basis.data[index].co),'maximumDelta':max((a.co-b.co).length for a,b in zip(key.data,basis.data))})
+mixed=max(sum(((key.data[i].co-b.co)*key.value for key in body.data.shape_keys.key_blocks[1:]),Vector()).length for i,b in enumerate(basis.data))
+report={'sourceSha256':hashlib.sha256(source.read_bytes()).hexdigest(),'vertex':index,'meshPoint':list(v.co),'posedPoint':list(m.vertices[index].co),'maximumMixedLocalDeltaAtWalkFrame1':mixed,'weights':{body.vertex_groups[g.group].name:g.weight for g in v.groups},'keys':keys,'tailBones':{b.name:[list(row)for row in b.matrix]for b in rig.pose.bones if b.name.startswith('tail_')}};e.to_mesh_clear();(P/'skirt-field-diagnosis.json').write_text(json.dumps(report,indent=2)+'\n',encoding='utf-8');(P/'skirt-field-inspector.py').write_bytes(Path(__file__).read_bytes());print(json.dumps(report),flush=True)

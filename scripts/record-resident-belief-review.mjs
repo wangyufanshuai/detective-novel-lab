@@ -1,0 +1,39 @@
+import fs from 'node:fs';
+import crypto from 'node:crypto';
+import assert from 'node:assert/strict';
+const out='docs/agent-first-v7',read=f=>JSON.parse(fs.readFileSync(f,'utf8'));
+const hash=f=>crypto.createHash('sha256').update(fs.readFileSync(f)).digest('hex');
+const production=['packages/engine/src/town/resident-social-beliefs.ts','packages/engine/src/town/resident-appointments.ts','packages/engine/src/town/resident-agenda.ts','packages/engine/src/town/resident-cognition.ts','packages/engine/src/town/resident-life.ts','packages/engine/src/town/daily-routine.ts','packages/engine/src/town/resident-work.ts','packages/engine/src/persistent-town.ts','packages/engine/src/town/agent-observation.ts','packages/engine/src/town/agent-intent.ts','packages/engine/src/town-exploration.ts','lib/world/town-exploration-store.ts','lib/world/agent-first-store.ts','lib/world/resident-decision-provider.ts','lib/world/resident-life-provider.ts','lib/town-play-contract.ts','app/api/v1/town-play/agent-first/route.ts','app/town-play/agent-first/AgentFirstTown.tsx','app/town-play/agent-first/useAgentFirst.ts','app/town-play/agent-first/MapCanvas.tsx','app/town-play/agent-first/agent-first.module.css'];
+const sourceHashes=Object.fromEntries(production.map(f=>[f,hash(f)]));
+if(process.argv.includes('--browser-start')){fs.writeFileSync(`${out}/runtime/browser-source-start.json`,JSON.stringify({startedAt:new Date().toISOString(),sourceHashes},null,2)+'\n');console.log('Browser source identity recorded.');process.exit(0);}
+const files=['belief-review.json','appointment-review.json','agenda-review.json','cognition-review.json','edge-review.json','api-review.json','provider-review.json','player-checks/contract-review.json','goals/life-review.json','rules/life-review.json'];
+const reports=Object.fromEntries(files.map(f=>[f,read(`${out}/${f}`)]));
+const workEntry=fs.readFileSync(`${out}/runtime/work.log`,'utf8').split(/\r?\n/).filter(l=>l.startsWith('{')).map(l=>JSON.parse(l)).find(v=>v.passed&&v.report);assert(workEntry);reports.work=read(workEntry.report);
+for(const [name,report] of Object.entries(reports)){assert(report.passed,`${name} failed`);for(const [f,sha] of Object.entries(report.sourceHashes??report.sources??report.sourceFiles))assert.equal(hash(f),sha,`${name}: source changed ${f}`);}
+const goals=reports['goals/life-review.json'],rules=reports['rules/life-review.json'];assert.equal(goals.mode,'offline-agent');assert.equal(goals.seedRuns.length,5);assert.equal(rules.mode,'rules');assert.equal(rules.seedRuns.length,1);
+const runs=[...goals.seedRuns,...rules.seedRuns];for(const run of runs){assert.equal(run.ticks,864);assert.equal(run.digest,run.replayDigest);assert.equal(run.digest,run.restoredDigest);assert.equal(run.quality.modelAttemptsReserved,0);}
+const outcomes=goals.seedRuns.map(run=>{const a=run.quality.appointments,b=run.quality.personalBeliefs;assert(a.total>0&&a.byStatus.completed>0);assert.equal(a.total,Object.values(a.byStatus).reduce((s,n)=>s+n,0));assert.equal(a.byStatus.accepted,0);assert.equal(a.byStatus.running,0);assert(b.total>0);return{seed:run.seed,digest:run.digest,appointments:a,personalBeliefs:b};});
+assert.equal(rules.seedRuns[0].quality.appointments.total,0);assert.equal(rules.seedRuns[0].quality.personalBeliefs.total,0);
+assert.equal(fs.readFileSync(`${out}/runtime/typecheck.log`,'utf8').trim(),'');const start=read(`${out}/runtime/browser-source-start.json`);assert.deepEqual(start.sourceHashes,sourceHashes,'Browser source changed');
+const browserFile='output/playwright/resident-appointments-v7-browser.txt',match=/### Result\r?\n([^\r\n]+)/.exec(fs.readFileSync(browserFile,'utf8'));assert(match);
+const browser=JSON.parse(match[1]);assert(browser.passed&&browser.naturalNewSave&&browser.ordinaryVisitorCommands&&browser.actualActivityRendered&&browser.reservedModelAttempts===0&&browser.pageErrors.length===0&&browser.consoleErrors.length===0);
+const screenshots=['output/playwright/resident-appointments-v7-desktop.png','output/playwright/resident-appointments-v7-narrow.png'];for(const f of screenshots)assert(fs.statSync(f).size>1000);
+const totals=outcomes.reduce((t,o)=>{t.beliefs+=o.personalBeliefs.total;t.accounts+=o.personalBeliefs.unverifiedAccounts;for(const [state,n] of Object.entries(o.personalBeliefs.byObservation))t.observations[state]=(t.observations[state]??0)+n;return t;},{beliefs:0,accounts:0,observations:{}});
+fs.writeFileSync(`${out}/outcomes.zh-CN.md`,[
+  '# 个人认知的实际结果','',
+  '五个种子各运行 72 小时，并完成中途恢复和独立重放。以下统计私人认知记录，不等同于世界中约定的履约次数；同一约定有两名参与者各自的记录。','',
+  '| 种子 | 个人记录 | 亲历履约 | 亲见未开场 | 只知自己未完成 | 听到未核实说明 |','| --- | ---: | ---: | ---: | ---: | ---: |',
+  ...outcomes.map(o=>`| ${o.seed} | ${o.personalBeliefs.total} | ${o.personalBeliefs.byObservation.fulfilled} | ${o.personalBeliefs.byObservation['unfulfilled-observed']} | ${o.personalBeliefs.byObservation['self-unfulfilled']} | ${o.personalBeliefs.unverifiedAccounts} |`),'',
+  `共 ${totals.beliefs} 条个人认知记录，${totals.accounts} 次听到对方说明的记录。说明始终保持未核实，不会把旧约定改写为已履约。`,'',
+  '受控情境还验证了：相同信任和合法候选下，亲历记录会改变实际择伴；当面对方承认没能按时来后，谨慎程度可下降，但原因仍未知。这是明确编写的社会认知规则，不是模型心理学或真人体验的证明。','',
+  '浏览器只验证自然赴约活动、重载与私人认知不外泄；不能把它当作自然目击了本轮新增的当面核对。完整来源与范围见 review.json。'
+].join('\n')+'\n');
+const summary={schema:'resident-social-belief-package-review.v1',checkedAt:new Date().toISOString(),passed:true,
+  scope:'Personal witnessed observations, private clock inference and unverified co-present accounts; deterministic policy, not verified causes or live-model reasoning.',
+  checks:{beliefGroups:reports['belief-review.json'].checks.length,goalSeeds:5,threeDayCells:6,fullReplays:6,midrunRestores:6,ruleRegressionSeeds:1,appointmentGroups:reports['appointment-review.json'].checks.length,agendaGroups:reports['agenda-review.json'].checks.length,cognitionGroups:reports['cognition-review.json'].checks.length,edgeGroups:reports['edge-review.json'].checks.length,apiGroups:reports['api-review.json'].checks.length,providerGroups:reports['provider-review.json'].checks.length,workGroups:reports.work.checks.length,playerGroups:reports['player-checks/contract-review.json'].checks.length,scopedTypecheck:true,browserRegression:true,liveModel:false,liveExternalModelCalls:0},
+  beliefTotals:totals,seedOutcomes:outcomes,sourceHashes:{...sourceHashes,...Object.fromEntries(['packages/engine/src/index.ts','scripts/run-resident-belief-checks.mjs','scripts/run-resident-life-checks.mjs','scripts/lib/resident-life-quality.mjs','scripts/review-resident-beliefs-browser.cjs','scripts/record-resident-belief-review.mjs',`${out}/README.zh-CN.md`].map(f=>[f,hash(f)]))},
+  evidence:Object.fromEntries([...files,'outcomes.zh-CN.md'].map(f=>[f,hash(`${out}/${f}`)])),workEvidence:{file:workEntry.report,sha256:hash(workEntry.report)},browser:{...browser,startedAt:start.startedAt,raw:{file:browserFile,sha256:hash(browserFile)},screenshots:Object.fromEntries(screenshots.map(f=>[f,hash(f)]))},
+  initialFailedRun:{log:'runtime/goals.log',acceptanceEvidence:false,reason:'An identifier-free response could match an unrelated appointment through undefined equality. Fixed, regression added, final qualification is goals-final.log and rules-final.log.'},
+  pending:['Free-form explanations, lies, third-party hearsay and independently verified causes.','Source-preserving long-term summaries and reflection.','Live model quality/cost, case fairness, larger populations, Windows package, physical devices and human acceptance.'],
+  evidenceBoundaries:{controlledFollowupAndBehaviorChange:true,naturalAccountRecords:totals.accounts,naturalBrowserFollowup:false,liveModel:false,humanApproved:false,productionRelease:false}};
+fs.writeFileSync(`${out}/review.json`,JSON.stringify(summary,null,2)+'\n');console.log(JSON.stringify({passed:true,report:`${out}/review.json`,checks:summary.checks,beliefTotals:totals}));

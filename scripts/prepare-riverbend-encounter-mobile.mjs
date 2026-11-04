@@ -1,0 +1,10 @@
+import fs from "node:fs";
+const runner=fs.readFileSync("output/playwright/riverbend-encounter-case.js","utf8").replaceAll("\r\n","\n");
+const marker="  try {\n    const reviewContext";
+if(!runner.includes(marker))throw new Error("Case runner boundary is missing");
+let prefix=runner.split(marker)[0];
+if(!prefix.includes("const go = async destination"))throw new Error("Case runner helpers are missing");
+prefix=prefix.replaceAll("riverbend-encounter-case-","riverbend-encounter-mobile-");
+prefix=prefix.replace("await page.keyboard.press('e');await page.locator('main[data-panel=\"person\"] dialog[open]').waitFor();return;", "await page.getByRole('button',{name:/交谈 ·/}).tap();await page.locator('main[data-panel=\"person\"] dialog[open]').waitFor();return;");
+fs.writeFileSync("output/playwright/riverbend-encounter-mobile.js",prefix+fs.readFileSync("output/playwright/riverbend-encounter-mobile-body.js","utf8"));
+console.log("Prepared touch encounter and responsive layout review.");

@@ -1,0 +1,15 @@
+import fs from "node:fs";
+import crypto from "node:crypto";
+const hash=file=>crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
+const files=["app/town-play/TownScene.tsx","app/town-play/resident-motion.ts","app/town-play/resident-batching.ts","app/town-play/frame-cadence.ts","lib/riverbend-navigation.ts","public/assets/riverbend/v1/manifest.json","public/assets/riverbend/v1/navigation.json","public/assets/riverbend/residents-v2/manifest.json"];
+const prior=JSON.parse(fs.readFileSync("output/playwright/riverbend-case-checked-sources.json","utf8"));
+const sources=Object.fromEntries([...new Set([...files,...Object.keys(prior)])].map(file=>[file,hash(file)]));
+fs.writeFileSync("output/playwright/riverbend-residents-checked-sources.json",JSON.stringify(sources,null,2)+"\n");
+const original=fs.readFileSync("output/playwright/riverbend-case-desktop.js","utf8");
+const start=original.indexOf("  const walk = async path => {"),end=original.indexOf("  const go = async destination => {",start);
+if(start<0||end<0)throw new Error("Could not locate the prior verified keyboard walker");
+let next=original.slice(0,start)+fs.readFileSync("output/playwright/riverbend-resident-walk.js","utf8")+original.slice(end);
+next=next.replaceAll("riverbend-case-","riverbend-resident-case-");
+next=next.replace("const collected = await record('eight-clues');", "const castDiagnostics = await page.locator('[data-town-scene]').evaluate(el => ({ asset: el.townDiagnostics.residentAssetSha256, batching: el.townDiagnostics.batching })); steps.push({ name: 'resident-companion', ...castDiagnostics });\n    const collected = await record('eight-clues');");
+fs.writeFileSync("output/playwright/riverbend-resident-case.js",next);
+console.log(JSON.stringify({checkedSources:Object.keys(sources).length,caseReviewPrepared:true}));

@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>雾灯证据室 · Blender 资产审阅</title>
+<link rel="icon" href="data:,">
+<style>
+  :root{color-scheme:dark;--ink:#e6dbc4;--paper:#172727;--line:#58716a;--accent:#d4b279}*{box-sizing:border-box}body{margin:0;font:15px/1.5 system-ui,sans-serif;color:var(--ink);background:var(--paper)}header,footer{padding:14px 22px;display:flex;flex-wrap:wrap;align-items:center;gap:10px 24px}h1{font-size:20px;margin:0}p{margin:0}header p{font-size:13px;color:#bbd0c8}main{height:calc(100dvh - 168px);min-height:310px;position:relative;border-block:1px solid var(--line)}canvas{width:100%;height:100%;display:block}#offline{display:none;width:100%;height:100%;object-fit:contain;background:#111}button,select{font:inherit;color:inherit;background:#243936;border:1px solid #758b81;padding:8px 12px;border-radius:3px;cursor:pointer}button:hover{background:#354c45}:focus-visible{outline:3px solid var(--accent);outline-offset:3px}#status{font-size:13px;color:#c9d4c8;padding:0 22px 10px}footer p{font-size:12px;max-width:640px;color:#b7c8bd}@media(max-width:600px){header,footer{padding:10px 12px;gap:8px}h1{font-size:18px}main{height:62dvh}#status{padding-inline:12px}button,select{min-height:44px;font-size:14px}}
+</style>
+<header><h1>雾灯证据室</h1><p>本地美术审阅 · Blender v6 候选</p></header>
+<main aria-label="房间模型预览"><canvas aria-label="实时三维房间"></canvas><img id="offline" src="/production.png" alt="同一场景的 Blender 材质与灯光渲染"></main>
+<footer>
+  <label>镜头 <select id="camera"><option value="production">主镜头</option><option value="hero-detail">桌面细节</option><option value="arrival">入口</option><option value="ceiling">天花</option></select></label>
+  <button id="compare" type="button">查看 Blender 渲染</button><button id="reset" type="button">重置视角</button>
+  <button id="lighting-compare" type="button">对比实时布光</button>
+  <p>材质与室内光照来自同一份 Blender 场景。拖动可检查模型，点击证据桌可验证命中。</p>
+</footer>
+<p id="status" role="status">正在读取本地 GLB…</p>
+<script type="importmap">{"imports":{"three":"/three.module.js","three/addons/":"/addons/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { EXRLoader } from 'three/addons/loaders/EXRLoader.js';
+const canvas=document.querySelector('canvas'),box=document.querySelector('main'),status=document.querySelector('#status');
+const state=window.roomReview={ready:false,frames:0,frameTimes:[],errors:[],picked:null,contextLost:false,reducedMotion:matchMedia('(prefers-reduced-motion: reduce)').matches};
+window.addEventListener('error',event=>state.errors.push(event.message));
+window.addEventListener('unhandledrejection',event=>state.errors.push(String(event.reason)));
+try {
+  const [config,lights,manifest,bake,probe]=await Promise.all(['/composition.json','/lighting.json','/manifest.json','/bake.json','/reflection-probe.json'].map(url=>fetch(url).then(r=>r.json())));
+  state.assetSha256=manifest.assets[0].sha256; state.assetBytes=manifest.assets[0].bytes;
+  const vector=p=>new THREE.Vector3(p[0],p[2],-p[1]);
+  const scene=new THREE.Scene();scene.background=new THREE.Color('#172727');
+  // This is an interior with orbit distance >= 1.6 m; a tighter depth range
+  // preserves separation between the modeled paper, ink and embossed layers.
+  const camera=new THREE.PerspectiveCamera(53,1,.15,40);
+  const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.toneMapping=THREE.AgXToneMapping;renderer.toneMappingExposure=2**.45;
+  renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFShadowMap;
+  // Geometry and lights are static in this isolated art viewer; camera movement needs no shadow refresh.
+  renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=true;
+  const context=renderer.getContext(),debug=context.getExtension('WEBGL_debug_renderer_info');
+  state.gpu=debug?context.getParameter(debug.UNMASKED_RENDERER_WEBGL):context.getParameter(context.RENDERER);
+  RectAreaLightUniformsLib.init();
+  // The HDR atlas already includes ambient, direct and bounced diffuse light.
+  const comparisonFill=new THREE.HemisphereLight('#a0bcc5','#434236',0);scene.add(comparisonFill);
+  for (const spec of lights.fixtures) {
+    let light;
+    if (spec.type==='SPOT') {
+      light=new THREE.SpotLight('#'+spec.colorSRGB,spec.powerWatts*.35,14,Math.PI*.26,.65,2);
+      light.target.position.copy(vector(spec.target));scene.add(light.target);
+      light.castShadow=true;light.shadow.mapSize.set(2048,2048);light.shadow.bias=-.00012;light.shadow.normalBias=.008;
+      light.shadow.camera.near=.08;light.shadow.camera.far=15;
+    } else {
+      light=new THREE.RectAreaLight('#'+spec.colorSRGB,spec.powerWatts*.12/(spec.sizeMeters**2),spec.sizeMeters,spec.sizeMeters);
+    }
+    light.position.copy(vector(spec.location));light.lookAt(vector(spec.target));scene.add(light);
+  }
+  const controls=new OrbitControls(camera,canvas);controls.enableDamping=false;controls.enablePan=false;controls.minDistance=1.6;controls.maxDistance=6;controls.maxPolarAngle=Math.PI*.64;
+  const composer=new EffectComposer(renderer,new THREE.WebGLRenderTarget(1,1,{type:THREE.HalfFloatType,samples:4}));
+  composer.addPass(new RenderPass(scene,camera));composer.addPass(new OutputPass());composer.addPass(new SMAAPass());
+  renderer.info.autoReset=false;
+  const draw=()=>{renderer.info.reset();composer.render();};
+  const resize=()=>{const width=box.clientWidth,height=box.clientHeight;renderer.setSize(width,height,false);composer.setPixelRatio(renderer.getPixelRatio());composer.setSize(width,height);camera.aspect=width/height;camera.updateProjectionMatrix();};
+  new ResizeObserver(resize).observe(box);
+  const presets={production:config.productionCamera,'hero-detail':{location:[1.18,-.87,1.69],target:[-.05,.45,1],verticalFovDegrees:48},arrival:{location:[0,-3.45,1.8],target:[0,.9,1.55],verticalFovDegrees:61},ceiling:{location:[0,0,1.05],target:[0,0,4],verticalFovDegrees:86}};
+  function setCamera(name){const spec=presets[name];camera.position.copy(vector(spec.location));camera.fov=spec.verticalFovDegrees;controls.target.copy(vector(spec.target));camera.updateProjectionMatrix();controls.update();state.camera=name;document.querySelector('#camera').value=name;}
+  document.querySelector('#camera').onchange=event=>setCamera(event.target.value);
+  document.querySelector('#reset').onclick=()=>setCamera(document.querySelector('#camera').value);
+  const image=document.querySelector('#offline');
+  document.querySelector('#compare').onclick=event=>{if(state.contextLost)return;const show=image.style.display!=='block';image.style.display=show?'block':'none';canvas.style.display=show?'none':'block';event.target.textContent=show?'返回实时模型':'查看 Blender 渲染';};
+  const started=performance.now();
+  const assetResponse=await fetch('/asset.glb');
+  if(!assetResponse.ok)throw new Error('GLB request failed: '+assetResponse.status);
+  const assetBytes=await assetResponse.arrayBuffer();
+  const actualSha256=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',assetBytes)),n=>n.toString(16).padStart(2,'0')).join('');
+  if(actualSha256!==state.assetSha256||assetBytes.byteLength!==state.assetBytes)throw new Error('GLB bytes do not match the candidate manifest');
+  state.networkBytesVerified=true;
+  const draco=new DRACOLoader().setDecoderPath('/draco/');
+  const gltf=await new GLTFLoader().setDRACOLoader(draco).parseAsync(assetBytes,'/');
+  draco.dispose();
+  const lightResponse=await fetch('/diffuse-light.exr');
+  if(!lightResponse.ok)throw new Error('Lightmap request failed');
+  const lightBytes=await lightResponse.arrayBuffer();
+  const lightHash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',lightBytes)),n=>n.toString(16).padStart(2,'0')).join('');
+  const declaredLight=manifest.assets.find(entry=>entry.id==='blender-diffuse-lightmap');
+  if(lightHash!==bake.lightmap.sha256||lightHash!==declaredLight?.sha256||lightBytes.byteLength!==declaredLight.bytes)throw new Error('HDR lightmap identity mismatch');
+  const decodedLight=new EXRLoader().parse(lightBytes);
+  const lightMap=new THREE.DataTexture(decodedLight.data,decodedLight.width,decodedLight.height,decodedLight.format,decodedLight.type);
+  // EXRLoader decodes to bottom-up rows; glTF has already inverted Blender's V.
+  lightMap.colorSpace=THREE.LinearSRGBColorSpace;lightMap.flipY=false;lightMap.channel=1;
+  lightMap.repeat.y=-1;lightMap.offset.y=1;
+  lightMap.minFilter=THREE.LinearFilter;lightMap.magFilter=THREE.LinearFilter;lightMap.generateMipmaps=false;lightMap.needsUpdate=true;
+  state.lightmap={sha256:lightHash,bytes:lightBytes.byteLength,size:[decodedLight.width,decodedLight.height],channel:1,networkBytesVerified:true,
+    colorSpace:lightMap.colorSpace,intensity:bake.lightmap.threeLightMapIntensity,duplicateDynamicDiffuseSuppressed:true,receivers:0};
+  const probeResponse=await fetch('/room-reflection.exr');
+  if(!probeResponse.ok)throw new Error('Local reflection request failed');
+  const probeBytes=await probeResponse.arrayBuffer();
+  const probeHash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',probeBytes)),n=>n.toString(16).padStart(2,'0')).join('');
+  const declaredProbe=manifest.assets.find(entry=>entry.id==='blender-local-reflection');
+  if(probeHash!==probe.sha256||probeHash!==declaredProbe?.sha256||probeBytes.byteLength!==declaredProbe.bytes)throw new Error('Local reflection identity mismatch');
+  const decodedProbe=new EXRLoader().parse(probeBytes);
+  const reflectionMap=new THREE.DataTexture(decodedProbe.data,decodedProbe.width,decodedProbe.height,decodedProbe.format,decodedProbe.type);
+  reflectionMap.colorSpace=THREE.LinearSRGBColorSpace;reflectionMap.mapping=THREE.EquirectangularReflectionMapping;reflectionMap.flipY=false;
+  reflectionMap.minFilter=THREE.LinearFilter;reflectionMap.magFilter=THREE.LinearFilter;reflectionMap.needsUpdate=true;
+  const pmrem=new THREE.PMREMGenerator(renderer),reflectionTarget=pmrem.fromEquirectangular(reflectionMap);
+  pmrem.dispose();reflectionMap.dispose();scene.environment=reflectionTarget.texture;
+  state.reflectionProbe={sha256:probeHash,bytes:probeBytes.byteLength,size:[decodedProbe.width,decodedProbe.height],networkBytesVerified:true,
+    prefilteredForRoughness:true,directSpecularSuppressed:true,duplicateEnvironmentDiffuseSuppressed:true,parallaxCorrected:false,positionGltf:probe.positionGltf};
+  scene.add(gltf.scene);
+  gltf.scene.traverse(obj=>{if(obj.isMesh){obj.castShadow=true;obj.receiveShadow=true;}});
+  const loadedMaterials=new Set();
+  gltf.scene.traverse(obj=>{if(obj.isMesh)for(const mat of Array.isArray(obj.material)?obj.material:[obj.material])loadedMaterials.add(mat);});
+  gltf.scene.traverse(obj=>{if(obj.isMesh&&obj.material.name==='Room Baked PBR'){
+    if(!obj.geometry.attributes.uv1)throw new Error('Missing second UV channel: '+obj.name);
+    state.lightmap.receivers++;
+  }});
+  for(const mat of loadedMaterials)if(mat.isMeshStandardMaterial){
+    if(mat.name==='Room Baked PBR'){mat.lightMap=lightMap;mat.lightMapIntensity=bake.lightmap.threeLightMapIntensity;}
+    mat.userData.lightingMode='baked';state.lightingMode='baked';
+    mat.onBeforeCompile=shader=>{
+      const anchor='#include <lights_fragment_end>';
+      if(!shader.fragmentShader.includes(anchor))throw new Error('Lightmap shader compatibility failure');
+      if(mat.userData.lightingMode==='baked'){
+        // Three's indirect-specular function also adds environment diffuse. The
+        // atlas already contains that illumination: recompute only its diffuse
+        // branch, keeping the probe's single/multiple-scattering specular terms.
+        const diffuse=mat.name==='Room Baked PBR'?'\nreflectedLight.directDiffuse = vec3(0.0);\nreflectedLight.indirectDiffuse = vec3(0.0);\nRE_IndirectDiffuse( irradiance, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, reflectedLight );':'';
+        shader.fragmentShader=shader.fragmentShader.replace(anchor,anchor+'\nreflectedLight.directSpecular = vec3(0.0);'+diffuse);
+        state.reflectionProbe.shaderCompiled=true;
+        if(mat.name==='Room Baked PBR')state.lightmap.shaderCompiled=true;
+      }
+    };
+    mat.customProgramCacheKey=()=> 'room-v6-diffuse-reflection-v2-'+mat.name+'-'+mat.userData.lightingMode;
+    mat.needsUpdate=true;
+  }
+  state.setLightingMode=mode=>{
+    if(!['baked','dynamic'].includes(mode))throw new Error('Unknown lighting comparison mode');
+    for(const mat of loadedMaterials)if(mat.isMeshStandardMaterial){
+      if(mat.name==='Room Baked PBR')mat.lightMap=mode==='baked'?lightMap:null;
+      mat.userData.lightingMode=mode;mat.needsUpdate=true;
+    }
+    scene.environment=mode==='baked'?reflectionTarget.texture:null;
+    comparisonFill.intensity=mode==='baked'?0:.35;state.lightingMode=mode;
+    document.querySelector('#lighting-compare').textContent=mode==='baked'?'对比实时布光':'返回烘焙光照';
+  };
+  document.querySelector('#lighting-compare').onclick=()=>state.setLightingMode(state.lightingMode==='baked'?'dynamic':'baked');
+  for(const mat of loadedMaterials)for(const name of ['map','roughnessMap','metalnessMap','normalMap'])if(mat[name]){mat[name].anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());mat[name].needsUpdate=true;}
+  state.materials=[...loadedMaterials].map(mat=>({name:mat.name,albedo:!!mat.map,roughness:!!mat.roughnessMap,metallic:!!mat.metalnessMap,normal:!!mat.normalMap,transmission:mat.transmission||0}));
+  state.renderSettings={postprocessing:'4x MSAA + SMAA',requestedSamples:4,maxSamples:renderer.capabilities.maxSamples,pixelRatio:renderer.getPixelRatio(),cachedStaticShadows:true};
+  const worldBox=new THREE.Box3().setFromObject(gltf.scene);state.bounds={min:worldBox.min.toArray(),max:worldBox.max.toArray()};
+  setCamera('production');resize();draw();state.loadMs=performance.now()-started;state.ready=true;
+  const raycaster=new THREE.Raycaster();
+  const pick=ndc=>{raycaster.setFromCamera(ndc,camera);const hit=raycaster.intersectObject(gltf.scene,true)[0];state.picked=hit?.object.name||null;return state.picked;};
+  canvas.addEventListener('pointerup',event=>{const rect=canvas.getBoundingClientRect();pick(new THREE.Vector2((event.clientX-rect.left)/rect.width*2-1,1-(event.clientY-rect.top)/rect.height*2));status.textContent='模型已载入 · '+(state.picked?.includes('hero-evidence-table')?'已选中证据桌':'可继续检查空间与物件');});
+  let last=performance.now();
+  renderer.setAnimationLoop(now=>{if(document.hidden||state.contextLost)return;const delta=now-last;last=now;draw();if(state.frames>30)state.frameTimes.push(delta);if(state.frameTimes.length>10000)state.frameTimes.shift();state.frames++;state.drawCalls=renderer.info.render.calls;state.triangles=renderer.info.render.triangles;});
+  canvas.addEventListener('webglcontextlost',event=>{event.preventDefault();state.contextLost=true;image.style.display='block';canvas.style.display='none';status.textContent='三维上下文中断，已显示同场景 Blender 渲染。';});
+  state.resetMetrics=()=>{state.frames=0;state.frameTimes=[];last=performance.now();};
+  state.readMetrics=()=>{const sorted=[...state.frameTimes].sort((a,b)=>a-b);return {ready:state.ready,assetSha256:state.assetSha256,assetBytes:state.assetBytes,networkBytesVerified:state.networkBytesVerified,materials:state.materials,lightmap:state.lightmap,reflectionProbe:state.reflectionProbe,lightingMode:state.lightingMode,renderSettings:state.renderSettings,loadMs:state.loadMs,frames:state.frames,sampleCount:sorted.length,sampleSeconds:state.frameTimes.reduce((a,b)=>a+b,0)/1000,p95FrameMs:sorted[Math.ceil(sorted.length*.95)-1]??null,p99FrameMs:sorted[Math.ceil(sorted.length*.99)-1]??null,gpu:state.gpu,drawCalls:state.drawCalls,triangles:state.triangles,bounds:state.bounds,errors:state.errors,picked:state.picked,contextLost:state.contextLost,reducedMotion:state.reducedMotion,viewport:[innerWidth,innerHeight],overflow:Math.max(0,document.documentElement.scrollWidth-innerWidth)};};
+  state.probeHero=()=>{const point=vector([0,.45,.99]).project(camera);return {name:pick(new THREE.Vector2(point.x,point.y)),ndc:[point.x,point.y]};};
+  state.loseContext=()=>context.getExtension('WEBGL_lose_context')?.loseContext();
+  status.textContent='模型与室内光照已载入 · 本地美术候选 · 艺术与目标设备验收待完成';
+} catch(error){state.errors.push(String(error));status.textContent='预览失败：'+String(error);}
+</script>
+</html>
+
+
+
+

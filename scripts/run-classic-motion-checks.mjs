@@ -1,0 +1,50 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import { createNoirTestLoader } from './noir-player-test-loader.mjs';
+const root=process.cwd(),base=path.join(root,'output/classic-motion-v1');fs.mkdirSync(base,{recursive:true});
+const run=fs.mkdtempSync(path.join(base,'checks-'));process.env.DATABASE_URL=path.join(run,'isolated.db');
+const {load}=createNoirTestLoader(root),{startTownPlay,readTownPlay,commandTownPlay}=load('lib/world/town-exploration-store.ts');
+const repository=load('lib/world/repository.ts'),checks=[];
+let serial=0;
+function player(){const s=startTownPlay(undefined,'classic-living');let view=s.result.view;
+ return {get view(){return view;},credentials:s.credentials,command(action){const request={...action,actionId:'motion-'+(++serial),expectedWorldRevision:view.worldRevision,expectedSessionRevision:view.revision};const r=commandTownPlay(s.credentials,request);assert.deepEqual(commandTownPlay(s.credentials,request),{...JSON.parse(JSON.stringify(r)),replayed:true});view=r.view;return r;}};}
+function waitUntil(p,time){while(p.view.time<time){const [h,m]=p.view.time.split(':').map(Number),[th,tm]=time.split(':').map(Number),left=th*60+tm-h*60-m;p.command(left>=60?{kind:'wait',minutes:60}:left>=30?{kind:'wait',minutes:30}:left>=15?{kind:'wait',minutes:15}:{kind:'work-step'});}assert.equal(p.view.time,time);}
+try{
+ const inside=player();inside.command({kind:'arrive',sceneId:'books'});waitUntil(inside,'12:00');
+ const leaving=inside.command({kind:'work-step'});assert.equal(leaving.view.time,'12:05');
+ assert.deepEqual(leaving.motion.passages.map(p=>[p.actorId,p.kind,p.sceneId,p.portalSceneId,p.time]),[['resident-03','departure','books',null,'12:00']]);
+ const departed=leaving.view.residents.find(p=>p.actorId==='resident-03');assert.equal(departed.visibility,'last-seen');assert.equal(departed.sceneId,'books');assert.equal(departed.time,'12:00');assert.equal(departed.work,undefined);
+ const allowed=['id','actorId','npcId','kind','sceneId','portalSceneId','day','time'];
+ assert(leaving.motion.passages.every(p=>Object.keys(p).every(k=>allowed.includes(k))));
+ assert(!JSON.stringify(leaving.motion).includes('town-square'),'Room departure leaked hidden destination');
+ checks.push('actual-noon-departure-and-local-last-sighting-without-private-destination');
+ repository.closeDatabase();assert.deepEqual(readTownPlay(inside.credentials,'classic-living'),leaving.view);
+ assert.equal(readTownPlay(inside.credentials,'classic-living').motion,undefined);checks.push('persisted-retry-receipt-and-reopen-do-not-replay-motion-on-read');
+ const travel=inside.command({kind:'arrive',sceneId:'town-square'});assert.equal(travel.motion,undefined);checks.push('player-travel-does-not-invent-stationary-observations');
+ waitUntil(inside,'14:00');const streetExit=inside.command({kind:'work-step'});
+ assert(streetExit.motion.passages.some(p=>p.actorId==='resident-03'&&p.kind==='departure'&&p.portalSceneId==='books'&&p.sceneId==='town-square'));
+ checks.push('observed-street-departure-uses-visible-doorway');
+ const street=player();waitUntil(street,'12:00');const approaching=street.command({kind:'work-step'});
+ assert.deepEqual(approaching.motion.passages.map(p=>[p.actorId,p.kind,p.sceneId,p.portalSceneId]),[['resident-03','arrival','town-square','books']]);
+ checks.push('street-arrival-recorded-from-real-road-completion-and-only-bound-actor');
+ const held=player();held.command({kind:'arrive',sceneId:'books'});waitUntil(held,'12:00');
+ waitUntil(held,'16:05');const visiting=held.command({kind:'work-step'});
+ assert.equal(visiting.view.time,'16:10');
+ assert(visiting.motion.passages.some(p=>p.actorId==='resident-06'&&p.kind==='arrival'&&p.sceneId==='books'));
+ const {classicResidentPresence}=load('app/town-play/art-sample/living-presentation.ts');
+ const visitor=classicResidentPresence(visiting.view,'resident-06');
+ assert(visitor&&!visitor.workplace&&visitor.sceneId==='books'&&visitor.workingActionId===null);
+ assert.equal(classicResidentPresence({...visiting.view,residents:visiting.view.residents.map(p=>({...p,visibility:'last-seen'}))},'resident-06'),null);
+ checks.push('actual-afternoon-visit-renders-observed-guest-without-invented-work-or-last-seen-body');
+ const {observedTownPassages}=load('packages/engine/src/town/observed-passages.ts');
+ const fixture={places:[{sceneId:'town-square',locationId:'square'}],residents:[{actorId:'resident-03',npcId:'npc'}]};
+ const safe=observedTownPassages(fixture,{locationId:'square'},1,2,[{id:'p',npcId:'npc',kind:'departure',from:'square',to:'secret-home',day:1,time:'12:00',tick:2}],'town-square',['books']);
+ assert.equal(safe[0].portalSceneId,null);assert(!JSON.stringify(safe).includes('secret-home'));
+ assert.deepEqual(observedTownPassages(fixture,{locationId:'square'},2,3,[{id:'old',npcId:'npc',kind:'arrival',from:'secret-home',to:'square',day:1,time:'12:00',tick:2}],'town-square',['books']),[]);
+ checks.push('off-map-endpoint-and-previous-tick-are-not-disclosed');
+}finally{repository.closeDatabase();}
+const paths=['packages/engine/src/town/daily-routine.ts','packages/engine/src/town/observed-passages.ts','lib/town-play-contract.ts','lib/world/town-exploration-store.ts','app/town-play/art-sample/living-presentation.ts','scripts/run-classic-motion-checks.mjs'];
+const report={passed:true,checkedAt:new Date().toISOString(),checks,scope:'Actual owned SQLite schedule commands plus explicit projection boundary probes. No live model or browser claim.',sources:Object.fromEntries(paths.map(p=>[p,crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex')]))};
+fs.writeFileSync(path.join(run,'report.json'),JSON.stringify(report,null,2));console.log(JSON.stringify({passed:true,checks:checks.length,report:path.join(run,'report.json')}));

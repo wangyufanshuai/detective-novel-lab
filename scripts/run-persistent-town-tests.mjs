@@ -833,6 +833,9 @@ const engine = await loadEngine();
   assert.ok(diffs[0].ruleChanges, "run diffs include institution/public-opinion/evidence changes");
   const bundle = engine.buildRunReplayBundle(scenario.runtime, "run-catalog-scenario");
   assert.equal(bundle.manifest.runId, "run-catalog-scenario", "replay bundle includes run manifest");
+  const digestBundle = engine.buildRunReplayBundle(scenario.runtime, "run-catalog-scenario", null, scenario.world, scenario.events);
+  assert.equal(digestBundle.replayDigest?.schema, "world-replay.v1", "replay bundle can carry a canonical world digest");
+  assert.equal(digestBundle.replayDigest?.eventCount, scenario.events.length, "replay digest covers the authoritative event log");
   const comparison = engine.compareRuns(scenario.runtime, "run-catalog-scenario", `${scenario.runtime.id}-live`);
   assert.ok(comparison, "run catalog compares scenario and live runtime");
   const job = engine.createRunJob({ worldId: world.id, kind: "scenario", scenarioId: "run-catalog-scenario" });
@@ -992,6 +995,32 @@ const engine = await loadEngine();
   assert.equal(mature.validation.valid, true, "triggered candidates pass six-stage validation");
   assert.equal(Object.values(mature.chainCompleteness).every(Boolean), true, "triggered candidate exposes complete six-stage chain");
   assert.equal(mature.validation.memoryConfidence.supportScore >= 55, true, "triggered candidate has weighted memory support");
+}
+
+{
+  const world = engine.createInitialWorld("source-signaled-incident-lifecycle", { mode: "advanced", npcCount: 20, timelineHours: 72 });
+  const daily = engine.simulateDailyLife(world, 3, []);
+  const runtime = engine.createPersistentTownRuntime(daily.world, daily.events, {
+    maxTicks: 48,
+    caseTriggerPolicy: "source-signaled"
+  });
+  runtime.campaignCaseTarget = 30;
+  const seededWorld = { ...daily.world, persistentRuntime: runtime };
+  const run = engine.advancePersistentTownTick(seededWorld, daily.events, { steps: 45, status: "running" });
+  const trigger = run.runtime.triggeredCases.find((item) => item.kind === "nonfatal_incident");
+  assert.ok(trigger, "source-signaled policy produces a typed nonfatal incident");
+  const triggerEvent = run.events.find((event) => event.id === trigger.eventId);
+  assert.equal(triggerEvent.type, "incident", "nonfatal lifecycle writes an incident event");
+  assert.equal(triggerEvent.tags.includes("nonfatal_incident"), true, "incident event preserves its trigger kind tag");
+  assert.equal(run.world.npcs.find((npc) => npc.id === trigger.victimId)?.alive, true, "nonfatal lifecycle keeps the affected NPC alive");
+  const allEvents = [...daily.events, ...run.events];
+  const queue = engine.buildTownEmergenceQueue(run.world, allEvents, run.runtime);
+  const candidate = queue.candidates.find((item) => item.triggeredEventId === trigger.eventId);
+  assert.ok(candidate, "incident trigger is exposed as a candidate by its stable event id");
+  const extracted = engine.extractPlayableCaseFromCandidate(run.world, allEvents, candidate);
+  assert.equal(extracted.activeCase.triggerKind, "nonfatal_incident", "incident extraction retains the trigger kind");
+  assert.equal(extracted.activeCase.generationProfile.deathEventId, "", "incident extraction does not synthesize a death event");
+  assert.equal(extracted.activeCase.validation.valid, true, `incident extraction passes the existing proof validation: ${JSON.stringify(extracted.activeCase.validation)}`);
 }
 
 {
@@ -1203,7 +1232,10 @@ const engine = await loadEngine();
   const biased = engine.applyTownRuntimeIntervention(daily.world, {
     actorId,
     kind: "action-bias",
-    value: "investigate"
+    value: "investigate",
+    actionId: "action-bias-trace-link",
+    reason: "Exercise the auditable counterfactual path.",
+    sourceRefs: [`world:${daily.world.id}`]
   });
   const biasedScores = engine.scoreNpcActionCandidates(biased.world, biased.world.npcs[0], daily.events, biased.runtime);
   const investigate = biasedScores.find((candidate) => candidate.kind === "investigate");
@@ -1213,11 +1245,33 @@ const engine = await loadEngine();
   const selected = trace.candidates.find((candidate) => candidate.id === trace.selectedCandidateId);
   assert.equal(selected.kind, "investigate", "action bias affects the next legal selected action");
   assert.ok(trace.interventionId, "biased decision records the intervention id");
+  assert.equal(trace.interventionActionId, "action-bias-trace-link", "decision trace carries the intervention action id");
+  assert.equal(trace.interventionReason, "Exercise the auditable counterfactual path.", "decision trace carries the intervention reason");
+  assert.deepEqual(trace.interventionSourceRefs, [`world:${daily.world.id}`], "decision trace carries the intervention source refs");
+  assert.equal(after.runtime.interventions.find((item) => item.actionId === "action-bias-trace-link")?.decisionTraceId, trace.id, "intervention points back to its applied decision trace");
+  assert.equal(after.runtime.interventions.find((item) => item.actionId === "action-bias-trace-link")?.decisionStatus, "applied", "applied intervention status is explicit");
+  assert.ok(after.runtime.interventions.find((item) => item.actionId === "action-bias-trace-link")?.decisionTraceDigest, "intervention stores a digest binding to its decision trace");
+  const traceLinks = engine.buildAgentDecisionTraceLinkSummary(after.runtime);
+  assert.equal(traceLinks.schema, "agent-decision-trace-links.v1", "trace link summary is versioned");
+  assert.equal(traceLinks.complete, true, "trace link summary has no broken intervention links");
+  assert.equal(traceLinks.linkedDecisionCount, 1, "trace link summary counts the applied intervention");
   const afterExpiry = engine.scoreNpcActionCandidates(after.world, after.world.npcs[0], [...daily.events, ...after.events], after.runtime);
   assert.equal(afterExpiry.find((candidate) => candidate.kind === "investigate").score.directorBias, 18, "bias remains inspectable on the applied tick");
   const expired = engine.advancePersistentTownTick(after.world, [...daily.events, ...after.events], { steps: 1, status: "running" });
   const expiredScores = engine.scoreNpcActionCandidates(expired.world, expired.world.npcs[0], [...daily.events, ...after.events, ...expired.events], expired.runtime);
   assert.equal(expiredScores.some((candidate) => candidate.score.directorBias), false, "action bias expires after one selected tick");
+  const retained = engine.advancePersistentTownTick(after.world, [...daily.events, ...after.events], { steps: 1, status: "running", traceRetention: 1 });
+  const archivedTraceLinks = engine.buildAgentDecisionTraceLinkSummary(retained.runtime);
+  assert.equal(archivedTraceLinks.complete, true, "trace retention archives applied intervention links without breaking the audit");
+  assert.equal(archivedTraceLinks.archivedDecisionCount >= 1, true, "evicted intervention traces leave compact archive receipts");
+  assert.equal(archivedTraceLinks.archivedLinkedDecisionCount, 1, "archived receipt remains linked to the applied intervention");
+  const retainedIntervention = retained.runtime.interventions.find((item) => item.actionId === "action-bias-trace-link");
+  assert.equal(retained.runtime.decisionTraceArchive?.find((entry) => entry.interventionId === retainedIntervention?.id)?.traceDigest, retainedIntervention?.decisionTraceDigest, "archive receipt digest matches the intervention binding");
+  const tamperedArchiveRuntime = {
+    ...retained.runtime,
+    decisionTraceArchive: (retained.runtime.decisionTraceArchive || []).map((entry) => entry.interventionId === retainedIntervention?.id ? { ...entry, traceDigest: "fnv1a-deadbeef" } : entry)
+  };
+  assert.equal(engine.buildAgentDecisionTraceLinkSummary(tamperedArchiveRuntime).complete, false, "tampered archive digest fails closed");
 }
 
 {
@@ -1276,6 +1330,8 @@ const engine = await loadEngine();
   assert.equal(Boolean(summary.checkpoint), false, "summary snapshot excludes rollback checkpoint");
   assert.throws(() => engine.rollbackTownRuntimeToSnapshot(run.world, summary), /does not contain a rollback checkpoint/, "summary snapshot cannot rollback");
   assert.equal(start.rollbackEligible, true, "checkpoint snapshot remains rollback eligible by default");
+  assert.equal(start.replayDigest?.schema, "world-replay.v1", "checkpoint snapshot persists a canonical replay receipt");
+  assert.equal(Boolean(summary.replayDigest), false, "summary snapshot does not claim a full replay receipt");
   assert.equal(JSON.stringify(start.checkpoint).includes('"snapshots"'), false, "checkpoint does not recursively embed snapshot history");
   assert.equal(JSON.stringify(start.checkpoint).includes('"persistentRuntime"'), false, "checkpoint world excludes the live runtime");
   const diff = engine.diffTownStateSnapshots(start, end);

@@ -24,11 +24,14 @@ const reports = packageIds.map((packageId) => {
   assert.equal(source.packageId, packageId, `${packageId} directory and manifest identity agree`);
   assert.equal(source.validation.ok, true, `${packageId} validates: ${source.validation.errors.join("; ")}`);
   assert.deepEqual(source.validation.errors, [], `${packageId} has no validation errors`);
+  assert.equal(source.fileReceipts.length, source.fileCount, `${packageId} receipt enumerates every source file`);
+  assert.equal(source.fileReceipts.every((file) => /^[a-f0-9]{64}$/.test(file.sha256)), true, `${packageId} receipt binds SHA-256 for every source file`);
   return {
     packageId,
     fileCount: source.fileCount,
     bytes: source.bytes,
     contentHash: source.contentHash,
+    fileReceiptCount: source.fileReceipts.length,
     warnings: source.validation.warnings
   };
 });

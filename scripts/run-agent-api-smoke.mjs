@@ -57,7 +57,7 @@ if (existingBaseUrl) {
 
 const server = process.env.AGENT_API_BASE_URL || existingBaseUrl || baseUrl === "http://127.0.0.1:3000"
   ? null
-  : spawn(process.platform === "win32" ? process.env.ComSpec || "cmd.exe" : "npm", process.platform === "win32" ? ["/c", "npm", "run", "dev", "--", "-p", String(port)] : ["run", "dev", "--", "-p", String(port)], {
+  : spawn(process.platform === "win32" ? process.env.ComSpec || "cmd.exe" : "npm", process.platform === "win32" ? ["/c", "npm", "run", "dev", "--", "--webpack", "-p", String(port)] : ["run", "dev", "--", "--webpack", "-p", String(port)], {
       cwd: process.cwd(),
       stdio: ["ignore", "pipe", "pipe"],
       detached: process.platform !== "win32",
@@ -100,6 +100,11 @@ try {
   assert.equal(caseFromLog.deductionCase.truth, undefined, "player case projection must not expose truth");
   assert.equal(caseFromLog.deductionCase.logicPuzzle, undefined, "player case projection must not expose logic puzzle");
   assert.equal(caseFromLog.deductionCase.evidence.some((item) => item.title === "密封档案"), true, "unfound evidence remains sealed");
+  const roomProjection = await request("GET", `/api/v1/query/case/room-projection?caseId=${created.activeCase.id}`);
+  assert.equal(roomProjection.projection.schema, "investigation-room-projection.v1", "player room projection exposes its schema");
+  assert.equal(roomProjection.projection.mode, "player", "room projection defaults to the player surface");
+  assert.equal(roomProjection.projection.integrity.traceable, false, "unsolved player room projection never claims review traceability");
+  assert.ok(roomProjection.projection.routeStepIds.every((id) => id.startsWith("route-step:")), "unsolved player room route steps remain spoiler safe");
   const graphResult = await request("GET", `/api/v1/query/case/deduction-graph?caseId=${created.activeCase.id}`);
   assert.equal(graphResult.graph.complete, false, "player deduction graph stays masked before acceptance");
   assert.equal(graphResult.suspectBoard.filter((row) => row.status === "culprit").length, 0, "player suspect board does not reveal culprit");
