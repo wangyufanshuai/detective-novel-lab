@@ -82,7 +82,7 @@ export function AppLocaleProvider({ children }: { children: ReactNode }) {
   return (
     <LocaleContext.Provider value={value}>
       <a className="skipToMain" href="#detective-town-main">{t("locale.skip")}</a>
-      {pathname !== "/" && <button
+      {pathname !== "/" && pathname !== "/town-play" && pathname !== "/town-play/agent-first" && <button
         type="button"
         className="localeSwitcher"
         aria-label={locale === "en-US" ? t("locale.switch.zh") : t("locale.switch.en")}

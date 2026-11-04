@@ -204,7 +204,7 @@ export function useInvestigationNavigationActions({
   function handleGuidedTask(task: GuidedTask) {
     setInspectorTab(task.targetTab);
     if (task.id === "observe") {
-      const deathEvent = events.find((event) => event.type === "death") || events.find((event) => event.id === activeCase?.deathEventId);
+      const deathEvent = events.find((event) => event.id === (activeCase?.triggeredEventId || activeCase?.deathEventId)) || events.find((event) => event.type === "death" || event.type === "incident");
       if (deathEvent) {
         setHighlightedEventId(deathEvent.id);
         setSelectedSceneId(deathEvent.locationId);

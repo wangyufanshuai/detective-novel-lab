@@ -22,6 +22,7 @@ import type {
   RevealEvalReport,
   RevealFactContract,
   RuntimeMode,
+  InvestigationRoomProjection,
   SuspectBoardRow,
   WorldEvent,
   WorldMapSnapshot,
@@ -72,6 +73,7 @@ export function useInvestigationController(initialProgress: InvestigationProgres
   const [deductionGraph, setDeductionGraph] = useState<DeductionGraph | null>(null);
   const [suspectBoard, setSuspectBoard] = useState<SuspectBoardRow[]>([]);
   const [logicReport, setLogicReport] = useState<CaseLogicReport | null>(null);
+  const [roomProjection, setRoomProjection] = useState<InvestigationRoomProjection | null>(null);
   const [busy, setBusy] = useState(false);
   const [developerOpen, setDeveloperOpen] = useState(false);
   const [runtimeMode, setRuntimeMode] = useState<RuntimeMode>("server");
@@ -109,6 +111,7 @@ export function useInvestigationController(initialProgress: InvestigationProgres
     theory, setTheory, status, setStatus, revealText, setRevealText, lastAiSafety, setLastAiSafety,
     latestLiveEval, setLatestLiveEval, deductionGraph, setDeductionGraph, suspectBoard, setSuspectBoard,
     logicReport, setLogicReport, busy, setBusy, developerOpen, setDeveloperOpen, runtimeMode, setRuntimeMode,
+    roomProjection, setRoomProjection,
     progress, setProgress, selectionHighlight, setSelectionHighlight, selectedGraphNode, setSelectedGraphNode,
     selectedSuspectId, setSelectedSuspectId, proofViewMode, setProofViewMode, selectedGapType, setSelectedGapType,
     hoveredLocationId, setHoveredLocationId, toasts, setToasts, pushToast, dismissToast, ...inspector

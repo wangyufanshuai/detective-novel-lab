@@ -1,0 +1,57 @@
+.world { position: fixed; inset: 0; background: #899391; color: #e8e0cd; font-family: "Microsoft YaHei", sans-serif; isolation: isolate; overflow: hidden; touch-action: none; }
+.world button, .world a { font: inherit; -webkit-tap-highlight-color: transparent; }
+.world button { cursor: pointer; }
+.world button:focus-visible, .world a:focus-visible { outline: 2px solid #e9c782; outline-offset: 4px; }
+.edgeShade { position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 90px 90px -55px #14252375, inset 0 -80px 90px -60px #17282395; }
+.title { position: absolute; left: 32px; top: 30px; display: flex; gap: 15px; align-items: center; pointer-events: none; text-shadow: 0 2px 14px #15201e; }
+.crest { border: 1px solid #c8b486a6; border-radius: 50%; width: 44px; height: 44px; display: grid; place-items: center; color: #d1b77b; background: #27332dd9; box-shadow: 0 0 0 4px #202b254f; }
+.crest svg { width: 26px; height: 26px; }
+.kicker { font-size: 10px; letter-spacing: .17em; color: #d2bf94; }
+.title h1 { font: 500 28px/1.35 Georgia, "Noto Serif SC", "SimSun", serif; letter-spacing: .12em; margin: 5px 0 3px; }
+.title p { margin: 0; font-size: 11px; color: #e0decc; }
+.weather { position: absolute; right: 84px; top: 31px; display: flex; gap: 12px; align-items: center; color: #e3ddc8; background: #29352ddb; padding: 11px 16px; border: 1px solid #b9a3774a; font-size: 11px; }
+.weather i { height: 12px; border-left: 1px solid #b9a37767; }
+.back { position: absolute; right: 33px; top: 88px; display: flex; gap: 6px; align-items: center; color: #e2ddce; font-size: 11px !important; text-decoration: none; text-shadow: 0 1px 6px #17231a; }
+.instructions { position: absolute; left: 33px; bottom: 30px; font-size: 11px; color: #ede4d1; text-shadow: 0 1px 7px #14251d; }
+.instructions > span { display: block; font: italic 15px Georgia, "Noto Serif SC", "SimSun", serif; margin-bottom: 11px; letter-spacing: .04em; }
+.instructions p { margin: 7px 0 0; opacity: .85; font-size: 10px; }
+.world kbd { font: 10px/1.5 "Microsoft YaHei", sans-serif; padding: 2px 5px; border: 1px solid #b8ad9178; background: #26362dd6; color: #eee5cf; border-radius: 2px; }
+.toolbar { position: absolute; bottom: 26px; left: 50%; transform: translateX(-50%); display: flex; gap: 5px; padding: 6px; border: 1px solid #948061; background: #26302bf2; box-shadow: inset 0 0 0 3px #3e473b, 0 8px 30px #14211966; }
+.toolbar button { position: relative; width: 69px; height: 65px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: #c7c3af; border: 1px solid transparent; background: transparent; padding: 6px 2px 4px; }
+.toolbar button svg { width: 22px; height: 22px; stroke-width: 1.5; }
+.toolbar button span { font-size: 10px; }
+.toolbar button small { position: absolute; top: 3px; left: 5px; font: 9px Georgia, serif; color: #a79676; }
+.toolbar button[aria-pressed="true"] { color: #f0d399; border-color: #947b4e; background: #68715326; box-shadow: inset 0 0 0 2px #222e27; }
+.toolbar button:hover { background: #606e513f; color: #f0dfb7; }
+.divider { border-left: 1px solid #b49a6255; margin: 11px 2px; }
+.interact { position: absolute; bottom: 123px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; background: #e9e0ccee; color: #344239; border: 1px solid #a18e62; padding: 10px 16px; box-shadow: 0 4px 22px #1b271c35; font-size: 12px !important; }
+.interact span { color: #827347; margin-left: 7px; }
+.loading { position: absolute; left: 50%; top: 48%; transform: translate(-50%,-50%); padding: 28px 38px; text-align: center; background: #24352fe8; border: 1px solid #ac986960; color: #e8dfc8; font-size: 13px; }
+.loading button { padding: 8px 14px; border: 1px solid #a79061; background: #4d5847; color: #e8dfc8; }
+.scrim { position: absolute; inset: 0; display: grid; place-items: center; background: #14201c69; }
+.portraitScrim { place-items: center end; padding: 0 4vw; background: transparent; }
+.portraitScrim .note { width: min(340px, 28vw); background: #e6dfcdf5; }
+.note { position: relative; width: min(420px, calc(100vw - 38px)); padding: 39px 38px 25px; background: #e6dfcd; color: #374038; border: 1px solid #a2906a; box-shadow: 0 20px 85px #14221b80, inset 0 0 0 8px #d1c8b338; }
+.note .kicker { color: #807450; }
+.note h2 { font: 500 24px/1.5 "Noto Serif SC", "SimSun", serif; margin: 14px 0 18px; }
+.note p { font-size: 13px; line-height: 2; }
+.note dl { margin: 24px 0; border-top: 1px solid #aaa08655; }
+.note dl div { padding: 11px 0; display: flex; gap: 18px; border-bottom: 1px solid #aaa08655; font-size: 12px; }
+.note dt { color: #81734e; flex-shrink: 0; }
+.note dd { margin: 0; line-height: 1.6; }
+.note .boundary { font-size: 11px; color: #777763; }
+.close { position: absolute; top: 14px; right: 14px; border: 0; background: transparent; color: #6b715f; padding: 5px; }
+.workAction { display: flex; align-items: center; gap: 9px; width: 100%; padding: 11px 13px; margin-top: 20px; color: #f1e5c8; background: #3b4a3d; border: 1px solid #807956; font-size: 12px !important; text-align: left; }
+.workAction:hover { background: #4b5a48; }
+.workAction:disabled { cursor: default; opacity: .7; }
+.rule { display: block; width: 32px; height: 1px; background: #a28c5c; margin: 25px 0 0; }
+.touch { display: none; }
+.residentChoices { position: absolute; left: 34px; top: 132px; display: flex; gap: 6px; flex-wrap: wrap; max-width: 380px; }
+.residentChoices > span { flex-basis: 100%; color: #e9dfc7; font-size: 11px; margin-bottom: 4px; }
+.residentChoices button { padding: 9px 11px; color: #ecdfc0; background: #2a382eed; border: 1px solid #9b8657; font-size: 11px; }
+.residentChoices button:hover { background: #52604a; }
+@media (max-width: 720px) { .residentChoices { left: 18px; top: 155px; max-width: 310px; } }
+@media (pointer: coarse) { .touch { position: absolute; left: 18px; bottom: 114px; display: grid; grid-template-columns: repeat(3,40px); gap: 5px; } .touch button { color: #f0e7cf; background: #28392cba; border: 1px solid #c7b17c; height: 39px; touch-action: none; } .touch button:first-child { grid-column: 2; } .touch button:nth-child(2) { grid-column: 1; } }
+@media (max-width: 720px) { .title { left: 17px; top: 18px; gap: 11px; } .title h1 { font-size: 23px; } .title p { font-size: 10px; } .crest { width: 35px; height: 35px; } .kicker { font-size: 8px; } .weather { top: 112px; left: 18px; right: auto; font-size: 10px; padding: 7px 10px; } .back { right: 16px; top: 23px; font-size: 10px !important; } .instructions { left: 20px; bottom: 112px; } .instructions span { display: none; } .toolbar { bottom: 19px; gap: 2px; padding: 5px; } .toolbar button { width: 53px; height: 58px; } .interact { bottom: 113px; left: auto; right: 15px; transform: none; font-size: 10px !important; gap: 8px; padding: 9px; } .note { padding: 34px 25px 23px; } }
+@media (max-width: 420px) { .back { top: 88px; } }
+@media (max-width: 720px) { .portraitScrim { place-items: end center; padding: 0 15px 100px; } .portraitScrim .note { width: min(420px, calc(100vw - 30px)); padding: 14px 23px; } .portraitScrim .note h2 { font-size: 18px; margin: 8px 0; } .portraitScrim .note p { font-size: 11px; line-height: 1.6; margin: 4px 0; } .portraitScrim .note .rule { margin: 12px 0 0; } }

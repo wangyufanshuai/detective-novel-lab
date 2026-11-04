@@ -238,7 +238,7 @@ export function CommandDeckShell({ viewModel, commandBrief, guidedJournal, contr
           <nav className={styles.primaryNavigation} aria-label={cn ? "玩家导航" : "Player navigation"}>
             {navItems.map(({ id, label, icon: Icon, ordinal }) => <button ref={(node) => { navigationRefs.current[id] = node; }} key={id} type="button" aria-current={activeView === id ? "page" : undefined} data-testid={`noir-nav-${id}`} disabled={navigationLocked} onClick={() => navigate(id, false)}><small>{ordinal}</small><Icon size={16} aria-hidden="true" /><span>{label}</span></button>)}
           </nav>
-          <button ref={(node) => { navigationRefs.current.tools = node; }} type="button" className={styles.toolsEntry} aria-current={activeView === "tools" ? "page" : undefined} disabled={navigationLocked} onClick={() => navigate("tools", false)} data-testid="noir-nav-tools"><Wrench size={14} aria-hidden="true" /><span>{copy.tools}</span></button>
+        <button ref={(node) => { navigationRefs.current.tools = node; }} type="button" className={styles.toolsEntry} aria-label={copy.tools} aria-current={activeView === "tools" ? "page" : undefined} disabled={navigationLocked} onClick={() => navigate("tools", false)} data-testid="noir-nav-tools"><Wrench size={14} aria-hidden="true" /><span>{copy.tools}</span></button>
         </div>
         <div className={styles.playerBody} inert={blockingOverlayActive || transitionVisible ? true : undefined}>
           {activeView === "explore" ? <>

@@ -1,0 +1,51 @@
+.world { position: fixed; inset: 0; isolation: isolate; background: #71808d; color: #eee8db; overflow: hidden; font-family: "Microsoft YaHei", sans-serif; }
+.world button, .world a { font: inherit; -webkit-tap-highlight-color: transparent; }
+.world button { cursor: pointer; }
+.world button:focus-visible, .world a:focus-visible, .world canvas:focus-visible { outline: 2px solid #efd1a0; outline-offset: 4px; }
+.world canvas { display: block; }
+.shade { position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 160px 150px -140px #101922b0, inset 0 -140px 120px -100px #0d151dbb; }
+.title { position: absolute; left: 37px; top: 31px; pointer-events: none; text-shadow: 0 2px 12px #101820ae; }
+.kicker { display: block; font: 10px/1.5 Georgia, serif; letter-spacing: .22em; color: #d7c09b; }
+.title h1 { font: 400 32px/1.35 "Noto Serif SC", "SimSun", serif; letter-spacing: .2em; margin: 9px 0 12px; }
+.title p { margin: 0; display: flex; gap: 9px; align-items: center; font-size: 11px; color: #e1e3df; }
+.title i { height: 9px; border-left: 1px solid #c2c8c85e; margin: 0 3px; }
+.topActions { position: absolute; top: 35px; right: 91px; display: flex; align-items: center; gap: 23px; }
+.topActions button, .topActions a { background: transparent; color: #e4e0d6; border: 0; text-decoration: none; font-size: 11px; display: flex; gap: 7px; align-items: center; padding: 8px 0; text-shadow: 0 1px 9px #10202bd9; }
+.topActions button:hover, .topActions a:hover { color: #f6d7a5; }
+.instructions { position: absolute; left: 37px; bottom: 32px; pointer-events: none; text-shadow: 0 1px 9px #0e1821; }
+.instructions > span { font: 14px/1.8 "Noto Serif SC", "SimSun", serif; letter-spacing: .04em; }
+.instructions p { margin: 8px 0 0; font-size: 10px; color: #cbd1d0; }
+.instructions b { font-weight: normal; margin: 0 6px; opacity: .6; }
+.world kbd { font: 10px/1.5 "Microsoft YaHei", sans-serif; border: 1px solid #a8a79376; padding: 2px 5px; color: #e7ddc8; background: #20282dc4; border-radius: 2px; }
+.toolbar { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; padding: 7px; border: 1px solid #9d876757; background: #202724ed; box-shadow: inset 0 0 0 3px #4c453627, 0 8px 35px #0e151d5c; }
+.toolbar button { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 78px; height: 63px; gap: 8px; border: 1px solid transparent; background: transparent; color: #bebfb6; padding: 4px; }
+.toolbar button svg { width: 21px; height: 21px; stroke-width: 1.4; }
+.toolbar button span { font-size: 10px; }
+.toolbar button small { position: absolute; top: 3px; left: 5px; font: 9px Georgia, serif; color: #bca783; }
+.toolbar button[aria-pressed="true"] { background: #74644725; color: #f0d6a4; border-color: #a68b5e87; box-shadow: inset 0 0 0 2px #1c2424; }
+.toolbar button:hover { color: #f1d7ac; background: #a18b6620; }
+.toolbar i { height: 34px; border-left: 1px solid #a68b5e42; align-self: center; margin: 0 3px; }
+.toolbar .reset { width: 66px; }
+.settings { position: absolute; right: 34px; bottom: 32px; display: flex; gap: 4px; }
+.settings button { height: 33px; display: flex; align-items: center; gap: 6px; border: 1px solid #b6c1c329; background: #202b32bd; color: #d9d9ce; padding: 7px 10px; font-size: 10px; }
+.settings button[aria-pressed="false"] { opacity: .6; }
+.observe { position: absolute; bottom: 123px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; border: 1px solid #bea984; background: #ebe2d1f0; color: #41392e; padding: 11px 17px; font-size: 12px !important; box-shadow: 0 6px 30px #111b2645; white-space: nowrap; }
+.loading { position: absolute; left: 50%; top: 48%; transform: translate(-50%,-50%); text-align: center; width: min(370px, calc(100vw - 40px)); padding: 28px 20px; background: #202a32e8; border: 1px solid #bca98b64; }
+.loading p { font-size: 13px; margin: 17px 0; line-height: 1.8; }
+.loading button { padding: 9px 15px; color: #eae0cc; background: #4f5145; border: 1px solid #a38e68; }
+.loadingLine { display: block; width: 80px; height: 1px; margin: 22px auto 0; background: #d5b98d; animation: breathe 1.8s ease-in-out infinite; }
+.scrim { position: absolute; inset: 0; display: grid; place-items: center; background: #0d172279; }
+.note { position: relative; width: min(435px, calc(100vw - 36px)); padding: 40px 36px 27px; color: #3d3b32; background: #e9e0cf; border: 1px solid #a49372; box-shadow: 0 20px 80px #0f182889, inset 0 0 0 7px #d1c5ae39; }
+.note .kicker { font-family: "Microsoft YaHei", sans-serif; letter-spacing: .12em; color: #897858; font-size: 9px; }
+.note h2 { font: 400 25px/1.4 "Noto Serif SC", "SimSun", serif; margin: 17px 0; }
+.note p { font-size: 13px; line-height: 2.1; margin: 0 0 21px; }
+.note i { width: 32px; border-top: 1px solid #aa9268; display: block; }
+.close { position: absolute; right: 12px; top: 12px; border: 0; background: transparent; color: #766e5e; padding: 5px; }
+.continue { margin-top: 21px; background: transparent; border: 0; border-bottom: 1px solid #a99b7a75; color: #6e6148; padding: 5px 0; font-size: 11px !important; }
+.touch { display: none; }
+@keyframes breathe { 50% { opacity: .25; transform: scaleX(.55); } }
+@media (prefers-reduced-motion: reduce) { .loadingLine { animation: none; } }
+@media (max-width: 1100px) { .instructions { bottom: 124px; } .instructions > span { display: none; } .settings { bottom: 120px; } }
+@media (pointer: coarse) { .touch { position: absolute; left: 20px; bottom: 150px; display: grid; grid-template-columns: repeat(3,42px); gap: 5px; } .touch button { width: 42px; height: 39px; border: 1px solid #afab975c; color: #ecdfc8; background: #263039cd; touch-action: none; } .touch button:first-child { grid-column: 2; } .touch button:nth-child(2) { grid-column: 1; } }
+@media (max-width: 640px) { .title { left: 20px; top: 22px; } .title h1 { font-size: 26px; margin: 7px 0 9px; } .kicker { font-size: 8px; } .title p { font-size: 10px; } .topActions { top: 22px; right: 18px; gap: 11px; } .topActions button span, .topActions a { display: none; } .toolbar { bottom: 20px; padding: 5px; gap: 2px; } .toolbar button { width: 65px; height: 58px; } .toolbar .reset { width: 57px; } .instructions { left: 20px; bottom: 116px; } .instructions p { font-size: 9px; } .settings { right: 17px; bottom: 153px; flex-direction: column; } .observe { bottom: 112px; } .world:has(.observe) .instructions { display: none; } .settings button { justify-content: center; } .note { padding: 36px 27px 25px; } }
+@media (max-width: 640px) { .topActions { right: 76px; } }

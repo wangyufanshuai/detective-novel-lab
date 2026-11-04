@@ -1,0 +1,11 @@
+.runtime { position: absolute; inset: 0; overflow: hidden; background: #081217; }
+.canvas { position: absolute; inset: 0; z-index: 0; opacity: 0; pointer-events: none; transition: opacity 180ms ease; }
+.canvasVisible { opacity: 1; pointer-events: auto; }
+.canvas canvas { display: block; width: 100% !important; height: 100% !important; outline: none; }
+.fallback { position: absolute; inset: 0; z-index: 1; opacity: 1; transition: opacity 180ms ease; }
+.fallbackHidden { opacity: 0; pointer-events: none; }
+.status { position: absolute; top: 10px; left: 10px; z-index: 2; padding: 5px 8px; border: 1px solid #d4b87855; background: #081217cc; color: #e6c77f; font: 10px/1.2 var(--font-noir-mono, Consolas, monospace); letter-spacing: .08em; }
+.loadingLabel { color: #e6c77f; font: 11px/1.2 var(--font-noir-mono, Consolas, monospace); }
+.canvasFallback { display: grid; place-items: center; height: 100%; padding: 24px; color: #d4bf91; font: 11px/1.5 var(--font-noir-mono, Consolas, monospace); text-align: center; }
+.srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+@media (prefers-reduced-motion: reduce) { .canvas, .fallback { transition: none; } }

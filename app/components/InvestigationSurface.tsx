@@ -7,6 +7,7 @@ import { CinematicDeductionBoard } from "@/app/components/CinematicDeductionBoar
 import { InvestigationCoreActionsSurface } from "@/app/components/InvestigationCoreActionsSurface";
 import { InvestigationDebriefReplaySurface } from "@/app/components/InvestigationDebriefReplaySurface";
 import { InvestigationRouteReviewSurface } from "@/app/components/InvestigationRouteReviewSurface";
+import { InvestigationRoomProjectionSurface } from "@/app/components/InvestigationRoomProjectionSurface";
 import {
   WorldCampaignPanel,
   type ArcConvergenceSummary,
@@ -56,6 +57,7 @@ import type {
   CaseTruthLedger,
   DeductionCase,
   Evidence,
+  InvestigationRoomProjection,
   EvidenceNotebookItem,
   PlayableCaseIntake,
   PlayableCaseNextAction,
@@ -83,7 +85,7 @@ export function InvestigationPanel({
   manualEvidenceDrill, toggleManualEvidenceDrillEvidence, manualTheoryDrill,
   updateManualTheoryDrillField, approveManualTheoryFallback, replayAttemptScorecard,
   startReplayGoalAttempt, proofLedger, proofCoverage, routeCertificate, proofTourSteps,
-  lowSensory, onToggleLowSensory, busy, commandDeckMode = false
+  lowSensory, onToggleLowSensory, busy, commandDeckMode = false, roomProjection
 }: {
   playableIntake?: PlayableCaseIntake | null;
   caseRhythm?: CertifiedCaseRhythmViewModel | null;
@@ -167,6 +169,7 @@ export function InvestigationPanel({
   onToggleLowSensory: () => void;
   busy: boolean;
   commandDeckMode?: boolean;
+  roomProjection?: InvestigationRoomProjection | null;
 }) {
   const { locale } = useAppLocale();
   const playablePathSteps = buildPlayableInvestigationPath({ playableIntake, session, notebookItems, discoveredEvidence, dialogueLog, playerTheoryEvidence, characters });
@@ -236,6 +239,7 @@ export function InvestigationPanel({
   const worldCampaign = <WorldCampaignPanel runtimeMode={runtimeMode} session={session} summary={worldLead} outcome={worldLeadOutcome} handoff={worldLeadCaseHandoff} arc={worldArc} directive={worldArcDirective} pressure={worldPressureCascade} influenceBudget={worldInfluenceBudget} playerResourceCommitment={playerResourceCommitment} factionRelationship={factionRelationship} worldEventOffer={worldEventOffer} investigatorProgression={investigatorProgression} campaignRecovery={campaignRecovery} investigatorHeadquarters={investigatorHeadquarters} arcConvergence={arcConvergence} campaignSession={campaignSession} campaignFinaleDebrief={campaignFinaleDebrief} townSocialResponse={townSocialResponse} campaignPacing={serverCampaignPacing} commandBrief={campaignCommandBrief} onDecision={updateWorldLead} onDirectiveDecision={updateWorldArcDirective} onResourceCommitmentDecision={updatePlayerResourceCommitment} onWorldEventOfferDecision={updateWorldEventOffer} onCampaignRecoveryDecision={updateCampaignRecovery} onInvestigatorHeadquartersDecision={updateInvestigatorHeadquarters} busy={busy} />;
   return (
     <div className={styles.investigation}>
+      <InvestigationRoomProjectionSurface projection={roomProjection || null} />
       {investigationCore}
       <details className={styles.caseOperations} open={Boolean(worldEventOffer?.status === "offered" || campaignRecovery?.status === "ready")}><summary>{locale === "zh-CN" ? "小镇决策与后续安排" : "Town decisions & next steps"}</summary><div>{worldCampaign}</div></details>
       <details className={styles.supportingRecords}><summary>{locale === "zh-CN" ? "调查记录与复盘工具" : "Investigation records & replay tools"}</summary>

@@ -41,7 +41,7 @@
 .navigationBar { display: flex; align-items: stretch; justify-content: space-between; gap: 20px; padding: 0 40px; border-bottom: 1px solid rgba(185,155,99,.16); background: #0e1518; }
 .primaryNavigation { display: flex; gap: 30px; min-width: 0; }
 .primaryNavigation > button { position: relative; display: flex; align-items: center; gap: 10px; min-width: 96px; min-height: 44px; padding: 0 4px; color: #8f9a95; border: 0; border-bottom: 2px solid transparent; background: none; font-size: 13px; letter-spacing: .12em; }
-.primaryNavigation > button > small { color: #586662; font-family: var(--font-noir-mono, monospace); font-size: 10px; letter-spacing: 0; }
+.primaryNavigation > button > small { color: #8d9e98; font-family: var(--font-noir-mono, monospace); font-size: 10px; letter-spacing: 0; }
 .primaryNavigation > button > svg { display: none; }
 .primaryNavigation > button[aria-current="page"] { color: #e7ddc8; border-bottom-color: #b99b63; }
 .primaryNavigation > button[aria-current="page"] > small { color: #b99b63; }

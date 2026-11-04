@@ -7,7 +7,8 @@ import {
   buildCaseLogicReport,
   buildDeductionGraph,
   buildWorldMapSnapshot,
-  deriveSuspectBoard
+  deriveSuspectBoard,
+  buildInvestigationRoomProjection
 } from "@/lib/engine";
 import type {
   CaseLogicReport,
@@ -53,7 +54,8 @@ export function useInvestigationReadQueries(investigation: InvestigationControll
     setSnapshot,
     setDeductionGraph,
     setSuspectBoard,
-    setLogicReport
+    setLogicReport,
+    setRoomProjection
   } = investigation;
 
   const loadLatestLiveEval = useCallback(async () => {
@@ -72,6 +74,7 @@ export function useInvestigationReadQueries(investigation: InvestigationControll
       createTown: { method: "POST", url: "/api/v1/command/town/create", body: { seed: seedInput, mode, caseMode, caseTemplateId, npcCount: mode === "advanced" ? 30 : caseMode === "generated" ? 20 : 8, timelineHours: mode === "advanced" ? 120 : 24, caseArchetype } },
       mapSnapshot: world ? { method: "GET", url: `/api/v1/query/world/map?worldId=${world.id}&caseId=${activeCase?.id || ""}&sessionId=${isPersistedSessionId(session?.id) ? session?.id : ""}&day=1&time=${minutesToTime(timeValue)}` } : null,
       deductionGraph: activeCase ? { method: "GET", url: `/api/v1/query/case/deduction-graph?caseId=${activeCase.id}` } : null,
+      roomProjection: activeCase ? { method: "GET", url: `/api/v1/query/case/room-projection?caseId=${activeCase.id}&sessionId=${isPersistedSessionId(session?.id) ? session?.id : ""}` } : null,
       interrogate: session ? { method: "POST", url: "/api/v1/command/investigation/interrogate", body: { sessionId: session.id, characterId: selectedCharacterId, question, evidenceId: selectedEvidenceId || undefined } } : null
     }, null, 2),
     [activeCase?.id, caseArchetype, caseMode, caseTemplateId, mode, question, seedInput, selectedCharacterId, selectedEvidenceId, session?.id, timeValue, world]
@@ -105,12 +108,14 @@ export function useInvestigationReadQueries(investigation: InvestigationControll
       setDeductionGraph(null);
       setSuspectBoard([]);
       setLogicReport(null);
+      setRoomProjection(null);
       return;
     }
     if (runtimeMode === "static-demo" && world) {
       setDeductionGraph(buildDeductionGraph(activeCase, events));
       setSuspectBoard(deriveSuspectBoard(activeCase, events));
       setLogicReport(buildCaseLogicReport(world, events, activeCase));
+      setRoomProjection(buildInvestigationRoomProjection(activeCase, events, { mode: "player", session }));
       return;
     }
     getV1<{ graph: DeductionGraph; suspectBoard: SuspectBoardRow[]; logicReport: CaseLogicReport }>(`/api/v1/query/case/deduction-graph?caseId=${activeCase.id}`)
@@ -120,7 +125,12 @@ export function useInvestigationReadQueries(investigation: InvestigationControll
         setLogicReport(data.logicReport);
       })
       .catch(() => undefined);
-  }, [activeCase, events, runtimeMode, setDeductionGraph, setLogicReport, setSuspectBoard, world]);
+    const roomQuery = new URLSearchParams({ caseId: activeCase.id });
+    if (session && isPersistedSessionId(session.id)) roomQuery.set("sessionId", session.id);
+    getV1<{ projection: import("@/lib/engine").InvestigationRoomProjection }>(`/api/v1/query/case/room-projection?${roomQuery.toString()}`)
+      .then((data) => setRoomProjection(data.projection))
+      .catch(() => setRoomProjection(null));
+  }, [activeCase, events, runtimeMode, session, setDeductionGraph, setLogicReport, setRoomProjection, setSuspectBoard, world]);
 
   return { loadLatestLiveEval, agentApiExample };
 }

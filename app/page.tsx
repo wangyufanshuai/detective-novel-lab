@@ -135,7 +135,7 @@ export default function Home() {
     selectedEvidenceId, setSelectedEvidenceId, highlightedEventId, setHighlightedEventId, question, setQuestion,
     theory, setTheory, status, setStatus, revealText, setRevealText, lastAiSafety, setLastAiSafety,
     latestLiveEval, setLatestLiveEval, deductionGraph, setDeductionGraph, suspectBoard, setSuspectBoard,
-    logicReport, setLogicReport, busy, setBusy, runtimeMode, setRuntimeMode,
+    logicReport, setLogicReport, roomProjection, busy, setBusy, runtimeMode, setRuntimeMode,
     progress, setProgress, selectionHighlight, setSelectionHighlight, selectedGraphNode, setSelectedGraphNode,
     selectedSuspectId, setSelectedSuspectId, proofViewMode, setProofViewMode, setSelectedGapType,
     hoveredLocationId, setHoveredLocationId, toasts, setToasts, pushToast, dismissToast,
@@ -849,6 +849,7 @@ export default function Home() {
                   onToggleLowSensory={noirAudio.toggleLowSensory}
                   busy={busy}
                   commandDeckMode={Boolean(commandDeck) && runtimeMode === "server"}
+                  roomProjection={roomProjection}
                 />
               )
             },
