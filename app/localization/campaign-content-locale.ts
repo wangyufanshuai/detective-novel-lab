@@ -1,5 +1,6 @@
 import { campaignLocalizedSafeTextIndex } from "@/lib/engine";
 import type { AppLocale } from "./locale-catalog";
+import { localizeAuthoredCaseText } from "./authored-case-locale";
 import { localizeMidnightChorusGoldSlice } from "./midnight-chorus-gold-slice-locale";
 
 const CAMPAIGN_SAFE_TEXT = campaignLocalizedSafeTextIndex();
@@ -43,5 +44,6 @@ const FRONT_DOOR_PRESENTATION_ZH: Readonly<Record<string, string>> = {
 export function localizeCampaignContent(value: string, locale: AppLocale) {
   return localizeMidnightChorusGoldSlice(value, locale)
     || (locale === "zh-CN" ? FRONT_DOOR_PRESENTATION_ZH[value] : undefined)
-    || CAMPAIGN_SAFE_TEXT[value]?.[locale];
+    || CAMPAIGN_SAFE_TEXT[value]?.[locale]
+    || localizeAuthoredCaseText(value, locale);
 }
