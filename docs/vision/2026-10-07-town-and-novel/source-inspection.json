@@ -1,0 +1,64 @@
+{
+  "schema": "town-novel-source-inspection.v1",
+  "observedAt": "2026-10-07T15:09:47.0161732Z",
+  "kind": "source-and-history-inspection-only",
+  "runtimeTestsRun": false,
+  "modelCallsForNovelRun": false,
+  "novelWorktree": "E:/xuexi/detective-novel-lab",
+  "townWorktree": "E:/xuexi/detective-town-noir-ui",
+  "novelHead": "3bc07d4d07a7d7d69d512c73f1704dea80d577f7",
+  "townHead": "224955696d0af85c80684218dbaeddeaf3808a36",
+  "sharedGitDirectory": "E:/xuexi/detective-novel-lab/.git",
+  "historicalInitialCommit": "723a2a6",
+  "comparison": [
+    {
+      "path": "app/api/generate/route.ts",
+      "novelWorktreeSha256": "45a5420c7341c79c9ca744297adffeae40d386e1ba16d961a28476e64f8a1674",
+      "townWorktreeSha256": "ab178201ad7ad896d70543aaf9837be055235a1873aa0f77433f842d3a445fd7",
+      "identical": false
+    },
+    {
+      "path": "app/components/NovelWorldWorkbench.tsx",
+      "novelWorktreeSha256": "fbb7383aa721c628dcbf582150ca418d6bf25b0830b1b0052b0e267b58d9d050",
+      "townWorktreeSha256": "91d9bc5f47b91eef317a9be13209b44695da7eb77f70dfc1d483f77412e82409",
+      "identical": false
+    },
+    {
+      "path": "packages/engine/src/novel-world.ts",
+      "novelWorktreeSha256": "769ba60b39b031d51637263d1916e466b063d149b13f37ed313619dab41b5a9d",
+      "townWorktreeSha256": "769ba60b39b031d51637263d1916e466b063d149b13f37ed313619dab41b5a9d",
+      "identical": true
+    },
+    {
+      "path": "packages/engine/src/novel-simulation.ts",
+      "novelWorktreeSha256": "1e208d7126985284831c3e4572a4e2b3b838aa4d3aaabafa45def0045b1b334a",
+      "townWorktreeSha256": "1e208d7126985284831c3e4572a4e2b3b838aa4d3aaabafa45def0045b1b334a",
+      "identical": true
+    },
+    {
+      "path": "app/api/v1/command/novel/blueprint/route.ts",
+      "novelWorktreeSha256": "4d099ba9b976cf06b0cb5cae6746a79d13e64a1e95906cf01c8347f0e0c88c98",
+      "townWorktreeSha256": "4d099ba9b976cf06b0cb5cae6746a79d13e64a1e95906cf01c8347f0e0c88c98",
+      "identical": true
+    },
+    {
+      "path": "app/page.tsx",
+      "novelWorktreeSha256": "4b4c744d27a6204f4016bf08bc79d8313c92be0c9b37fae858ef27e8bcae7687",
+      "townWorktreeSha256": "b1457663148d35a72a2677e6fe8d4d4016fd1e6fc06d9a6266a3f193199e96eb",
+      "identical": false
+    },
+    {
+      "path": "scripts/generate-deepseek-novel.mjs",
+      "novelWorktreeSha256": "b279057bf5999e7d2def3a4cb32aa75ca1fdca89809a79816fe2c46d82a5771a",
+      "townWorktreeSha256": "b279057bf5999e7d2def3a4cb32aa75ca1fdca89809a79816fe2c46d82a5771a",
+      "identical": true
+    }
+  ],
+  "confirmedUserDecisions": [
+    "Blender-authored 3D",
+    "character exploration and toolbar interaction inspired by Stardew Valley",
+    "town overview to understand characters and cases",
+    "novel project identity confirmed"
+  ],
+  "artDirectionSelected": null
+}

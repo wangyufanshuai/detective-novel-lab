@@ -1,0 +1,26 @@
+{
+  "schema": "agent-first-contract-checks.v1",
+  "checkedAt": "2026-10-30T09:02:44.270Z",
+  "passed": true,
+  "checks": [
+    "proposal-and-get-are-read-only",
+    "real-engine-travel-and-durable-identical-retry",
+    "strict-fields-sources-CAS-reuse-origin-and-session-refusals",
+    "public-whitelist-and-hidden-state-noninterference",
+    "receipt-failure-atomic-rollback-save-reopen-and-retry",
+    "resident-intent-changes-existing-engine-action-and-replays-across-wall-clock",
+    "case-bridge-versions-discovery-and-reader-disclosure",
+    "five-walkable-doors-and-building-river-collision"
+  ],
+  "digest": "fnv1a-1ea3a3cc",
+  "sourceFiles": {
+    "packages/engine/src/town/agent-observation.ts": "3515e8a2ad7ecbe8da3e89564dc503b1351050b05646bd3d49ede3e96ea3b26e",
+    "packages/engine/src/town/agent-intent.ts": "eb1c8d6915a3c274786ec3e701d5ad950b79a363d2b3a29d240372fe7461c513",
+    "packages/engine/src/town/case-bridge.ts": "044a8c9b3c3f6fec46f4b66ba690aac84aa860f2be943c2b063904f61094fa90",
+    "lib/world/agent-first-store.ts": "3dde29430d3fdb5c0ce6922f3135702f32e9cbb9e1aea7a394dd78fea430c991",
+    "app/api/v1/town-play/agent-first/route.ts": "673ad07424da7aea368d65040d6e9a178413995b5fdb46a1bc7de028dc6f3076",
+    "app/town-play/agent-first/agent-first-map.ts": "cf49cc20e746da043cc2ace25bdc8413ae963986c2c82e3f9af464c200bb535c",
+    "scripts/run-agent-first-checks.mjs": "ca03283df68bbe918ba7e77b0f272a2c43203b84114c07d100d994856acabb4d"
+  },
+  "scope": "Real route functions, real SQLite and engine in isolated test DB; no external model calls. Case bridge is contract-only; no P2/P3/P4 or human play approval claimed."
+}

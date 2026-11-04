@@ -1,0 +1,6 @@
+{
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": { "incremental": false },
+  "include": ["../../../app/town-play/agent-first/**/*.tsx", "../../../app/town-play/agent-first/**/*.ts", "../../../app/api/v1/town-play/agent-first/**/*.ts", "../../../packages/engine/src/town/agent-observation.ts", "../../../packages/engine/src/town/agent-intent.ts", "../../../packages/engine/src/town/case-bridge.ts", "../../../next-env.d.ts"],
+  "exclude": ["../../../node_modules"]
+}

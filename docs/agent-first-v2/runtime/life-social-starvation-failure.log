@@ -1,0 +1,54 @@
+{"seed":"river-life-01","phase":"primary-with-restore","tick":144,"events":768}
+{"seed":"river-life-01","phase":"primary-with-restore","tick":288,"events":1253}
+{"seed":"river-life-01","phase":"primary-with-restore","tick":432,"events":2057}
+{"seed":"river-life-01","phase":"primary-with-restore","tick":576,"events":2541}
+{"seed":"river-life-01","phase":"primary-with-restore","tick":720,"events":3334}
+{"seed":"river-life-01","phase":"primary-with-restore","tick":864,"events":3821}
+{"seed":"river-life-01","passed":true,"digest":"fnv1a-508ade04","events":3821,"ms":53997}
+{"seed":"river-life-02","phase":"primary-with-restore","tick":144,"events":764}
+{"seed":"river-life-02","phase":"primary-with-restore","tick":288,"events":1252}
+{"seed":"river-life-02","phase":"primary-with-restore","tick":432,"events":2050}
+{"seed":"river-life-02","phase":"primary-with-restore","tick":576,"events":2535}
+{"seed":"river-life-02","phase":"primary-with-restore","tick":720,"events":3333}
+{"seed":"river-life-02","phase":"primary-with-restore","tick":864,"events":3818}
+{"seed":"river-life-02","passed":true,"digest":"fnv1a-c9929d00","events":3818,"ms":67896}
+{"seed":"river-life-03","phase":"primary-with-restore","tick":144,"events":764}
+{"seed":"river-life-03","phase":"primary-with-restore","tick":288,"events":1253}
+{"seed":"river-life-03","phase":"primary-with-restore","tick":432,"events":2054}
+{"seed":"river-life-03","phase":"primary-with-restore","tick":576,"events":2540}
+{"seed":"river-life-03","phase":"primary-with-restore","tick":720,"events":3331}
+{"seed":"river-life-03","phase":"primary-with-restore","tick":864,"events":3815}
+{"seed":"river-life-03","passed":true,"digest":"fnv1a-7c2eb422","events":3815,"ms":70800}
+{"seed":"river-life-04","phase":"primary-with-restore","tick":144,"events":764}
+{"seed":"river-life-04","phase":"primary-with-restore","tick":288,"events":1252}
+{"seed":"river-life-04","phase":"primary-with-restore","tick":432,"events":2059}
+{"seed":"river-life-04","phase":"primary-with-restore","tick":576,"events":2547}
+{"seed":"river-life-04","phase":"primary-with-restore","tick":720,"events":3337}
+{"seed":"river-life-04","phase":"primary-with-restore","tick":864,"events":3816}
+{"seed":"river-life-04","passed":true,"digest":"fnv1a-2dd9b16f","events":3816,"ms":61350}
+{"seed":"river-life-05","phase":"primary-with-restore","tick":144,"events":764}
+{"seed":"river-life-05","phase":"primary-with-restore","tick":288,"events":1255}
+{"seed":"river-life-05","phase":"primary-with-restore","tick":432,"events":2056}
+{"seed":"river-life-05","phase":"primary-with-restore","tick":576,"events":2542}
+{"seed":"river-life-05","phase":"primary-with-restore","tick":720,"events":3346}
+{"seed":"river-life-05","phase":"primary-with-restore","tick":864,"events":3825}
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: rb-lin-ali has no relationship encounter
+    at file:///E:/xuexi/detective-town-noir-ui/scripts/run-resident-life-checks.mjs:68:5
+    at Array.map (<anonymous>)
+    at file:///E:/xuexi/detective-town-noir-ui/scripts/run-resident-life-checks.mjs:64:30
+    at ModuleJob.run (node:internal/modules/esm/module_job:430:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:661:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v24.14.0

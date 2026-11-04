@@ -1,0 +1,1 @@
+{"passed":true,"seeds":5,"report":"docs/agent-first-v2/review.json","checks":{"threeDaySeeds":5,"completeReplayRuns":5,"midrunRestores":5,"edgeGroups":5,"apiGroups":3,"previousContractGroups":8,"specialistRegressionGroups":17,"commuteRegressionGroups":8,"ownedSessionRegressionGroups":14,"scopedTypecheck":true,"browserInteraction":true}}

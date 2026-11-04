@@ -1,0 +1,8 @@
+{"seed":"river-life-01","phase":"primary-with-restore","tick":144,"events":871}
+{"seed":"river-life-01","phase":"primary-with-restore","tick":288,"events":1437}
+{"seed":"river-life-01","phase":"primary-with-restore","tick":432,"events":2365}
+{"seed":"river-life-01","phase":"primary-with-restore","tick":576,"events":2937}
+{"seed":"river-life-01","phase":"primary-with-restore","tick":720,"events":3830}
+{"seed":"river-life-01","phase":"primary-with-restore","tick":864,"events":4384}
+{"seed":"river-life-01","passed":true,"digest":"fnv1a-1692038e","events":4384,"ms":117346}
+{"passed":true,"groups":8,"seeds":1,"report":"docs/agent-first-v5/preflight/life-review.json"}

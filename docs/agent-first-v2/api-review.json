@@ -1,0 +1,20 @@
+{
+  "schema": "resident-life-api-checks.v1",
+  "checkedAt": "2026-10-30T10:56:02.334Z",
+  "passed": true,
+  "checks": [
+    "legacy-reads-and-proposals-do-not-enable-life-explicit-idempotent-commit-does",
+    "needs-injection-and-stale-policy-install-refused",
+    "life-wait-save-reopen-public-projection-and-offscreen-noninterference"
+  ],
+  "sources": {
+    "lib/world/town-exploration-store.ts": "dd278f99242641cfb128c54cd6830afe5d189635b2204ec42025eeccba49ff95",
+    "lib/world/agent-first-store.ts": "3dde29430d3fdb5c0ce6922f3135702f32e9cbb9e1aea7a394dd78fea430c991",
+    "lib/town-play-contract.ts": "6874613a9e69ddbbab5aa16214f73eac96f9a7770344fc3c327edbe9a9ee4387",
+    "packages/engine/src/town-exploration.ts": "f7a4ce804dca463fdfaa2a685ce8aacbe240b629eae9b1496cea65c4cab10952",
+    "packages/engine/src/town/agent-observation.ts": "58a0d9abee78fe1e4d2ff90d4d5879eec2d9538ab9079963071749034b8b4110",
+    "packages/engine/src/town/agent-intent.ts": "927e7e13b467afd6c75946e1a93abe20c808a6f9b81a4f47a986fa10bd414f82",
+    "scripts/run-resident-life-api-checks.mjs": "e87ab6ffbefb8c23e09eba5cce78f9c28816123002b9cbb35059fdd94f845eee"
+  },
+  "scope": "Real route, SQLite and engine; isolated owned save; no paid models."
+}

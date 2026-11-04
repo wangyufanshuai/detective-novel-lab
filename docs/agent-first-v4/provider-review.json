@@ -1,0 +1,46 @@
+{
+  "schema": "resident-life-provider-checks.v1",
+  "checkedAt": "2026-11-01T04:55:54.847Z",
+  "passed": true,
+  "checks": [
+    "real-planner-preview-is-read-only-private-and-has-multiple-legal-solo-options",
+    "missing-provider-and-unreserved-budget-do-not-call-transport",
+    "single-key-JSON-rejects-duplicates-extra-fields-unknown-options-and-oversized-content",
+    "bounded-stream-HTTP-failure-invalid-envelope-timeout-and-errors-preserve-rule-fallback",
+    "reserved-controlled-choice-changes-real-action-and-replays-from-checkpoint-without-network",
+    "referee-rejects-forged-policy-memory-confidence-and-rechecks-stale-choices-at-execution",
+    "offline-score-budget-exhaustion-continues-full-72-hour-life",
+    "real-SQLite-reserves-before-await-caches-exact-owned-retry-across-reopen-and-does-not-leak-key",
+    "durable-zero-budget-missing-provider-and-default-disabled-mode-advance-without-calls",
+    "in-flight-lease-blocks-competing-clock-and-expired-batch-recovers-without-rebilling-or-double-tick",
+    "fresh-world-CAS-rejects-admin-changed-state-after-await-without-tick-or-repeat-charge"
+  ],
+  "evidence": {
+    "actualEngine": true,
+    "isolatedSQLite": true,
+    "controlledTransport": true,
+    "liveModel": false,
+    "liveExternalCalls": 0,
+    "browserThisRound": false,
+    "humanReview": false
+  },
+  "sourceHashes": {
+    "packages/engine/src/town/resident-cognition.ts": "f24fa3c0eaf98df504659d430caf8f53246e11971fad45b0bf1f11bb7000cb15",
+    "packages/engine/src/town/resident-life.ts": "7f9f88495e85874b01529ca262354a90935568ffae69fe080db915058e3235cf",
+    "packages/engine/src/town/resident-work.ts": "23f39a583c34d0880456e201a93c44d19ae64a7dc958e66c4e958ff1c9955709",
+    "packages/engine/src/persistent-town.ts": "7783b601d0d05cf61d6e636cf06f735eb6e9bb515abe10b31de053dc97eddf25",
+    "packages/engine/src/town/replay-contract.ts": "f7b31727e13c2e58163901df6c2ac7dbd2e874c4029ca4cabe4599731ddc98c8",
+    "packages/engine/src/town/agent-observation.ts": "0af4d5b279d1ef5276095b9fab77adaa9e9859dabc2a181dc525ea05d5b284e9",
+    "lib/world/town-exploration-store.ts": "04a94580ecc8281b7342177da26a65f679276654464357d3c17dc5bf6ab89f8c",
+    "lib/world/resident-decision-provider.ts": "646b5fadde240a2936cc856f7229ce7df8e019b337316c64ba9bbd0ca743c087",
+    "lib/world/resident-life-provider.ts": "cfbfcf5c119754d2793e421bad96725593b7c9b620a944d1711f30ce380d9e1e",
+    "lib/town-play-contract.ts": "c67f110e0b6cae95f408eb041159d254bf248ea628576c0efe4d79473202baf0",
+    "scripts/run-resident-life-provider-checks.mjs": "75d06b1dde86bf228a396ce34a041e3a9b838905183fd47bd729229ba9352e62"
+  },
+  "limits": [
+    "Provider entry point is server-only and default disabled; the visitor route remains rule-driven.",
+    "Transport responses are controlled fixtures, not proof of model decision quality.",
+    "Model budget reservations are an upper bound; exact network calls after a crash are unknown.",
+    "Memory retrieval remains lexical-free and day-level recency; no semantic cognition claim."
+  ]
+}

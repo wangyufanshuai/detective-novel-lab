@@ -1,0 +1,18 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+60 !== 864
+
+    at file:///E:/xuexi/detective-town-noir-ui/scripts/run-resident-life-provider-checks.mjs:86:33 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: 60,
+  expected: 864,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.14.0

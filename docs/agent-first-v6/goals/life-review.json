@@ -1,0 +1,2392 @@
+{
+  "schema": "resident-life-review.v1",
+  "checkedAt": "2026-11-02T07:28:01.190Z",
+  "passed": true,
+  "mode": "offline-agent",
+  "checks": [
+    "explicit-idempotent-policy-opt-in-and-legacy-read-preservation",
+    "hunger-replans-road-travel-meal-and-no-double-specialist-work",
+    "external-hold-interrupts-activity-without-fabricating-completion",
+    "five-seeds-72-hours-12-residents-full-replay-and-midrun-restore",
+    "every-resident-meals-sleep-social-memory-and-bounded-needs",
+    "daily-work-material-conservation",
+    "source-backed-direct-memory-causal-events-and-trust",
+    "no-model-offline-loop-and-cross-seed-divergence"
+  ],
+  "seedRuns": [
+    {
+      "seed": "river-life-01",
+      "ticks": 864,
+      "elapsedGameMinutes": 4320,
+      "digest": "fnv1a-c783945d",
+      "replayDigest": "fnv1a-c783945d",
+      "restoredDigest": "fnv1a-c783945d",
+      "eventCount": 4692,
+      "memoryCount": 3657,
+      "actionMix": {
+        "eat": 96,
+        "sleep": 324,
+        "rest": 598,
+        "socialize": 44,
+        "occupation": 630
+      },
+      "residents": [
+        {
+          "id": "rb-song-tang",
+          "role": "咖啡馆店主",
+          "needs": {
+            "hunger": 27.5,
+            "energy": 98.8,
+            "loneliness": 35.625
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 51,
+            "socialize": 8,
+            "occupation": 64
+          },
+          "memoryCount": 323
+        },
+        {
+          "id": "rb-zhou-yan",
+          "role": "投递员",
+          "needs": {
+            "hunger": 28.5,
+            "energy": 99.3,
+            "loneliness": 35.625
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 44,
+            "socialize": 8,
+            "occupation": 57
+          },
+          "memoryCount": 294
+        },
+        {
+          "id": "rb-xu-zhiwei",
+          "role": "旧书修复师",
+          "needs": {
+            "hunger": 30,
+            "energy": 99.3,
+            "loneliness": 66.8
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 57,
+            "socialize": 6,
+            "occupation": 29
+          },
+          "memoryCount": 297
+        },
+        {
+          "id": "rb-lu-xingzhou",
+          "role": "值班警员",
+          "needs": {
+            "hunger": 42,
+            "energy": 98.775,
+            "loneliness": 35.625
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 51,
+            "socialize": 8,
+            "occupation": 60
+          },
+          "memoryCount": 315
+        },
+        {
+          "id": "rb-chen-hui",
+          "role": "邮局分拣员",
+          "needs": {
+            "hunger": 29,
+            "energy": 99.125,
+            "loneliness": 66.725
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 41,
+            "socialize": 7,
+            "occupation": 61
+          },
+          "memoryCount": 295
+        },
+        {
+          "id": "rb-gu-yuanshan",
+          "role": "车站值班员",
+          "needs": {
+            "hunger": 30,
+            "energy": 98.6,
+            "loneliness": 64.125
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 55,
+            "socialize": 7,
+            "occupation": 34
+          },
+          "memoryCount": 304
+        },
+        {
+          "id": "rb-bai-lu",
+          "role": "花摊摊主",
+          "needs": {
+            "hunger": 30,
+            "energy": 99.65,
+            "loneliness": 66.725
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 43,
+            "socialize": 7,
+            "occupation": 64
+          },
+          "memoryCount": 305
+        },
+        {
+          "id": "rb-lin-ali",
+          "role": "旅馆老板",
+          "needs": {
+            "hunger": 40.5,
+            "energy": 98.95,
+            "loneliness": 35.625
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 65,
+            "socialize": 8,
+            "occupation": 14
+          },
+          "memoryCount": 286
+        },
+        {
+          "id": "rb-cheng-du",
+          "role": "桥梁木工",
+          "needs": {
+            "hunger": 40.5,
+            "energy": 99.125,
+            "loneliness": 60.625
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 42,
+            "socialize": 7,
+            "occupation": 61
+          },
+          "memoryCount": 295
+        },
+        {
+          "id": "rb-shen-ying",
+          "role": "地方记者",
+          "needs": {
+            "hunger": 40.5,
+            "energy": 99.475,
+            "loneliness": 60.625
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 43,
+            "socialize": 7,
+            "occupation": 64
+          },
+          "memoryCount": 303
+        },
+        {
+          "id": "rb-han-shuo",
+          "role": "钟表维修工",
+          "needs": {
+            "hunger": 41,
+            "energy": 99.3,
+            "loneliness": 57.4
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 61,
+            "socialize": 6,
+            "occupation": 59
+          },
+          "memoryCount": 330
+        },
+        {
+          "id": "rb-jiang-zhi",
+          "role": "退休教师",
+          "needs": {
+            "hunger": 28.5,
+            "energy": 99.125,
+            "loneliness": 35.625
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 45,
+            "socialize": 9,
+            "occupation": 63
+          },
+          "memoryCount": 310
+        }
+      ],
+      "specialistCompleted": {
+        "rb-xu-zhiwei": 18,
+        "rb-gu-yuanshan": 18,
+        "rb-lin-ali": 18
+      },
+      "relationshipChanges": 88,
+      "measuredBatchAverageTickP95Ms": 127.46390833333255,
+      "runAndReplayMs": 156827.7767,
+      "modelCalls": 0,
+      "quality": {
+        "residents": [
+          {
+            "npcId": "rb-song-tang",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 51,
+              "socialize": 8,
+              "occupation": 64
+            },
+            "needs": {
+              "hunger": 27.5,
+              "energy": 98.8,
+              "loneliness": 35.625
+            }
+          },
+          {
+            "npcId": "rb-zhou-yan",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 44,
+              "socialize": 8,
+              "occupation": 57
+            },
+            "needs": {
+              "hunger": 28.5,
+              "energy": 99.3,
+              "loneliness": 35.625
+            }
+          },
+          {
+            "npcId": "rb-xu-zhiwei",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 57,
+              "socialize": 6,
+              "occupation": 29
+            },
+            "needs": {
+              "hunger": 30,
+              "energy": 99.3,
+              "loneliness": 66.8
+            }
+          },
+          {
+            "npcId": "rb-lu-xingzhou",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 51,
+              "socialize": 8,
+              "occupation": 60
+            },
+            "needs": {
+              "hunger": 42,
+              "energy": 98.775,
+              "loneliness": 35.625
+            }
+          },
+          {
+            "npcId": "rb-chen-hui",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 41,
+              "socialize": 7,
+              "occupation": 61
+            },
+            "needs": {
+              "hunger": 29,
+              "energy": 99.125,
+              "loneliness": 66.725
+            }
+          },
+          {
+            "npcId": "rb-gu-yuanshan",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 55,
+              "socialize": 7,
+              "occupation": 34
+            },
+            "needs": {
+              "hunger": 30,
+              "energy": 98.6,
+              "loneliness": 64.125
+            }
+          },
+          {
+            "npcId": "rb-bai-lu",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 43,
+              "socialize": 7,
+              "occupation": 64
+            },
+            "needs": {
+              "hunger": 30,
+              "energy": 99.65,
+              "loneliness": 66.725
+            }
+          },
+          {
+            "npcId": "rb-lin-ali",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 65,
+              "socialize": 8,
+              "occupation": 14
+            },
+            "needs": {
+              "hunger": 40.5,
+              "energy": 98.95,
+              "loneliness": 35.625
+            }
+          },
+          {
+            "npcId": "rb-cheng-du",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 42,
+              "socialize": 7,
+              "occupation": 61
+            },
+            "needs": {
+              "hunger": 40.5,
+              "energy": 99.125,
+              "loneliness": 60.625
+            }
+          },
+          {
+            "npcId": "rb-shen-ying",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 43,
+              "socialize": 7,
+              "occupation": 64
+            },
+            "needs": {
+              "hunger": 40.5,
+              "energy": 99.475,
+              "loneliness": 60.625
+            }
+          },
+          {
+            "npcId": "rb-han-shuo",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 61,
+              "socialize": 6,
+              "occupation": 59
+            },
+            "needs": {
+              "hunger": 41,
+              "energy": 99.3,
+              "loneliness": 57.4
+            }
+          },
+          {
+            "npcId": "rb-jiang-zhi",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 45,
+              "socialize": 9,
+              "occupation": 63
+            },
+            "needs": {
+              "hunger": 28.5,
+              "energy": 99.125,
+              "loneliness": 35.625
+            }
+          }
+        ],
+        "fullyObservedGoalDays": [
+          2,
+          3
+        ],
+        "completedGoals": 72,
+        "totalGoals": 72,
+        "goalCompletionRate": 1,
+        "sourcedGoalCredits": 230,
+        "discretionaryCompletions": 1228,
+        "repeatedWithin60Minutes": 651,
+        "repetitionRate": 0.5301302931596091,
+        "kindTransitions": 534,
+        "retainedProposals": {
+          "count": 512,
+          "localDecisions": 246,
+          "proposalsWithMemory": 512,
+          "referencedMemories": 3072,
+          "sourceCoverage": 1
+        },
+        "modelAttemptsReserved": 0,
+        "appointments": {
+          "total": 17,
+          "byStatus": {
+            "accepted": 0,
+            "running": 0,
+            "completed": 14,
+            "declined": 2,
+            "missed": 1,
+            "cancelled": 0
+          }
+        }
+      }
+    },
+    {
+      "seed": "river-life-02",
+      "ticks": 864,
+      "elapsedGameMinutes": 4320,
+      "digest": "fnv1a-cd61de7e",
+      "replayDigest": "fnv1a-cd61de7e",
+      "restoredDigest": "fnv1a-cd61de7e",
+      "eventCount": 4666,
+      "memoryCount": 3656,
+      "actionMix": {
+        "eat": 96,
+        "sleep": 324,
+        "rest": 586,
+        "socialize": 49,
+        "occupation": 629
+      },
+      "residents": [
+        {
+          "id": "rb-song-tang",
+          "role": "咖啡馆店主",
+          "needs": {
+            "hunger": 41,
+            "energy": 99.475,
+            "loneliness": 48.125
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 48,
+            "socialize": 8,
+            "occupation": 63
+          },
+          "memoryCount": 315
+        },
+        {
+          "id": "rb-zhou-yan",
+          "role": "投递员",
+          "needs": {
+            "hunger": 42,
+            "energy": 98.6,
+            "loneliness": 35.625
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 42,
+            "socialize": 8,
+            "occupation": 59
+          },
+          "memoryCount": 294
+        },
+        {
+          "id": "rb-xu-zhiwei",
+          "role": "旧书修复师",
+          "needs": {
+            "hunger": 30,
+            "energy": 99.3,
+            "loneliness": 66.8
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 63,
+            "socialize": 6,
+            "occupation": 27
+          },
+          "memoryCount": 305
+        },
+        {
+          "id": "rb-lu-xingzhou",
+          "role": "值班警员",
+          "needs": {
+            "hunger": 29.5,
+            "energy": 98.775,
+            "loneliness": 54.225
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 37,
+            "socialize": 9,
+            "occupation": 60
+          },
+          "memoryCount": 290
+        },
+        {
+          "id": "rb-chen-hui",
+          "role": "邮局分拣员",
+          "needs": {
+            "hunger": 39.5,
+            "energy": 99.475,
+            "loneliness": 35.625
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 44,
+            "socialize": 9,
+            "occupation": 60
+          },
+          "memoryCount": 302
+        },
+        {
+          "id": "rb-gu-yuanshan",
+          "role": "车站值班员",
+          "needs": {
+            "hunger": 41,
+            "energy": 98.775,
+            "loneliness": 62.3
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 70,
+            "socialize": 7,
+            "occupation": 34
+          },
+          "memoryCount": 336
+        },
+        {
+          "id": "rb-bai-lu",
+          "role": "花摊摊主",
+          "needs": {
+            "hunger": 30,
+            "energy": 98.775,
+            "loneliness": 54.225
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 49,
+            "socialize": 8,
+            "occupation": 63
+          },
+          "memoryCount": 316
+        },
+        {
+          "id": "rb-lin-ali",
+          "role": "旅馆老板",
+          "needs": {
+            "hunger": 29,
+            "energy": 100,
+            "loneliness": 22.8
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 62,
+            "socialize": 8,
+            "occupation": 14
+          },
+          "memoryCount": 281
+        },
+        {
+          "id": "rb-cheng-du",
+          "role": "桥梁木工",
+          "needs": {
+            "hunger": 27.5,
+            "energy": 98.6,
+            "loneliness": 35.625
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 40,
+            "socialize": 10,
+            "occupation": 61
+          },
+          "memoryCount": 300
+        },
+        {
+          "id": "rb-shen-ying",
+          "role": "地方记者",
+          "needs": {
+            "hunger": 29.5,
+            "energy": 97.85,
+            "loneliness": 16.725
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 43,
+            "socialize": 9,
+            "occupation": 63
+          },
+          "memoryCount": 307
+        },
+        {
+          "id": "rb-han-shuo",
+          "role": "钟表维修工",
+          "needs": {
+            "hunger": 42,
+            "energy": 98.775,
+            "loneliness": 54.225
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 44,
+            "socialize": 8,
+            "occupation": 61
+          },
+          "memoryCount": 302
+        },
+        {
+          "id": "rb-jiang-zhi",
+          "role": "退休教师",
+          "needs": {
+            "hunger": 40.5,
+            "energy": 99.125,
+            "loneliness": 54.225
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 44,
+            "socialize": 8,
+            "occupation": 64
+          },
+          "memoryCount": 308
+        }
+      ],
+      "specialistCompleted": {
+        "rb-xu-zhiwei": 18,
+        "rb-gu-yuanshan": 18,
+        "rb-lin-ali": 18
+      },
+      "relationshipChanges": 98,
+      "measuredBatchAverageTickP95Ms": 118.76526666666662,
+      "runAndReplayMs": 150656.6969,
+      "modelCalls": 0,
+      "quality": {
+        "residents": [
+          {
+            "npcId": "rb-song-tang",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 48,
+              "socialize": 8,
+              "occupation": 63
+            },
+            "needs": {
+              "hunger": 41,
+              "energy": 99.475,
+              "loneliness": 48.125
+            }
+          },
+          {
+            "npcId": "rb-zhou-yan",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 42,
+              "socialize": 8,
+              "occupation": 59
+            },
+            "needs": {
+              "hunger": 42,
+              "energy": 98.6,
+              "loneliness": 35.625
+            }
+          },
+          {
+            "npcId": "rb-xu-zhiwei",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 63,
+              "socialize": 6,
+              "occupation": 27
+            },
+            "needs": {
+              "hunger": 30,
+              "energy": 99.3,
+              "loneliness": 66.8
+            }
+          },
+          {
+            "npcId": "rb-lu-xingzhou",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 37,
+              "socialize": 9,
+              "occupation": 60
+            },
+            "needs": {
+              "hunger": 29.5,
+              "energy": 98.775,
+              "loneliness": 54.225
+            }
+          },
+          {
+            "npcId": "rb-chen-hui",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 44,
+              "socialize": 9,
+              "occupation": 60
+            },
+            "needs": {
+              "hunger": 39.5,
+              "energy": 99.475,
+              "loneliness": 35.625
+            }
+          },
+          {
+            "npcId": "rb-gu-yuanshan",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 70,
+              "socialize": 7,
+              "occupation": 34
+            },
+            "needs": {
+              "hunger": 41,
+              "energy": 98.775,
+              "loneliness": 62.3
+            }
+          },
+          {
+            "npcId": "rb-bai-lu",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 49,
+              "socialize": 8,
+              "occupation": 63
+            },
+            "needs": {
+              "hunger": 30,
+              "energy": 98.775,
+              "loneliness": 54.225
+            }
+          },
+          {
+            "npcId": "rb-lin-ali",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 62,
+              "socialize": 8,
+              "occupation": 14
+            },
+            "needs": {
+              "hunger": 29,
+              "energy": 100,
+              "loneliness": 22.8
+            }
+          },
+          {
+            "npcId": "rb-cheng-du",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 40,
+              "socialize": 10,
+              "occupation": 61
+            },
+            "needs": {
+              "hunger": 27.5,
+              "energy": 98.6,
+              "loneliness": 35.625
+            }
+          },
+          {
+            "npcId": "rb-shen-ying",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 43,
+              "socialize": 9,
+              "occupation": 63
+            },
+            "needs": {
+              "hunger": 29.5,
+              "energy": 97.85,
+              "loneliness": 16.725
+            }
+          },
+          {
+            "npcId": "rb-han-shuo",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 44,
+              "socialize": 8,
+              "occupation": 61
+            },
+            "needs": {
+              "hunger": 42,
+              "energy": 98.775,
+              "loneliness": 54.225
+            }
+          },
+          {
+            "npcId": "rb-jiang-zhi",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 44,
+              "socialize": 8,
+              "occupation": 64
+            },
+            "needs": {
+              "hunger": 40.5,
+              "energy": 99.125,
+              "loneliness": 54.225
+            }
+          }
+        ],
+        "fullyObservedGoalDays": [
+          2,
+          3
+        ],
+        "completedGoals": 72,
+        "totalGoals": 72,
+        "goalCompletionRate": 1,
+        "sourcedGoalCredits": 234,
+        "discretionaryCompletions": 1215,
+        "repeatedWithin60Minutes": 637,
+        "repetitionRate": 0.5242798353909465,
+        "kindTransitions": 540,
+        "retainedProposals": {
+          "count": 512,
+          "localDecisions": 243,
+          "proposalsWithMemory": 512,
+          "referencedMemories": 3072,
+          "sourceCoverage": 1
+        },
+        "modelAttemptsReserved": 0,
+        "appointments": {
+          "total": 19,
+          "byStatus": {
+            "accepted": 0,
+            "running": 0,
+            "completed": 16,
+            "declined": 3,
+            "missed": 0,
+            "cancelled": 0
+          }
+        }
+      }
+    },
+    {
+      "seed": "river-life-03",
+      "ticks": 864,
+      "elapsedGameMinutes": 4320,
+      "digest": "fnv1a-40b0c861",
+      "replayDigest": "fnv1a-40b0c861",
+      "restoredDigest": "fnv1a-40b0c861",
+      "eventCount": 4684,
+      "memoryCount": 3662,
+      "actionMix": {
+        "eat": 96,
+        "sleep": 324,
+        "rest": 601,
+        "socialize": 45,
+        "occupation": 630
+      },
+      "residents": [
+        {
+          "id": "rb-song-tang",
+          "role": "咖啡馆店主",
+          "needs": {
+            "hunger": 27.5,
+            "energy": 99.825,
+            "loneliness": 60.625
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 45,
+            "socialize": 8,
+            "occupation": 65
+          },
+          "memoryCount": 313
+        },
+        {
+          "id": "rb-zhou-yan",
+          "role": "投递员",
+          "needs": {
+            "hunger": 28.5,
+            "energy": 99.65,
+            "loneliness": 47.825
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 56,
+            "socialize": 7,
+            "occupation": 56
+          },
+          "memoryCount": 315
+        },
+        {
+          "id": "rb-xu-zhiwei",
+          "role": "旧书修复师",
+          "needs": {
+            "hunger": 29.5,
+            "energy": 99.3,
+            "loneliness": 48.125
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 69,
+            "socialize": 7,
+            "occupation": 27
+          },
+          "memoryCount": 321
+        },
+        {
+          "id": "rb-lu-xingzhou",
+          "role": "值班警员",
+          "needs": {
+            "hunger": 40,
+            "energy": 99.3,
+            "loneliness": 60.625
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 36,
+            "socialize": 7,
+            "occupation": 62
+          },
+          "memoryCount": 285
+        },
+        {
+          "id": "rb-chen-hui",
+          "role": "邮局分拣员",
+          "needs": {
+            "hunger": 29,
+            "energy": 99.125,
+            "loneliness": 48.125
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 42,
+            "socialize": 7,
+            "occupation": 60
+          },
+          "memoryCount": 295
+        },
+        {
+          "id": "rb-gu-yuanshan",
+          "role": "车站值班员",
+          "needs": {
+            "hunger": 29.5,
+            "energy": 98.6,
+            "loneliness": 59.3
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 61,
+            "socialize": 7,
+            "occupation": 32
+          },
+          "memoryCount": 310
+        },
+        {
+          "id": "rb-bai-lu",
+          "role": "花摊摊主",
+          "needs": {
+            "hunger": 29.5,
+            "energy": 99.3,
+            "loneliness": 91.725
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 44,
+            "socialize": 7,
+            "occupation": 61
+          },
+          "memoryCount": 300
+        },
+        {
+          "id": "rb-lin-ali",
+          "role": "旅馆老板",
+          "needs": {
+            "hunger": 42,
+            "energy": 98.95,
+            "loneliness": 29.8
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 80,
+            "socialize": 8,
+            "occupation": 14
+          },
+          "memoryCount": 314
+        },
+        {
+          "id": "rb-cheng-du",
+          "role": "桥梁木工",
+          "needs": {
+            "hunger": 28,
+            "energy": 98.6,
+            "loneliness": 54.225
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 51,
+            "socialize": 7,
+            "occupation": 60
+          },
+          "memoryCount": 310
+        },
+        {
+          "id": "rb-shen-ying",
+          "role": "地方记者",
+          "needs": {
+            "hunger": 29.5,
+            "energy": 97.4,
+            "loneliness": 46.15
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 38,
+            "socialize": 9,
+            "occupation": 66
+          },
+          "memoryCount": 303
+        },
+        {
+          "id": "rb-han-shuo",
+          "role": "钟表维修工",
+          "needs": {
+            "hunger": 41.5,
+            "energy": 99.3,
+            "loneliness": 48.125
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 41,
+            "socialize": 8,
+            "occupation": 61
+          },
+          "memoryCount": 297
+        },
+        {
+          "id": "rb-jiang-zhi",
+          "role": "退休教师",
+          "needs": {
+            "hunger": 42,
+            "energy": 98.975,
+            "loneliness": 35.625
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 38,
+            "socialize": 8,
+            "occupation": 66
+          },
+          "memoryCount": 299
+        }
+      ],
+      "specialistCompleted": {
+        "rb-xu-zhiwei": 18,
+        "rb-gu-yuanshan": 18,
+        "rb-lin-ali": 18
+      },
+      "relationshipChanges": 90,
+      "measuredBatchAverageTickP95Ms": 112.18245833333155,
+      "runAndReplayMs": 142604.5516,
+      "modelCalls": 0,
+      "quality": {
+        "residents": [
+          {
+            "npcId": "rb-song-tang",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 45,
+              "socialize": 8,
+              "occupation": 65
+            },
+            "needs": {
+              "hunger": 27.5,
+              "energy": 99.825,
+              "loneliness": 60.625
+            }
+          },
+          {
+            "npcId": "rb-zhou-yan",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 56,
+              "socialize": 7,
+              "occupation": 56
+            },
+            "needs": {
+              "hunger": 28.5,
+              "energy": 99.65,
+              "loneliness": 47.825
+            }
+          },
+          {
+            "npcId": "rb-xu-zhiwei",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 69,
+              "socialize": 7,
+              "occupation": 27
+            },
+            "needs": {
+              "hunger": 29.5,
+              "energy": 99.3,
+              "loneliness": 48.125
+            }
+          },
+          {
+            "npcId": "rb-lu-xingzhou",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 36,
+              "socialize": 7,
+              "occupation": 62
+            },
+            "needs": {
+              "hunger": 40,
+              "energy": 99.3,
+              "loneliness": 60.625
+            }
+          },
+          {
+            "npcId": "rb-chen-hui",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 42,
+              "socialize": 7,
+              "occupation": 60
+            },
+            "needs": {
+              "hunger": 29,
+              "energy": 99.125,
+              "loneliness": 48.125
+            }
+          },
+          {
+            "npcId": "rb-gu-yuanshan",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 61,
+              "socialize": 7,
+              "occupation": 32
+            },
+            "needs": {
+              "hunger": 29.5,
+              "energy": 98.6,
+              "loneliness": 59.3
+            }
+          },
+          {
+            "npcId": "rb-bai-lu",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 44,
+              "socialize": 7,
+              "occupation": 61
+            },
+            "needs": {
+              "hunger": 29.5,
+              "energy": 99.3,
+              "loneliness": 91.725
+            }
+          },
+          {
+            "npcId": "rb-lin-ali",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 80,
+              "socialize": 8,
+              "occupation": 14
+            },
+            "needs": {
+              "hunger": 42,
+              "energy": 98.95,
+              "loneliness": 29.8
+            }
+          },
+          {
+            "npcId": "rb-cheng-du",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 51,
+              "socialize": 7,
+              "occupation": 60
+            },
+            "needs": {
+              "hunger": 28,
+              "energy": 98.6,
+              "loneliness": 54.225
+            }
+          },
+          {
+            "npcId": "rb-shen-ying",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 38,
+              "socialize": 9,
+              "occupation": 66
+            },
+            "needs": {
+              "hunger": 29.5,
+              "energy": 97.4,
+              "loneliness": 46.15
+            }
+          },
+          {
+            "npcId": "rb-han-shuo",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 41,
+              "socialize": 8,
+              "occupation": 61
+            },
+            "needs": {
+              "hunger": 41.5,
+              "energy": 99.3,
+              "loneliness": 48.125
+            }
+          },
+          {
+            "npcId": "rb-jiang-zhi",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 38,
+              "socialize": 8,
+              "occupation": 66
+            },
+            "needs": {
+              "hunger": 42,
+              "energy": 98.975,
+              "loneliness": 35.625
+            }
+          }
+        ],
+        "fullyObservedGoalDays": [
+          2,
+          3
+        ],
+        "completedGoals": 72,
+        "totalGoals": 72,
+        "goalCompletionRate": 1,
+        "sourcedGoalCredits": 231,
+        "discretionaryCompletions": 1231,
+        "repeatedWithin60Minutes": 664,
+        "repetitionRate": 0.5393988627132412,
+        "kindTransitions": 525,
+        "retainedProposals": {
+          "count": 512,
+          "localDecisions": 241,
+          "proposalsWithMemory": 512,
+          "referencedMemories": 3072,
+          "sourceCoverage": 1
+        },
+        "modelAttemptsReserved": 0,
+        "appointments": {
+          "total": 15,
+          "byStatus": {
+            "accepted": 0,
+            "running": 0,
+            "completed": 13,
+            "declined": 2,
+            "missed": 0,
+            "cancelled": 0
+          }
+        }
+      }
+    },
+    {
+      "seed": "river-life-04",
+      "ticks": 864,
+      "elapsedGameMinutes": 4320,
+      "digest": "fnv1a-179abf86",
+      "replayDigest": "fnv1a-179abf86",
+      "restoredDigest": "fnv1a-179abf86",
+      "eventCount": 4698,
+      "memoryCount": 3673,
+      "actionMix": {
+        "eat": 96,
+        "sleep": 324,
+        "rest": 604,
+        "socialize": 45,
+        "occupation": 633
+      },
+      "residents": [
+        {
+          "id": "rb-song-tang",
+          "role": "咖啡馆店主",
+          "needs": {
+            "hunger": 29,
+            "energy": 98.8,
+            "loneliness": 35.625
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 53,
+            "socialize": 9,
+            "occupation": 64
+          },
+          "memoryCount": 329
+        },
+        {
+          "id": "rb-zhou-yan",
+          "role": "投递员",
+          "needs": {
+            "hunger": 30,
+            "energy": 98.6,
+            "loneliness": 35.625
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 44,
+            "socialize": 8,
+            "occupation": 59
+          },
+          "memoryCount": 298
+        },
+        {
+          "id": "rb-xu-zhiwei",
+          "role": "旧书修复师",
+          "needs": {
+            "hunger": 29.5,
+            "energy": 99.3,
+            "loneliness": 68.8
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 59,
+            "socialize": 6,
+            "occupation": 28
+          },
+          "memoryCount": 297
+        },
+        {
+          "id": "rb-lu-xingzhou",
+          "role": "值班警员",
+          "needs": {
+            "hunger": 29,
+            "energy": 98.775,
+            "loneliness": 35.625
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 29,
+            "socialize": 8,
+            "occupation": 62
+          },
+          "memoryCount": 274
+        },
+        {
+          "id": "rb-chen-hui",
+          "role": "邮局分拣员",
+          "needs": {
+            "hunger": 29,
+            "energy": 99.125,
+            "loneliness": 48.125
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 36,
+            "socialize": 7,
+            "occupation": 61
+          },
+          "memoryCount": 283
+        },
+        {
+          "id": "rb-gu-yuanshan",
+          "role": "车站值班员",
+          "needs": {
+            "hunger": 41,
+            "energy": 98.775,
+            "loneliness": 57.3
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 57,
+            "socialize": 7,
+            "occupation": 33
+          },
+          "memoryCount": 304
+        },
+        {
+          "id": "rb-bai-lu",
+          "role": "花摊摊主",
+          "needs": {
+            "hunger": 29,
+            "energy": 99.3,
+            "loneliness": 73.125
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 36,
+            "socialize": 7,
+            "occupation": 65
+          },
+          "memoryCount": 293
+        },
+        {
+          "id": "rb-lin-ali",
+          "role": "旅馆老板",
+          "needs": {
+            "hunger": 29.5,
+            "energy": 100,
+            "loneliness": 66.3
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 76,
+            "socialize": 7,
+            "occupation": 14
+          },
+          "memoryCount": 305
+        },
+        {
+          "id": "rb-cheng-du",
+          "role": "桥梁木工",
+          "needs": {
+            "hunger": 41,
+            "energy": 100,
+            "loneliness": 73.125
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 45,
+            "socialize": 7,
+            "occupation": 63
+          },
+          "memoryCount": 309
+        },
+        {
+          "id": "rb-shen-ying",
+          "role": "地方记者",
+          "needs": {
+            "hunger": 41.5,
+            "energy": 98.05,
+            "loneliness": 54.225
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 80,
+            "socialize": 7,
+            "occupation": 58
+          },
+          "memoryCount": 366
+        },
+        {
+          "id": "rb-han-shuo",
+          "role": "钟表维修工",
+          "needs": {
+            "hunger": 41.5,
+            "energy": 98.775,
+            "loneliness": 35.625
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 43,
+            "socialize": 9,
+            "occupation": 61
+          },
+          "memoryCount": 302
+        },
+        {
+          "id": "rb-jiang-zhi",
+          "role": "退休教师",
+          "needs": {
+            "hunger": 30,
+            "energy": 98.975,
+            "loneliness": 35.625
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 46,
+            "socialize": 8,
+            "occupation": 65
+          },
+          "memoryCount": 313
+        }
+      ],
+      "specialistCompleted": {
+        "rb-xu-zhiwei": 18,
+        "rb-gu-yuanshan": 18,
+        "rb-lin-ali": 18
+      },
+      "relationshipChanges": 90,
+      "measuredBatchAverageTickP95Ms": 105.61435833333235,
+      "runAndReplayMs": 134956.82989999995,
+      "modelCalls": 0,
+      "quality": {
+        "residents": [
+          {
+            "npcId": "rb-song-tang",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 53,
+              "socialize": 9,
+              "occupation": 64
+            },
+            "needs": {
+              "hunger": 29,
+              "energy": 98.8,
+              "loneliness": 35.625
+            }
+          },
+          {
+            "npcId": "rb-zhou-yan",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 44,
+              "socialize": 8,
+              "occupation": 59
+            },
+            "needs": {
+              "hunger": 30,
+              "energy": 98.6,
+              "loneliness": 35.625
+            }
+          },
+          {
+            "npcId": "rb-xu-zhiwei",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 59,
+              "socialize": 6,
+              "occupation": 28
+            },
+            "needs": {
+              "hunger": 29.5,
+              "energy": 99.3,
+              "loneliness": 68.8
+            }
+          },
+          {
+            "npcId": "rb-lu-xingzhou",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 29,
+              "socialize": 8,
+              "occupation": 62
+            },
+            "needs": {
+              "hunger": 29,
+              "energy": 98.775,
+              "loneliness": 35.625
+            }
+          },
+          {
+            "npcId": "rb-chen-hui",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 36,
+              "socialize": 7,
+              "occupation": 61
+            },
+            "needs": {
+              "hunger": 29,
+              "energy": 99.125,
+              "loneliness": 48.125
+            }
+          },
+          {
+            "npcId": "rb-gu-yuanshan",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 57,
+              "socialize": 7,
+              "occupation": 33
+            },
+            "needs": {
+              "hunger": 41,
+              "energy": 98.775,
+              "loneliness": 57.3
+            }
+          },
+          {
+            "npcId": "rb-bai-lu",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 36,
+              "socialize": 7,
+              "occupation": 65
+            },
+            "needs": {
+              "hunger": 29,
+              "energy": 99.3,
+              "loneliness": 73.125
+            }
+          },
+          {
+            "npcId": "rb-lin-ali",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 76,
+              "socialize": 7,
+              "occupation": 14
+            },
+            "needs": {
+              "hunger": 29.5,
+              "energy": 100,
+              "loneliness": 66.3
+            }
+          },
+          {
+            "npcId": "rb-cheng-du",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 45,
+              "socialize": 7,
+              "occupation": 63
+            },
+            "needs": {
+              "hunger": 41,
+              "energy": 100,
+              "loneliness": 73.125
+            }
+          },
+          {
+            "npcId": "rb-shen-ying",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 80,
+              "socialize": 7,
+              "occupation": 58
+            },
+            "needs": {
+              "hunger": 41.5,
+              "energy": 98.05,
+              "loneliness": 54.225
+            }
+          },
+          {
+            "npcId": "rb-han-shuo",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 43,
+              "socialize": 9,
+              "occupation": 61
+            },
+            "needs": {
+              "hunger": 41.5,
+              "energy": 98.775,
+              "loneliness": 35.625
+            }
+          },
+          {
+            "npcId": "rb-jiang-zhi",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 46,
+              "socialize": 8,
+              "occupation": 65
+            },
+            "needs": {
+              "hunger": 30,
+              "energy": 98.975,
+              "loneliness": 35.625
+            }
+          }
+        ],
+        "fullyObservedGoalDays": [
+          2,
+          3
+        ],
+        "completedGoals": 72,
+        "totalGoals": 72,
+        "goalCompletionRate": 1,
+        "sourcedGoalCredits": 234,
+        "discretionaryCompletions": 1237,
+        "repeatedWithin60Minutes": 671,
+        "repetitionRate": 0.5424413904607922,
+        "kindTransitions": 526,
+        "retainedProposals": {
+          "count": 512,
+          "localDecisions": 255,
+          "proposalsWithMemory": 512,
+          "referencedMemories": 3072,
+          "sourceCoverage": 1
+        },
+        "modelAttemptsReserved": 0,
+        "appointments": {
+          "total": 16,
+          "byStatus": {
+            "accepted": 0,
+            "running": 0,
+            "completed": 13,
+            "declined": 2,
+            "missed": 1,
+            "cancelled": 0
+          }
+        }
+      }
+    },
+    {
+      "seed": "river-life-05",
+      "ticks": 864,
+      "elapsedGameMinutes": 4320,
+      "digest": "fnv1a-e47c6af4",
+      "replayDigest": "fnv1a-e47c6af4",
+      "restoredDigest": "fnv1a-e47c6af4",
+      "eventCount": 4717,
+      "memoryCount": 3698,
+      "actionMix": {
+        "eat": 96,
+        "sleep": 324,
+        "rest": 613,
+        "socialize": 45,
+        "occupation": 635
+      },
+      "residents": [
+        {
+          "id": "rb-song-tang",
+          "role": "咖啡馆店主",
+          "needs": {
+            "hunger": 29,
+            "energy": 97.725,
+            "loneliness": 54.225
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 40,
+            "socialize": 8,
+            "occupation": 67
+          },
+          "memoryCount": 305
+        },
+        {
+          "id": "rb-zhou-yan",
+          "role": "投递员",
+          "needs": {
+            "hunger": 40.5,
+            "energy": 99.3,
+            "loneliness": 35.625
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 44,
+            "socialize": 9,
+            "occupation": 57
+          },
+          "memoryCount": 296
+        },
+        {
+          "id": "rb-xu-zhiwei",
+          "role": "旧书修复师",
+          "needs": {
+            "hunger": 30,
+            "energy": 99.3,
+            "loneliness": 75.65
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 68,
+            "socialize": 6,
+            "occupation": 28
+          },
+          "memoryCount": 319
+        },
+        {
+          "id": "rb-lu-xingzhou",
+          "role": "值班警员",
+          "needs": {
+            "hunger": 40.5,
+            "energy": 99.3,
+            "loneliness": 60.625
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 38,
+            "socialize": 7,
+            "occupation": 61
+          },
+          "memoryCount": 287
+        },
+        {
+          "id": "rb-chen-hui",
+          "role": "邮局分拣员",
+          "needs": {
+            "hunger": 40.5,
+            "energy": 98.775,
+            "loneliness": 54.225
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 31,
+            "socialize": 8,
+            "occupation": 62
+          },
+          "memoryCount": 276
+        },
+        {
+          "id": "rb-gu-yuanshan",
+          "role": "车站值班员",
+          "needs": {
+            "hunger": 28,
+            "energy": 98.775,
+            "loneliness": 63.8
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 63,
+            "socialize": 7,
+            "occupation": 35
+          },
+          "memoryCount": 322
+        },
+        {
+          "id": "rb-bai-lu",
+          "role": "花摊摊主",
+          "needs": {
+            "hunger": 28.5,
+            "energy": 98.95,
+            "loneliness": 47.825
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 33,
+            "socialize": 7,
+            "occupation": 64
+          },
+          "memoryCount": 283
+        },
+        {
+          "id": "rb-lin-ali",
+          "role": "旅馆老板",
+          "needs": {
+            "hunger": 42,
+            "energy": 100,
+            "loneliness": 63.5
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 121,
+            "socialize": 6,
+            "occupation": 8
+          },
+          "memoryCount": 383
+        },
+        {
+          "id": "rb-cheng-du",
+          "role": "桥梁木工",
+          "needs": {
+            "hunger": 42,
+            "energy": 99.125,
+            "loneliness": 79.225
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 43,
+            "socialize": 6,
+            "occupation": 63
+          },
+          "memoryCount": 299
+        },
+        {
+          "id": "rb-shen-ying",
+          "role": "地方记者",
+          "needs": {
+            "hunger": 40,
+            "energy": 98.95,
+            "loneliness": 35.625
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 42,
+            "socialize": 8,
+            "occupation": 65
+          },
+          "memoryCount": 306
+        },
+        {
+          "id": "rb-han-shuo",
+          "role": "钟表维修工",
+          "needs": {
+            "hunger": 29.5,
+            "energy": 98.95,
+            "loneliness": 35.625
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 41,
+            "socialize": 10,
+            "occupation": 61
+          },
+          "memoryCount": 304
+        },
+        {
+          "id": "rb-jiang-zhi",
+          "role": "退休教师",
+          "needs": {
+            "hunger": 42,
+            "energy": 99.125,
+            "loneliness": 41.55
+          },
+          "completed": {
+            "eat": 8,
+            "sleep": 27,
+            "rest": 49,
+            "socialize": 8,
+            "occupation": 64
+          },
+          "memoryCount": 318
+        }
+      ],
+      "specialistCompleted": {
+        "rb-xu-zhiwei": 18,
+        "rb-gu-yuanshan": 18,
+        "rb-lin-ali": 18
+      },
+      "relationshipChanges": 90,
+      "measuredBatchAverageTickP95Ms": 94.67160833333037,
+      "runAndReplayMs": 120961.11109999998,
+      "modelCalls": 0,
+      "quality": {
+        "residents": [
+          {
+            "npcId": "rb-song-tang",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 40,
+              "socialize": 8,
+              "occupation": 67
+            },
+            "needs": {
+              "hunger": 29,
+              "energy": 97.725,
+              "loneliness": 54.225
+            }
+          },
+          {
+            "npcId": "rb-zhou-yan",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 44,
+              "socialize": 9,
+              "occupation": 57
+            },
+            "needs": {
+              "hunger": 40.5,
+              "energy": 99.3,
+              "loneliness": 35.625
+            }
+          },
+          {
+            "npcId": "rb-xu-zhiwei",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 68,
+              "socialize": 6,
+              "occupation": 28
+            },
+            "needs": {
+              "hunger": 30,
+              "energy": 99.3,
+              "loneliness": 75.65
+            }
+          },
+          {
+            "npcId": "rb-lu-xingzhou",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 38,
+              "socialize": 7,
+              "occupation": 61
+            },
+            "needs": {
+              "hunger": 40.5,
+              "energy": 99.3,
+              "loneliness": 60.625
+            }
+          },
+          {
+            "npcId": "rb-chen-hui",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 31,
+              "socialize": 8,
+              "occupation": 62
+            },
+            "needs": {
+              "hunger": 40.5,
+              "energy": 98.775,
+              "loneliness": 54.225
+            }
+          },
+          {
+            "npcId": "rb-gu-yuanshan",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 63,
+              "socialize": 7,
+              "occupation": 35
+            },
+            "needs": {
+              "hunger": 28,
+              "energy": 98.775,
+              "loneliness": 63.8
+            }
+          },
+          {
+            "npcId": "rb-bai-lu",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 33,
+              "socialize": 7,
+              "occupation": 64
+            },
+            "needs": {
+              "hunger": 28.5,
+              "energy": 98.95,
+              "loneliness": 47.825
+            }
+          },
+          {
+            "npcId": "rb-lin-ali",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 121,
+              "socialize": 6,
+              "occupation": 8
+            },
+            "needs": {
+              "hunger": 42,
+              "energy": 100,
+              "loneliness": 63.5
+            }
+          },
+          {
+            "npcId": "rb-cheng-du",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 43,
+              "socialize": 6,
+              "occupation": 63
+            },
+            "needs": {
+              "hunger": 42,
+              "energy": 99.125,
+              "loneliness": 79.225
+            }
+          },
+          {
+            "npcId": "rb-shen-ying",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 42,
+              "socialize": 8,
+              "occupation": 65
+            },
+            "needs": {
+              "hunger": 40,
+              "energy": 98.95,
+              "loneliness": 35.625
+            }
+          },
+          {
+            "npcId": "rb-han-shuo",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 41,
+              "socialize": 10,
+              "occupation": 61
+            },
+            "needs": {
+              "hunger": 29.5,
+              "energy": 98.95,
+              "loneliness": 35.625
+            }
+          },
+          {
+            "npcId": "rb-jiang-zhi",
+            "completedGoals": 6,
+            "totalGoals": 6,
+            "completedActions": {
+              "eat": 8,
+              "sleep": 27,
+              "rest": 49,
+              "socialize": 8,
+              "occupation": 64
+            },
+            "needs": {
+              "hunger": 42,
+              "energy": 99.125,
+              "loneliness": 41.55
+            }
+          }
+        ],
+        "fullyObservedGoalDays": [
+          2,
+          3
+        ],
+        "completedGoals": 72,
+        "totalGoals": 72,
+        "goalCompletionRate": 1,
+        "sourcedGoalCredits": 234,
+        "discretionaryCompletions": 1248,
+        "repeatedWithin60Minutes": 683,
+        "repetitionRate": 0.5472756410256411,
+        "kindTransitions": 524,
+        "retainedProposals": {
+          "count": 512,
+          "localDecisions": 257,
+          "proposalsWithMemory": 512,
+          "referencedMemories": 3072,
+          "sourceCoverage": 1
+        },
+        "modelAttemptsReserved": 0,
+        "appointments": {
+          "total": 15,
+          "byStatus": {
+            "accepted": 0,
+            "running": 0,
+            "completed": 12,
+            "declined": 3,
+            "missed": 0,
+            "cancelled": 0
+          }
+        }
+      }
+    }
+  ],
+  "sources": {
+    "packages/engine/src/town/resident-appointments.ts": "239c05395245359472613f8ddc6baa478643371b5b8644c9d968c2a59e4fe622",
+    "packages/engine/src/town/resident-agenda.ts": "207e8afeb6a3dd9540369960b2648a5c0a1f1289a508ddbf58554bbc141ec2ed",
+    "packages/engine/src/town/resident-cognition.ts": "51bc7ce10a15d81741ed1606a53967bc1bada2d73b1212c6248255b865eb132c",
+    "packages/engine/src/town/resident-life.ts": "1483d8cebdd547ff66cabff84e62e2be6f2d0747c3fb6513cca0963a1b0b3409",
+    "packages/engine/src/town/resident-work.ts": "23f39a583c34d0880456e201a93c44d19ae64a7dc958e66c4e958ff1c9955709",
+    "packages/engine/src/town/daily-routine.ts": "21a76921e8f3a19a416a296b0b31a2c3a40d6ca50110d45e1f25e1031032c631",
+    "packages/engine/src/persistent-town.ts": "9101bb443a8b9fe56568caa11779c6a52165f8608f3285704373627860fed4c4",
+    "packages/engine/src/riverbend-world.ts": "d798bbcff60f84d2e98817cebfa13edbe2655e3012bed7ae7e71d46fc7386172",
+    "packages/engine/src/town/replay-contract.ts": "f7b31727e13c2e58163901df6c2ac7dbd2e874c4029ca4cabe4599731ddc98c8",
+    "scripts/run-resident-life-checks.mjs": "9927a0290e49ea5df440900eff7940efc6c626da97abcd4a582c51d2e3c437a5",
+    "scripts/lib/resident-life-quality.mjs": "f2061e656b47b078abe783b710b936545eaa193fb70e08aa1960f180d14e11be"
+  },
+  "limits": [
+    "Rule or deterministic goal-scoring policy as labelled; no live LLM or model quality comparison.",
+    "Measurements are isolated 12-resident engine runs, not 24/100-resident or browser performance.",
+    "Proposal quality measures cover the retained last-512 ledger; completion measures cover the whole window.",
+    "Direct memories and trust cite real encounters; no case fairness or novel export acceptance."
+  ]
+}

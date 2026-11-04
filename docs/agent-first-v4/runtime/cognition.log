@@ -1,0 +1,16 @@
+E:\xuexi\detective-town-noir-ui\packages\engine\src\town\resident-cognition.ts:161
+        throw new ResidentProposalRejection("ACTION_REUSED", "居民提案编号已经用于另一件事。");
+              ^
+
+ResidentProposalRejection [Error]: 居民提案编号已经用于另一件事。
+    at admitResidentLifeProposal (E:\xuexi\detective-town-noir-ui\packages\engine\src\town\resident-cognition.ts:161:15)
+    at Object.proposeResidentLifeOption (E:\xuexi\detective-town-noir-ui\packages\engine\src\town\resident-cognition.ts:143:32)
+    at file:///E:/xuexi/detective-town-noir-ui/scripts/run-resident-cognition-checks.mjs:32:23
+    at ModuleJob.run (node:internal/modules/esm/module_job:430:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:661:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  code: 'ACTION_REUSED',
+  schema: 'resident-life-refusal.v1'
+}
+
+Node.js v24.14.0

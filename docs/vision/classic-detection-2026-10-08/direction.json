@@ -1,0 +1,144 @@
+{
+  "schema": "detective-town-art-direction.v1",
+  "date": "2026-10-08",
+  "status": "realized-style-rejected-new-whole-room-art-study",
+  "userReferences": [
+    "东方快车",
+    "福尔摩斯",
+    "埃勒里"
+  ],
+  "userFeedback": "当前 Blender 建模不符合心目中的侦探世界",
+  "productConstraints": {
+    "route": "Web + Three.js + background Blender + independent Agent simulation",
+    "delivery": "Windows desktop game; browser novel workbench",
+    "controls": "character exploration and item toolbar; optional town overview"
+  },
+  "provisionalInterpretation": {
+    "period": "Original interwar railway town, approximately 1928-1934, retaining Victorian/Edwardian buildings",
+    "style": "mature, material-rich, readable, moderately realistic classical detective fiction",
+    "notUserConfirmed": [
+      "exact decade",
+      "specific country",
+      "photorealism level",
+      "final lighting balance"
+    ]
+  },
+  "image": {
+    "file": "classic-detection-direction-v1.png",
+    "kind": "built-in-imagegen-concept",
+    "sha256": "9087447fd8990ef3e5738feca5b130021e3415f056a570e412cf1666a15d0893",
+    "notBlenderRender": true,
+    "notRuntimeEvidence": true,
+    "cameraLimitation": "Generated main scene is near street-level and cinematic; production gameplay remains a separate elevated-camera test."
+  },
+  "rejectedCurrentTraits": [
+    "pastel toy-town proportions",
+    "repeated near-identical facade families",
+    "large empty tiled plaza",
+    "primitive-looking foliage and character bodies",
+    "insufficient material and period specificity"
+  ],
+  "firstBlenderSlice": {
+    "scope": "one original railway-inn facade, adjacent bookshop edge, connected sitting room, one adult-scale figure study",
+    "geometryGoals": [
+      "distinct silhouettes",
+      "actual door and window depth",
+      "legible sightlines",
+      "clear walkable route",
+      "fine authored architectural profiles"
+    ],
+    "materials": [
+      "brick",
+      "aged limestone",
+      "dark timber",
+      "dulled brass",
+      "wool",
+      "leather"
+    ],
+    "cameras": [
+      "elevated exploration view",
+      "close investigation view",
+      "town overview crop",
+      "interior cutaway with circulation visible"
+    ],
+    "renderOrder": "composition and lighting; review angles; Function; Form; runtime",
+    "expansionGate": "Do not multiply this into the whole town until the small real-geometry art sample demonstrates the requested character."
+  },
+  "preservation": {
+    "existingModels": "retained for comparison and engineering regression",
+    "existingSavesAndCases": "unchanged",
+    "importedThirdPartyAssets": [
+      "Poly Haven wood_table_001 / CC0-1.0",
+      "Poly Haven leather_red_02 / CC0-1.0",
+      "Renamed project Noto Serif SC sign subset / SIL-OFL-1.1",
+      "MakeHuman/MPFB pinned core anatomy and adult targets / CC0-1.0",
+      "MakeHuman system skin, eyes, brows, lashes and short02 hair / CC0-1.0",
+      "MargaretToigo MRT curled-under bob and referenced textures / CC0-1.0",
+      "MargaretToigo MRT double-breasted suit geometry, UVs and normal atlas / CC0-1.0"
+    ],
+    "copiedFranchiseCharactersOrLocations": false
+  },
+  "approvals": {
+    "referencesConfirmed": true,
+    "generatedImageApproved": true,
+    "approvalScope": "User: 接近，按这个方向做 Blender 实机样板. Mood and realism direction accepted; actual Blender art and gameplay camera still require review.",
+    "blenderArtApproved": false,
+    "actualGameplayCameraApproved": false
+  },
+  "runtimeSample": {
+    "package": "../../3d-town/classic-bookshop-v2/README.zh-CN.md",
+    "localUrl": "http://127.0.0.1:3187/town-play/art-sample",
+    "sourceSha256": "a8399c41ed64d1e0617dd8160906fbf7664f49c9c37a75449a4cbcc12e9658f6",
+    "assetSha256": "4a06314a399bfb19b8fc624c60bca8fba4fa4a232941c4028fb9a52c306e29ed",
+    "scope": "Three connected original interiors with refined bookshop joinery, printed wallpaper, supported sconces and complete-shell directional shadows during cutaway. Three stationary art residents and a user-triggered book demonstration; no Agent/case binding.",
+    "characterCompanion": {
+      "package": "../../3d-town/classic-investigator-v1/README.zh-CN.md",
+      "sourceSha256": "655652dfd1003ef4114f7fbe15f5e104a3cfc6213d88883e301d3c2461bdffd8",
+      "assetSha256": "df916077fcc65e446da2e985947890b8299897d93f692297b0a431786ad25853",
+      "scope": "One original skinned investigator with idle and walk animations; face/material refinement and human art acceptance remain pending."
+    },
+    "residentCompanion": {
+      "package": "../../3d-town/classic-residents-v10/README.zh-CN.md",
+      "castUrl": "/assets/classic-bookshop/v2/cast.json",
+      "castSha256": "62e0091e4709e9a5254d94f89c430d6390e9eb80d70f79f8ed57d8bff2c2d59a",
+      "actorIds": [
+        "resident-03",
+        "resident-06",
+        "resident-08"
+      ],
+      "scope": "Three stationary art residents. Resident-03 retains the eight-second book action with refined sleeve binding and authored head/eye attention. Residents 06/08 retain v8; workstation retains v9. No Agent/case binding; nine residents remain drafts.",
+      "humanArtApproved": false,
+      "refinedResidents": [
+        {
+          "actorId": "resident-03",
+          "sourceSha256": "4b3606d8dfebe3d2d0e8102933dab9ae4bc16f0c019e9abcd2fd33081a847c91",
+          "assetSha256": "845923949031887d4671350fd1ed2cede65afab855735271b32c0211e0c8bd07"
+        },
+        {
+          "actorId": "resident-06",
+          "sourceSha256": "f8206b5e766f1cdd87f1a9e178c3f0530d7d6b4b92e5672a21a51b80903035aa",
+          "assetSha256": "3901dc23e6d20cccae274747e23046b71a69c212c5f2943e72ccb169dfa21670"
+        },
+        {
+          "actorId": "resident-08",
+          "sourceSha256": "352fe09cc1dc79fd41d8e8ca96ab245bc0cfe037b51d113dc47a2b463f8e46e9",
+          "assetSha256": "3d1b0708b35ebcc2804e611ceb3876999d247213f1b048e726ba52747da881ac"
+        }
+      ]
+    }
+  },
+  "latestUserFeedback": {
+    "date": "2026-10-17",
+    "timezone": "Asia/Tokyo",
+    "userStatement": "整体太像简陋的 3D 模型，缺少电影里的古典侦探氛围",
+    "scope": "Current realized visual style; exact screenshot not supplied by the user. Representative current runtime capture was inspected separately.",
+    "currentStyleApproved": false,
+    "expandCurrentStyle": false,
+    "goalRemainsActive": true,
+    "conceptDirectionRetained": true,
+    "targetConcept": "docs/vision/classic-detection-2026-10-08/classic-detection-direction-v1.png",
+    "observedRuntimeCapture": "output/playwright/classic-motion16-resident-08-work-3.5.png",
+    "observedRuntimeCaptureSha256": "d798a3490e6aa9e914095dd7464414ff2811ded5f2a3dd857d6956e3a949ac0e",
+    "nextAction": "Whole-room native Blender art study before further resident fine-tuning or town expansion."
+  }
+}

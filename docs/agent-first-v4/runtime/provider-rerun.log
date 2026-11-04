@@ -1,0 +1,156 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
++ actual - expected
+
+  {
+    assetSha256: '763d45d4c549d51e96953ffc099950dd2511d31c1567d9bf9686ee6e687acbc3',
+    bindingRevision: 'riverbend-world.v1',
+    day: 1,
+    investigation: null,
+-   lastArrival: undefined,
+    residentLife: {
+      elapsedMinutes: 5,
+      modelAttemptsReserved: 3,
+      modelCalls: null,
+      plannerMode: 'rules',
+
+    at file:///E:/xuexi/detective-town-noir-ui/scripts/run-resident-life-provider-checks.mjs:104:10 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: {
+    worldId: 'riverbend-f44059ec-6b72-464f-90dc-7f9b0ba876f9',
+    sessionId: '5b68a7c5-ecec-4748-b71b-750facf6568c',
+    revision: 4,
+    worldRevision: 3,
+    bindingRevision: 'riverbend-world.v1',
+    day: 1,
+    time: '08:05',
+    sceneId: 'town-square',
+    residents: [
+      {
+        actorId: 'resident-07',
+        npcId: 'rb-bai-lu',
+        name: '白露',
+        role: '花摊摊主',
+        visibility: 'observed',
+        sceneId: 'town-square',
+        locationName: '河湾广场',
+        day: 1,
+        time: '08:05',
+        work: null,
+        activity: '稍作歇脚'
+      },
+      {
+        actorId: 'resident-09',
+        npcId: 'rb-cheng-du',
+        name: '程渡',
+        role: '桥梁木工',
+        visibility: 'observed',
+        sceneId: 'town-square',
+        locationName: '河湾广场',
+        day: 1,
+        time: '08:05',
+        work: null,
+        activity: '稍作歇脚'
+      },
+      {
+        actorId: 'resident-10',
+        npcId: 'rb-shen-ying',
+        name: '沈映',
+        role: '地方记者',
+        visibility: 'observed',
+        sceneId: 'town-square',
+        locationName: '河湾广场',
+        day: 1,
+        time: '08:05',
+        work: null,
+        activity: '稍作歇脚'
+      }
+    ],
+    assetSha256: '763d45d4c549d51e96953ffc099950dd2511d31c1567d9bf9686ee6e687acbc3',
+    visitedSceneIds: [],
+    investigation: null,
+    residentWorkEnabled: true,
+    residentLife: {
+      schema: 'town-resident-life.v1',
+      elapsedMinutes: 5,
+      remainingMinutes: 4315,
+      plannerMode: 'rules',
+      proposalCount: 6,
+      modelCalls: null,
+      modelAttemptsReserved: 3
+    }
+  },
+  expected: {
+    worldId: 'riverbend-f44059ec-6b72-464f-90dc-7f9b0ba876f9',
+    sessionId: '5b68a7c5-ecec-4748-b71b-750facf6568c',
+    revision: 4,
+    worldRevision: 3,
+    bindingRevision: 'riverbend-world.v1',
+    day: 1,
+    time: '08:05',
+    sceneId: 'town-square',
+    residents: [
+      {
+        actorId: 'resident-07',
+        npcId: 'rb-bai-lu',
+        name: '白露',
+        role: '花摊摊主',
+        visibility: 'observed',
+        sceneId: 'town-square',
+        locationName: '河湾广场',
+        day: 1,
+        time: '08:05',
+        work: null,
+        activity: '稍作歇脚'
+      },
+      {
+        actorId: 'resident-09',
+        npcId: 'rb-cheng-du',
+        name: '程渡',
+        role: '桥梁木工',
+        visibility: 'observed',
+        sceneId: 'town-square',
+        locationName: '河湾广场',
+        day: 1,
+        time: '08:05',
+        work: null,
+        activity: '稍作歇脚'
+      },
+      {
+        actorId: 'resident-10',
+        npcId: 'rb-shen-ying',
+        name: '沈映',
+        role: '地方记者',
+        visibility: 'observed',
+        sceneId: 'town-square',
+        locationName: '河湾广场',
+        day: 1,
+        time: '08:05',
+        work: null,
+        activity: '稍作歇脚'
+      }
+    ],
+    assetSha256: '763d45d4c549d51e96953ffc099950dd2511d31c1567d9bf9686ee6e687acbc3',
+    visitedSceneIds: [],
+    lastArrival: undefined,
+    investigation: null,
+    residentWorkEnabled: true,
+    residentLife: {
+      schema: 'town-resident-life.v1',
+      elapsedMinutes: 5,
+      remainingMinutes: 4315,
+      plannerMode: 'rules',
+      proposalCount: 6,
+      modelCalls: null,
+      modelAttemptsReserved: 3
+    }
+  },
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.14.0

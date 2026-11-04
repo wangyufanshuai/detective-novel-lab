@@ -1,0 +1,18 @@
+{
+  "schema": "resident-life-edge-checks.v1",
+  "checkedAt": "2026-11-03T01:57:49.334Z",
+  "passed": true,
+  "checks": [
+    "low-energy-replans-home-and-recovers-with-defensive-clone",
+    "co-present-conversation-updates-both-trust-and-source-backed-own-memory",
+    "in-transit-resident-cannot-join-local-conversation",
+    "social-deprivation-replans-commute-and-waits-for-busy-partner",
+    "checkpoint-rollback-preserves-active-plans-needs-memories-and-replay"
+  ],
+  "sources": {
+    "packages/engine/src/town/resident-life.ts": "d75f602d44d129f0280fce5c12afc14b31418364744e4258b13de6db656eddd5",
+    "packages/engine/src/town/snapshots.ts": "8771acd430c70c5156b48e9771095e8eb41461b27eb56c79d2d7719737214206",
+    "packages/engine/src/persistent-town.ts": "9101bb443a8b9fe56568caa11779c6a52165f8608f3285704373627860fed4c4",
+    "scripts/run-resident-life-edge-checks.mjs": "2731eb7db756edfe9df725fe1a813d377d934a773a36fc560cd43efe2d81ea76"
+  }
+}

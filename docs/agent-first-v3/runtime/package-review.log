@@ -1,0 +1,1 @@
+{"passed":true,"report":"docs/agent-first-v3/review.json","checks":{"fullThreeDaySeeds":5,"midrunRestores":5,"lifeEdgeGroups":5,"lifeApiGroups":3,"cognitionGroups":5,"rulesDigest":"fnv1a-b7d0ae17","offlineAgentDigest":"fnv1a-68b64582","offlineAgentBudgetUsed":43,"modelCalls":0,"scopedTypecheck":true,"browserInteraction":true}}

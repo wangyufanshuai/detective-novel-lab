@@ -1,0 +1,253 @@
+{
+  "schema": "agent-first-browser-review.v1",
+  "checkedAt": "2026-10-30T09:02:39.839Z",
+  "passed": true,
+  "endpoint": "http://127.0.0.1:3187/town-play/agent-first",
+  "interactions": {
+    "passed": true,
+    "dialogMovementPaused": true,
+    "dialogFocusTrapped": true,
+    "localWalkingWrites": 0,
+    "arrivedAtDoor": {
+      "x": 730,
+      "y": 333.5000000000001
+    },
+    "arrivalCommits": 1,
+    "interiorEnteredAndExited": true,
+    "observedResident": "许知微",
+    "noteRestored": true,
+    "lostCommitResponseRetriedExactlyOnce": true,
+    "time": "08:20",
+    "revision": 3,
+    "desktop": {
+      "samples": 15,
+      "p95FrameMs": 5.7000000000000455,
+      "width": 1280,
+      "height": 538,
+      "dpr": 1
+    },
+    "pageErrors": [],
+    "consoleErrors": [
+      "Failed to load resource: net::ERR_FAILED"
+    ],
+    "expectedNetworkAbort": true,
+    "requests": [
+      {
+        "path": "/api/v1/town-play/agent-first",
+        "method": "GET"
+      },
+      {
+        "path": "/api/v1/town-play/agent-first",
+        "method": "POST"
+      },
+      {
+        "path": "/api/v1/town-play/agent-first",
+        "method": "POST"
+      },
+      {
+        "path": "/api/v1/town-play/agent-first",
+        "method": "GET"
+      },
+      {
+        "path": "/api/v1/town-play/agent-first",
+        "method": "POST"
+      },
+      {
+        "path": "/api/v1/town-play/agent-first",
+        "method": "GET"
+      },
+      {
+        "path": "/api/v1/town-play/agent-first",
+        "method": "POST"
+      },
+      {
+        "path": "/api/v1/town-play/agent-first",
+        "method": "GET"
+      }
+    ]
+  },
+  "cadence": {
+    "passed": true,
+    "keyboardMovement": true,
+    "renderAndWalkPosts": 0,
+    "dialogPausesWorld": true,
+    "automaticAdvanceCommits": 1,
+    "pausedForMs": 8500,
+    "narrowPointerControl": true,
+    "narrowArrival": true,
+    "followStopsWhenOffscreen": true,
+    "lastSeenHidesActivity": true,
+    "desktop": {
+      "samples": 600,
+      "p95FrameMs": 5.7000000000000455,
+      "width": 1280,
+      "height": 538,
+      "dpr": 1
+    },
+    "narrow": {
+      "samples": 600,
+      "p95FrameMs": 5.7000000000000455,
+      "width": 390,
+      "height": 678,
+      "dpr": 1
+    },
+    "layout": {
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "scrollHeight": 844,
+      "toolbarButtons": [
+        {
+          "label": "1 观察",
+          "width": 58.328125,
+          "height": 67
+        },
+        {
+          "label": "2 询问",
+          "width": 58.328125,
+          "height": 67
+        },
+        {
+          "label": "3 跟随",
+          "width": 58.328125,
+          "height": 67
+        },
+        {
+          "label": "4 记录",
+          "width": 58.328125,
+          "height": 67
+        },
+        {
+          "label": "5 地图",
+          "width": 58.328125,
+          "height": 67
+        },
+        {
+          "label": "6 案件本",
+          "width": 58.328125,
+          "height": 67
+        }
+      ],
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+      "hardwareConcurrency": 32,
+      "dpr": 1,
+      "loadMs": 476.19999999925494
+    },
+    "pageErrors": [],
+    "consoleErrors": [],
+    "scope": "Windows desktop Chromium resized; no physical mobile, production build, or long soak claim."
+  },
+  "routes": {
+    "passed": true,
+    "additionalRoutes": [
+      {
+        "place": "station",
+        "arrivalCommits": 1
+      },
+      {
+        "place": "cafe",
+        "arrivalCommits": 1
+      },
+      {
+        "place": "town-square",
+        "arrivalCommits": 1
+      }
+    ],
+    "allFivePlacesVisitedAcrossScripts": true,
+    "groundPointerRoute": true,
+    "nativeVisibility": {
+      "status": "pending",
+      "reason": "This CLI session keeps document.hidden=false even after focus emulation is disabled and its window is minimized. No synthetic visibility override was substituted."
+    },
+    "revision": 46,
+    "pageErrors": [],
+    "consoleErrors": []
+  },
+  "rawOutputs": {
+    "output/playwright/agent-first-interactions-final.txt": "027f32dc671ee850fb98eee6fa2beb3d20954110be575c5ff601dfffee4f427b",
+    "output/playwright/agent-first-cadence-final.txt": "93cd76b8efa2bb6c3ca36ee7aa49cc0b7dc09658a0ca6b0630e7f66ef31a6155",
+    "output/playwright/agent-first-routes-final.txt": "ae2d4cf780835d84a3e2f2ad714284c9fc68343001ba42abd0a95a6f41968976"
+  },
+  "screenshots": {
+    "output/playwright/agent-first-desktop-final.png": {
+      "sha256": "0a241bfea290c9ebc96aac6bf17d5dc6abcd3d03e9204698620f37a9719cc3ad",
+      "bytes": 74616
+    },
+    "output/playwright/agent-first-interior.png": {
+      "sha256": "183d15406234e9b4c49b1628f35a9df44dffdb360da4b8edc1af00a2744685e3",
+      "bytes": 66081
+    },
+    "output/playwright/agent-first-resident.png": {
+      "sha256": "18f12fafbe064a70cfa8ed5e84513db18ed3daad41e6c069a89caefe4672a3ca",
+      "bytes": 89370
+    },
+    "output/playwright/agent-first-notebook.png": {
+      "sha256": "28fa1caf86f20796f699bb186bf63e4960986a87ce21ccaaa7ba0f2d0900fc64",
+      "bytes": 97474
+    },
+    "output/playwright/agent-first-narrow-final.png": {
+      "sha256": "42a4192ecc2aca8cad7ec6175b3ac0ab03fd69f526cdcf5b90878ab24165dbc1",
+      "bytes": 45190
+    },
+    "output/playwright/agent-first-narrow-map.png": {
+      "sha256": "55dfc1f4f04f1cfaf2f638e75a06bcd596d0bbf4c45661abfbb80bda8f5145f8",
+      "bytes": 48940
+    },
+    "output/playwright/agent-first-narrow-person.png": {
+      "sha256": "99212d7d35b7ac5df3948fee3f73dca6c2bc838f3dd05d39f9aa478d1d284d34",
+      "bytes": 43127
+    }
+  },
+  "sourceFiles": {
+    "app/town-play/agent-first/agent-first-map.ts": "cf49cc20e746da043cc2ace25bdc8413ae963986c2c82e3f9af464c200bb535c",
+    "app/town-play/agent-first/agent-first.module.css": "a5bc95ecfdf225061a22279d6e8e1c8124289515c1a46704e8848be7a3092ad8",
+    "app/town-play/agent-first/AgentFirstTown.tsx": "84f942a875d933f206a612fddb8e75b8797302de60b7b8ba5baf20701c709090",
+    "app/town-play/agent-first/MapCanvas.tsx": "cd541f1f1cd8a29c28d5f3092d56a3bb98688b26d55d57f0f23b0b7b488496c1",
+    "app/town-play/agent-first/page.tsx": "c1d1c5007c896b71d5d9d8549efabfa1aa63f034a93277050fa360060f27277d",
+    "app/town-play/agent-first/useAgentFirst.ts": "a363dda721eea5a8aefdf636c1b29da4f28ddf5bbdb7c95ceb29df9b291526ed",
+    "packages/engine/src/town/agent-observation.ts": "3515e8a2ad7ecbe8da3e89564dc503b1351050b05646bd3d49ede3e96ea3b26e",
+    "packages/engine/src/town/agent-intent.ts": "eb1c8d6915a3c274786ec3e701d5ad950b79a363d2b3a29d240372fe7461c513",
+    "packages/engine/src/town/case-bridge.ts": "044a8c9b3c3f6fec46f4b66ba690aac84aa860f2be943c2b063904f61094fa90",
+    "lib/world/agent-first-store.ts": "3dde29430d3fdb5c0ce6922f3135702f32e9cbb9e1aea7a394dd78fea430c991",
+    "app/api/v1/town-play/agent-first/route.ts": "673ad07424da7aea368d65040d6e9a178413995b5fdb46a1bc7de028dc6f3076",
+    "scripts/run-agent-first-checks.mjs": "ca03283df68bbe918ba7e77b0f272a2c43203b84114c07d100d994856acabb4d",
+    "packages/engine/src/town/resident-work.ts": "d36a2591b1021112e5b75c382ed870faed9cace8999a7aa40364040c3b754fa7",
+    "packages/engine/src/town/daily-routine.ts": "5a519c32af8958c2444f1e25592c6b8e0377b04eea94767300959c5d2e741192",
+    "packages/engine/src/persistent-town.ts": "72dad9b268f45e5bb22cd74f90c34e4383f8a9128de7e74281d0ce7360a7a705",
+    "packages/engine/src/world-types.ts": "af8879322933909582fb60992c91f0023fab63f5045aeb6b50817df5c8112041",
+    "packages/engine/src/town-exploration.ts": "a04faf2cefe6cd8e4085060855cbb2b8d0389ae194ba6a0d1cc9daf634b4a95e",
+    "lib/world/town-exploration-store.ts": "147397105b673ca3a4d11704067b3e6dbc73b020e8140fc1c12f5a94519803d3",
+    "lib/world/resident-decision-provider.ts": "78c566825affd74613651c01fa9043e8e1ff867a1a8a30bb25fb1ae0ee07a8db",
+    "lib/town-play-contract.ts": "a16140025667db7bf5a0930da650c1c7717e265011dc4a385df27acf544716eb",
+    "app/api/v1/town-play/route.ts": "f230010a71bd477ff92677a0b2e33cc5c1ddfd3d3d8b61b8c16ca8f8c3be4a27",
+    "scripts/run-resident-work-checks.mjs": "75660bc9a2a77053a50d8c99dca177c1625f820c1bc6371a7e849a3271859754",
+    "app/localization/locale-context.tsx": "f2f0b1a1fa6a8bc06ff1e349da09793e97f989c1fcd3875b6160cfa9037840d5",
+    "lib/world/private-world-access.ts": "54a92beeee8b3a74163a645d8af8dc9adc726d7c3d70808c86fb871beec66351",
+    "packages/engine/src/town/agent-control.ts": "b8f50c23f1a043cbed0e70143e260f0fd5850758ffcfdebebdb86a77858e6958",
+    "packages/engine/src/town/replay-contract.ts": "f7b31727e13c2e58163901df6c2ac7dbd2e874c4029ca4cabe4599731ddc98c8",
+    "scripts/review-agent-first-browser.cjs": "7764794d260cc522a2f53ac72ea81f91ce0c66922b3a2400392e88abc9989ccf",
+    "scripts/review-agent-first-cadence.cjs": "3facdead30b17b098fe54a073ac62092c240d019adc451c11b4b125f7b4a76f5",
+    "scripts/review-agent-first-routes.cjs": "7df80bc7ceccb8bb0fa4fcacc432c6465a481b2e3f3ce06e8726b7595c5b9b5e",
+    "scripts/record-agent-first-review.mjs": "836421c6a7f8aa13e1127ed9584290624d32a107b55af37199a9f2e7e776ce69",
+    "docs/agent-first-v1/README.zh-CN.md": "188bf4357c8a8e84da6e14c51e1294204637a091b4eacf405dbb645b401b443c",
+    "docs/v12-agent-first-2d-roadmap.md": "8415c9138211fd2cca0948597de77ad08f4115154fa84ef9f28924c421c7e7fd",
+    "docs/agent-first-v1/runtime/tsconfig.json": "d47b031809845483ff4eaef9f699a3b34ad086da540e5095ccb64464ef9ed0d8"
+  },
+  "machine": {
+    "os": "Windows",
+    "cpu": "Intel Core i9-13900HX",
+    "logicalProcessors": 32,
+    "physicalMemoryBytes": 16978403328
+  },
+  "visualReview": {
+    "reviewer": "Codex",
+    "desktopAndNarrowInspected": true,
+    "humanApproved": false
+  },
+  "limits": [
+    "Local Next webpack development server; short rolling 600-frame RAF samples, not GPU timing or a long soak.",
+    "390x844 is a resized desktop Chromium viewport; no physical phone, production build, Windows package or human play approval.",
+    "One intentional lost-response network error in recovery test; clean cadence and route checks report zero page/console errors.",
+    "Native tab hide/resume remains pending: the CLI session reported document.hidden=false even for a minimized window. No synthetic visibility override was counted as browser acceptance."
+  ]
+}

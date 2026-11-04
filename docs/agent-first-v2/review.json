@@ -1,0 +1,175 @@
+{
+  "schema": "resident-life-package-review.v1",
+  "checkedAt": "2026-10-30T10:22:08.651Z",
+  "passed": true,
+  "scope": "P2 rule-life foundation, not full cognition/model/scale/case qualification",
+  "checks": {
+    "threeDaySeeds": 5,
+    "completeReplayRuns": 5,
+    "midrunRestores": 5,
+    "edgeGroups": 5,
+    "apiGroups": 3,
+    "previousContractGroups": 8,
+    "specialistRegressionGroups": 17,
+    "commuteRegressionGroups": 8,
+    "ownedSessionRegressionGroups": 14,
+    "scopedTypecheck": true,
+    "browserInteraction": true
+  },
+  "seeds": [
+    {
+      "seed": "river-life-01",
+      "digest": "fnv1a-ec661c4c",
+      "eventCount": 4038,
+      "memoryCount": 2969,
+      "actionMix": {
+        "eat": 96,
+        "sleep": 326,
+        "rest": 362,
+        "socialize": 41,
+        "occupation": 561
+      },
+      "batchAverageTickP95Ms": 52.88774166666675,
+      "runAndReplayMs": 69379.91750000001
+    },
+    {
+      "seed": "river-life-02",
+      "digest": "fnv1a-bb3dfaa0",
+      "eventCount": 4052,
+      "memoryCount": 2980,
+      "actionMix": {
+        "eat": 96,
+        "sleep": 328,
+        "rest": 372,
+        "socialize": 42,
+        "occupation": 552
+      },
+      "batchAverageTickP95Ms": 53.50733333333361,
+      "runAndReplayMs": 68915.14019999998
+    },
+    {
+      "seed": "river-life-03",
+      "digest": "fnv1a-24199ef5",
+      "eventCount": 4007,
+      "memoryCount": 2954,
+      "actionMix": {
+        "eat": 96,
+        "sleep": 325,
+        "rest": 353,
+        "socialize": 41,
+        "occupation": 562
+      },
+      "batchAverageTickP95Ms": 50.73375833333315,
+      "runAndReplayMs": 60470.210699999996
+    },
+    {
+      "seed": "river-life-04",
+      "digest": "fnv1a-0ef20cba",
+      "eventCount": 4048,
+      "memoryCount": 2997,
+      "actionMix": {
+        "eat": 96,
+        "sleep": 325,
+        "rest": 368,
+        "socialize": 44,
+        "occupation": 564
+      },
+      "batchAverageTickP95Ms": 45.36052499999884,
+      "runAndReplayMs": 55986.0282
+    },
+    {
+      "seed": "river-life-05",
+      "digest": "fnv1a-bbeb803f",
+      "eventCount": 4166,
+      "memoryCount": 3119,
+      "actionMix": {
+        "eat": 96,
+        "sleep": 325,
+        "rest": 453,
+        "socialize": 42,
+        "occupation": 542
+      },
+      "batchAverageTickP95Ms": 48.40732500000255,
+      "runAndReplayMs": 57068.380799999984
+    }
+  ],
+  "needsCoverage": {
+    "residentsPerSeed": 12,
+    "everyResidentAteSleptAndSocialized": true,
+    "everyMemoryHasSource": true,
+    "modelCalls": 0
+  },
+  "retainedArt": {
+    "v1": {
+      "file": "docs/3d-town/snowbound-manor-v1/snowbound-manor.blend",
+      "sha256": "a79c8c7f5cd4d9ff004bf8c697a1d8e18f8fa35135f4905c1fdb0f94bd4f2360",
+      "humanArtApproved": false
+    },
+    "v2": {
+      "file": "docs/3d-town/snowbound-manor-v2/snowbound-manor.blend",
+      "sha256": "fc5995aec9a986922177f91d12d3f7e3f0ce0b8cbcc729bbc71b5c122d64854e",
+      "humanArtApproved": false
+    },
+    "v3": {
+      "file": "docs/3d-town/snowbound-manor-v3/snowbound-manor.blend",
+      "sha256": "527f02e580e2bf0be21c1148cc0c8c22b876fbb103faa096f35262dcf905a3dd",
+      "humanArtApproved": false
+    }
+  },
+  "sources": {
+    "packages/engine/src/town/resident-life.ts": "1207897df4d9182d1265d5da8ca2363378d719a4d68bd3ec5406bf09d74b18b7",
+    "packages/engine/src/town/resident-work.ts": "23f39a583c34d0880456e201a93c44d19ae64a7dc958e66c4e958ff1c9955709",
+    "packages/engine/src/town/daily-routine.ts": "21a76921e8f3a19a416a296b0b31a2c3a40d6ca50110d45e1f25e1031032c631",
+    "packages/engine/src/persistent-town.ts": "d395c1e5c442f4495a28f8a0085c0e065f9b1f392b0401a76fef3b380d0231fd",
+    "packages/engine/src/riverbend-world.ts": "d798bbcff60f84d2e98817cebfa13edbe2655e3012bed7ae7e71d46fc7386172",
+    "packages/engine/src/town/replay-contract.ts": "f7b31727e13c2e58163901df6c2ac7dbd2e874c4029ca4cabe4599731ddc98c8",
+    "scripts/run-resident-life-checks.mjs": "9c83415d63b339beaabfb9acde1f9a370b5b572519af1099138b5e45e1b34d1b",
+    "lib/world/town-exploration-store.ts": "38236ddbdb9803792a1a337dc26d456d6d10840f78243aa018eccec48ec1a289",
+    "lib/world/agent-first-store.ts": "3dde29430d3fdb5c0ce6922f3135702f32e9cbb9e1aea7a394dd78fea430c991",
+    "lib/town-play-contract.ts": "6becf000b04cf2245f916726758393459f7326cae99061148416e9d68f3e117a",
+    "packages/engine/src/town-exploration.ts": "f7a4ce804dca463fdfaa2a685ce8aacbe240b629eae9b1496cea65c4cab10952",
+    "packages/engine/src/town/agent-observation.ts": "e6c3a98cba0c548117aff8fe8ccc01cbcf95f705d4f147773d49d744e94d37b6",
+    "packages/engine/src/town/agent-intent.ts": "927e7e13b467afd6c75946e1a93abe20c808a6f9b81a4f47a986fa10bd414f82",
+    "scripts/run-resident-life-api-checks.mjs": "e87ab6ffbefb8c23e09eba5cce78f9c28816123002b9cbb35059fdd94f845eee",
+    "packages/engine/src/town/snapshots.ts": "8771acd430c70c5156b48e9771095e8eb41461b27eb56c79d2d7719737214206",
+    "scripts/run-resident-life-edge-checks.mjs": "f33e33767b56a904277a72d79c1020a403ab6d3501865493430643973b4d3faa",
+    "packages/engine/src/town/case-bridge.ts": "044a8c9b3c3f6fec46f4b66ba690aac84aa860f2be943c2b063904f61094fa90",
+    "app/api/v1/town-play/agent-first/route.ts": "673ad07424da7aea368d65040d6e9a178413995b5fdb46a1bc7de028dc6f3076",
+    "app/town-play/agent-first/agent-first-map.ts": "cf49cc20e746da043cc2ace25bdc8413ae963986c2c82e3f9af464c200bb535c",
+    "scripts/run-agent-first-checks.mjs": "3f4ff34dcb920673d79f04971ff31aa53df5cbb1dc9bd02b2ba023bf0b703031",
+    "packages/engine/src/world-types.ts": "af8879322933909582fb60992c91f0023fab63f5045aeb6b50817df5c8112041",
+    "lib/world/resident-decision-provider.ts": "78c566825affd74613651c01fa9043e8e1ff867a1a8a30bb25fb1ae0ee07a8db",
+    "app/api/v1/town-play/route.ts": "f230010a71bd477ff92677a0b2e33cc5c1ddfd3d3d8b61b8c16ca8f8c3be4a27",
+    "scripts/run-resident-work-checks.mjs": "75660bc9a2a77053a50d8c99dca177c1625f820c1bc6371a7e849a3271859754",
+    "lib/world/repository.ts": "7dd7d482eba89d9937f7b2d6e6978d2b57036d9f4b80cad3e8d63fa5289c37fa",
+    "lib/world/private-world-access.ts": "54a92beeee8b3a74163a645d8af8dc9adc726d7c3d70808c86fb871beec66351",
+    "scripts/run-town-play-session-checks.mjs": "702a0ae513c9f05d58f66de66dd879bf4a365b3149b4380100ff2074791444cb",
+    "app/town-play/agent-first/AgentFirstTown.tsx": "9630d0e788e36ac087bdfb7fb106541e4a81ea1276da9cfc34d59fd788784d34",
+    "app/town-play/agent-first/useAgentFirst.ts": "4210ab6d31e8a5d269a75e470541e30d73dad693de6e7db677a9e5ca58e74f1a",
+    "app/town-play/agent-first/MapCanvas.tsx": "cd541f1f1cd8a29c28d5f3092d56a3bb98688b26d55d57f0f23b0b7b488496c1",
+    "app/town-play/agent-first/agent-first.module.css": "a5bc95ecfdf225061a22279d6e8e1c8124289515c1a46704e8848be7a3092ad8",
+    "scripts/review-resident-life-browser.cjs": "ffeee3cfad21832dc303d1d7b55349f02bbc43572011fafcb2bad8b9d66371a8",
+    "scripts/record-resident-life-review.mjs": "2c9dd0492364066496f7d3c406622c3df636c878e6069f58b99b881ecf5ca891",
+    "docs/agent-first-v2/README.zh-CN.md": "cb4d1cba89866a431807f06ebc70d2190ae92e4f641da69ac91933e5c3c1b58e",
+    "docs/v12-agent-first-2d-roadmap.md": "ad0f6bc984f8b018cc8c92c5470378d5a2dbc95798bbefee1493c680b3a92733"
+  },
+  "evidence": {
+    "life-review.json": "3cc43cc35110bde02151f9ecd7ba7ad364ac0de5c9f17c808e2c7d04ff9a5e3c",
+    "api-review.json": "654facab16c08f62524cb9618af58f17f859067e22854244a04c64e4828ace60",
+    "edge-review.json": "c5887d14d0e70bb31661c4f02ac04bb881bda675176a641852af140486d52c91",
+    "contract-review.json": "5879d665933360160786373ec81f98e70603cb3251d154a6a0a9702f4664da16",
+    "browser-review.json": "4abd48613ae700d19001ab3b9e62b85baa1f85155364b5b4db86929c7e72b6dd"
+  },
+  "pending": [
+    "Long-term memory retrieval/reflection and memory-content-driven multi-step plans.",
+    "Model-vs-rule decision quality, budget and controlled intervention experiments.",
+    "24/100-resident scale and long real-browser soak.",
+    "Full fair-play case loop, novel persistence and revision propagation.",
+    "Native browser visibility hide/resume, real devices, Windows packaging and human play/art approval."
+  ],
+  "notes": [
+    "Previous P0/P1 artifacts are historical and bound to their own source hashes.",
+    "Failed inventory assertion, social-starvation run and pre-idle-refinement run remain in runtime/ and are excluded from passing evidence.",
+    "Different seed event counts demonstrate behaviour variation; canonical digest uniqueness alone would also include the seed value."
+  ]
+}

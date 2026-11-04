@@ -1,0 +1,1 @@
+{"passed":true,"report":"docs/agent-first-v4/review.json","checks":{"providerGroups":11,"threeDaySeeds":5,"midrunRestores":5,"lifeEdgeGroups":5,"apiGroups":3,"cognitionGroups":5,"workGroups":17,"playerGroups":8,"scopedTypecheck":true,"publicRulesBrowser":true,"liveModel":false,"liveExternalModelCalls":0}}

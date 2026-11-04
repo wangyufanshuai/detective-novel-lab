@@ -1,0 +1,125 @@
+{
+  "schema": "resident-agenda-package-review.v1",
+  "checkedAt": "2026-11-02T02:43:59.923Z",
+  "passed": true,
+  "scope": "Fifth-round event-sourced recent memory, authored daily goals, deterministic local planning switch and matched quality comparison.",
+  "checks": {
+    "agendaGroups": 5,
+    "matchedSeeds": 5,
+    "modes": 2,
+    "threeDayCells": 10,
+    "fullReplays": 10,
+    "midrunRestores": 10,
+    "providerGroups": 11,
+    "apiGroups": 4,
+    "edgeGroups": 5,
+    "cognitionGroups": 5,
+    "workGroups": 17,
+    "playerGroups": 8,
+    "scopedTypecheck": true,
+    "browserModeSwitch": true,
+    "liveModel": false,
+    "liveExternalModelCalls": 0
+  },
+  "pooledQuality": {
+    "rules": {
+      "goals": 360,
+      "totalGoals": 360,
+      "repeated": 4089,
+      "completions": 4689,
+      "credits": 1116,
+      "goalCompletionRate": 1,
+      "repetitionRate": 0.872040946896993
+    },
+    "goals": {
+      "goals": 360,
+      "totalGoals": 360,
+      "repeated": 2652,
+      "completions": 5645,
+      "credits": 1221,
+      "goalCompletionRate": 1,
+      "repetitionRate": 0.46979627989371125
+    }
+  },
+  "sourceHashes": {
+    "packages/engine/src/town/resident-agenda.ts": "207e8afeb6a3dd9540369960b2648a5c0a1f1289a508ddbf58554bbc141ec2ed",
+    "packages/engine/src/town/resident-cognition.ts": "51bc7ce10a15d81741ed1606a53967bc1bada2d73b1212c6248255b865eb132c",
+    "packages/engine/src/town/resident-life.ts": "977d9363d71063662609c6570ae42e24b0eaa051a93386c23a49ee38b835fe3a",
+    "packages/engine/src/town/resident-work.ts": "23f39a583c34d0880456e201a93c44d19ae64a7dc958e66c4e958ff1c9955709",
+    "packages/engine/src/persistent-town.ts": "9101bb443a8b9fe56568caa11779c6a52165f8608f3285704373627860fed4c4",
+    "packages/engine/src/town/agent-observation.ts": "0af4d5b279d1ef5276095b9fab77adaa9e9859dabc2a181dc525ea05d5b284e9",
+    "packages/engine/src/town/agent-intent.ts": "c7828e5dd1f2859cf382cd469e23da1ad495f271efa3b82eb0efe6c22422588c",
+    "packages/engine/src/town-exploration.ts": "f7a4ce804dca463fdfaa2a685ce8aacbe240b629eae9b1496cea65c4cab10952",
+    "lib/world/town-exploration-store.ts": "7e451c6cd2504f298e493c8452058a82b0356b7fdea68ad31e400d5a897a04b6",
+    "lib/world/resident-decision-provider.ts": "646b5fadde240a2936cc856f7229ce7df8e019b337316c64ba9bbd0ca743c087",
+    "lib/world/resident-life-provider.ts": "cfbfcf5c119754d2793e421bad96725593b7c9b620a944d1711f30ce380d9e1e",
+    "lib/world/agent-first-store.ts": "3dde29430d3fdb5c0ce6922f3135702f32e9cbb9e1aea7a394dd78fea430c991",
+    "lib/town-play-contract.ts": "3528ff7af5e8bcd790a01810f5753948941c5508d7e8549f7188d686e33358db",
+    "app/api/v1/town-play/agent-first/route.ts": "673ad07424da7aea368d65040d6e9a178413995b5fdb46a1bc7de028dc6f3076",
+    "app/town-play/agent-first/AgentFirstTown.tsx": "1ad75e035933a598356ed8d8c4d98266561ee72592f0d491c97e77f2dadd07cb",
+    "app/town-play/agent-first/useAgentFirst.ts": "495a0cdfe11501f21a5f95925501d8c22033de80bb26c10a2a36c0e062fe9da9",
+    "app/town-play/agent-first/MapCanvas.tsx": "cd541f1f1cd8a29c28d5f3092d56a3bb98688b26d55d57f0f23b0b7b488496c1",
+    "app/town-play/agent-first/agent-first.module.css": "cd7881dbdff7ecb497a8f18a425c975bf3dce7e840911b0204e557e74fea92b0",
+    "packages/engine/src/index.ts": "498256be0e0fd8c4e6b46ff54f0748396465bf7cbffee8d2e5f614031e8e5e7f",
+    "scripts/run-resident-agenda-checks.mjs": "00fb43e07403237edb73ebf16c359123d84ce2a109788add36cd0075d2f937dd",
+    "scripts/run-resident-life-checks.mjs": "20eda32415529430ac4f45c0581ef6d730d31c4a2eb54c961ef7e650924ba0f2",
+    "scripts/lib/resident-life-quality.mjs": "55ef3a3040872440189d2145d12c01a3f28392e9448da58ff2a4fa6fdfe160a4",
+    "scripts/review-resident-agenda-browser.cjs": "9e8453e2421b4622717a8da3c3850507ec6117f2abcf1856f3316926dd95159d",
+    "scripts/record-resident-agenda-review.mjs": "d2ada2c92d5ba1636194d60f95740da90d44b1f0ea82589e3a64c851b1b360a6",
+    "docs/agent-first-v5/README.zh-CN.md": "579e3cef53df60d512e0a10c4ea094e1439402166cd46b14dcb65f6fc32946fb"
+  },
+  "evidence": {
+    "agenda-review.json": "1f689edce0aa89da15c0ab3256209b8bd032b1ed6261615d0dfe02088fc86ac1",
+    "cognition-review.json": "969b37adca85144d3697ea6bad9242e5a27e90c3cf3325cb9ac688fa26ebe33e",
+    "edge-review.json": "00714ceb71aa329f1ec25c123b306ab8d57d7a7c37e307d5575bebafc9e3c61a",
+    "api-review.json": "b0153af5a181e02d84a1152778e0cc4659833f5a0a2015d604da7522e367d9ef",
+    "provider-review.json": "e93e2f0ab0bbcd616b268de09381862e5bd2f8437c6d14461262a0162d3b7ab0",
+    "player-checks/contract-review.json": "b321cc189f4f5fdd9bc46d238ef0a7739c530f6b0ffd28ed5ad95b105662c333",
+    "rules/life-review.json": "36a78da9ae0fc84f7d81ab469c637da12e6e32c46e2faac95fc5b326d0e400d4",
+    "preflight/life-review.json": "7af4e523ef41dce1a89b0c617886b4ec0c8677fb3d68bab44c8cad356c98e5b0",
+    "goals-rest/life-review.json": "76f3a5e5f78d5764d31f62d84d9cbfdb52b3cc6f4378e899596369aabdc31c0f",
+    "quality-review.json": "099677a34d495fad79a7dfd17dd5ba7b0ac29db3912928f1a70744abc6ba0d4e",
+    "quality.zh-CN.md": "a456025923cdbd02d9165a5a37b10ee4f68327d7557b62e881e5b479d0723aa2"
+  },
+  "workEvidence": {
+    "file": "E:\\xuexi\\detective-town-noir-ui\\output\\resident-work-v1\\checks-x8JomD\\report.json",
+    "sha256": "6da3ebf342278f67e8881657cf9a5abf3cb9dcadd8de10964a28aa9e1e16af5e"
+  },
+  "browser": {
+    "passed": true,
+    "defaultRules": true,
+    "modeSwitch": true,
+    "goalModeClock": "08:15",
+    "reloadPreservesMode": true,
+    "switchBackWithoutTick": true,
+    "reservedModelAttempts": 0,
+    "widths": [
+      1280,
+      390
+    ],
+    "pageErrors": [],
+    "consoleErrors": [],
+    "scope": "Local Windows Chromium; 390px resized viewport, not a physical phone. Deterministic goal mode, no live model or human approval.",
+    "startedAt": "2026-11-02T02:37:29.255Z",
+    "raw": {
+      "file": "output/playwright/resident-agenda-v5-browser.txt",
+      "sha256": "589f0054a0a8250a8477080e76e53ff5cbc21e5d64668bf572f908206f916105"
+    },
+    "screenshots": {
+      "output/playwright/resident-agenda-v5-desktop.png": "64f86182c228c2b5a1e9be6b5ce635436fdd7515fbaed598bb0f29259bf89e3b",
+      "output/playwright/resident-agenda-v5-narrow.png": "da5b955b581f089622fff306fdd0630e965f01cd735f6b064d83481c1d6c9c26"
+    }
+  },
+  "pending": [
+    "Semantic memory summaries and source-preserving long-term reflection.",
+    "Personal commitments with routes, appointments and case pressure beyond authored daily quotas.",
+    "Bounded live-model quality/cost comparison, 24/100 residents, Windows package, physical devices and human acceptance."
+  ],
+  "evidenceBoundaries": {
+    "deterministicLocalPlanning": true,
+    "liveModel": false,
+    "modelQualityProven": false,
+    "humanApproved": false,
+    "productionRelease": false
+  }
+}

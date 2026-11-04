@@ -1,0 +1,38 @@
+{
+  "schema": "resident-appointment-checks.v1",
+  "checkedAt": "2026-11-03T01:55:33.467Z",
+  "passed": true,
+  "checks": [
+    "actual-completed-conversation-creates-distinct-proposal-response-and-future-place-with-no-duplicate",
+    "referee-refuses-forged-or-missing-origin-and-declines-needs-unreachable-or-out-of-horizon-plans",
+    "accepted-promise-reroutes-along-real-roads-and-completes-one-joint-quarter-hour-even-after-mode-switch",
+    "no-show-expires-once-without-ghost-completion-or-absent-person-memory",
+    "questioning-interrupts-joint-meeting-without-goal-completion-or-fulfilled-receipt",
+    "accepted-promise-save-restore-checkpoint-rollback-and-full-outcome-replay-match-without-models"
+  ],
+  "example": {
+    "meetTime": "13:00",
+    "completedAt": "13:15",
+    "roadTravel": true,
+    "sourceEventIds": [
+      "life-appointment-check-0-rb-cheng-du-rb-bai-lu-completed",
+      "appointment-appointment-check-life-appointment-check-0-rb-cheng-du-rb-bai-lu-completed-proposed",
+      "appointment-appointment-check-life-appointment-check-0-rb-cheng-du-rb-bai-lu-completed-accepted",
+      "life-appointment-check-60-rb-cheng-du-rb-bai-lu-started",
+      "life-appointment-check-60-rb-cheng-du-rb-bai-lu-completed"
+    ]
+  },
+  "sourceHashes": {
+    "packages/engine/src/town/resident-appointments.ts": "613bd2b70303c3b74e7eeba549d6cf59788996a45b49e9de887842244963c385",
+    "packages/engine/src/town/resident-life.ts": "d75f602d44d129f0280fce5c12afc14b31418364744e4258b13de6db656eddd5",
+    "packages/engine/src/town/daily-routine.ts": "21a76921e8f3a19a416a296b0b31a2c3a40d6ca50110d45e1f25e1031032c631",
+    "packages/engine/src/town/resident-agenda.ts": "207e8afeb6a3dd9540369960b2648a5c0a1f1289a508ddbf58554bbc141ec2ed",
+    "packages/engine/src/persistent-town.ts": "9101bb443a8b9fe56568caa11779c6a52165f8608f3285704373627860fed4c4",
+    "scripts/run-resident-appointment-checks.mjs": "ad3c6cc85c7a4f870de35d894a532d826aea5feb7fe235861498d505177ac215"
+  },
+  "limits": [
+    "Invitation and response are deterministic policies, not live LLM reasoning.",
+    "Refusal and no-show causes are private; no automatic case evidence, accusation or reputation penalty.",
+    "Short lifecycle and replay tests; multi-seed three-day evidence is separate."
+  ]
+}

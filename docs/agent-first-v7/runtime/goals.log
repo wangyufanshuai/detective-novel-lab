@@ -1,0 +1,17 @@
+E:\xuexi\detective-town-noir-ui\packages\engine\src\town\resident-social-beliefs.ts:95
+            throw Error("Belief refers to another appointment");
+                  ^
+
+Error: Belief refers to another appointment
+    at validateResidentSocialBeliefs (E:\xuexi\detective-town-noir-ui\packages\engine\src\town\resident-social-beliefs.ts:95:19)
+    at runResidentLifeBoundary (E:\xuexi\detective-town-noir-ui\packages\engine\src\town\resident-life.ts:144:65)
+    at beginResidentLifeInterval (E:\xuexi\detective-town-noir-ui\packages\engine\src\town\resident-life.ts:113:12)
+    at advanceTownClock (E:\xuexi\detective-town-noir-ui\packages\engine\src\persistent-town.ts:4500:71)
+    at E:\xuexi\detective-town-noir-ui\packages\engine\src\persistent-town.ts:5048:25
+    at runTownTickPhases (E:\xuexi\detective-town-noir-ui\packages\engine\src\persistent-town.ts:5069:13)
+    at advancePersistentTownTick (E:\xuexi\detective-town-noir-ui\packages\engine\src\persistent-town.ts:5098:9)
+    at advance (file:///E:/xuexi/detective-town-noir-ui/scripts/run-resident-life-checks.mjs:16:206)
+    at file:///E:/xuexi/detective-town-noir-ui/scripts/run-resident-life-checks.mjs:57:38
+    at ModuleJob.run (node:internal/modules/esm/module_job:430:25)
+
+Node.js v24.14.0

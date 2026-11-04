@@ -1,0 +1,1 @@
+{"passed":true,"checks":["no-departure-before-appointment","partial-road-cost","no-visible-body-during-transit","exact-arrival-minute","commute-survives-save-replay","duplicate-tick-rejected","midnight-departure","explicit-hold-and-resume"],"firstArrivals":6}

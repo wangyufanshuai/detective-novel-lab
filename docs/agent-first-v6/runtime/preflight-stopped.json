@@ -1,0 +1,6 @@
+{
+  "status": "stopped",
+  "log": "preflight.log",
+  "acceptanceEvidence": false,
+  "reason": "Stopped the owned initial run before adding the guard against omniscient cancellation after hidden incapacity. Final qualification runs from the frozen current source are recorded in goals.log and rules.log."
+}

@@ -1,0 +1,27 @@
+{
+  "schema": "resident-agenda-checks.v1",
+  "checkedAt": "2026-11-03T01:56:02.447Z",
+  "passed": true,
+  "checks": [
+    "event-time-order-location-and-age-replace-day-only-ranking-with-no-orphan-future-other-NPC-or-hidden-detail-enrichment",
+    "same-legal-options-and-needs-choose-different-action-from-sourced-recent-memory-and-goal-scoring",
+    "referee-rejects-forged-personal-goal-reference-without-writing",
+    "daily-goals-persist-until-completion-expire-honestly-credit-once-and-clip-cross-midnight-minutes",
+    "actual-clock-goal-credits-save-normalize-and-replay-remain-source-backed-with-zero-provider-attempts"
+  ],
+  "controlledMemoryEffect": {
+    "withoutMemory": "work",
+    "withMemory": "rest"
+  },
+  "sourceHashes": {
+    "packages/engine/src/town/resident-agenda.ts": "207e8afeb6a3dd9540369960b2648a5c0a1f1289a508ddbf58554bbc141ec2ed",
+    "packages/engine/src/town/resident-cognition.ts": "32d05f97cb676ab01ca027372dd6bc30c99b30857ec573ab0d69e6547c99bf36",
+    "packages/engine/src/town/resident-life.ts": "d75f602d44d129f0280fce5c12afc14b31418364744e4258b13de6db656eddd5",
+    "packages/engine/src/persistent-town.ts": "9101bb443a8b9fe56568caa11779c6a52165f8608f3285704373627860fed4c4",
+    "scripts/run-resident-agenda-checks.mjs": "4cc0a2e38861791068f620371fde12dc606e374ac7611b5eec46a7f3e26c259d"
+  },
+  "limits": [
+    "Controlled mechanism tests and a short real-clock replay; three-day qualification is reported separately.",
+    "No model, embeddings, semantic memory summaries, reflection or case truth generation."
+  ]
+}

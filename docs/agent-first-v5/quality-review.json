@@ -1,0 +1,2454 @@
+{
+  "schema": "resident-life-quality-comparison.v1",
+  "checkedAt": "2026-11-02T02:43:59.903Z",
+  "passed": true,
+  "comparisons": [
+    {
+      "seed": "river-life-01",
+      "rules": {
+        "digest": "fnv1a-6346f5f0",
+        "actionMix": {
+          "eat": 96,
+          "sleep": 326,
+          "rest": 362,
+          "socialize": 41,
+          "occupation": 561
+        },
+        "quality": {
+          "residents": [
+            {
+              "npcId": "rb-song-tang",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 18,
+                "socialize": 8,
+                "occupation": 59
+              },
+              "needs": {
+                "hunger": 27.5,
+                "energy": 99.125,
+                "loneliness": 34.35
+              }
+            },
+            {
+              "npcId": "rb-zhou-yan",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 17,
+                "socialize": 7,
+                "occupation": 55
+              },
+              "needs": {
+                "hunger": 28.5,
+                "energy": 98.775,
+                "loneliness": 63
+              }
+            },
+            {
+              "npcId": "rb-xu-zhiwei",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 78,
+                "socialize": 6,
+                "occupation": 10
+              },
+              "needs": {
+                "hunger": 30,
+                "energy": 99.3,
+                "loneliness": 57.4
+              }
+            },
+            {
+              "npcId": "rb-lu-xingzhou",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 25,
+                "socialize": 7,
+                "occupation": 54
+              },
+              "needs": {
+                "hunger": 40,
+                "energy": 98.6,
+                "loneliness": 62.525
+              }
+            },
+            {
+              "npcId": "rb-chen-hui",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 16,
+                "socialize": 7,
+                "occupation": 57
+              },
+              "needs": {
+                "hunger": 28.5,
+                "energy": 98.6,
+                "loneliness": 63.325
+              }
+            },
+            {
+              "npcId": "rb-gu-yuanshan",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 58,
+                "socialize": 7,
+                "occupation": 17
+              },
+              "needs": {
+                "hunger": 27.5,
+                "energy": 98.95,
+                "loneliness": 62.2
+              }
+            },
+            {
+              "npcId": "rb-bai-lu",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 23,
+                "socialize": 6,
+                "occupation": 58
+              },
+              "needs": {
+                "hunger": 28,
+                "energy": 100,
+                "loneliness": 93.8
+              }
+            },
+            {
+              "npcId": "rb-lin-ali",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 61,
+                "socialize": 7,
+                "occupation": 15
+              },
+              "needs": {
+                "hunger": 40.5,
+                "energy": 99.475,
+                "loneliness": 60.3
+              }
+            },
+            {
+              "npcId": "rb-cheng-du",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 28,
+                "rest": 14,
+                "socialize": 6,
+                "occupation": 59
+              },
+              "needs": {
+                "hunger": 42,
+                "energy": 99.3,
+                "loneliness": 90.8
+              }
+            },
+            {
+              "npcId": "rb-shen-ying",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 19,
+                "socialize": 6,
+                "occupation": 59
+              },
+              "needs": {
+                "hunger": 41,
+                "energy": 99.3,
+                "loneliness": 72.8
+              }
+            },
+            {
+              "npcId": "rb-han-shuo",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 17,
+                "socialize": 7,
+                "occupation": 59
+              },
+              "needs": {
+                "hunger": 29.5,
+                "energy": 99.125,
+                "loneliness": 57.3
+              }
+            },
+            {
+              "npcId": "rb-jiang-zhi",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 28,
+                "rest": 16,
+                "socialize": 8,
+                "occupation": 59
+              },
+              "needs": {
+                "hunger": 41,
+                "energy": 99.925,
+                "loneliness": 38.55
+              }
+            }
+          ],
+          "fullyObservedGoalDays": [
+            2,
+            3
+          ],
+          "completedGoals": 72,
+          "totalGoals": 72,
+          "goalCompletionRate": 1,
+          "sourcedGoalCredits": 224,
+          "discretionaryCompletions": 923,
+          "repeatedWithin60Minutes": 803,
+          "repetitionRate": 0.8699891657638137,
+          "kindTransitions": 71,
+          "retainedProposals": {
+            "count": 512,
+            "localDecisions": 0,
+            "proposalsWithMemory": 512,
+            "referencedMemories": 3072,
+            "sourceCoverage": 1
+          },
+          "modelAttemptsReserved": 0
+        }
+      },
+      "goals": {
+        "digest": "fnv1a-1692038e",
+        "actionMix": {
+          "eat": 96,
+          "sleep": 324,
+          "rest": 451,
+          "socialize": 45,
+          "occupation": 651
+        },
+        "quality": {
+          "residents": [
+            {
+              "npcId": "rb-song-tang",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 35,
+                "socialize": 8,
+                "occupation": 66
+              },
+              "needs": {
+                "hunger": 27.5,
+                "energy": 98.475,
+                "loneliness": 39.925
+              }
+            },
+            {
+              "npcId": "rb-zhou-yan",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 24,
+                "socialize": 7,
+                "occupation": 61
+              },
+              "needs": {
+                "hunger": 28.5,
+                "energy": 98.775,
+                "loneliness": 60.3
+              }
+            },
+            {
+              "npcId": "rb-xu-zhiwei",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 57,
+                "socialize": 7,
+                "occupation": 26
+              },
+              "needs": {
+                "hunger": 29,
+                "energy": 98.45,
+                "loneliness": 54.3
+              }
+            },
+            {
+              "npcId": "rb-lu-xingzhou",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 25,
+                "socialize": 8,
+                "occupation": 66
+              },
+              "needs": {
+                "hunger": 42,
+                "energy": 98.775,
+                "loneliness": 40.9
+              }
+            },
+            {
+              "npcId": "rb-chen-hui",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 30,
+                "socialize": 7,
+                "occupation": 64
+              },
+              "needs": {
+                "hunger": 30,
+                "energy": 98.95,
+                "loneliness": 53.975
+              }
+            },
+            {
+              "npcId": "rb-gu-yuanshan",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 59,
+                "socialize": 7,
+                "occupation": 33
+              },
+              "needs": {
+                "hunger": 29.5,
+                "energy": 97.725,
+                "loneliness": 63.5
+              }
+            },
+            {
+              "npcId": "rb-bai-lu",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 29,
+                "socialize": 7,
+                "occupation": 64
+              },
+              "needs": {
+                "hunger": 29.5,
+                "energy": 98.775,
+                "loneliness": 56.3
+              }
+            },
+            {
+              "npcId": "rb-lin-ali",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 60,
+                "socialize": 8,
+                "occupation": 14
+              },
+              "needs": {
+                "hunger": 40.5,
+                "energy": 100,
+                "loneliness": 22.8
+              }
+            },
+            {
+              "npcId": "rb-cheng-du",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 29,
+                "socialize": 7,
+                "occupation": 63
+              },
+              "needs": {
+                "hunger": 39.5,
+                "energy": 97.4,
+                "loneliness": 59.475
+              }
+            },
+            {
+              "npcId": "rb-shen-ying",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 43,
+                "socialize": 8,
+                "occupation": 63
+              },
+              "needs": {
+                "hunger": 40,
+                "energy": 98.175,
+                "loneliness": 21.125
+              }
+            },
+            {
+              "npcId": "rb-han-shuo",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 29,
+                "socialize": 8,
+                "occupation": 66
+              },
+              "needs": {
+                "hunger": 29.5,
+                "energy": 98.775,
+                "loneliness": 32.7
+              }
+            },
+            {
+              "npcId": "rb-jiang-zhi",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 31,
+                "socialize": 8,
+                "occupation": 65
+              },
+              "needs": {
+                "hunger": 30,
+                "energy": 98.8,
+                "loneliness": 38.55
+              }
+            }
+          ],
+          "fullyObservedGoalDays": [
+            2,
+            3
+          ],
+          "completedGoals": 72,
+          "totalGoals": 72,
+          "goalCompletionRate": 1,
+          "sourcedGoalCredits": 247,
+          "discretionaryCompletions": 1102,
+          "repeatedWithin60Minutes": 510,
+          "repetitionRate": 0.4627949183303085,
+          "kindTransitions": 545,
+          "retainedProposals": {
+            "count": 512,
+            "localDecisions": 299,
+            "proposalsWithMemory": 512,
+            "referencedMemories": 3072,
+            "sourceCoverage": 1
+          },
+          "modelAttemptsReserved": 0
+        }
+      },
+      "actualActionMixChanged": true
+    },
+    {
+      "seed": "river-life-02",
+      "rules": {
+        "digest": "fnv1a-b69360de",
+        "actionMix": {
+          "eat": 96,
+          "sleep": 328,
+          "rest": 372,
+          "socialize": 42,
+          "occupation": 552
+        },
+        "quality": {
+          "residents": [
+            {
+              "npcId": "rb-song-tang",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 28,
+                "rest": 15,
+                "socialize": 8,
+                "occupation": 59
+              },
+              "needs": {
+                "hunger": 42,
+                "energy": 99.925,
+                "loneliness": 33.05
+              }
+            },
+            {
+              "npcId": "rb-zhou-yan",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 28,
+                "rest": 13,
+                "socialize": 6,
+                "occupation": 56
+              },
+              "needs": {
+                "hunger": 41,
+                "energy": 99.3,
+                "loneliness": 79.3
+              }
+            },
+            {
+              "npcId": "rb-xu-zhiwei",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 65,
+                "socialize": 7,
+                "occupation": 11
+              },
+              "needs": {
+                "hunger": 27.5,
+                "energy": 99.575,
+                "loneliness": 54.3
+              }
+            },
+            {
+              "npcId": "rb-lu-xingzhou",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 23,
+                "socialize": 7,
+                "occupation": 55
+              },
+              "needs": {
+                "hunger": 28.5,
+                "energy": 99.825,
+                "loneliness": 65.25
+              }
+            },
+            {
+              "npcId": "rb-chen-hui",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 15,
+                "socialize": 7,
+                "occupation": 57
+              },
+              "needs": {
+                "hunger": 41.5,
+                "energy": 98.95,
+                "loneliness": 44.9
+              }
+            },
+            {
+              "npcId": "rb-gu-yuanshan",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 61,
+                "socialize": 7,
+                "occupation": 13
+              },
+              "needs": {
+                "hunger": 41,
+                "energy": 100,
+                "loneliness": 62.3
+              }
+            },
+            {
+              "npcId": "rb-bai-lu",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 34,
+                "socialize": 6,
+                "occupation": 57
+              },
+              "needs": {
+                "hunger": 28,
+                "energy": 99.3,
+                "loneliness": 81.575
+              }
+            },
+            {
+              "npcId": "rb-lin-ali",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 58,
+                "socialize": 7,
+                "occupation": 15
+              },
+              "needs": {
+                "hunger": 28,
+                "energy": 99.125,
+                "loneliness": 60.3
+              }
+            },
+            {
+              "npcId": "rb-cheng-du",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 24,
+                "socialize": 7,
+                "occupation": 57
+              },
+              "needs": {
+                "hunger": 28,
+                "energy": 98.6,
+                "loneliness": 62.2
+              }
+            },
+            {
+              "npcId": "rb-shen-ying",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 28,
+                "rest": 20,
+                "socialize": 7,
+                "occupation": 58
+              },
+              "needs": {
+                "hunger": 29,
+                "energy": 98.775,
+                "loneliness": 63.3
+              }
+            },
+            {
+              "npcId": "rb-han-shuo",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 28,
+                "rest": 17,
+                "socialize": 7,
+                "occupation": 57
+              },
+              "needs": {
+                "hunger": 41,
+                "energy": 98.95,
+                "loneliness": 55.3
+              }
+            },
+            {
+              "npcId": "rb-jiang-zhi",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 27,
+                "socialize": 8,
+                "occupation": 57
+              },
+              "needs": {
+                "hunger": 42,
+                "energy": 100,
+                "loneliness": 36.925
+              }
+            }
+          ],
+          "fullyObservedGoalDays": [
+            2,
+            3
+          ],
+          "completedGoals": 72,
+          "totalGoals": 72,
+          "goalCompletionRate": 1,
+          "sourcedGoalCredits": 226,
+          "discretionaryCompletions": 924,
+          "repeatedWithin60Minutes": 800,
+          "repetitionRate": 0.8658008658008658,
+          "kindTransitions": 75,
+          "retainedProposals": {
+            "count": 512,
+            "localDecisions": 0,
+            "proposalsWithMemory": 512,
+            "referencedMemories": 3072,
+            "sourceCoverage": 1
+          },
+          "modelAttemptsReserved": 0
+        }
+      },
+      "goals": {
+        "digest": "fnv1a-f90bf70f",
+        "actionMix": {
+          "eat": 96,
+          "sleep": 324,
+          "rest": 487,
+          "socialize": 42,
+          "occupation": 645
+        },
+        "quality": {
+          "residents": [
+            {
+              "npcId": "rb-song-tang",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 35,
+                "socialize": 8,
+                "occupation": 65
+              },
+              "needs": {
+                "hunger": 41.5,
+                "energy": 99.125,
+                "loneliness": 38.225
+              }
+            },
+            {
+              "npcId": "rb-zhou-yan",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 34,
+                "socialize": 7,
+                "occupation": 60
+              },
+              "needs": {
+                "hunger": 39.5,
+                "energy": 98.775,
+                "loneliness": 54.3
+              }
+            },
+            {
+              "npcId": "rb-xu-zhiwei",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 49,
+                "socialize": 6,
+                "occupation": 31
+              },
+              "needs": {
+                "hunger": 30,
+                "energy": 99.3,
+                "loneliness": 66.8
+              }
+            },
+            {
+              "npcId": "rb-lu-xingzhou",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 27,
+                "socialize": 7,
+                "occupation": 62
+              },
+              "needs": {
+                "hunger": 30,
+                "energy": 99.125,
+                "loneliness": 51.4
+              }
+            },
+            {
+              "npcId": "rb-chen-hui",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 31,
+                "socialize": 6,
+                "occupation": 61
+              },
+              "needs": {
+                "hunger": 41,
+                "energy": 99.475,
+                "loneliness": 86.8
+              }
+            },
+            {
+              "npcId": "rb-gu-yuanshan",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 57,
+                "socialize": 7,
+                "occupation": 30
+              },
+              "needs": {
+                "hunger": 41,
+                "energy": 98.775,
+                "loneliness": 62.3
+              }
+            },
+            {
+              "npcId": "rb-bai-lu",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 26,
+                "socialize": 7,
+                "occupation": 67
+              },
+              "needs": {
+                "hunger": 29.5,
+                "energy": 97.4,
+                "loneliness": 65.325
+              }
+            },
+            {
+              "npcId": "rb-lin-ali",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 94,
+                "socialize": 7,
+                "occupation": 13
+              },
+              "needs": {
+                "hunger": 28.5,
+                "energy": 99.125,
+                "loneliness": 44.9
+              }
+            },
+            {
+              "npcId": "rb-cheng-du",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 39,
+                "socialize": 7,
+                "occupation": 64
+              },
+              "needs": {
+                "hunger": 28.5,
+                "energy": 100,
+                "loneliness": 78.725
+              }
+            },
+            {
+              "npcId": "rb-shen-ying",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 32,
+                "socialize": 8,
+                "occupation": 62
+              },
+              "needs": {
+                "hunger": 29.5,
+                "energy": 99.125,
+                "loneliness": 32
+              }
+            },
+            {
+              "npcId": "rb-han-shuo",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 33,
+                "socialize": 7,
+                "occupation": 63
+              },
+              "needs": {
+                "hunger": 41.5,
+                "energy": 98.95,
+                "loneliness": 55.3
+              }
+            },
+            {
+              "npcId": "rb-jiang-zhi",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 30,
+                "socialize": 7,
+                "occupation": 67
+              },
+              "needs": {
+                "hunger": 41.5,
+                "energy": 97.725,
+                "loneliness": 56.825
+              }
+            }
+          ],
+          "fullyObservedGoalDays": [
+            2,
+            3
+          ],
+          "completedGoals": 72,
+          "totalGoals": 72,
+          "goalCompletionRate": 1,
+          "sourcedGoalCredits": 243,
+          "discretionaryCompletions": 1132,
+          "repeatedWithin60Minutes": 520,
+          "repetitionRate": 0.45936395759717313,
+          "kindTransitions": 573,
+          "retainedProposals": {
+            "count": 512,
+            "localDecisions": 283,
+            "proposalsWithMemory": 512,
+            "referencedMemories": 3072,
+            "sourceCoverage": 1
+          },
+          "modelAttemptsReserved": 0
+        }
+      },
+      "actualActionMixChanged": true
+    },
+    {
+      "seed": "river-life-03",
+      "rules": {
+        "digest": "fnv1a-05dfb821",
+        "actionMix": {
+          "eat": 96,
+          "sleep": 325,
+          "rest": 353,
+          "socialize": 41,
+          "occupation": 562
+        },
+        "quality": {
+          "residents": [
+            {
+              "npcId": "rb-song-tang",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 37,
+                "socialize": 7,
+                "occupation": 59
+              },
+              "needs": {
+                "hunger": 27.5,
+                "energy": 100,
+                "loneliness": 64.45
+              }
+            },
+            {
+              "npcId": "rb-zhou-yan",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 19,
+                "socialize": 7,
+                "occupation": 54
+              },
+              "needs": {
+                "hunger": 30,
+                "energy": 100,
+                "loneliness": 70.2
+              }
+            },
+            {
+              "npcId": "rb-xu-zhiwei",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 57,
+                "socialize": 8,
+                "occupation": 11
+              },
+              "needs": {
+                "hunger": 30,
+                "energy": 98.775,
+                "loneliness": 34.325
+              }
+            },
+            {
+              "npcId": "rb-lu-xingzhou",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 16,
+                "socialize": 7,
+                "occupation": 57
+              },
+              "needs": {
+                "hunger": 39.5,
+                "energy": 98.6,
+                "loneliness": 60.3
+              }
+            },
+            {
+              "npcId": "rb-chen-hui",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 23,
+                "socialize": 7,
+                "occupation": 55
+              },
+              "needs": {
+                "hunger": 28.5,
+                "energy": 99.475,
+                "loneliness": 44.575
+              }
+            },
+            {
+              "npcId": "rb-gu-yuanshan",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 57,
+                "socialize": 7,
+                "occupation": 15
+              },
+              "needs": {
+                "hunger": 29.5,
+                "energy": 98.95,
+                "loneliness": 59.3
+              }
+            },
+            {
+              "npcId": "rb-bai-lu",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 28,
+                "rest": 13,
+                "socialize": 6,
+                "occupation": 61
+              },
+              "needs": {
+                "hunger": 29,
+                "energy": 99.65,
+                "loneliness": 68.675
+              }
+            },
+            {
+              "npcId": "rb-lin-ali",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 61,
+                "socialize": 7,
+                "occupation": 15
+              },
+              "needs": {
+                "hunger": 40.5,
+                "energy": 100,
+                "loneliness": 63.5
+              }
+            },
+            {
+              "npcId": "rb-cheng-du",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 17,
+                "socialize": 6,
+                "occupation": 58
+              },
+              "needs": {
+                "hunger": 29.5,
+                "energy": 99.475,
+                "loneliness": 87.8
+              }
+            },
+            {
+              "npcId": "rb-shen-ying",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 18,
+                "socialize": 7,
+                "occupation": 60
+              },
+              "needs": {
+                "hunger": 29.5,
+                "energy": 100,
+                "loneliness": 55.3
+              }
+            },
+            {
+              "npcId": "rb-han-shuo",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 18,
+                "socialize": 6,
+                "occupation": 57
+              },
+              "needs": {
+                "hunger": 42,
+                "energy": 99.3,
+                "loneliness": 72.8
+              }
+            },
+            {
+              "npcId": "rb-jiang-zhi",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 17,
+                "socialize": 7,
+                "occupation": 60
+              },
+              "needs": {
+                "hunger": 41,
+                "energy": 100,
+                "loneliness": 64.45
+              }
+            }
+          ],
+          "fullyObservedGoalDays": [
+            2,
+            3
+          ],
+          "completedGoals": 72,
+          "totalGoals": 72,
+          "goalCompletionRate": 1,
+          "sourcedGoalCredits": 221,
+          "discretionaryCompletions": 915,
+          "repeatedWithin60Minutes": 795,
+          "repetitionRate": 0.8688524590163934,
+          "kindTransitions": 71,
+          "retainedProposals": {
+            "count": 512,
+            "localDecisions": 0,
+            "proposalsWithMemory": 512,
+            "referencedMemories": 3072,
+            "sourceCoverage": 1
+          },
+          "modelAttemptsReserved": 0
+        }
+      },
+      "goals": {
+        "digest": "fnv1a-2e286c92",
+        "actionMix": {
+          "eat": 96,
+          "sleep": 324,
+          "rest": 511,
+          "socialize": 43,
+          "occupation": 644
+        },
+        "quality": {
+          "residents": [
+            {
+              "npcId": "rb-song-tang",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 29,
+                "socialize": 8,
+                "occupation": 69
+              },
+              "needs": {
+                "hunger": 29,
+                "energy": 98.05,
+                "loneliness": 48.75
+              }
+            },
+            {
+              "npcId": "rb-zhou-yan",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 38,
+                "socialize": 6,
+                "occupation": 59
+              },
+              "needs": {
+                "hunger": 28.5,
+                "energy": 99.125,
+                "loneliness": 75.65
+              }
+            },
+            {
+              "npcId": "rb-xu-zhiwei",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 50,
+                "socialize": 6,
+                "occupation": 30
+              },
+              "needs": {
+                "hunger": 30,
+                "energy": 99.3,
+                "loneliness": 72.8
+              }
+            },
+            {
+              "npcId": "rb-lu-xingzhou",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 30,
+                "socialize": 8,
+                "occupation": 63
+              },
+              "needs": {
+                "hunger": 41,
+                "energy": 98.95,
+                "loneliness": 32.05
+              }
+            },
+            {
+              "npcId": "rb-chen-hui",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 34,
+                "socialize": 7,
+                "occupation": 62
+              },
+              "needs": {
+                "hunger": 30,
+                "energy": 98.7,
+                "loneliness": 53.3
+              }
+            },
+            {
+              "npcId": "rb-gu-yuanshan",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 54,
+                "socialize": 7,
+                "occupation": 34
+              },
+              "needs": {
+                "hunger": 29.5,
+                "energy": 98.95,
+                "loneliness": 59.3
+              }
+            },
+            {
+              "npcId": "rb-bai-lu",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 49,
+                "socialize": 7,
+                "occupation": 59
+              },
+              "needs": {
+                "hunger": 29,
+                "energy": 98.6,
+                "loneliness": 43.6
+              }
+            },
+            {
+              "npcId": "rb-lin-ali",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 78,
+                "socialize": 8,
+                "occupation": 10
+              },
+              "needs": {
+                "hunger": 40,
+                "energy": 98.775,
+                "loneliness": 29.8
+              }
+            },
+            {
+              "npcId": "rb-cheng-du",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 57,
+                "socialize": 6,
+                "occupation": 60
+              },
+              "needs": {
+                "hunger": 28,
+                "energy": 99.475,
+                "loneliness": 87.8
+              }
+            },
+            {
+              "npcId": "rb-shen-ying",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 30,
+                "socialize": 8,
+                "occupation": 66
+              },
+              "needs": {
+                "hunger": 29.5,
+                "energy": 98.95,
+                "loneliness": 36.675
+              }
+            },
+            {
+              "npcId": "rb-han-shuo",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 29,
+                "socialize": 7,
+                "occupation": 65
+              },
+              "needs": {
+                "hunger": 42,
+                "energy": 97.725,
+                "loneliness": 60.3
+              }
+            },
+            {
+              "npcId": "rb-jiang-zhi",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 33,
+                "socialize": 8,
+                "occupation": 67
+              },
+              "needs": {
+                "hunger": 42,
+                "energy": 98.975,
+                "loneliness": 31.35
+              }
+            }
+          ],
+          "fullyObservedGoalDays": [
+            2,
+            3
+          ],
+          "completedGoals": 72,
+          "totalGoals": 72,
+          "goalCompletionRate": 1,
+          "sourcedGoalCredits": 245,
+          "discretionaryCompletions": 1155,
+          "repeatedWithin60Minutes": 558,
+          "repetitionRate": 0.4831168831168831,
+          "kindTransitions": 550,
+          "retainedProposals": {
+            "count": 512,
+            "localDecisions": 265,
+            "proposalsWithMemory": 512,
+            "referencedMemories": 3072,
+            "sourceCoverage": 1
+          },
+          "modelAttemptsReserved": 0
+        }
+      },
+      "actualActionMixChanged": true
+    },
+    {
+      "seed": "river-life-04",
+      "rules": {
+        "digest": "fnv1a-1598ffa3",
+        "actionMix": {
+          "eat": 96,
+          "sleep": 325,
+          "rest": 368,
+          "socialize": 44,
+          "occupation": 564
+        },
+        "quality": {
+          "residents": [
+            {
+              "npcId": "rb-song-tang",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 23,
+                "socialize": 8,
+                "occupation": 58
+              },
+              "needs": {
+                "hunger": 27.5,
+                "energy": 99.925,
+                "loneliness": 33.675
+              }
+            },
+            {
+              "npcId": "rb-zhou-yan",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 28,
+                "rest": 15,
+                "socialize": 7,
+                "occupation": 55
+              },
+              "needs": {
+                "hunger": 30,
+                "energy": 99.3,
+                "loneliness": 57.8
+              }
+            },
+            {
+              "npcId": "rb-xu-zhiwei",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 57,
+                "socialize": 7,
+                "occupation": 10
+              },
+              "needs": {
+                "hunger": 27.5,
+                "energy": 99.575,
+                "loneliness": 56.3
+              }
+            },
+            {
+              "npcId": "rb-lu-xingzhou",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 17,
+                "socialize": 6,
+                "occupation": 57
+              },
+              "needs": {
+                "hunger": 29,
+                "energy": 99.825,
+                "loneliness": 82.475
+              }
+            },
+            {
+              "npcId": "rb-chen-hui",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 37,
+                "socialize": 7,
+                "occupation": 55
+              },
+              "needs": {
+                "hunger": 28.5,
+                "energy": 98.775,
+                "loneliness": 44.25
+              }
+            },
+            {
+              "npcId": "rb-gu-yuanshan",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 62,
+                "socialize": 7,
+                "occupation": 17
+              },
+              "needs": {
+                "hunger": 39.5,
+                "energy": 98.6,
+                "loneliness": 57.3
+              }
+            },
+            {
+              "npcId": "rb-bai-lu",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 18,
+                "socialize": 7,
+                "occupation": 61
+              },
+              "needs": {
+                "hunger": 29,
+                "energy": 98.6,
+                "loneliness": 51.3
+              }
+            },
+            {
+              "npcId": "rb-lin-ali",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 58,
+                "socialize": 8,
+                "occupation": 15
+              },
+              "needs": {
+                "hunger": 30,
+                "energy": 100,
+                "loneliness": 26.65
+              }
+            },
+            {
+              "npcId": "rb-cheng-du",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 17,
+                "socialize": 7,
+                "occupation": 57
+              },
+              "needs": {
+                "hunger": 29.5,
+                "energy": 98.775,
+                "loneliness": 63.475
+              }
+            },
+            {
+              "npcId": "rb-shen-ying",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 15,
+                "socialize": 8,
+                "occupation": 61
+              },
+              "needs": {
+                "hunger": 41,
+                "energy": 100,
+                "loneliness": 10.8
+              }
+            },
+            {
+              "npcId": "rb-han-shuo",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 24,
+                "socialize": 8,
+                "occupation": 59
+              },
+              "needs": {
+                "hunger": 41,
+                "energy": 99.125,
+                "loneliness": 36.3
+              }
+            },
+            {
+              "npcId": "rb-jiang-zhi",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 25,
+                "socialize": 8,
+                "occupation": 59
+              },
+              "needs": {
+                "hunger": 29.5,
+                "energy": 100,
+                "loneliness": 34.975
+              }
+            }
+          ],
+          "fullyObservedGoalDays": [
+            2,
+            3
+          ],
+          "completedGoals": 72,
+          "totalGoals": 72,
+          "goalCompletionRate": 1,
+          "sourcedGoalCredits": 222,
+          "discretionaryCompletions": 932,
+          "repeatedWithin60Minutes": 814,
+          "repetitionRate": 0.8733905579399142,
+          "kindTransitions": 71,
+          "retainedProposals": {
+            "count": 512,
+            "localDecisions": 0,
+            "proposalsWithMemory": 512,
+            "referencedMemories": 3072,
+            "sourceCoverage": 1
+          },
+          "modelAttemptsReserved": 0
+        }
+      },
+      "goals": {
+        "digest": "fnv1a-299541b4",
+        "actionMix": {
+          "eat": 96,
+          "sleep": 324,
+          "rest": 463,
+          "socialize": 44,
+          "occupation": 650
+        },
+        "quality": {
+          "residents": [
+            {
+              "npcId": "rb-song-tang",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 30,
+                "socialize": 7,
+                "occupation": 68
+              },
+              "needs": {
+                "hunger": 29,
+                "energy": 99.825,
+                "loneliness": 65.25
+              }
+            },
+            {
+              "npcId": "rb-zhou-yan",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 30,
+                "socialize": 8,
+                "occupation": 59
+              },
+              "needs": {
+                "hunger": 28.5,
+                "energy": 99.475,
+                "loneliness": 32.8
+              }
+            },
+            {
+              "npcId": "rb-xu-zhiwei",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 49,
+                "socialize": 7,
+                "occupation": 32
+              },
+              "needs": {
+                "hunger": 30,
+                "energy": 98.95,
+                "loneliness": 63.8
+              }
+            },
+            {
+              "npcId": "rb-lu-xingzhou",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 36,
+                "socialize": 7,
+                "occupation": 63
+              },
+              "needs": {
+                "hunger": 27.5,
+                "energy": 98.95,
+                "loneliness": 53.3
+              }
+            },
+            {
+              "npcId": "rb-chen-hui",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 28,
+                "socialize": 6,
+                "occupation": 61
+              },
+              "needs": {
+                "hunger": 29.5,
+                "energy": 99.3,
+                "loneliness": 82.475
+              }
+            },
+            {
+              "npcId": "rb-gu-yuanshan",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 50,
+                "socialize": 7,
+                "occupation": 35
+              },
+              "needs": {
+                "hunger": 39.5,
+                "energy": 98.7,
+                "loneliness": 60.775
+              }
+            },
+            {
+              "npcId": "rb-bai-lu",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 30,
+                "socialize": 6,
+                "occupation": 63
+              },
+              "needs": {
+                "hunger": 29,
+                "energy": 99.3,
+                "loneliness": 93.675
+              }
+            },
+            {
+              "npcId": "rb-lin-ali",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 64,
+                "socialize": 8,
+                "occupation": 14
+              },
+              "needs": {
+                "hunger": 28.5,
+                "energy": 100,
+                "loneliness": 28.225
+              }
+            },
+            {
+              "npcId": "rb-cheng-du",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 25,
+                "socialize": 8,
+                "occupation": 66
+              },
+              "needs": {
+                "hunger": 39.5,
+                "energy": 98.775,
+                "loneliness": 35.3
+              }
+            },
+            {
+              "npcId": "rb-shen-ying",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 35,
+                "socialize": 8,
+                "occupation": 64
+              },
+              "needs": {
+                "hunger": 41.5,
+                "energy": 97.85,
+                "loneliness": 7.725
+              }
+            },
+            {
+              "npcId": "rb-han-shuo",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 43,
+                "socialize": 8,
+                "occupation": 61
+              },
+              "needs": {
+                "hunger": 41,
+                "energy": 99.3,
+                "loneliness": 36.95
+              }
+            },
+            {
+              "npcId": "rb-jiang-zhi",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 43,
+                "socialize": 8,
+                "occupation": 64
+              },
+              "needs": {
+                "hunger": 29.5,
+                "energy": 99.3,
+                "loneliness": 28.8
+              }
+            }
+          ],
+          "fullyObservedGoalDays": [
+            2,
+            3
+          ],
+          "completedGoals": 72,
+          "totalGoals": 72,
+          "goalCompletionRate": 1,
+          "sourcedGoalCredits": 243,
+          "discretionaryCompletions": 1113,
+          "repeatedWithin60Minutes": 523,
+          "repetitionRate": 0.46990116801437554,
+          "kindTransitions": 542,
+          "retainedProposals": {
+            "count": 512,
+            "localDecisions": 283,
+            "proposalsWithMemory": 512,
+            "referencedMemories": 3072,
+            "sourceCoverage": 1
+          },
+          "modelAttemptsReserved": 0
+        }
+      },
+      "actualActionMixChanged": true
+    },
+    {
+      "seed": "river-life-05",
+      "rules": {
+        "digest": "fnv1a-70a3a7c9",
+        "actionMix": {
+          "eat": 96,
+          "sleep": 325,
+          "rest": 453,
+          "socialize": 42,
+          "occupation": 542
+        },
+        "quality": {
+          "residents": [
+            {
+              "npcId": "rb-song-tang",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 16,
+                "socialize": 7,
+                "occupation": 60
+              },
+              "needs": {
+                "hunger": 27.5,
+                "energy": 100,
+                "loneliness": 64.45
+              }
+            },
+            {
+              "npcId": "rb-zhou-yan",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 17,
+                "socialize": 7,
+                "occupation": 54
+              },
+              "needs": {
+                "hunger": 40.5,
+                "energy": 100,
+                "loneliness": 66.3
+              }
+            },
+            {
+              "npcId": "rb-xu-zhiwei",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 63,
+                "socialize": 7,
+                "occupation": 9
+              },
+              "needs": {
+                "hunger": 29,
+                "energy": 99.575,
+                "loneliness": 63.5
+              }
+            },
+            {
+              "npcId": "rb-lu-xingzhou",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 22,
+                "socialize": 7,
+                "occupation": 55
+              },
+              "needs": {
+                "hunger": 42,
+                "energy": 100,
+                "loneliness": 59.175
+              }
+            },
+            {
+              "npcId": "rb-chen-hui",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 31,
+                "socialize": 7,
+                "occupation": 54
+              },
+              "needs": {
+                "hunger": 40.5,
+                "energy": 99.475,
+                "loneliness": 80.675
+              }
+            },
+            {
+              "npcId": "rb-gu-yuanshan",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 60,
+                "socialize": 7,
+                "occupation": 14
+              },
+              "needs": {
+                "hunger": 29,
+                "energy": 100,
+                "loneliness": 62.3
+              }
+            },
+            {
+              "npcId": "rb-bai-lu",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 24,
+                "socialize": 6,
+                "occupation": 58
+              },
+              "needs": {
+                "hunger": 28,
+                "energy": 99.65,
+                "loneliness": 74.7
+              }
+            },
+            {
+              "npcId": "rb-lin-ali",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 126,
+                "socialize": 6,
+                "occupation": 6
+              },
+              "needs": {
+                "hunger": 41.5,
+                "energy": 99.3,
+                "loneliness": 62.8
+              }
+            },
+            {
+              "npcId": "rb-cheng-du",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 29,
+                "socialize": 7,
+                "occupation": 57
+              },
+              "needs": {
+                "hunger": 40.5,
+                "energy": 100,
+                "loneliness": 54.275
+              }
+            },
+            {
+              "npcId": "rb-shen-ying",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 16,
+                "socialize": 8,
+                "occupation": 59
+              },
+              "needs": {
+                "hunger": 39.5,
+                "energy": 98.95,
+                "loneliness": 36.625
+              }
+            },
+            {
+              "npcId": "rb-han-shuo",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 26,
+                "socialize": 7,
+                "occupation": 58
+              },
+              "needs": {
+                "hunger": 29,
+                "energy": 98.95,
+                "loneliness": 63.8
+              }
+            },
+            {
+              "npcId": "rb-jiang-zhi",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 28,
+                "rest": 23,
+                "socialize": 8,
+                "occupation": 58
+              },
+              "needs": {
+                "hunger": 40,
+                "energy": 100,
+                "loneliness": 48.1
+              }
+            }
+          ],
+          "fullyObservedGoalDays": [
+            2,
+            3
+          ],
+          "completedGoals": 72,
+          "totalGoals": 72,
+          "goalCompletionRate": 1,
+          "sourcedGoalCredits": 223,
+          "discretionaryCompletions": 995,
+          "repeatedWithin60Minutes": 877,
+          "repetitionRate": 0.8814070351758794,
+          "kindTransitions": 71,
+          "retainedProposals": {
+            "count": 512,
+            "localDecisions": 0,
+            "proposalsWithMemory": 512,
+            "referencedMemories": 3072,
+            "sourceCoverage": 1
+          },
+          "modelAttemptsReserved": 0
+        }
+      },
+      "goals": {
+        "digest": "fnv1a-42487ea4",
+        "actionMix": {
+          "eat": 96,
+          "sleep": 324,
+          "rest": 505,
+          "socialize": 43,
+          "occupation": 638
+        },
+        "quality": {
+          "residents": [
+            {
+              "npcId": "rb-song-tang",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 36,
+                "socialize": 8,
+                "occupation": 65
+              },
+              "needs": {
+                "hunger": 29,
+                "energy": 98.65,
+                "loneliness": 38.225
+              }
+            },
+            {
+              "npcId": "rb-zhou-yan",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 29,
+                "socialize": 6,
+                "occupation": 59
+              },
+              "needs": {
+                "hunger": 41,
+                "energy": 99.3,
+                "loneliness": 87.825
+              }
+            },
+            {
+              "npcId": "rb-xu-zhiwei",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 56,
+                "socialize": 7,
+                "occupation": 32
+              },
+              "needs": {
+                "hunger": 30,
+                "energy": 97.725,
+                "loneliness": 64.15
+              }
+            },
+            {
+              "npcId": "rb-lu-xingzhou",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 33,
+                "socialize": 7,
+                "occupation": 62
+              },
+              "needs": {
+                "hunger": 40,
+                "energy": 98.95,
+                "loneliness": 57.3
+              }
+            },
+            {
+              "npcId": "rb-chen-hui",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 27,
+                "socialize": 8,
+                "occupation": 62
+              },
+              "needs": {
+                "hunger": 41.5,
+                "energy": 98.95,
+                "loneliness": 38.875
+              }
+            },
+            {
+              "npcId": "rb-gu-yuanshan",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 52,
+                "socialize": 7,
+                "occupation": 32
+              },
+              "needs": {
+                "hunger": 29.5,
+                "energy": 99.475,
+                "loneliness": 62.3
+              }
+            },
+            {
+              "npcId": "rb-bai-lu",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 29,
+                "socialize": 7,
+                "occupation": 63
+              },
+              "needs": {
+                "hunger": 29.5,
+                "energy": 99.3,
+                "loneliness": 71.175
+              }
+            },
+            {
+              "npcId": "rb-lin-ali",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 109,
+                "socialize": 6,
+                "occupation": 6
+              },
+              "needs": {
+                "hunger": 41,
+                "energy": 99.475,
+                "loneliness": 75.3
+              }
+            },
+            {
+              "npcId": "rb-cheng-du",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 28,
+                "socialize": 7,
+                "occupation": 65
+              },
+              "needs": {
+                "hunger": 42,
+                "energy": 98.7,
+                "loneliness": 61.375
+              }
+            },
+            {
+              "npcId": "rb-shen-ying",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 31,
+                "socialize": 8,
+                "occupation": 65
+              },
+              "needs": {
+                "hunger": 42,
+                "energy": 99.125,
+                "loneliness": 41.225
+              }
+            },
+            {
+              "npcId": "rb-han-shuo",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 28,
+                "socialize": 8,
+                "occupation": 64
+              },
+              "needs": {
+                "hunger": 29.5,
+                "energy": 98.7,
+                "loneliness": 50.05
+              }
+            },
+            {
+              "npcId": "rb-jiang-zhi",
+              "completedGoals": 6,
+              "totalGoals": 6,
+              "completedActions": {
+                "eat": 8,
+                "sleep": 27,
+                "rest": 47,
+                "socialize": 7,
+                "occupation": 63
+              },
+              "needs": {
+                "hunger": 41,
+                "energy": 98.475,
+                "loneliness": 64.45
+              }
+            }
+          ],
+          "fullyObservedGoalDays": [
+            2,
+            3
+          ],
+          "completedGoals": 72,
+          "totalGoals": 72,
+          "goalCompletionRate": 1,
+          "sourcedGoalCredits": 243,
+          "discretionaryCompletions": 1143,
+          "repeatedWithin60Minutes": 541,
+          "repetitionRate": 0.47331583552055995,
+          "kindTransitions": 555,
+          "retainedProposals": {
+            "count": 512,
+            "localDecisions": 268,
+            "proposalsWithMemory": 512,
+            "referencedMemories": 3072,
+            "sourceCoverage": 1
+          },
+          "modelAttemptsReserved": 0
+        }
+      },
+      "actualActionMixChanged": true
+    }
+  ],
+  "pooled": {
+    "rules": {
+      "goals": 360,
+      "totalGoals": 360,
+      "repeated": 4089,
+      "completions": 4689,
+      "credits": 1116,
+      "goalCompletionRate": 1,
+      "repetitionRate": 0.872040946896993
+    },
+    "goals": {
+      "goals": 360,
+      "totalGoals": 360,
+      "repeated": 2652,
+      "completions": 5645,
+      "credits": 1221,
+      "goalCompletionRate": 1,
+      "repetitionRate": 0.46979627989371125
+    }
+  },
+  "scope": "Five matched seeds, two deterministic modes, 72 hours each; all ten cells have midrun restore and complete independent replay.",
+  "cautions": [
+    "An observed difference is not proof of human enjoyment or LLM intelligence.",
+    "Repetition rate includes fixed specialist recovery; alternative action durations also affect this measure.",
+    "Fully observed goal days are days 2 and 3. Proposal-source coverage concerns the retained last-512 ledger.",
+    "This is a 12-resident engine comparison, not a browser performance or 100-resident qualification."
+  ],
+  "sourceHashes": {
+    "packages/engine/src/town/resident-agenda.ts": "207e8afeb6a3dd9540369960b2648a5c0a1f1289a508ddbf58554bbc141ec2ed",
+    "packages/engine/src/town/resident-cognition.ts": "51bc7ce10a15d81741ed1606a53967bc1bada2d73b1212c6248255b865eb132c",
+    "packages/engine/src/town/resident-life.ts": "977d9363d71063662609c6570ae42e24b0eaa051a93386c23a49ee38b835fe3a",
+    "packages/engine/src/town/resident-work.ts": "23f39a583c34d0880456e201a93c44d19ae64a7dc958e66c4e958ff1c9955709",
+    "packages/engine/src/persistent-town.ts": "9101bb443a8b9fe56568caa11779c6a52165f8608f3285704373627860fed4c4",
+    "packages/engine/src/town/agent-observation.ts": "0af4d5b279d1ef5276095b9fab77adaa9e9859dabc2a181dc525ea05d5b284e9",
+    "packages/engine/src/town/agent-intent.ts": "c7828e5dd1f2859cf382cd469e23da1ad495f271efa3b82eb0efe6c22422588c",
+    "packages/engine/src/town-exploration.ts": "f7a4ce804dca463fdfaa2a685ce8aacbe240b629eae9b1496cea65c4cab10952",
+    "lib/world/town-exploration-store.ts": "7e451c6cd2504f298e493c8452058a82b0356b7fdea68ad31e400d5a897a04b6",
+    "lib/world/resident-decision-provider.ts": "646b5fadde240a2936cc856f7229ce7df8e019b337316c64ba9bbd0ca743c087",
+    "lib/world/resident-life-provider.ts": "cfbfcf5c119754d2793e421bad96725593b7c9b620a944d1711f30ce380d9e1e",
+    "lib/world/agent-first-store.ts": "3dde29430d3fdb5c0ce6922f3135702f32e9cbb9e1aea7a394dd78fea430c991",
+    "lib/town-play-contract.ts": "3528ff7af5e8bcd790a01810f5753948941c5508d7e8549f7188d686e33358db",
+    "app/api/v1/town-play/agent-first/route.ts": "673ad07424da7aea368d65040d6e9a178413995b5fdb46a1bc7de028dc6f3076",
+    "app/town-play/agent-first/AgentFirstTown.tsx": "1ad75e035933a598356ed8d8c4d98266561ee72592f0d491c97e77f2dadd07cb",
+    "app/town-play/agent-first/useAgentFirst.ts": "495a0cdfe11501f21a5f95925501d8c22033de80bb26c10a2a36c0e062fe9da9",
+    "app/town-play/agent-first/MapCanvas.tsx": "cd541f1f1cd8a29c28d5f3092d56a3bb98688b26d55d57f0f23b0b7b488496c1",
+    "app/town-play/agent-first/agent-first.module.css": "cd7881dbdff7ecb497a8f18a425c975bf3dce7e840911b0204e557e74fea92b0"
+  }
+}

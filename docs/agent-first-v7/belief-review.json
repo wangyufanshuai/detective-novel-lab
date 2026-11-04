@@ -1,0 +1,33 @@
+{
+  "schema": "resident-belief-checks.v1",
+  "checkedAt": "2026-11-03T02:01:29.949Z",
+  "passed": true,
+  "checks": [
+    "belief-starts-from-owned-agreement-memory-and-does-not-copy-global-outcome-or-reason",
+    "multiple-real-conversations-bind-identifier-free-responses-to-the-correct-appointment",
+    "witness-absence-and-own-missed-clock-are-different-private-observations-with-no-remote-memory",
+    "owned-unresolved-observation-changes-an-actual-peer-choice-with-equal-trust-and-legal-options",
+    "real-co-present-followup-records-unverified-account-and-eases-caution-without-retroactive-fulfillment",
+    "referee-rejects-false-certainty-and-foreign-experience-and-legacy-reconstruction-requires-owned-memory",
+    "uncertain-beliefs-survive-normalize-save-checkpoint-and-world-replay-with-zero-model-attempts"
+  ],
+  "example": {
+    "waiter": "unfulfilled-observed",
+    "absent": "self-unfulfilled",
+    "reportVerification": "unverified",
+    "cautionBefore": 0.3,
+    "cautionAfter": 0.1
+  },
+  "sourceHashes": {
+    "packages/engine/src/town/resident-social-beliefs.ts": "66f303cb875505778cdb4e9ceb4952138447f262121cda119a88ba7d1590ba89",
+    "packages/engine/src/town/resident-appointments.ts": "613bd2b70303c3b74e7eeba549d6cf59788996a45b49e9de887842244963c385",
+    "packages/engine/src/town/resident-life.ts": "d75f602d44d129f0280fce5c12afc14b31418364744e4258b13de6db656eddd5",
+    "packages/engine/src/town/resident-cognition.ts": "32d05f97cb676ab01ca027372dd6bc30c99b30857ec573ab0d69e6547c99bf36",
+    "packages/engine/src/persistent-town.ts": "9101bb443a8b9fe56568caa11779c6a52165f8608f3285704373627860fed4c4",
+    "scripts/run-resident-belief-checks.mjs": "f6165f4a08b43f1dc4a7e5f2684ef0338178490df1e198fee6a25666bfcc13bf"
+  },
+  "limits": [
+    "Controlled social scenario and counterfactual belief-record ablation use the real clock; original events and memories remain present. Natural multi-seed evidence is separate.",
+    "Accounts are authored acknowledgments, not verified causes, generated dialogue, deception or live LLM reasoning."
+  ]
+}

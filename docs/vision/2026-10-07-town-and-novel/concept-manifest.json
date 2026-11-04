@@ -1,0 +1,33 @@
+{
+  "kind": "generated-art-direction-and-ui-concepts",
+  "generator": "built-in image_gen",
+  "notBlenderRenders": true,
+  "notRuntimeEvidence": true,
+  "assets": [
+    {
+      "file": "a-fog-harbour.png",
+      "bytes": 3275359,
+      "sha256": "a62345a36ce9e70e0814535b741ed4e811e6966d60feff782c34a5093a11c06f"
+    },
+    {
+      "file": "b-riverbend-miniature.png",
+      "bytes": 3274789,
+      "sha256": "188e99764da56134497cc11a874d3b63f7ea1a09fe8f7a5b482e3176d99e4b45"
+    },
+    {
+      "file": "c-canal-secrets.png",
+      "bytes": 3419963,
+      "sha256": "d28d68785d506be57a6b4f0a14e30e3444a10239d4ffa09ea07975cebeeb9658"
+    },
+    {
+      "file": "d-ink-noir.png",
+      "bytes": 3415377,
+      "sha256": "354f3eda62761309a5474524d04fa28b151ebd3702e53fa09bf461f94690f130"
+    },
+    {
+      "file": "e-exploration-interface.png",
+      "bytes": 3030877,
+      "sha256": "845e124d41e185936eada0683d9d5a29a82be57be0c0fd95409126fc325e7c71"
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "schema": "resident-cognition-checks.v1",
+  "checkedAt": "2026-11-02T07:17:49.685Z",
+  "passed": true,
+  "checks": [
+    "retrieval-is-private-bounded-and-source-labeled",
+    "rules-proposal-is-exact-candidate-and-carries-policy-memory-sources",
+    "offline-agent-exhaustion-falls-back-to-rule-choice-without-another-attempt",
+    "referee-rejects-forged-stale-and-illegal-proposals-without-writing",
+    "rules-and-offline-agent-modes-are-deterministic-and-replay-distinct"
+  ],
+  "modes": {
+    "rules": {
+      "digest": "fnv1a-3f822a63",
+      "proposals": 43
+    },
+    "offlineAgent": {
+      "digest": "fnv1a-6c2de3da",
+      "proposals": 50,
+      "modelCalls": 0,
+      "budgetUsed": 43
+    }
+  },
+  "sources": {
+    "packages/engine/src/town/resident-cognition.ts": "51bc7ce10a15d81741ed1606a53967bc1bada2d73b1212c6248255b865eb132c",
+    "packages/engine/src/town/resident-life.ts": "1483d8cebdd547ff66cabff84e62e2be6f2d0747c3fb6513cca0963a1b0b3409",
+    "packages/engine/src/town/replay-contract.ts": "f7b31727e13c2e58163901df6c2ac7dbd2e874c4029ca4cabe4599731ddc98c8",
+    "packages/engine/src/persistent-town.ts": "9101bb443a8b9fe56568caa11779c6a52165f8608f3285704373627860fed4c4",
+    "scripts/run-resident-cognition-checks.mjs": "9fe7c103f025fa414288e90de85640c08549000f9c95471102614fa1c9a4fe40"
+  },
+  "limits": [
+    "Offline-agent mode is deterministic local candidate scoring, not a live LLM call.",
+    "No proposal is exposed as player truth; action admission remains bounded to server-built candidates.",
+    "This is a 24-tick comparison, not a three-day quality gate or case fairness result."
+  ]
+}

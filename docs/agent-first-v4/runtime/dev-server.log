@@ -1,0 +1,19 @@
+▲ Next.js 16.3.0 (webpack)
+- Local:         http://127.0.0.1:3187
+- Network:       http://127.0.0.1:3187
+✓ Ready in 4.9s
+✓ Running next.config.ts took 779ms
+- Experiments (use with caution):
+  · cpus: 4
+
+ GET /town-play/agent-first 200 in 3.6s (next.js: 3.0s, application-code: 534ms)
+ GET /api/v1/town-play/agent-first 200 in 1345ms (next.js: 1210ms, application-code: 135ms)
+ GET /town-play/agent-first 200 in 293ms (next.js: 66ms, application-code: 227ms)
+ GET /api/v1/town-play/agent-first 200 in 21ms (next.js: 4ms, application-code: 17ms)
+ POST /api/v1/town-play/agent-first 200 in 65ms (next.js: 2ms, application-code: 63ms)
+ POST /api/v1/town-play/agent-first 200 in 38ms (next.js: 26ms, application-code: 11ms)
+ POST /api/v1/town-play/agent-first 200 in 26ms (next.js: 1.7ms, application-code: 24ms)
+ GET /api/v1/town-play/agent-first 200 in 7ms (next.js: 2ms, application-code: 5ms)
+ GET /town-play/agent-first 200 in 37ms (next.js: 3ms, application-code: 34ms)
+ GET /api/v1/town-play/agent-first 200 in 8ms (next.js: 2.0ms, application-code: 6ms)
+ GET /api/v1/town-play/agent-first 200 in 8ms (next.js: 3ms, application-code: 5ms)
