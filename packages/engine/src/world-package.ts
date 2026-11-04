@@ -8,6 +8,9 @@ import {
   type TownInstitutionKind
 } from "./town-rules";
 import type { NPCProfile } from "./world-types";
+import { validateWorldAssetManifest, type WorldAssetManifest } from "./world-asset-manifest";
+export { validateWorldAssetManifest } from "./world-asset-manifest";
+export type { WorldAssetKind, WorldAssetStatus, WorldAssetManifestEntry, WorldAssetManifest } from "./world-asset-manifest";
 
 export type AgentPackAgent = Pick<NPCProfile, "id" | "name" | "role" | "homeLocationId" | "schedule" | "relationships" | "skills" | "alive"> & {
   profession?: string;
@@ -87,6 +90,7 @@ export type WorldPackageManifest = {
   agentPackPath: "agent-pack.json";
   ecosystemCatalogPath: "ecosystem-catalog.json";
   expectationsPath: "expectations.json";
+  assetManifestPath?: "asset-manifest.json";
 };
 
 export type WorldPackageFiles = {
@@ -99,6 +103,7 @@ export type WorldPackageFiles = {
   "expectations.json": unknown;
   "README.md"?: unknown;
   "ATTRIBUTION.md"?: unknown;
+  "asset-manifest.json"?: unknown;
 };
 
 export type WorldPackage = {
@@ -109,6 +114,7 @@ export type WorldPackage = {
   agentPack: AgentPack;
   ecosystemCatalog: EcosystemCatalog;
   expectations: unknown;
+  assetManifest?: WorldAssetManifest;
 };
 
 export type WorldPackageValidationReport = {
@@ -127,6 +133,7 @@ export type WorldPackageValidationReport = {
     resourceCount: number;
     taskTemplateCount: number;
     randomWorldEventCount: number;
+    assetCount?: number;
   };
   package?: WorldPackage;
   hash?: string;
@@ -262,6 +269,16 @@ export function validateWorldPackageFiles(files: Partial<WorldPackageFiles>): Wo
   const ruleValidation = validateTownRuleCatalog(parsed["rule-catalog.json"]);
   const agentValidation = validateAgentPack(parsed["agent-pack.json"]);
   const ecosystemValidation = validateEcosystemCatalog(parsed["ecosystem-catalog.json"]);
+  let assetManifest: WorldAssetManifest | undefined;
+  if (manifest?.assetManifestPath && !("asset-manifest.json" in parsed)) {
+    errors.push("manifest.assetManifestPath points to missing asset-manifest.json");
+  }
+  if ("asset-manifest.json" in parsed) {
+    if (manifest?.assetManifestPath !== "asset-manifest.json") errors.push("manifest.assetManifestPath must be asset-manifest.json when asset-manifest.json is present");
+    const assetValidation = validateWorldAssetManifest(parsed["asset-manifest.json"], manifest?.id);
+    if (!assetValidation.ok) errors.push(...assetValidation.errors.map((error) => `asset-manifest.json: ${error}`));
+    assetManifest = assetValidation.manifest || undefined;
+  }
   if (!scenarioValidation.ok) errors.push(...scenarioValidation.errors.map((error) => `scenario-pack.json: ${error}`));
   if (!mapValidation.ok) errors.push(...mapValidation.errors.map((error) => `map-pack.json: ${error}`));
   if (!ruleValidation.ok) errors.push(...ruleValidation.errors.map((error) => `rule-catalog.json: ${error}`));
@@ -281,7 +298,8 @@ export function validateWorldPackageFiles(files: Partial<WorldPackageFiles>): Wo
     ruleCatalog: parsed["rule-catalog.json"] as TownRuleCatalog,
     agentPack: parsed["agent-pack.json"] as AgentPack,
     ecosystemCatalog: parsed["ecosystem-catalog.json"] as EcosystemCatalog,
-    expectations: parsed["expectations.json"]
+    expectations: parsed["expectations.json"],
+    ...(assetManifest ? { assetManifest } : {})
   } : undefined;
   return {
     ok,
@@ -298,7 +316,8 @@ export function validateWorldPackageFiles(files: Partial<WorldPackageFiles>): Wo
       factionCount: (parsed["ecosystem-catalog.json"] as Partial<EcosystemCatalog> | undefined)?.factions?.length || 0,
       resourceCount: (parsed["ecosystem-catalog.json"] as Partial<EcosystemCatalog> | undefined)?.resources?.length || 0,
       taskTemplateCount: (parsed["ecosystem-catalog.json"] as Partial<EcosystemCatalog> | undefined)?.taskTemplates?.length || 0,
-      randomWorldEventCount: (parsed["ecosystem-catalog.json"] as Partial<EcosystemCatalog> | undefined)?.randomWorldEvents?.length || 0
+      randomWorldEventCount: (parsed["ecosystem-catalog.json"] as Partial<EcosystemCatalog> | undefined)?.randomWorldEvents?.length || 0,
+      assetCount: assetManifest?.assets.length || 0
     },
     package: worldPackage,
     hash: worldPackage ? createStablePackHash(worldPackage) : undefined

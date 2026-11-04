@@ -34,6 +34,8 @@ import {
   builtInScenarioPacks,
   builtInTownMapPacks,
   buildRunReplayBundle,
+  buildAgentDecisionTraceLinkSummary,
+  buildWorldReplayDigest,
   buildRuntimeGraphSummaries,
   benchmarkToRunSummary,
   createBuiltInScenarioPresets,
@@ -102,6 +104,7 @@ import {
   validatePlayableCaseRoute,
   type CaseFromLog,
   type CaseCandidate,
+  type AgentCaseExtractionReceipt,
   type DetectiveContentPack,
   type DetectiveCampaignRouteId,
   type EmergenceBenchmarkReport,
@@ -122,7 +125,9 @@ import {
   type InvestigationOperationsDecisionInput,
   type CampaignRecoveryDecisionInput,
   type CampaignRecoveryFailureKind,
+  type AgentDecisionTrace,
   type InvestigatorHeadquartersChoice,
+  type NpcActionCandidate,
   type WorldEventOfferDecisionInput,
   type WorldLeadFocus,
   type WorldEvent,
@@ -533,7 +538,7 @@ export function settleRuntimeWorldLeadOutcomeAndPrepareHandoff(world: RuntimeWor
   return { playerResourceCommitment, factionRelationship, worldLeadOutcome, worldLeadCaseHandoff, worldArc, worldArcDirective, arcConvergence, campaignSession, campaignFinaleDebrief, investigatorHeadquarters, townSocialResponse, worldInfluenceBudget: runtime ? toWorldInfluenceBudgetPublicSummary(runtime) : undefined };
 }
 
-export function applyRuntimeIntervention(world: RuntimeWorld, intervention: Omit<TownRuntimeIntervention, "id" | "tick" | "createdAt" | "branch" | "impact">) {
+export function applyRuntimeIntervention(world: RuntimeWorld, intervention: Omit<TownRuntimeIntervention, "id" | "tick" | "createdAt" | "branch" | "impact" | "decisionTraceId" | "decisionTraceDigest" | "decisionStatus">) {
   const result = applyTownRuntimeIntervention(world, intervention);
   const nextWorld = result.world as RuntimeWorld;
   nextWorld.persistentRuntime = result.runtime;
@@ -541,7 +546,12 @@ export function applyRuntimeIntervention(world: RuntimeWorld, intervention: Omit
   return result;
 }
 
-export function extractCase(world: RuntimeWorld, events: WorldEvent[], candidate: CaseCandidate) {
+export function extractCase(
+  world: RuntimeWorld,
+  events: WorldEvent[],
+  candidate: CaseCandidate,
+  options: { agent?: { actionId: string; reason: string; sourceRefs: string[] } } = {}
+) {
   if (world.persistentRuntime && investigatorHeadquartersExtractionRequired(world.persistentRuntime)) {
     throw new Error("INVESTIGATOR_HEADQUARTERS_REQUIRED: Choose one Headquarters preparation before extracting the next case.");
   }
@@ -583,6 +593,30 @@ export function extractCase(world: RuntimeWorld, events: WorldEvent[], candidate
       nextCandidate,
       ...nextWorld.persistentRuntime.candidates.filter((item) => item.id !== nextCandidate.id)
     ];
+    if (options.agent) {
+      const receiptPayload = {
+        schema: "agent-case-extraction-receipt.v1" as const,
+        actionId: options.agent.actionId,
+        candidateId: nextCandidate.id,
+        reason: options.agent.reason,
+        sourceRefs: [...options.agent.sourceRefs],
+        caseId: result.activeCase.id,
+        triggeredEventId: result.activeCase.triggeredEventId,
+        triggerKind: result.activeCase.triggerKind,
+        createdAtTick: nextWorld.persistentRuntime.tick
+      };
+      const receipt: AgentCaseExtractionReceipt = {
+        ...receiptPayload,
+        receiptHash: createStablePackHash(receiptPayload)
+      };
+      const existingReceipt = (nextWorld.persistentRuntime.agentCaseExtractionReceipts || []).find((item) => item.actionId === receipt.actionId);
+      if (existingReceipt && existingReceipt.receiptHash !== receipt.receiptHash) {
+        throw new Error(`AGENT_CASE_EXTRACTION_CONFLICT: actionId ${receipt.actionId} is already bound to a different case extraction.`);
+      }
+      nextWorld.persistentRuntime.agentCaseExtractionReceipts = existingReceipt
+        ? nextWorld.persistentRuntime.agentCaseExtractionReceipts || []
+        : [...(nextWorld.persistentRuntime.agentCaseExtractionReceipts || []), receipt];
+    }
   }
   persistRuntimeWorld(nextWorld, result.events.filter((event) => !events.some((existing) => existing.id === event.id)), result.activeCase);
   return {
@@ -639,7 +673,57 @@ export function publicRuntime(runtime: PersistentTownRuntime) {
     arcConvergenceSummary: runtime.arcConvergenceSummary || toArcConvergencePublicSummary(runtime),
     campaignSessionSummary: runtime.campaignSessionSummary || toCampaignSessionPublicSummary(runtime),
     campaignFinaleDebrief: runtime.campaignFinaleDebrief || toCampaignFinaleDebriefPublicSummary(runtime),
+    agentDecisionTraceSummary: buildAgentDecisionTraceLinkSummary(runtime),
     snapshots: (runtime.snapshots || []).map(publicSnapshot)
+  };
+}
+
+/** Public observation shape for external agents. Private goals, known facts,
+ * resources, social profiles, memories, and source event ids stay server-side. */
+export function publicAgentState(agent: PersistentTownRuntime["agentStates"][number]) {
+  return {
+    npcId: agent.npcId,
+    locationId: agent.locationId,
+    relationshipPressure: agent.relationshipPressure,
+    secretRisk: agent.secretRisk,
+    fatigue: agent.fatigue,
+    alertness: agent.alertness,
+    nextActionPreview: agent.nextActionPreview,
+    propagatedMemoryCount: agent.propagatedMemoryCount
+  };
+}
+
+export function publicAgentCandidate(candidate: NpcActionCandidate) {
+  return {
+    id: candidate.id,
+    npcId: candidate.npcId,
+    kind: candidate.kind,
+    targetLocationId: candidate.targetLocationId,
+    targetNpcId: candidate.targetNpcId,
+    description: candidate.description,
+    legal: candidate.legal,
+    score: {
+      total: candidate.score.total,
+      socialAffinity: candidate.score.socialAffinity,
+      locationHeat: candidate.score.locationHeat,
+      institutionalPressure: candidate.score.institutionalPressure,
+      resourceFlow: candidate.score.resourceFlow,
+      worldSystemBias: candidate.score.worldSystemBias,
+      directorBias: candidate.score.directorBias
+    }
+  };
+}
+
+export function publicAgentDecisionTrace(trace: AgentDecisionTrace | null) {
+  if (!trace) return null;
+  return {
+    id: trace.id,
+    tick: trace.tick,
+    day: trace.day,
+    time: trace.time,
+    npcId: trace.npcId,
+    selectedCandidateId: trace.selectedCandidateId,
+    candidates: trace.candidates.map(publicAgentCandidate)
   };
 }
 
@@ -859,6 +943,7 @@ export function publicPlayerRuntime(runtime: PersistentTownRuntime) {
     worldInfluenceBudgetSummary: toWorldInfluenceBudgetPublicSummary(runtime),
     worldLeadPreview: runtime.worldLeadPreview,
     worldLeadOutcomeSummary: runtime.worldLeadOutcomeSummary,
+    worldLeadCaseHandoffSummary: runtime.worldLeadCaseHandoffSummary,
     worldArcSummary: runtime.worldArcSummary,
     worldArcDirectiveSummary: runtime.worldArcDirectiveSummary,
     playerResourceCommitmentSummary: runtime.playerResourceCommitmentSummary,
@@ -1055,6 +1140,7 @@ export function listScenarioPacks(world: RuntimeWorld, runtime: PersistentTownRu
         hash: stablePackHash(pack),
         worldPackageId: entry.worldPackageId,
         worldPackageHash: entry.worldPackageHash,
+        worldPackageReceiptHash: entry.worldPackageReceipt.receiptHash,
         agentPackId: entry.agentPackId,
         ecosystemCatalogId: entry.ecosystemCatalogId,
         validation: { ok: entry.discovery.ok, summary: entry.discovery.summary },
@@ -1163,6 +1249,7 @@ export function listTownMapPacks(world: RuntimeWorld, runtime: PersistentTownRun
         hash: stablePackHash(pack),
         worldPackageId: entry.worldPackageId,
         worldPackageHash: entry.worldPackageHash,
+        worldPackageReceiptHash: entry.worldPackageReceipt.receiptHash,
         agentPackId: entry.agentPackId,
         ecosystemCatalogId: entry.ecosystemCatalogId,
         validation: { ok: entry.discovery.ok, summary: entry.discovery.summary },
@@ -1266,6 +1353,7 @@ export function listTownRuleCatalogs(world: RuntimeWorld, runtime: PersistentTow
         hash: stablePackHash(catalog),
         worldPackageId: entry.worldPackageId,
         worldPackageHash: entry.worldPackageHash,
+        worldPackageReceiptHash: entry.worldPackageReceipt.receiptHash,
         agentPackId: entry.agentPackId,
         ecosystemCatalogId: entry.ecosystemCatalogId,
         validation: validateTownRuleCatalog(catalog)
@@ -1355,6 +1443,7 @@ export function selectCurrentExperiment(
     experimentPathHash: experiment?.experimentPathHash,
     worldPackageId: selectedWorldPackage?.worldPackageId,
     worldPackageHash: selectedWorldPackage?.worldPackageHash,
+    worldPackageReceipt: selectedWorldPackage?.worldPackageReceipt,
     agentPackId: selectedWorldPackage?.agentPackId,
     ecosystemCatalogId: selectedWorldPackage?.ecosystemCatalogId
   };
@@ -1429,6 +1518,7 @@ export function startNewRunFromCurrentExperiment(world: RuntimeWorld, runtime: P
     experimentPathHash: useExperiment ? experiment.experimentPathHash : runtime.currentExperiment?.experimentPathHash,
     worldPackageId: useWorldPackage ? worldPackage.worldPackageId : runtime.currentExperiment?.worldPackageId,
     worldPackageHash: useWorldPackage ? worldPackage.worldPackageHash : runtime.currentExperiment?.worldPackageHash,
+    worldPackageReceipt: useWorldPackage ? worldPackage.worldPackageReceipt : runtime.currentExperiment?.worldPackageReceipt,
     agentPackId: useWorldPackage ? worldPackage.agentPackId : runtime.currentExperiment?.agentPackId,
     ecosystemCatalogId: useWorldPackage ? worldPackage.ecosystemCatalogId : runtime.currentExperiment?.ecosystemCatalogId
   };
@@ -1495,10 +1585,21 @@ export function compareRuntimeRuns(runtime: PersistentTownRuntime, left: string,
   return compareRuns(runtime, left, right);
 }
 
-export function buildRuntimeReplayBundle(runtime: PersistentTownRuntime, runId: string, benchmark?: EmergenceBenchmarkReport | null) {
+export function buildRuntimeReplayBundle(
+  runtime: PersistentTownRuntime,
+  runId: string,
+  benchmark?: EmergenceBenchmarkReport | null,
+  world?: RuntimeWorld,
+  events: WorldEvent[] = []
+) {
   const artifactBundle = buildReplayBundleFromArtifacts(runId);
-  if (artifactBundle) return artifactBundle;
-  return buildRunReplayBundle(runtime, runId, benchmark);
+  if (artifactBundle) {
+    if (world && !artifactBundle.replayDigest) {
+      return { ...artifactBundle, replayDigest: buildWorldReplayDigest(world, events, runtime), replayDigestSource: "computed-live" as const };
+    }
+    return artifactBundle;
+  }
+  return buildRunReplayBundle(runtime, runId, benchmark, world, events);
 }
 
 function benchmarkSeeds(seedCount: number) {
@@ -1565,7 +1666,7 @@ function scenarioQualitySummary(runEntry: NonNullable<ReturnType<typeof findRunC
 }
 
 function writeScenarioRunArtifacts(world: RuntimeWorld, runtime: PersistentTownRuntime, runId: string) {
-  const replayBundle = buildRunReplayBundle(runtime, runId);
+  const replayBundle = buildRunReplayBundle(runtime, runId, undefined, world, eventsForWorld(world.id));
   const runEntry = findRunCatalogEntry(runtime, runId);
   if (!replayBundle || !runEntry) return null;
   const reviewBundle = buildReviewExportBundle(world, runtime, { scenarioId: runId });
@@ -1655,7 +1756,7 @@ function writeBenchmarkRunArtifacts(world: RuntimeWorld, runtime: PersistentTown
     experimentSteps: experiment?.discovery.steps,
     qualityReport: { ok: summary.failed === 0, runId: summary.runId, qualityScore: summary.passRate, summary },
     catalogValidation,
-    replayBundle: buildRunReplayBundle(runtime, summary.runId)
+    replayBundle: buildRunReplayBundle(runtime, summary.runId, undefined, world, eventsForWorld(world.id))
   });
 }
 

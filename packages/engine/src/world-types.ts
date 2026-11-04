@@ -46,14 +46,50 @@ export type NPCProfile = {
   alive: boolean;
 };
 
+/**
+ * A persisted, source-backed population change. The record is deliberately
+ * small and identity-first so a save/load replay can prove exactly why a new
+ * resident exists without depending on wall-clock timestamps.
+ */
+export type PopulationFlowRecord = {
+  id: string;
+  flowKey: string;
+  worldId: string;
+  /** Optional Agent command identity for durable action replay. */
+  agentActionId?: string;
+  /** Source references resolved by an Agent population-flow executor. */
+  agentSourceRefs?: string[];
+  sourceEventId: string;
+  sourceCandidateId?: string;
+  sourceNpcIds: string[];
+  npcId: string;
+  arrivalEventId: string;
+  arrivalLocationId: string;
+  createdAtTick: number;
+  createdAtDay: number;
+  createdAtTime: string;
+  /** Durable first-action receipt used by newcomer scheduling after trace retention. */
+  firstActionTick?: number;
+  firstActionTraceId?: string;
+  firstActionEventId?: string;
+  schedule: Record<string, string>;
+  relationshipNpcIds: string[];
+  reason: string;
+};
+
 export type WorldMode = "showcase" | "advanced";
 
 export type MurderArchetype = "blade" | "poison" | "blunt" | "fall";
+
+/** Lifecycle semantics of the event that makes a case playable. */
+export type CaseTriggerKind = "fatal" | "nonfatal_incident" | "population_flow";
 
 export type SuspectRole = "culprit" | "victim" | "witness" | "focus_suspect" | "bystander";
 
 export type CaseGenerationProfile = {
   seed: string;
+  triggerKind: CaseTriggerKind;
+  triggerEventId: string;
   archetype: MurderArchetype;
   victimId: string;
   culpritId: string;
@@ -90,12 +126,15 @@ export type WorldCaseSourceMap = {
 
 export type WorldEventType =
   | "move"
+  | "work"
   | "witness"
   | "conversation"
   | "conflict"
   | "obtain_item"
   | "destroy_evidence"
   | "death"
+  | "incident"
+  | "arrival"
   | "forensic_clue"
   | "alibi";
 
@@ -118,6 +157,13 @@ export type WorldEvent = {
   goalId?: string;
   explanation?: string;
 };
+
+export function caseTriggerKindForEvent(event: Pick<WorldEvent, "type" | "tags">): CaseTriggerKind {
+  if (event.type === "death" || event.tags.includes("death")) return "fatal";
+  if (event.type === "incident" || event.tags.includes("nonfatal_incident")) return "nonfatal_incident";
+  if (event.type === "arrival" || event.tags.includes("population_flow")) return "population_flow";
+  return "fatal";
+}
 
 export type CaseTemplateId = "archive-blunt" | "clocktower-locked-room" | "clinic-poison" | "greenhouse-blade";
 
@@ -833,6 +879,7 @@ export type CaseFromLog = {
   sourceEventIds: string[];
   deathEventId: string;
   triggeredEventId?: string;
+  triggerKind?: CaseTriggerKind;
   sourceCandidateId?: string;
   generationProfile: CaseGenerationProfile;
   sourceMap: WorldCaseSourceMap;

@@ -110,6 +110,7 @@ export function buildReplayBundleFromArtifacts(runId: string) {
   if (!manifest) return bundle;
   return {
     ...bundle,
+    replayDigestSource: bundle.replayDigest ? "artifact" : bundle.replayDigestSource,
     artifactFiles: manifest.files,
     experimentMetadata: {
       experimentId: manifest.experimentId,

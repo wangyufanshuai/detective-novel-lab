@@ -237,6 +237,8 @@ export function buildDeductionCaseTruthLedger(deductionCase: DeductionCase): Cas
     deathEventId: deductionCase.truth.trueTimeline[0]?.id || "",
     generationProfile: {
       seed: deductionCase.id,
+      triggerKind: "fatal",
+      triggerEventId: deductionCase.truth.trueTimeline[0]?.id || "",
       archetype: "blade",
       victimId: "",
       culpritId: deductionCase.truth.culpritId,

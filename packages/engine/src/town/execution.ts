@@ -16,6 +16,9 @@ export type TownExecutionPolicy = {
   candidateEveryTicks: number;
   actionEveryTicks: number;
   indexEventLimit?: number;
+  /** Optional diagnostic retention for bounded long-run benchmarks. */
+  traceRetention?: number;
+  reportRetention?: number;
 };
 
 export type TownPhaseTiming = {
@@ -46,6 +49,14 @@ export type TownPerformanceSummary = {
 export type TownTickIndex = {
   tick: number;
   eventById: Map<string, WorldEvent>;
+  eventMinuteById: Map<string, number>;
+  /** All exclusion/alibi events retained separately so chain assembly does not
+   * rescan the complete event log once per pressure pair. */
+  exclusionEvents: WorldEvent[];
+  /** Per-tick cache for the bounded risk-chain selection used by ledger and
+   * candidate validation. It is invalidated whenever the index receives a new
+   * event so it cannot hide same-tick evidence. */
+  riskChainByPair: Map<string, WorldEvent[]>;
   eventsByActorId: Map<string, WorldEvent[]>;
   eventsByLocationId: Map<string, WorldEvent[]>;
   memoryByNpcId: Map<string, MemoryRecord[]>;
@@ -70,7 +81,9 @@ export function normalizeTownExecutionPolicy(input: Partial<TownExecutionPolicy>
     checkpointEveryTicks: Math.max(1, Math.round(input.checkpointEveryTicks ?? 5)),
     candidateEveryTicks: Math.max(1, Math.round(input.candidateEveryTicks ?? 1)),
     actionEveryTicks: Math.max(1, Math.round(input.actionEveryTicks ?? 1)),
-    indexEventLimit: input.indexEventLimit === undefined ? undefined : Math.max(1, Math.round(input.indexEventLimit))
+    indexEventLimit: input.indexEventLimit === undefined ? undefined : Math.max(1, Math.round(input.indexEventLimit)),
+    traceRetention: input.traceRetention === undefined ? undefined : Math.max(1, Math.round(input.traceRetention)),
+    reportRetention: input.reportRetention === undefined ? undefined : Math.max(1, Math.round(input.reportRetention))
   };
 }
 
@@ -80,6 +93,11 @@ function appendMapValue<T>(map: Map<string, T[]>, key: string, value: T) {
   else map.set(key, [value]);
 }
 
+function eventMinuteForIndex(event: WorldEvent) {
+  const [hours, minutes] = event.time.split(":").map(Number);
+  return event.day * 24 * 60 + (hours || 0) * 60 + (minutes || 0);
+}
+
 export function createTownTickIndex(
   world: WorldState,
   events: WorldEvent[],
@@ -87,10 +105,14 @@ export function createTownTickIndex(
   memoryIndex?: TownTickMemoryIndex
 ): TownTickIndex {
   const eventById = new Map<string, WorldEvent>();
+  const eventMinuteById = new Map<string, number>();
+  const exclusionEvents: WorldEvent[] = [];
   const eventsByActorId = new Map<string, WorldEvent[]>();
   const eventsByLocationId = new Map<string, WorldEvent[]>();
   for (const event of events) {
     eventById.set(event.id, event);
+    eventMinuteById.set(event.id, eventMinuteForIndex(event));
+    if (event.type === "alibi" || event.tags.includes("alibi_seed")) exclusionEvents.push(event);
     for (const npcId of new Set([...event.actorIds, ...event.relatedCharacterIds])) appendMapValue(eventsByActorId, npcId, event);
     appendMapValue(eventsByLocationId, event.locationId, event);
   }
@@ -116,6 +138,9 @@ export function createTownTickIndex(
   return {
     tick: runtime.tick,
     eventById,
+    eventMinuteById,
+    exclusionEvents,
+    riskChainByPair: new Map(),
     eventsByActorId,
     eventsByLocationId,
     memoryByNpcId,
@@ -134,8 +159,25 @@ export function createTownTickIndex(
 
 export function addEventToTownTickIndex(index: TownTickIndex, event: WorldEvent) {
   index.eventById.set(event.id, event);
+  index.eventMinuteById.set(event.id, eventMinuteForIndex(event));
+  index.riskChainByPair.clear();
+  if ((event.type === "alibi" || event.tags.includes("alibi_seed")) && !index.exclusionEvents.some((item) => item.id === event.id)) {
+    index.exclusionEvents.push(event);
+  }
   for (const npcId of new Set([...event.actorIds, ...event.relatedCharacterIds])) appendMapValue(index.eventsByActorId, npcId, event);
   appendMapValue(index.eventsByLocationId, event.locationId, event);
+}
+
+/** Refresh evidence lookup maps after a tick phase mutates the rule state.
+ * Long actions and agent events can add or update chain items after the index
+ * was created; candidate extraction must see those same-tick items. */
+export function refreshTownEvidenceIndex(index: TownTickIndex, state?: TownRuleRuntimeState | null) {
+  index.evidenceByEventId.clear();
+  index.evidenceByLocationId.clear();
+  for (const item of state?.evidenceChain.items || []) {
+    for (const eventId of item.sourceEventIds) appendMapValue(index.evidenceByEventId, eventId, item);
+    appendMapValue(index.evidenceByLocationId, item.locationId, item);
+  }
 }
 
 export function addMemoryToTownTickIndex(index: TownTickIndex, memory: MemoryRecord) {

@@ -6,7 +6,7 @@ export async function POST(request: Request) {
   try {
     const unauthorized = adminGuard(request);
     if (unauthorized) return unauthorized;
-    const body = await readJson<{ worldId?: string; intervention?: Omit<TownRuntimeIntervention, "id" | "tick" | "createdAt" | "branch" | "impact"> }>(request, {});
+    const body = await readJson<{ worldId?: string; intervention?: Omit<TownRuntimeIntervention, "id" | "tick" | "createdAt" | "branch" | "impact" | "decisionTraceId" | "decisionTraceDigest" | "decisionStatus"> }>(request, {});
     if (!body.worldId || !body.intervention?.actorId || !body.intervention.kind) return fail("BAD_REQUEST", "worldId and intervention are required");
     const loaded = loadRuntimeWorld(body.worldId);
     if (!loaded) return fail("WORLD_NOT_FOUND", "World not found", 404);

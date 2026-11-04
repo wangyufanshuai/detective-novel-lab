@@ -34,8 +34,11 @@ The SDK is the executable reference for the stable external-agent subset. It is 
 - `GET /api/v1/query/world/memories?worldId=...&npcId=...`
 - `GET /api/v1/query/case?caseId=...`
 - `GET /api/v1/query/case?caseId=...&includeIntake=true&sessionId=...`
+- `GET /api/v1/query/case?caseId=...&mode=review&includeIntake=true`（管理员 review surface，返回 source-backed case truth）
 - `GET /api/v1/query/case/proof-ledger?caseId=...&sessionId=...&includeCertificate=true`
 - `GET /api/v1/query/town/runtime?worldId=...`
+- `GET /api/v1/query/town/agent-capabilities?worldId=...`
+- `GET /api/v1/query/town/agent/proposal?worldId=...&proposalId=...` (admin receipt read)
 - `GET /api/v1/query/town/agents?worldId=...`
 - `GET /api/v1/query/town/agent?worldId=...&npcId=...`
 - `GET /api/v1/query/town/candidates?worldId=...`
@@ -59,7 +62,7 @@ The SDK is the executable reference for the stable external-agent subset. It is 
 - `GET /api/v1/query/town/runs/:runId/snapshots?worldId=...`
 - `GET /api/v1/query/town/runs/:runId/diffs?worldId=...`
 - `GET /api/v1/query/town/runs/compare?worldId=...&left=...&right=...`
-- `GET /api/v1/query/town/runs/:runId/replay-bundle?worldId=...`
+- `GET /api/v1/query/town/runs/:runId/replay-bundle?worldId=...`：返回 replay bundle 和 `verification`。验证会把当前权威 world/events/runtime 与持久化 `world-replay.v1` digest 对比，并审计 checkpoint receipt、manifest runId、命令 id/runId/type/createdAt。状态为 `verified`、`mismatch` 或 `evidence-insufficient`；查询时临时计算的 digest、旧 checkpoint 和缺少收据的 legacy bundle 会保留为 evidence-insufficient。
 - `GET /api/v1/query/town/run-artifacts?limit=20`
 - `GET /api/v1/query/town/run-artifacts/:runId`
 - `GET /api/v1/query/town/run-artifacts/:runId/files`
@@ -89,6 +92,15 @@ The SDK is the executable reference for the stable external-agent subset. It is 
 - `POST /api/v1/command/town/runtime/step`
 - `POST /api/v1/command/town/runtime/reset`
 - `POST /api/v1/command/town/agent/intervene`
+- `POST /api/v1/command/town/agent/propose`
+- `POST /api/v1/command/town/agent/commit`
+- `POST /api/v1/command/town/agent/population-flow`
+- `POST /api/v1/command/town/agent/case-extract`
+- `POST /api/v1/command/town/agent/review`
+- `POST /api/v1/command/town/agent/benchmark`
+- `POST /api/v1/command/town/agent/package-export`
+- `POST /api/v1/command/town/population-flow`
+- `POST /api/v1/command/town/replay/execute`
 - `POST /api/v1/command/town/case/extract`
 
 `POST /api/v1/command/town/runtime/step` also accepts one optional zero-tick player decision at a time. `playerResourceCommitmentDecision: { sessionId, choice }` uses `choice = police-time | informant-trust | evidence-integrity | none`, requires `steps: 0`, and cannot be combined with `worldLeadDecision` or `worldArcDirectiveDecision`. The response contains only the safe `playerResourceCommitment` summary; internal session, case, location, resource, and tick bindings remain inside existing Server Runtime JSON.
@@ -155,13 +167,39 @@ node scripts/run-persistent-town-api-smoke.mjs
 
 The runtime state is stored inside the persisted world JSON. New actions still become `WorldEvent` records, and extracted cases still use the existing fair-play validation and investigation APIs.
 
+`POST /api/v1/command/town/population-flow` is an admin-only, explicit lifecycle command. Its body is `{ worldId, sourceEventId, sourceCandidateId?, reason?, arrivalLocationId?, day?, time? }`. The source event must resolve in the authoritative event log. The command writes a deterministic newcomer, schedule, relationship edges, arrival event, memory, and `populationFlowLedger` record through the runtime CAS boundary. Repeating the same source tuple returns `created: false` and does not add a second NPC or event. The tick cadence exists as an opt-in `populationFlowPolicy` with source, age, cadence, and resident-cap checks; the default remains disabled until the 1,000/5,000-tick population fairness gates close.
+
+`POST /api/v1/command/town/replay/execute` is an admin-only, isolated replay operation. Its body is `{ worldId, runId, startSnapshotId, targetSnapshotId?, branchId?, steps?, expectedDigest? }`. The server resolves the private checkpoint and persisted command stream, checks the `world-replay-compat.v1` receipt (engine version, persistent-town random source, tick interval, and ScenarioPack/MapPack/RuleCatalog/WorldPackage/Experiment identity), executes only supported scenario-intervention commands in a cloned world, and returns a digest plus `verified`, `mismatch`, or `evidence-insufficient`. It never overwrites the live world; a target checkpoint receipt is used as the expected digest when supplied.
+
+`GET /api/v1/query/town/agent-capabilities` is the versioned discovery surface for external agents. It returns `agent-control.v1`, the current CAS revision, replay compatibility, implemented/planned command descriptors, and fail-closed invariants.
+
+The public observe endpoints (`/api/v1/query/town/agents`, `/api/v1/query/town/agent`, `/api/v1/query/town/brief`) carry `x-runtime-surface: player` and use a bounded projection. They omit agent goals, known facts, resources, social profile internals, memory ids, and source event ids while retaining location, pressure bands, legal action summaries, and the current revision.
+
+`POST /api/v1/command/town/agent/propose` is the read-only proposal path. It accepts the same body as commit, resolves every `sourceRefs` value against the current world/event/candidate/observation/memory/intervention index, validates the actor and bounded scalar intervention, and writes a deterministic `agent-proposal-receipt.v1` file without changing authoritative world state or advancing the runtime revision. The response includes `proposalId` and `receiptHash`; repeating the same proposal replays the same receipt. Unknown references fail closed; a stale `expectedRevision` returns `RUNTIME_REVISION_CONFLICT`.
+
+`POST /api/v1/command/town/agent/commit` is the strict admin commit path. Its body is `{ worldId, actionId, proposalId?, expectedRevision, reason, sourceRefs, intervention: { actorId, kind, value } }`. When supplied, `proposalId` must resolve to a persisted receipt whose payload matches the commit exactly. The server applies the same source-reference resolution and intervention validation, checks the expected runtime revision, records the audit metadata inside the counterfactual intervention, and treats a repeated `actionId` with the same payload as an idempotent replay. A new action with a stale revision returns `RUNTIME_REVISION_CONFLICT`. Admin runtime responses include `agentDecisionTraceSummary`, whose `agent-decision-trace-links.v1` receipt reports pending/applied/expired interventions, full versus retention-archived decision links, and any broken bidirectional links. WorldPackage selection also persists a `world-package-receipt.v1` with package/file hashes, license, bindings, validation results, and a replay receipt hash.
+
+`POST /api/v1/command/town/agent/population-flow` is the specialized Agent executor for source-backed newcomers. Its body is `{ worldId, actionId, expectedRevision, reason, sourceRefs, populationFlow: { sourceEventId, sourceCandidateId?, arrivalLocationId?, day?, time? } }`. The source refs must resolve and include `event:<sourceEventId>`; the executor applies the deterministic population adapter through the runtime CAS boundary, persists `agentActionId` and resolved source refs in the `PopulationFlowRecord`, and returns the arrival event plus public runtime/world projections. Repeating the exact action returns the existing record and event without adding a resident; a different payload under the same action, a source tuple already claimed by another action, or a stale revision returns `409`.
+
+`POST /api/v1/command/town/agent/case-extract` is the specialized Agent executor for the real investigation handoff. Its body is `{ worldId, actionId, expectedRevision, reason, sourceRefs, candidateId }`. The candidate must be a currently valid, persisted candidate with a triggered source event; `sourceRefs` must include both `candidate:<candidateId>` and `event:<triggeredEventId>`. The executor calls the same route-integrity and playable-intake path as the player surface, then persists an `agent-case-extraction-receipt.v1` binding action, reason, sources, candidate, and case. Repeating the exact action returns the persisted case and intake without extracting another case; stale revisions, source drift, payload reuse, and non-playable candidates fail closed.
+
+`POST /api/v1/command/town/agent/review` is the read-only Agent reviewer for the investigation handoff. Its body is `{ worldId, actionId, expectedRevision, reason, sourceRefs, caseId }`; the sources must include the case and its triggered event when one exists. It recomputes the playable intake and review-mode `investigation-room-projection.v1`, checks route certification, proof coverage, source-event resolution, and 3D room traceability, and persists a hash-bound `agent-case-review-receipt.v1` outside the authoritative world state. Repeating the same action reuses the receipt without advancing runtime revision; stale revision or payload reuse returns `409`.
+
+`POST /api/v1/command/town/agent/benchmark` is the read-only Agent benchmark executor. Its body is `{ worldId, actionId, expectedRevision, reason, sourceRefs, seedCount: 10|20 }`; `sourceRefs` must include `world:<worldId>`. It runs the deterministic emergence benchmark over seeds derived from the world seed, binds the result to the current replay compatibility receipt, and stores an `agent-benchmark-receipt.v1` with a hash that excludes only the report wall-clock display field. Repeating the exact action returns the original 10/20-seed report after later runtime revisions without rerunning it; a reused action with different payload is rejected.
+
+`POST /api/v1/command/town/agent/package-export` is the Agent export executor for the selected WorldPackage. Its body is `{ worldId, actionId, expectedRevision, reason, sourceRefs, packageId }`; `sourceRefs` must include `world:<worldId>` and `package:<packageId>`, and packageId must match the current experiment selection. It validates the source package, including an optional `world-asset-manifest.v1` when the package declares visual assets, verifies every declared asset file's path, bytes, and SHA-256, invokes the folder exporter, and persists an `agent-package-export-receipt.v1` with the WorldPackage receipt plus file hashes/bytes and export report. Repeating the exact action returns the original report without writing the package again; payload reuse or stale revisions fail closed. Asset receipts still preserve candidate, human-approval, and runtime-verification states; they do not promote a procedural candidate to an accepted 3D asset.
+
+`GET /api/v1/query/town/agent/proposal` is the admin receipt read path. It returns the persisted proposal only when both `worldId` and `proposalId` match, so an external evaluator can recover the source-backed proposal after the process that created it has exited.
+
 `GET /api/v1/query/town/brief` is a read-only situation summary for agents and the Command Center. It ranks current location pressure and NPC risk, aggregates selected action and observation kinds, reports case-chain readiness, and provides short signals for the next inspection step. It does not advance the runtime or mutate SQLite state.
 
 ## Playable Case Intake
 
 Emerged Persistent Agent Town candidates can be bridged into the player investigation loop with a spoiler-safe intake. `POST /api/v1/command/town/case/extract` still returns `world`, `events`, `activeCase`, `candidate`, and `queue`; it may also return `playableIntake`. Before persistence, extraction checks route integrity; failures return `CASE_NOT_PLAYABLE` with low-spoiler blockers.
 
-`GET /api/v1/query/case?caseId=...&includeIntake=true` recomputes the same intake for an existing case. Passing `sessionId` lets the route mark discovered evidence, ready witness challenges, wrong-theory progress, Coach next step, and solved source trail visibility. Omitting `includeIntake` preserves the old response shape.
+`GET /api/v1/query/case?caseId=...&includeIntake=true` recomputes the same player-safe intake for an existing case. Passing `sessionId` lets the route mark discovered evidence, ready witness challenges, wrong-theory progress, Coach next step, and solved source trail visibility. `mode=review` is an explicit admin surface for source-backed truth and review receipts; it is never the default. Omitting `includeIntake` preserves the old response shape.
+
+The player response is tagged with `x-runtime-surface: player`; review responses use `x-runtime-surface: admin`. Review authorization is checked before loading the case so an unauthenticated request cannot distinguish an existing case from a missing one. `npm run test:case-review-api` covers player truth masking, missing/invalid/valid admin credentials, source-chain access, and the unknown-case guard.
 
 `playableIntake` may include optional `routeIntegrity`, `proofCoverage`, `progress`, `progressStages`, `nextAction`, `blockedReasons`, and `coach` fields. These are additive and can be ignored by older clients.
 
@@ -226,7 +264,7 @@ Stable Review Mode types:
 - `TownMapPack`: `{ manifest, locations, connections, interactions, spawnPoints, assets?, docs? }`.
 - `TownMapPackValidationReport`: `{ ok, errors, warnings, summary }`.
 - `TownRuleCatalog`: `{ id, name, version, resources, institutions, professions, longActionDefinitions, randomEvents, casePressureRules }`.
-- `CurrentExperimentRef`: `{ scenarioPackId, mapPackId, ruleCatalogId, selectedAt, sourceWorldId?, branchWorldId?, runId?, scenarioPackHash?, mapPackHash?, ruleCatalogHash?, engineVersion? }`.
+- `CurrentExperimentRef`: `{ scenarioPackId, mapPackId, ruleCatalogId, selectedAt, sourceWorldId?, branchWorldId?, runId?, scenarioPackHash?, mapPackHash?, ruleCatalogHash?, worldPackageId?, worldPackageHash?, experimentId?, experimentHash?, experimentPathHash?, agentPackId?, ecosystemCatalogId?, engineVersion? }`.
 - `RunCatalogEntry`: `{ runId, kind?, artifactAvailable?, branchWorldId?, sourceWorldId?, packId?, mapPackId?, ruleCatalogId?, scenarioId?, seed?, startedAt, finishedAt?, status, engineVersion, summary, packMetadata? }`.
 - `RunArtifactManifest`: `{ runId, kind, status, sourceWorldId?, branchWorldId, scenarioPackId?, scenarioPackHash?, mapPackId?, mapPackHash?, ruleCatalogId?, ruleCatalogHash?, engineVersion, startedAt, finishedAt, files }`.
 - `RunArtifactFile`: `{ name, kind, bytes? }`.

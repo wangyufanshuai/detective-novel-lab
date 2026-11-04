@@ -20,7 +20,8 @@ world-packs/<package-id>/
 ├── ecosystem-catalog.json
 ├── expectations.json
 ├── README.md
-└── ATTRIBUTION.md        # 非 project-local 许可时要求
+├── ATTRIBUTION.md        # 非 project-local 许可时要求
+└── asset-manifest.json   # 有模型、纹理、音频或房间资产时要求
 ```
 
 `manifest.json` 从以下最小模板开始：
@@ -40,9 +41,12 @@ world-packs/<package-id>/
   "ruleCatalogPath": "rule-catalog.json",
   "agentPackPath": "agent-pack.json",
   "ecosystemCatalogPath": "ecosystem-catalog.json",
-  "expectationsPath": "expectations.json"
+  "expectationsPath": "expectations.json",
+  "assetManifestPath": "asset-manifest.json"
 }
 ```
+
+如果包只包含世界规则和文本，可以省略 `assetManifestPath`；一旦包声明或导出可视资产，就必须提供 `asset-manifest.json`。其 schema 是 `world-asset-manifest.v1`，每个资产至少绑定相对路径、字节数、SHA-256、许可证、来源、状态、人工批准和运行时验证字段。`accepted` 资产必须同时满足 `humanApproval=true` 与 `runtimeVerified=true`；`candidate-only`、`blocked` 或 `missing` 只能作为候选或门禁输入，不能被当作已交付资产。
 
 子包 schema 固定为 `scenario-pack.v1`、`town-map-pack.v1`、`agent-pack.v1`、`ecosystem-catalog.v1`。`rule-catalog.json` 必须提供 resources、institutions、professions、longActionDefinitions、randomEvents、casePressureRules，并应提供 evidenceRules。`agent-pack.json` 至少一个 agent，`ecosystem-catalog.json` 至少一个 faction；所有相互引用的 ID 必须在本包内可解析。
 

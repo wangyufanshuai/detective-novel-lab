@@ -1,4 +1,5 @@
 import { deriveSuspectMatrix } from "./validators";
+import type { PersistentTownRuntime } from "./persistent-town";
 import type {
   CaseFromLog,
   CaseQualityReport,
@@ -25,6 +26,14 @@ function distanceMinutes(a: { x?: number; y?: number }, b: { x?: number; y?: num
 }
 
 export function buildTravelConstraint(world: WorldState): TravelConstraint {
+  // Opt-in daily worlds already declare story-minute road costs. Render-space
+  // coordinates must not silently replace those costs during case analysis.
+  const runtime = (world as WorldState & { persistentRuntime?: PersistentTownRuntime }).persistentRuntime;
+  const map = runtime?.dailyRoutine?.enabled ? runtime.mapPacks?.find(pack => pack.manifest.id === runtime.dailyRoutine?.mapId) : undefined;
+  if (map) return { edges: map.connections.flatMap(edge => [
+    { from: edge.from, to: edge.to, minutes: edge.travelMinutes },
+    { from: edge.to, to: edge.from, minutes: edge.travelMinutes }
+  ]), defaultMinutes: Number.POSITIVE_INFINITY };
   const edges: TravelEdge[] = [];
   for (const location of world.locations) {
     for (const to of location.connectedLocationIds) {
@@ -69,19 +78,19 @@ function latestLocationBefore(events: WorldEvent[], characterId: string, day: nu
 
 export function analyzeReachability(world: WorldState, events: WorldEvent[], caseFromLog: Pick<CaseFromLog, "generationProfile">): ReachabilityResult[] {
   const constraint = buildTravelConstraint(world);
-  const death = events.find((event) => event.id === caseFromLog.generationProfile.deathEventId);
-  if (!death) return [];
+  const trigger = events.find((event) => event.id === (caseFromLog.generationProfile.triggerEventId || caseFromLog.generationProfile.deathEventId));
+  if (!trigger) return [];
   return world.npcs
     .filter((npc) => npc.id !== caseFromLog.generationProfile.victimId)
     .map((npc) => {
-      const source = latestLocationBefore(events, npc.id, death.day, death.time);
+      const source = latestLocationBefore(events, npc.id, trigger.day, trigger.time);
       const fromLocationId = source?.locationId || npc.homeLocationId;
-      const requiredMinutes = shortestTravelMinutes(constraint, fromLocationId, death.locationId);
-      const availableMinutes = source ? Math.max(0, minutes(death.time) - minutes(source.time)) : 0;
+      const requiredMinutes = shortestTravelMinutes(constraint, fromLocationId, trigger.locationId);
+      const availableMinutes = source ? Math.max(0, minutes(trigger.time) - minutes(source.time)) : 0;
       return {
         characterId: npc.id,
         fromLocationId,
-        toLocationId: death.locationId,
+        toLocationId: trigger.locationId,
         availableMinutes,
         requiredMinutes,
         reachable: npc.id === caseFromLog.generationProfile.culpritId || availableMinutes >= requiredMinutes,
@@ -158,7 +167,17 @@ export function buildCaseQualityReport(world: WorldState, events: WorldEvent[], 
   const reasoningTraceComplete = reasoningTrace.every((trace) => trace.complete);
   const orderedMinutes = events.map(eventMinutes).sort((a, b) => a - b);
   const spanHours = orderedMinutes.length ? (orderedMinutes[orderedMinutes.length - 1] - orderedMinutes[0]) / 60 : 0;
-  const timeline24hComplete = (world.mode !== "showcase" || spanHours <= 24) && events.some((event) => event.time === "08:00") && events.some((event) => event.type === "death");
+  const triggerComplete = caseFromLog.generationProfile.triggerKind === "nonfatal_incident"
+    ? events.some((event) => event.type === "incident")
+    : events.some((event) => event.type === "death");
+  // Showcase fixtures carry an explicit 08:00 anchor. Persistent WorldPackages
+  // begin from the runtime clock and may legitimately produce their first
+  // source event later in that window, so require a non-empty source window
+  // rather than inventing an 08:00 event during case extraction.
+  const timelineAnchorPresent = world.mode === "showcase"
+    ? events.some((event) => event.time === "08:00")
+    : events.length > 0;
+  const timeline24hComplete = (world.mode !== "showcase" || spanHours <= 24) && timelineAnchorPresent && triggerComplete;
   const evidenceCoverage = Math.round((reasoningTrace.filter((trace) => trace.complete).length / Math.max(reasoningTrace.length, 1)) * 100);
   const testimonyScore = Math.min(100, (caseFromLog.testimonies || []).filter((item) => item.contradictionEvidenceIds.length > 0).length * 20);
   const memorySupport = Math.min(100, (world.memories || []).filter((memory) => memory.eventId).length >= 20 ? 100 : (world.memories || []).length * 4);
@@ -178,7 +197,9 @@ export function buildCaseQualityReport(world: WorldState, events: WorldEvent[], 
   if (evidenceCoverage < 100) warnings.push("Some reasoning steps lack event-backed evidence.");
   if (!worldBackedEvidence) warnings.push("Some decisive evidence is not backed by world events.");
   if (!memoryScopedTestimony) warnings.push("Some testimony lacks NPC memory support.");
-  if (!timeline24hComplete) warnings.push("Showcase timeline is not contained in a 24h explainable window.");
+  if (!timeline24hComplete) warnings.push(world.mode === "showcase"
+    ? "Showcase timeline is not contained in a 24h explainable window."
+    : "Persistent timeline is missing an explainable source window or trigger.");
   return {
     score,
     qualityScore: score,

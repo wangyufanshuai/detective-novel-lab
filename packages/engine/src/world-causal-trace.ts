@@ -20,7 +20,7 @@ function relationFor(from: WorldEvent, to: WorldEvent): CausalEventLink["relatio
   if (to.tags.includes("means")) return "means-enables";
   if (to.tags.includes("secret_leak") || to.tags.includes("motive")) return "secret-risk-raises";
   if (to.tags.includes("opportunity")) return "opportunity-enables";
-  if (to.type === "death") return "crime-causes";
+  if (to.type === "death" || to.type === "incident") return "crime-causes";
   if (to.tags.includes("staging")) return "staging-creates";
   if (to.tags.includes("trace")) return "trace-reveals";
   if (to.tags.includes("alibi") || to.tags.includes("exclusion")) return "alibi-excludes";
@@ -34,6 +34,7 @@ function actionFor(event: WorldEvent): NpcIntent["intendedAction"] {
   if (event.tags.includes("secret_leak") || event.type === "conflict") return "threaten";
   if (event.tags.includes("opportunity")) return "follow";
   if (event.type === "death") return "attack";
+  if (event.type === "incident") return "threaten";
   if (event.tags.includes("staging")) return "stage_scene";
   if (event.tags.includes("trace")) return "hide_trace";
   if (event.type === "alibi") return "avoid";
@@ -56,6 +57,7 @@ function riskFactors(event: WorldEvent) {
 function keyEvents(events: WorldEvent[], caseFromLog: CaseFromLog) {
   const caseEventIds = new Set([
     ...caseFromLog.sourceEventIds,
+    caseFromLog.triggeredEventId,
     caseFromLog.deathEventId,
     caseFromLog.generationProfile.motiveEventId,
     caseFromLog.generationProfile.meansEventId,

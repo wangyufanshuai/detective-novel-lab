@@ -1,6 +1,6 @@
-import { errorResponse, fail, ok } from "@/app/api/v1/_utils";
+import { errorResponse, fail, playerOk } from "@/app/api/v1/_utils";
 import { buildAgentDecisionTrace, scoreNpcActionCandidates } from "@/lib/engine";
-import { loadRuntimeWorld } from "@/app/api/v1/_town-runtime";
+import { loadRuntimeWorld, publicAgentCandidate, publicAgentDecisionTrace, publicAgentState, runtimeRevision } from "@/app/api/v1/_town-runtime";
 
 export async function GET(request: Request) {
   try {
@@ -15,7 +15,12 @@ export async function GET(request: Request) {
     const agent = loaded.runtime.agentStates.find((item) => item.npcId === npcId);
     const candidates = scoreNpcActionCandidates(loaded.world, npc, loaded.events, loaded.runtime);
     const trace = agent?.lastDecisionId ? buildAgentDecisionTrace(loaded.runtime, agent.lastDecisionId) : null;
-    return ok({ agent, candidates, trace });
+    return playerOk({
+      agent: agent ? publicAgentState(agent) : undefined,
+      candidates: candidates.map(publicAgentCandidate),
+      trace: publicAgentDecisionTrace(trace),
+      revision: runtimeRevision(loaded.runtime)
+    });
   } catch (error) {
     return errorResponse(error);
   }

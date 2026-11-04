@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import type { PackageCatalogEntry, PackageCatalogIndex } from "./package-catalog-types.ts";
+import { validateWorldAssetManifest, type WorldAssetManifest } from "../packages/engine/src/world-asset-manifest.ts";
 
 type ExperimentFolderFiles = Record<string, unknown>;
 export type WorldPackageFiles = Record<string, unknown>;
@@ -18,6 +19,7 @@ type ValidationResult<T = unknown> = {
   mapPack?: Record<string, unknown>;
   ruleCatalog?: Record<string, unknown>;
   experimentId?: string;
+  assetManifest?: WorldAssetManifest;
 };
 
 function stableStringify(value: unknown): string {
@@ -215,6 +217,16 @@ export function validateWorldPackageFiles(files: Partial<WorldPackageFiles>) {
   const ruleValidation = validateRuleCatalogLike(parsed["rule-catalog.json"]);
   const agentValidation = validateAgentPackLike(parsed["agent-pack.json"]);
   const ecosystemValidation = validateEcosystemLike(parsed["ecosystem-catalog.json"]);
+  let assetManifest: WorldAssetManifest | undefined;
+  if (manifest?.assetManifestPath && !("asset-manifest.json" in parsed)) {
+    errors.push("manifest.assetManifestPath points to missing asset-manifest.json");
+  }
+  if ("asset-manifest.json" in parsed) {
+    if (manifest?.assetManifestPath !== "asset-manifest.json") errors.push("manifest.assetManifestPath must be asset-manifest.json when asset-manifest.json is present");
+    const assetValidation = validateWorldAssetManifest(parsed["asset-manifest.json"], typeof manifest?.id === "string" ? manifest.id : undefined);
+    if (!assetValidation.ok) errors.push(...assetValidation.errors.map((error) => `asset-manifest.json: ${error}`));
+    assetManifest = assetValidation.manifest || undefined;
+  }
   errors.push(...scenarioValidation.errors.map((error) => `scenario-pack.json: ${error}`));
   errors.push(...mapValidation.errors.map((error) => `map-pack.json: ${error}`));
   errors.push(...ruleValidation.errors.map((error) => `rule-catalog.json: ${error}`));
@@ -230,7 +242,8 @@ export function validateWorldPackageFiles(files: Partial<WorldPackageFiles>) {
     ruleCatalog: parsed["rule-catalog.json"],
     agentPack: parsed["agent-pack.json"],
     ecosystemCatalog: parsed["ecosystem-catalog.json"],
-    expectations: parsed["expectations.json"]
+    expectations: parsed["expectations.json"],
+    ...(assetManifest ? { assetManifest } : {})
   } : undefined;
   const agentPack = asRecord(parsed["agent-pack.json"]);
   const ecosystem = asRecord(parsed["ecosystem-catalog.json"]);
@@ -249,7 +262,8 @@ export function validateWorldPackageFiles(files: Partial<WorldPackageFiles>) {
       factionCount: Array.isArray(ecosystem?.factions) ? ecosystem.factions.length : 0,
       resourceCount: Array.isArray(ecosystem?.resources) ? ecosystem.resources.length : 0,
       taskTemplateCount: Array.isArray(ecosystem?.taskTemplates) ? ecosystem.taskTemplates.length : 0,
-      randomWorldEventCount: Array.isArray(ecosystem?.randomWorldEvents) ? ecosystem.randomWorldEvents.length : 0
+      randomWorldEventCount: Array.isArray(ecosystem?.randomWorldEvents) ? ecosystem.randomWorldEvents.length : 0,
+      assetCount: assetManifest?.assets.length || 0
     },
     package: worldPackage,
     hash: ok ? createStablePackHash(worldPackage) : undefined
@@ -275,7 +289,8 @@ const WORLD_PACKAGE_FILES = [
   "ecosystem-catalog.json",
   "expectations.json",
   "README.md",
-  "ATTRIBUTION.md"
+  "ATTRIBUTION.md",
+  "asset-manifest.json"
 ] as const;
 
 export type WorldPackageExportReport = {
@@ -332,6 +347,7 @@ function assertSafePackageId(packageId: string) {
 
 function readFiles<T extends Record<string, unknown>>(dir: string, names: readonly string[]) {
   const files: Partial<T> = {};
+  const fileReceipts: Array<{ name: string; bytes: number; sha256: string }> = [];
   let bytes = 0;
   const hash = crypto.createHash("sha256");
   let fileCount = 0;
@@ -340,14 +356,16 @@ function readFiles<T extends Record<string, unknown>>(dir: string, names: readon
     if (!fs.existsSync(/*turbopackIgnore: true*/ fullPath)) continue;
     const text = fs.readFileSync(/*turbopackIgnore: true*/ fullPath, "utf8");
     files[fileName as keyof T] = text as T[keyof T];
-    bytes += Buffer.byteLength(text, "utf8");
+    const fileBytes = Buffer.byteLength(text, "utf8");
+    bytes += fileBytes;
+    fileReceipts.push({ name: fileName, bytes: fileBytes, sha256: hashText(text) });
     hash.update(fileName);
     hash.update("\0");
     hash.update(text);
     hash.update("\0");
     fileCount += 1;
   }
-  return { files, bytes, fileCount, sha256: hash.digest("hex") };
+  return { files, bytes, fileCount, sha256: hash.digest("hex"), fileReceipts };
 }
 
 function relativePackagePath(root: string, dir: string) {
@@ -364,6 +382,105 @@ function safeRelativeFromRoot(root: string, target: string) {
 
 function hashText(text: string) {
   return crypto.createHash("sha256").update(text).digest("hex");
+}
+
+export type WorldAssetFileReceipt = {
+  id: string;
+  name: string;
+  path: string;
+  bytes: number;
+  sha256: string;
+};
+
+export function auditWorldAssetManifestFiles(input: {
+  manifest: WorldAssetManifest;
+  rootDir: string;
+}): {
+  ok: boolean;
+  errors: string[];
+  fileReceipts: WorldAssetFileReceipt[];
+  bytes: number;
+} {
+  const errors: string[] = [];
+  const fileReceipts: WorldAssetFileReceipt[] = [];
+  const controlFiles = new Set<string>(WORLD_PACKAGE_FILES);
+  for (const asset of input.manifest.assets) {
+    const relativePath = asset.path.replace(/\\/g, "/");
+    if (controlFiles.has(relativePath)) {
+      errors.push(`asset ${asset.id} path ${relativePath} collides with a WorldPackage control file`);
+      continue;
+    }
+    let target: string;
+    try {
+      target = assertInside(input.rootDir, path.resolve(input.rootDir, asset.path), "Asset path must stay inside the package root.");
+    } catch (error) {
+      errors.push(`${asset.id}: ${error instanceof Error ? error.message : "asset path is outside the package root"}`);
+      continue;
+    }
+    if (!fs.existsSync(/*turbopackIgnore: true*/ target)) {
+      errors.push(`${asset.id}: declared asset file does not exist at ${relativePath}`);
+      continue;
+    }
+    if (!fs.statSync(/*turbopackIgnore: true*/ target).isFile()) {
+      errors.push(`${asset.id}: declared asset path is not a file`);
+      continue;
+    }
+    const bytes = fs.readFileSync(/*turbopackIgnore: true*/ target);
+    const sha256 = crypto.createHash("sha256").update(bytes).digest("hex");
+    if (bytes.byteLength !== asset.bytes) errors.push(`${asset.id}: declared bytes ${asset.bytes} do not match ${bytes.byteLength}`);
+    if (sha256 !== asset.sha256) errors.push(`${asset.id}: declared sha256 does not match the file contents`);
+    fileReceipts.push({ id: asset.id, name: relativePath, path: relativePath, bytes: bytes.byteLength, sha256 });
+  }
+  return {
+    ok: errors.length === 0,
+    errors: Array.from(new Set(errors)),
+    fileReceipts,
+    bytes: fileReceipts.reduce((sum, file) => sum + file.bytes, 0)
+  };
+}
+
+function hashFileReceipts(receipts: Array<{ name: string; bytes: number; sha256: string }>) {
+  const hash = crypto.createHash("sha256");
+  for (const file of [...receipts].sort((left, right) => left.name.localeCompare(right.name))) {
+    hash.update(file.name);
+    hash.update("\0");
+    hash.update(String(file.bytes));
+    hash.update("\0");
+    hash.update(file.sha256);
+    hash.update("\0");
+  }
+  return hash.digest("hex");
+}
+
+function finalizeWorldPackageRead(input: {
+  dir: string;
+  read: ReturnType<typeof readFiles<WorldPackageFiles>>;
+  validation: ReturnType<typeof validateWorldPackageFiles>;
+}) {
+  const manifest = input.validation.package?.assetManifest;
+  const audit = manifest ? auditWorldAssetManifestFiles({ manifest, rootDir: input.dir }) : null;
+  const assetReceipts = audit?.fileReceipts || [];
+  const fileReceipts = [
+    ...input.read.fileReceipts,
+    ...assetReceipts.map(({ name, bytes, sha256 }) => ({ name, bytes, sha256 }))
+  ];
+  const validation = audit && !audit.ok
+    ? {
+        ...input.validation,
+        ok: false,
+        errors: Array.from(new Set([...input.validation.errors, ...audit.errors])),
+        hash: undefined
+      }
+    : assetReceipts.length
+      ? { ...input.validation, hash: hashFileReceipts(fileReceipts) }
+      : input.validation;
+  return {
+    validation,
+    fileReceipts,
+    fileCount: fileReceipts.length,
+    bytes: input.read.bytes + (audit?.bytes || 0),
+    contentHash: validation.hash || input.read.sha256
+  };
 }
 
 function summarize(packages: PackageCatalogEntry[]): PackageCatalogIndex["summary"] {
@@ -422,7 +539,8 @@ function worldPackageEntry(root: string, entryName: string): PackageCatalogEntry
   assertInside(workspacePath(root, "world-packs"), dir, "WorldPackage folder must stay inside world-packs.");
   const directoryName = safeDirectoryName(entryName);
   const read = readFiles<WorldPackageFiles>(dir, WORLD_PACKAGE_FILES);
-  const validation = validateWorldPackageFiles(read.files);
+  const finalized = finalizeWorldPackageRead({ dir, read, validation: validateWorldPackageFiles(read.files) });
+  const validation = finalized.validation;
   const manifest = validation.package?.manifest || (typeof read.files["manifest.json"] === "string" ? safeParseJson(read.files["manifest.json"]) : null);
   const manifestRecord = manifest && typeof manifest === "object" ? manifest as Record<string, unknown> : {};
   return {
@@ -434,7 +552,7 @@ function worldPackageEntry(root: string, entryName: string): PackageCatalogEntry
     status: validation.ok ? "valid" : "invalid",
     directoryName,
     relativePath: relativePackagePath(root, dir),
-    contentHash: validation.hash || read.sha256,
+    contentHash: finalized.contentHash,
     pathHash: createStablePackHash({ source: "world-packs", directoryName, files: WORLD_PACKAGE_FILES }),
     license: String(manifestRecord.license || "unknown"),
     attribution: fs.existsSync(/*turbopackIgnore: true*/ path.join(/*turbopackIgnore: true*/ dir, "ATTRIBUTION.md")) ? "ATTRIBUTION.md" : undefined,
@@ -445,8 +563,8 @@ function worldPackageEntry(root: string, entryName: string): PackageCatalogEntry
     ecosystemCatalogId: validation.summary.ecosystemCatalogId,
     validation: { ok: validation.ok, errors: validation.errors, warnings: validation.warnings },
     metrics: {
-      fileCount: read.fileCount,
-      bytes: read.bytes,
+      fileCount: finalized.fileCount,
+      bytes: finalized.bytes,
       factionCount: validation.summary.factionCount,
       resourceCount: validation.summary.resourceCount,
       taskTemplateCount: validation.summary.taskTemplateCount,
@@ -497,8 +615,9 @@ export function readWorldPackageFiles(packageId: string, root = workspaceRoot())
   const entries = listDirectories(worldPacksRoot);
   const directoryName = entries.find((entry) => entry === packageId);
   if (!directoryName) return null;
-  const read = readFiles<WorldPackageFiles>(workspacePath(worldPacksRoot, directoryName), WORLD_PACKAGE_FILES);
-  return validateWorldPackageFiles(read.files);
+  const dir = workspacePath(worldPacksRoot, directoryName);
+  const read = readFiles<WorldPackageFiles>(dir, WORLD_PACKAGE_FILES);
+  return finalizeWorldPackageRead({ dir, read, validation: validateWorldPackageFiles(read.files) }).validation;
 }
 
 export function readWorldPackageSource(packageId: string, root = workspaceRoot()) {
@@ -511,16 +630,18 @@ export function readWorldPackageSource(packageId: string, root = workspaceRoot()
   const dir = workspacePath(worldPacksRoot, directoryName);
   assertInside(worldPacksRoot, dir, "WorldPackage folder must stay inside world-packs.");
   const read = readFiles<WorldPackageFiles>(dir, WORLD_PACKAGE_FILES);
-  const validation = validateWorldPackageFiles(read.files);
+  const finalized = finalizeWorldPackageRead({ dir, read, validation: validateWorldPackageFiles(read.files) });
+  const validation = finalized.validation;
   return {
     packageId,
     directoryName,
     dir,
     relativePath: relativePackagePath(resolvedRoot, dir),
     files: read.files,
-    fileCount: read.fileCount,
-    bytes: read.bytes,
-    contentHash: validation.hash || read.sha256,
+    fileCount: finalized.fileCount,
+    bytes: finalized.bytes,
+    fileReceipts: finalized.fileReceipts,
+    contentHash: finalized.contentHash,
     validation
   };
 }
@@ -541,7 +662,8 @@ export function readWorldPackageDirectory(dir: string, root = workspaceRoot()) {
   if (!fs.existsSync(/*turbopackIgnore: true*/ resolvedDir) || !fs.statSync(/*turbopackIgnore: true*/ resolvedDir).isDirectory()) return null;
   const directoryName = path.basename(resolvedDir);
   const read = readFiles<WorldPackageFiles>(resolvedDir, WORLD_PACKAGE_FILES);
-  const validation = validateWorldPackageFiles(read.files);
+  const finalized = finalizeWorldPackageRead({ dir: resolvedDir, read, validation: validateWorldPackageFiles(read.files) });
+  const validation = finalized.validation;
   const packageId = validation.summary.packageId || directoryName;
   return {
     packageId,
@@ -549,9 +671,10 @@ export function readWorldPackageDirectory(dir: string, root = workspaceRoot()) {
     dir: resolvedDir,
     relativePath: safeRelativeFromRoot(resolvedRoot, resolvedDir),
     files: read.files,
-    fileCount: read.fileCount,
-    bytes: read.bytes,
-    contentHash: validation.hash || read.sha256,
+    fileCount: finalized.fileCount,
+    bytes: finalized.bytes,
+    fileReceipts: finalized.fileReceipts,
+    contentHash: finalized.contentHash,
     validation
   };
 }
@@ -598,6 +721,20 @@ export function exportWorldPackage(input: {
       path: fileName,
       bytes: Buffer.byteLength(value, "utf8"),
       sha256: hashText(value)
+    });
+  }
+
+  for (const asset of source.validation.package?.assetManifest?.assets || []) {
+    const sourceTarget = assertInside(source.dir, path.resolve(source.dir, asset.path), "Asset path must stay inside the WorldPackage source.");
+    const target = assertInside(outputDir, path.resolve(outputDir, asset.path), "Asset export path must stay inside the output package.");
+    fs.mkdirSync(/*turbopackIgnore: true*/ path.dirname(target), { recursive: true });
+    fs.copyFileSync(/*turbopackIgnore: true*/ sourceTarget, /*turbopackIgnore: true*/ target);
+    const bytes = fs.readFileSync(/*turbopackIgnore: true*/ sourceTarget);
+    copiedFiles.push({
+      name: asset.path.replace(/\\/g, "/"),
+      path: asset.path.replace(/\\/g, "/"),
+      bytes: bytes.byteLength,
+      sha256: crypto.createHash("sha256").update(bytes).digest("hex")
     });
   }
 

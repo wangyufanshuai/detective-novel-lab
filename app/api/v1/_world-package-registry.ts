@@ -2,11 +2,12 @@ import {
   applyEcosystemCatalogToRuleCatalog,
   createStablePackHash,
   type EcosystemCatalog,
-  type TownRuleCatalog
+  type TownRuleCatalog,
+  type WorldPackageReceipt
 } from "@/lib/engine";
-import { buildPackageCatalogIndex, readWorldPackageFiles } from "@/lib/world-package-catalog";
+import { buildPackageCatalogIndex, readWorldPackageSource } from "@/lib/world-package-catalog";
 
-type WorldPackageDiscovery = NonNullable<ReturnType<typeof readWorldPackageFiles>>;
+type WorldPackageDiscovery = NonNullable<ReturnType<typeof loadWorldPackage>>;
 
 export type WorldPackageRegistryEntry = {
   id: string;
@@ -14,7 +15,8 @@ export type WorldPackageRegistryEntry = {
   version: string;
   source: "world-package";
   worldPackageId: string;
-  worldPackageHash?: string;
+  worldPackageHash: string;
+  worldPackageReceipt: WorldPackageReceipt;
   directoryName: string;
   scenarioPackId?: string;
   mapPackId?: string;
@@ -30,7 +32,16 @@ export type WorldPackageRegistryEntry = {
 };
 
 function loadWorldPackage(packageId: string) {
-  return readWorldPackageFiles(packageId);
+  const source = readWorldPackageSource(packageId);
+  if (!source) return null;
+  return {
+    ...source.validation,
+    fileCount: source.fileCount,
+    bytes: source.bytes,
+    fileReceipts: source.fileReceipts,
+    sourceRelativePath: source.relativePath,
+    directoryName: source.directoryName
+  };
 }
 
 export function listWorldPackageRegistryEntries(): WorldPackageRegistryEntry[] {
@@ -53,10 +64,16 @@ export function listWorldPackageRegistryEntries(): WorldPackageRegistryEntry[] {
           factionCount: 0,
           resourceCount: 0,
           taskTemplateCount: 0,
-          randomWorldEventCount: 0
+          randomWorldEventCount: 0,
+          assetCount: 0
         },
         package: undefined,
-        hash: undefined
+        hash: undefined,
+        fileCount: 0,
+        bytes: 0,
+        fileReceipts: [],
+        sourceRelativePath: `world-packs/${entry.directoryName}`,
+        directoryName: entry.directoryName
       };
       const injectedRuleCatalog = discovery.package
         ? applyEcosystemCatalogToRuleCatalog(
@@ -77,22 +94,53 @@ export function listWorldPackageRegistryEntries(): WorldPackageRegistryEntry[] {
             })
           }
         : discovery;
+      const worldPackageHash = enriched.hash || entry.contentHash;
+      const hashErrors = worldPackageHash ? [] : ["WorldPackage content hash is required before selection or replay."];
+      const receiptPayload = {
+        schema: "world-package-receipt.v1" as const,
+        packageId: entry.packageId,
+        version: entry.version,
+        license: typeof enriched.package?.manifest?.license === "string" ? enriched.package.manifest.license : "unknown",
+        sourceRelativePath: enriched.sourceRelativePath,
+        contentHash: worldPackageHash || "",
+        fileCount: enriched.fileCount,
+        bytes: enriched.bytes,
+        files: enriched.fileReceipts,
+        bindings: {
+          scenarioPackId: enriched.summary.scenarioPackId,
+          mapPackId: enriched.summary.mapPackId,
+          ruleCatalogId: enriched.summary.ruleCatalogId,
+          agentPackId: enriched.summary.agentPackId,
+          ecosystemCatalogId: enriched.summary.ecosystemCatalogId
+        },
+        validation: {
+          ok: enriched.ok && hashErrors.length === 0,
+          errors: [...enriched.errors, ...hashErrors],
+          warnings: enriched.warnings
+        },
+        ...(enriched.package?.assetManifest ? { assetManifest: enriched.package.assetManifest } : {})
+      };
+      const worldPackageReceipt: WorldPackageReceipt = {
+        ...receiptPayload,
+        receiptHash: createStablePackHash(receiptPayload)
+      };
       return {
         id: entry.packageId,
         name: entry.name,
         version: entry.version,
         source: "world-package" as const,
         worldPackageId: entry.packageId,
-        worldPackageHash: enriched.hash || entry.contentHash,
+        worldPackageHash: worldPackageHash || "",
+        worldPackageReceipt,
         directoryName: entry.directoryName,
         scenarioPackId: enriched.summary.scenarioPackId,
         mapPackId: enriched.summary.mapPackId,
         ruleCatalogId: enriched.summary.ruleCatalogId,
         agentPackId: enriched.summary.agentPackId,
         ecosystemCatalogId: enriched.summary.ecosystemCatalogId,
-        validationOk: enriched.ok,
+        validationOk: enriched.ok && hashErrors.length === 0,
         validationSummary: {
-          errors: enriched.errors,
+          errors: [...enriched.errors, ...hashErrors],
           warnings: enriched.warnings
         },
         discovery: enriched

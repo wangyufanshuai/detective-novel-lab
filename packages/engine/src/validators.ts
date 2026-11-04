@@ -84,7 +84,13 @@ export function deriveSuspectMatrix(deductionCase: DeductionCase): SuspectMatrix
   }
 
   return (deductionCase.characters || [])
-    .filter((character) => character.id !== "detective" && character.id !== "victim" && character.role !== "死者")
+    .filter((character) =>
+      character.isSuspect !== false &&
+      character.id !== "detective" &&
+      character.id !== "victim" &&
+      character.role !== "死者" &&
+      character.role !== "受影响当事人"
+    )
     .map((character) => {
       const declared = existing.find((row) => {
         const raw = row as unknown as Record<string, unknown>;
@@ -164,6 +170,7 @@ export function validateCase(deductionCase: DeductionCase): CaseValidation {
   const culprit = characters.get(deductionCase.truth?.culpritId);
   if (!culprit) errors.push("truth.culpritId must reference an existing character.");
   else if (!culprit.isCulprit) errors.push("truth.culpritId must point to the character marked isCulprit=true.");
+  if (culprit?.isSuspect === false) errors.push("The culprit cannot be classified as a non-suspect witness.");
 
   const decisive = deductionCase.truth?.decisiveEvidenceIds || [];
   const missingDecisive = decisive.filter((id) => !evidence.has(id));

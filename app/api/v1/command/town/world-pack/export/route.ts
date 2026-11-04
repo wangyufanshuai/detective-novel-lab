@@ -1,4 +1,5 @@
 import { errorResponse, fail, adminOk, adminGuard, readJson } from "@/app/api/v1/_utils";
+import { findWorldPackageRegistryEntryById } from "@/app/api/v1/_world-package-registry";
 
 export async function POST(request: Request) {
   try {
@@ -10,6 +11,7 @@ export async function POST(request: Request) {
     if (body.format && body.format !== "folder") return fail("BAD_REQUEST", "Only folder export is supported without adding a zip dependency.", 400);
     const { exportWorldPackage } = await import("@/lib/world-package-catalog");
     const report = exportWorldPackage({ packageId: body.packageId, format: "folder" });
+    const registryEntry = findWorldPackageRegistryEntryById(body.packageId);
     return adminOk({
       packageId: report.packageId,
       exportedAt: report.exportedAt,
@@ -22,6 +24,7 @@ export async function POST(request: Request) {
       fileCount: report.fileCount,
       bytes: report.bytes,
       files: report.files,
+      receipt: registryEntry?.worldPackageReceipt,
       validation: report.validation
     });
   } catch (error) {

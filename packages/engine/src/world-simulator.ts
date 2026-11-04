@@ -355,6 +355,8 @@ export function buildCaseGenerationProfile(world: WorldState): CaseGenerationPro
   const sceneLocationId = pick(spec.sceneLocationIds, random);
   return {
     seed: world.seed,
+    triggerKind: "fatal",
+    triggerEventId: eventId(world.day, "21:47", "death"),
     archetype: spec.id,
     victimId: victim.id,
     culpritId: culprit.id,

@@ -12,6 +12,7 @@ export type TownTickPhaseName =
   | "observe-events"
   | "apply-consequences"
   | "advance-case-chain"
+  | "advance-population-flow"
   | "trigger-case";
 
 export const PERSISTENT_TOWN_TICK_PHASES: readonly TownTickPhaseName[] = [
@@ -21,6 +22,7 @@ export const PERSISTENT_TOWN_TICK_PHASES: readonly TownTickPhaseName[] = [
   "score-actions",
   "advance-long-actions",
   "execute-actions",
+  "advance-population-flow",
   "evolve-relationships-locations",
   "extract-candidates",
   "validate-candidates",
@@ -40,6 +42,7 @@ export const PERSISTENT_TOWN_PHASE_BOUNDARIES: readonly TownPhaseBoundary[] = [
   { name: "score-actions", domain: "actions", purpose: "Score legal instant and long-action candidates with deterministic rule inputs." },
   { name: "advance-long-actions", domain: "rules", purpose: "Tick running long actions before executing fresh instant actions." },
   { name: "execute-actions", domain: "actions", purpose: "Execute selected actions and generate world events." },
+  { name: "advance-population-flow", domain: "rules", purpose: "Apply only opt-in, source-backed population changes under a bounded cadence and resident cap." },
   { name: "evolve-relationships-locations", domain: "rules", purpose: "Apply social, organization, public opinion, evidence, and location consequences." },
   { name: "extract-candidates", domain: "cases", purpose: "Build case candidates from the current event and memory ledger." },
   { name: "validate-candidates", domain: "cases", purpose: "Validate candidate playability, evidence support, and hidden-truth safety." },

@@ -10,6 +10,8 @@ export type Character = {
   means: string;
   opportunity: string;
   isCulprit: boolean;
+  /** Omitted retains the legacy suspect behavior; false identifies a witness. */
+  isSuspect?: boolean;
   alibi: string;
   initialStatement: string;
   knowledgeScope: string[];
@@ -99,6 +101,7 @@ export type LogicPuzzle = {
 
 export type DeductionCase = {
   id: string;
+  triggerKind?: "fatal" | "nonfatal_incident" | "population_flow";
   title: string;
   theme: string;
   premise: string;

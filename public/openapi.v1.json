@@ -87,6 +87,145 @@
         }
       }
     },
+    "/api/v1/command/town/agent/commit": {
+      "post": {
+        "summary": "Commit one CAS-bound, idempotent Persistent Town agent intervention; optionally verify a persisted proposalId",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Ok"
+          },
+          "409": {
+            "$ref": "#/components/responses/Ok"
+          }
+        }
+      }
+    },
+    "/api/v1/command/town/agent/population-flow": {
+      "post": {
+        "summary": "Commit one CAS-bound, source-backed, idempotent newcomer flow through the Persistent Town Agent executor",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Ok"
+          },
+          "400": {
+            "$ref": "#/components/responses/Ok"
+          },
+          "409": {
+            "$ref": "#/components/responses/Ok"
+          }
+        }
+      }
+    },
+    "/api/v1/command/town/agent/case-extract": {
+      "post": {
+        "summary": "Extract one source-backed playable case through the CAS-bound Persistent Town Agent executor",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Ok"
+          },
+          "400": {
+            "$ref": "#/components/responses/Ok"
+          },
+          "409": {
+            "$ref": "#/components/responses/Ok"
+          },
+          "422": {
+            "$ref": "#/components/responses/Ok"
+          }
+        }
+      }
+    },
+    "/api/v1/command/town/agent/review": {
+      "post": {
+        "summary": "Verify one source-backed case route and deterministic room projection through the read-only Agent reviewer",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Ok"
+          },
+          "400": {
+            "$ref": "#/components/responses/Ok"
+          },
+          "404": {
+            "$ref": "#/components/responses/Ok"
+          },
+          "409": {
+            "$ref": "#/components/responses/Ok"
+          }
+        }
+      }
+    },
+    "/api/v1/command/town/agent/benchmark": {
+      "post": {
+        "summary": "Run a deterministic emergence benchmark bound to one world revision and source reference set",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Ok"
+          },
+          "400": {
+            "$ref": "#/components/responses/Ok"
+          },
+          "409": {
+            "$ref": "#/components/responses/Ok"
+          }
+        }
+      }
+    },
+    "/api/v1/command/town/agent/package-export": {
+      "post": {
+        "summary": "Export the selected WorldPackage through a CAS/source-bound, hash-receipted Agent command",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Ok"
+          },
+          "400": {
+            "$ref": "#/components/responses/Ok"
+          },
+          "404": {
+            "$ref": "#/components/responses/Ok"
+          },
+          "409": {
+            "$ref": "#/components/responses/Ok"
+          }
+        }
+      }
+    },
+    "/api/v1/command/town/agent/propose": {
+      "post": {
+        "summary": "Validate and persist one source-backed Persistent Town agent proposal without mutating the world",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Ok"
+          },
+          "400": {
+            "$ref": "#/components/responses/Ok"
+          },
+          "409": {
+            "$ref": "#/components/responses/Ok"
+          }
+        }
+      }
+    },
     "/api/v1/query/town/agents": {
       "get": {
         "summary": "List persistent town agent states",
@@ -111,6 +250,47 @@
           },
           {
             "$ref": "#/components/parameters/NpcId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Ok"
+          }
+        }
+      }
+    },
+    "/api/v1/query/town/agent/proposal": {
+      "get": {
+        "summary": "Read one persisted admin Agent proposal receipt",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WorldId"
+          },
+          {
+            "name": "proposalId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Ok"
+          },
+          "404": {
+            "$ref": "#/components/responses/Ok"
+          }
+        }
+      }
+    },
+    "/api/v1/query/town/agent-capabilities": {
+      "get": {
+        "summary": "Discover the versioned Persistent Town agent control manifest",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WorldId"
           }
         ],
         "responses": {
@@ -164,6 +344,20 @@
               "type": "string"
             },
             "description": "Optional player session used to mark discovered evidence, route progress, coach next step, and solved visibility."
+          },
+          {
+            "name": "mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "player",
+                "review"
+              ],
+              "default": "player"
+            },
+            "description": "player returns the spoiler-safe projection; review returns the source case and is protected by the admin surface."
           }
         ],
         "responses": {
@@ -294,6 +488,50 @@
             "$ref": "#/components/responses/Ok"
           },
           "400": {
+            "$ref": "#/components/responses/Ok"
+          },
+          "404": {
+            "$ref": "#/components/responses/Ok"
+          }
+        }
+      }
+    },
+    "/api/v1/command/town/population-flow": {
+      "post": {
+        "summary": "Apply one deterministic, source-backed newcomer flow; admin surface only and idempotent by source tuple",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Ok"
+          },
+          "400": {
+            "$ref": "#/components/responses/Ok"
+          },
+          "401": {
+            "$ref": "#/components/responses/Ok"
+          },
+          "404": {
+            "$ref": "#/components/responses/Ok"
+          }
+        }
+      }
+    },
+    "/api/v1/command/town/replay/execute": {
+      "post": {
+        "summary": "Execute a persisted scenario command stream from a private checkpoint and return a verified replay digest",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/JsonObject"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Ok"
+          },
+          "400": {
+            "$ref": "#/components/responses/Ok"
+          },
+          "401": {
             "$ref": "#/components/responses/Ok"
           },
           "404": {
@@ -849,7 +1087,7 @@
     },
     "/api/v1/query/town/runs/{runId}/replay-bundle": {
       "get": {
-        "summary": "Export a replay bundle with manifest, snapshots, diffs, commands, artifact metadata, and optional benchmark summary",
+        "summary": "Export a replay bundle and its digest, command-envelope, and evidence-status verification",
         "parameters": [
           {
             "$ref": "#/components/parameters/WorldId"
@@ -1978,11 +2216,142 @@
           "ruleCatalogHash": {
             "type": "string"
           },
+          "worldPackageId": {
+            "type": "string"
+          },
+          "worldPackageHash": {
+            "type": "string"
+          },
+          "worldPackageReceipt": {
+            "$ref": "#/components/schemas/WorldPackageReceipt"
+          },
           "engineVersion": {
             "type": "string"
           }
         },
         "additionalProperties": true
+      },
+      "WorldAssetManifest": {
+        "type": "object",
+        "required": ["schema", "packageId", "version", "generatedAt", "policy", "assets"],
+        "properties": {
+          "schema": { "const": "world-asset-manifest.v1" },
+          "packageId": { "type": "string" },
+          "version": { "type": "string" },
+          "generatedAt": { "type": "string" },
+          "policy": {
+            "type": "object",
+            "required": ["licenseRequired", "humanReviewRequired", "runtimeVerificationRequired"],
+            "properties": {
+              "licenseRequired": { "type": "boolean" },
+              "humanReviewRequired": { "type": "boolean" },
+              "runtimeVerificationRequired": { "type": "boolean" }
+            },
+            "additionalProperties": false
+          },
+          "assets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "kind", "path", "sha256", "bytes", "license", "status", "humanApproval", "runtimeVerified"],
+              "properties": {
+                "id": { "type": "string" },
+                "kind": { "type": "string", "enum": ["model", "texture", "material", "image", "audio", "room"] },
+                "path": { "type": "string" },
+                "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+                "bytes": { "type": "integer", "minimum": 0 },
+                "license": { "type": "string" },
+                "source": { "type": "string" },
+                "attribution": { "type": "string" },
+                "status": { "type": "string", "enum": ["planned", "candidate-only", "accepted", "blocked", "missing"] },
+                "humanApproval": { "type": "boolean" },
+                "runtimeVerified": { "type": "boolean" },
+                "dimensionsMeters": { "type": "array", "minItems": 3, "maxItems": 3, "items": { "type": "number", "exclusiveMinimum": 0 } }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "WorldPackageReceipt": {
+        "type": "object",
+        "required": [
+          "schema",
+          "packageId",
+          "version",
+          "license",
+          "sourceRelativePath",
+          "contentHash",
+          "receiptHash",
+          "fileCount",
+          "bytes",
+          "files",
+          "bindings",
+          "validation"
+        ],
+        "properties": {
+          "schema": {
+            "const": "world-package-receipt.v1"
+          },
+          "packageId": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "license": {
+            "type": "string"
+          },
+          "sourceRelativePath": {
+            "type": "string"
+          },
+          "contentHash": {
+            "type": "string"
+          },
+          "receiptHash": {
+            "type": "string"
+          },
+          "fileCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["name", "bytes", "sha256"],
+              "properties": {
+                "name": { "type": "string" },
+                "bytes": { "type": "integer", "minimum": 0 },
+                "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+              },
+              "additionalProperties": false
+            }
+          },
+          "bindings": {
+            "type": "object",
+            "additionalProperties": { "type": "string" }
+          },
+          "validation": {
+            "type": "object",
+            "required": ["ok", "errors", "warnings"],
+            "properties": {
+              "ok": { "type": "boolean" },
+              "errors": { "type": "array", "items": { "type": "string" } },
+              "warnings": { "type": "array", "items": { "type": "string" } }
+            },
+            "additionalProperties": false
+          },
+          "assetManifest": {
+            "$ref": "#/components/schemas/WorldAssetManifest"
+          }
+        },
+        "additionalProperties": false
       }
     }
   }

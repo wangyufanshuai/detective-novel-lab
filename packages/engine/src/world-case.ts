@@ -1,6 +1,7 @@
 import { judgeTheory } from "./judgement";
 import { buildCaseQualityReport } from "./world-analysis";
 import { buildWorldCausalTrace } from "./world-causal-trace";
+import { caseTriggerKindForEvent } from "./world-types";
 import type { Character, DeductionCase, Evidence, PlayerTheory } from "./types";
 import { deriveSuspectMatrix, evaluateEvidenceChallenge, validateCase } from "./validators";
 import type {
@@ -30,6 +31,7 @@ const keyEvidenceTitles: Record<string, string> = {
   "ev-staging": "现场伪装痕迹",
   "ev-trace": "现场微量痕迹",
   "ev-death-scene": "死亡现场记录",
+  "ev-incident-scene": "事件现场记录",
   "ev-town-rollcall": "雾灯广场巡夜登记"
 };
 
@@ -50,30 +52,35 @@ function eventByTag(events: WorldEvent[], tag: string) {
 }
 
 function inferGenerationProfile(world: WorldState, events: WorldEvent[]): CaseGenerationProfile {
-  const death = events.find((event) => event.type === "death");
-  if (!death) throw new Error("No death event exists in this world log. Run a world tick before extracting a case.");
-  const archetype = (["blade", "poison", "blunt", "fall"].find((tag) => death.tags.includes(tag)) || "blade") as MurderArchetype;
-  const victimId = death.actorIds[1] || death.relatedCharacterIds[1];
-  const culpritId = death.actorIds[0];
+  const trigger = [...events].reverse().find((event) =>
+    event.tags.includes("case_trigger") && (event.type === "death" || event.type === "incident")
+  ) || [...events].reverse().find((event) => event.type === "death" || event.type === "incident");
+  if (!trigger) throw new Error("No case trigger event exists in this world log. Run a world tick before extracting a case.");
+  const triggerKind = caseTriggerKindForEvent(trigger);
+  const archetype = (["blade", "poison", "blunt", "fall"].find((tag) => trigger.tags.includes(tag)) || "blade") as MurderArchetype;
+  const victimId = trigger.actorIds[1] || trigger.relatedCharacterIds[1];
+  const culpritId = trigger.actorIds[0];
   const witnessEvent = eventByEvidence(events, "ev-opportunity") || eventByTag(events, "opportunity");
   const focusSuspectIds = events
     .filter((event) => event.tags.includes("focus_suspect"))
     .map((event) => event.actorIds[0])
     .filter(Boolean);
-  const decisiveEvidenceIds = ["ev-means", "ev-motive", "ev-opportunity", "ev-staging", "ev-trace"];
+  const decisiveEvidenceIds = ["ev-means", "ev-motive", "ev-opportunity", "ev-staging", "ev-trace", triggerKind === "fatal" ? "ev-death-scene" : "ev-incident-scene"];
   return {
     seed: world.seed,
+    triggerKind,
+    triggerEventId: trigger.id,
     archetype,
     victimId,
     culpritId,
     witnessId: witnessEvent?.actorIds[0] || "",
     focusSuspectIds,
-    sceneLocationId: death.locationId,
+    sceneLocationId: trigger.locationId,
     prepLocationId: eventByEvidence(events, "ev-means")?.locationId || "",
     motiveEventId: eventByEvidence(events, "ev-motive")?.id || "",
     meansEventId: eventByEvidence(events, "ev-means")?.id || "",
     opportunityEventId: eventByEvidence(events, "ev-opportunity")?.id || "",
-    deathEventId: death.id,
+    deathEventId: triggerKind === "fatal" ? trigger.id : "",
     stagingEventId: eventByEvidence(events, "ev-staging")?.id || "",
     traceEventId: eventByEvidence(events, "ev-trace")?.id || "",
     groupAlibiEventId: eventByEvidence(events, "ev-town-rollcall")?.id || "",
@@ -89,7 +96,8 @@ function sourceMapFromProfile(events: WorldEvent[], profile: CaseGenerationProfi
     stagingEvidenceId: "ev-staging",
     traceEvidenceId: "ev-trace",
     groupAlibiEvidenceId: "ev-town-rollcall",
-    sourceEventIds: events.filter((event) => event.evidenceId || event.id === profile.deathEventId).map((event) => event.id)
+    sourceEventIds: events.filter((event) => event.evidenceId || event.id === profile.triggerEventId || event.id === profile.deathEventId).map((event) => event.id),
+    triggeredEventId: profile.triggerEventId
   };
 }
 
@@ -97,15 +105,17 @@ function characterFromNpc(npc: NPCProfile, world: WorldState, profile: CaseGener
   const isVictim = npc.id === profile.victimId;
   const isCulprit = npc.id === profile.culpritId;
   const isFocus = profile.focusSuspectIds.includes(npc.id);
+  const affectedLabel = profile.triggerKind === "fatal" ? "死者" : "受影响当事人";
+  const subjectLabel = profile.triggerKind === "fatal" ? "死者" : "当事人";
   return {
     id: npc.id,
     name: npc.name,
-    role: isVictim ? "死者" : npc.role,
-    publicBio: isVictim ? `${npc.name}是本案死者，最后出现在${locationName(world, profile.sceneLocationId)}。` : `${npc.name}是${npc.role}，在镇上有固定日程和人际关系。`,
+    role: isVictim ? affectedLabel : npc.role,
+    publicBio: isVictim ? `${npc.name}是本案${affectedLabel}，最后出现在${locationName(world, profile.sceneLocationId)}。` : `${npc.name}是${npc.role}，在镇上有固定日程和人际关系。`,
     secret: npc.secret,
-    motive: isCulprit ? npc.motiveSeed : isFocus ? `${npc.name}与死者存在可疑摩擦。` : "没有足以杀人的直接动机。",
+    motive: isCulprit ? npc.motiveSeed : isFocus ? `${npc.name}与${subjectLabel}存在可疑摩擦。` : profile.triggerKind === "fatal" ? "没有足以杀人的直接动机。" : "没有足以制造该事件的直接动机。",
     means: isCulprit ? `能接触与${archetypeLabels[profile.archetype]}有关的关键物品。` : isFocus ? "表面上有接触类似工具或地点的可能。" : "没有被证明接触过关键手段。",
-    opportunity: isCulprit ? `案发窗口被目击接近${locationName(world, profile.sceneLocationId)}。` : isFocus ? "案发窗口需要用证据排除。" : "案发窗口有可查的不在场记录。",
+    opportunity: isCulprit ? `事件窗口被目击接近${locationName(world, profile.sceneLocationId)}。` : isFocus ? "事件窗口需要用证据排除。" : "事件窗口有可查的不在场记录。",
     isCulprit,
     alibi: isCulprit ? "声称自己案发窗口没有接近现场。" : "有一条可发现的不在场记录。",
     initialStatement: isCulprit ? "我只听说现场出事了。夜里那么乱，谁都可能被误认。" : "我愿意配合调查，但我只能说自己亲眼见到的部分。",
@@ -141,7 +151,7 @@ function memoriesForNpc(world: WorldState, npcId: string) {
 
 function createTestimonies(world: WorldState, deductionCase: DeductionCase, profile: CaseGenerationProfile): TestimonyRecord[] {
   return deductionCase.characters
-    .filter((character) => character.role !== "死者")
+    .filter((character) => character.id !== profile.victimId)
     .map((character) => {
       const memories = memoriesForNpc(world, character.id);
       const isCulprit = character.id === profile.culpritId;
@@ -167,8 +177,11 @@ function createTestimonies(world: WorldState, deductionCase: DeductionCase, prof
 
 export function extractCaseFromWorld(world: WorldState, events: WorldEvent[]): CaseFromLog {
   const profile = inferGenerationProfile(world, events);
-  const death = events.find((event) => event.id === profile.deathEventId)!;
-  const sourceEvents = events.filter((event) => event.evidenceId || event.id === profile.deathEventId || event.tags.includes("suspicion"));
+  const trigger = events.find((event) => event.id === profile.triggerEventId) || events.find((event) => event.id === profile.deathEventId);
+  if (!trigger) throw new Error(`Case trigger ${profile.triggerEventId} is missing from the world log.`);
+  const fatal = profile.triggerKind === "fatal";
+  const subjectLabel = fatal ? "死者" : "当事人";
+  const sourceEvents = events.filter((event) => event.evidenceId || event.id === profile.triggerEventId || event.id === profile.deathEventId || event.tags.includes("suspicion"));
   const evidenceEvents = sourceEvents.filter((event) => event.evidenceId);
   const evidence = evidenceEvents.map((event) => evidenceFromEvent(world, event, profile));
   const characters = world.npcs.map((npc) => characterFromNpc(npc, world, profile));
@@ -180,18 +193,18 @@ export function extractCaseFromWorld(world: WorldState, events: WorldEvent[]): C
 
   const deductionCase: DeductionCase = {
     id: `case-${world.id}`,
-    title: `${world.name}：${locationName(world, profile.sceneLocationId)}${archetypeLabels[profile.archetype]}案`,
-    theme: `持续模拟小镇中的${archetypeLabels[profile.archetype]}本格案件`,
-    premise: `${world.name}按 NPC 日程运行。第${death.day}日夜间，${locationName(world, profile.sceneLocationId)}发生死亡事件，案件事实全部来自世界事件日志。`,
-    publicCaseFile: `第${death.day}日夜，${npcName(world, profile.victimId)}死在${locationName(world, profile.sceneLocationId)}。公开现场经过伪装，玩家需要搜索地点、询问 NPC，并用证据排除其他嫌疑人。`,
+    title: `${world.name}：${locationName(world, profile.sceneLocationId)}${fatal ? `${archetypeLabels[profile.archetype]}案` : "事件调查"}`,
+    theme: fatal ? `持续模拟小镇中的${archetypeLabels[profile.archetype]}本格案件` : "持续模拟小镇中的非致命事件调查",
+    premise: `${world.name}按 NPC 日程运行。第${trigger.day}日夜间，${locationName(world, profile.sceneLocationId)}发生${fatal ? "死亡事件" : "重大事件"}，案件事实全部来自世界事件日志。`,
+    publicCaseFile: `第${trigger.day}日夜，${npcName(world, profile.victimId)}在${locationName(world, profile.sceneLocationId)}成为${subjectLabel}。公开现场经过伪装，玩家需要搜索地点、询问 NPC，并用证据排除其他嫌疑人。`,
     truth: {
       culpritId: profile.culpritId,
-      motive: eventByEvidence(events, "ev-motive")?.summary || `${npcName(world, profile.culpritId)}害怕秘密被死者公开。`,
-      method: death.summary,
-      opportunity: eventByEvidence(events, "ev-opportunity")?.summary || `${npcName(world, profile.culpritId)}在案发窗口接近现场。`,
+      motive: eventByEvidence(events, "ev-motive")?.summary || `${npcName(world, profile.culpritId)}害怕秘密被${subjectLabel}公开。`,
+      method: trigger.summary,
+      opportunity: eventByEvidence(events, "ev-opportunity")?.summary || `${npcName(world, profile.culpritId)}在事件窗口接近现场。`,
       decisiveEvidenceIds: profile.decisiveEvidenceIds,
       trueTimeline: sourceEvents
-        .filter((event) => ["obtain_item", "conflict", "witness", "death", "destroy_evidence", "forensic_clue"].includes(event.type))
+        .filter((event) => ["obtain_item", "conflict", "witness", "death", "incident", "destroy_evidence", "forensic_clue"].includes(event.type))
         .map((event) => ({
           id: event.id,
           time: `第${event.day}日 ${event.time}`,
@@ -231,17 +244,18 @@ export function extractCaseFromWorld(world: WorldState, events: WorldEvent[]): C
         }),
       exclusionChains: world.npcs
         .filter((npc) => npc.id !== profile.victimId && npc.id !== profile.culpritId)
-        .map((npc) => ({ characterId: npc.id, reason: `${npc.name}在案发窗口被地点记录排除，无法同时出现在${locationName(world, profile.sceneLocationId)}。`, evidenceIds: [alibiEvidenceByCharacter.get(npc.id) || "ev-town-rollcall"] })),
+        .map((npc) => ({ characterId: npc.id, reason: `${npc.name}在事件窗口被地点记录排除，无法同时出现在${locationName(world, profile.sceneLocationId)}。`, evidenceIds: [alibiEvidenceByCharacter.get(npc.id) || "ev-town-rollcall"] })),
       criticalReasoningChain: [
-        { id: "reason-motive", conclusion: "死者掌握凶手秘密，形成直接动机。", evidenceIds: ["ev-motive"] },
+        { id: "reason-motive", conclusion: `${subjectLabel}掌握凶手秘密，形成直接动机。`, evidenceIds: ["ev-motive"] },
         { id: "reason-means", conclusion: "凶手提前准备了与手法匹配的关键物品。", evidenceIds: ["ev-means"] },
-        { id: "reason-opportunity", conclusion: "案发窗口凶手接近现场。", evidenceIds: ["ev-opportunity"] },
+        { id: "reason-opportunity", conclusion: "事件窗口凶手接近现场。", evidenceIds: ["ev-opportunity"] },
         { id: "reason-staging", conclusion: "现场经过伪装，公开版本不可信。", evidenceIds: ["ev-staging"] },
         { id: "reason-trace", conclusion: "现场痕迹把凶手和真实手法连接起来。", evidenceIds: ["ev-trace"] }
       ],
-      redHerrings: ["现场伪装会误导死亡方式或时间。", "夜雾和群体登记会制造大量表面嫌疑人。"],
+      redHerrings: [fatal ? "现场伪装会误导死亡方式或时间。" : "现场伪装会误导事件性质或时间。", "夜雾和群体登记会制造大量表面嫌疑人。"],
       requiredClueOrder: ["ev-staging", "ev-opportunity", "ev-means", "ev-motive", "ev-trace"]
-    }
+    },
+    triggerKind: profile.triggerKind
   };
 
   const testimonies = createTestimonies(world, deductionCase, profile);
@@ -254,7 +268,9 @@ export function extractCaseFromWorld(world: WorldState, events: WorldEvent[]): C
       id: deductionCase.id,
       worldId: world.id,
       sourceEventIds: sourceEvents.map((event) => event.id),
-      deathEventId: death.id,
+      deathEventId: profile.deathEventId,
+      triggeredEventId: profile.triggerEventId,
+      triggerKind: profile.triggerKind,
       generationProfile: profile,
       sourceMap,
       testimonies,
@@ -272,7 +288,9 @@ export function extractCaseFromWorld(world: WorldState, events: WorldEvent[]): C
     id: deductionCase.id,
     worldId: world.id,
     sourceEventIds: sourceEvents.map((event) => event.id),
-    deathEventId: death.id,
+    deathEventId: profile.deathEventId,
+    triggeredEventId: profile.triggerEventId,
+    triggerKind: profile.triggerKind,
     generationProfile: profile,
     sourceMap,
     testimonies,
@@ -292,9 +310,13 @@ export function validateWorldCase(world: WorldState, events: WorldEvent[], deduc
   const npcIds = new Set(world.npcs.map((npc) => npc.id));
   const evidenceEventIds = new Set(events.filter((event) => event.evidenceId).map((event) => event.evidenceId || ""));
   const deathEvents = events.filter((event) => event.type === "death");
+  const incidentEvents = events.filter((event) => event.type === "incident");
+  const triggerKind = deductionCase.triggerKind || (deathEvents.length ? "fatal" : "nonfatal_incident");
   const culpritRows = deriveSuspectMatrix(deductionCase).filter((row) => row.completeAndUnexcluded);
 
-  if (deathEvents.length !== 1) worldErrors.push(`World log must contain exactly one death event; found ${deathEvents.length}.`);
+  if (triggerKind === "fatal" && deathEvents.length !== 1) worldErrors.push(`World log must contain exactly one death event; found ${deathEvents.length}.`);
+  if (triggerKind === "nonfatal_incident" && incidentEvents.length !== 1) worldErrors.push(`World log must contain exactly one incident event; found ${incidentEvents.length}.`);
+  if (triggerKind === "nonfatal_incident" && deathEvents.length > 0) worldErrors.push("Nonfatal incident cases cannot contain a death event in their extracted world view.");
   if (world.mode === "showcase" && world.npcs.length < 8) worldErrors.push(`Showcase world must contain at least 8 NPCs; found ${world.npcs.length}.`);
   if (world.mode === "showcase" && world.npcs.length > 12) worldWarnings.push("Generated showcase worlds with many NPCs should keep suspect grouping compact in UI.");
   if (culpritRows.length !== 1) worldErrors.push("World case must leave exactly one complete and unexcluded suspect.");
@@ -317,16 +339,18 @@ export function validateWorldCase(world: WorldState, events: WorldEvent[], deduc
     generationProfile: {
       seed: world.seed,
       archetype: "blade",
-      victimId: deductionCase.characters.find((character) => character.role === "死者")?.id || "victim",
+      victimId: deductionCase.characters.find((character) => character.role === "死者" || character.role === "受影响当事人")?.id || "victim",
       culpritId: deductionCase.truth.culpritId,
       witnessId: "",
       focusSuspectIds: [],
-      sceneLocationId: events.find((event) => event.type === "death")?.locationId || "",
+      sceneLocationId: events.find((event) => event.type === "death" || event.type === "incident")?.locationId || "",
       prepLocationId: "",
       motiveEventId: "",
       meansEventId: "",
       opportunityEventId: "",
       deathEventId: events.find((event) => event.type === "death")?.id || "",
+      triggerKind,
+      triggerEventId: events.find((event) => event.type === "death" || event.type === "incident")?.id || "",
       stagingEventId: "",
       traceEventId: "",
       groupAlibiEventId: "",

@@ -2,6 +2,7 @@ import { createPersistentTownRuntime, type ScenarioConfig } from "./persistent-t
 import type { NPCProfile, WorldLocation, WorldState } from "./world-types";
 import { catalogToTownRuleRuntimeState, createDefaultTownRuleCatalog, validateTownRuleCatalog, type TownInstitution, type TownProfession, type TownRuleCatalog } from "./town-rules";
 import { townMapPackToLocations, validateTownMapPack, type TownMapPack } from "./town-map-pack";
+import type { WorldAssetManifest } from "./world-package";
 
 export type ScenarioPackManifest = {
   id: string;
@@ -83,6 +84,32 @@ export type PackRegistryEntry = {
   validationOk?: boolean;
 };
 
+export type WorldPackageReceipt = {
+  schema: "world-package-receipt.v1";
+  packageId: string;
+  version: string;
+  license: string;
+  sourceRelativePath: string;
+  contentHash: string;
+  receiptHash: string;
+  fileCount: number;
+  bytes: number;
+  files: Array<{ name: string; bytes: number; sha256: string }>;
+  bindings: {
+    scenarioPackId?: string;
+    mapPackId?: string;
+    ruleCatalogId?: string;
+    agentPackId?: string;
+    ecosystemCatalogId?: string;
+  };
+  validation: {
+    ok: boolean;
+    errors: string[];
+    warnings: string[];
+  };
+  assetManifest?: WorldAssetManifest;
+};
+
 export type CurrentExperimentRef = {
   scenarioPackId: string;
   mapPackId: string;
@@ -93,6 +120,7 @@ export type CurrentExperimentRef = {
   experimentPathHash?: string;
   worldPackageId?: string;
   worldPackageHash?: string;
+  worldPackageReceipt?: WorldPackageReceipt;
   agentPackId?: string;
   ecosystemCatalogId?: string;
   sourceWorldId?: string;

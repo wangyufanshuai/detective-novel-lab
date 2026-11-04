@@ -1,4 +1,4 @@
-import { errorResponse, fail, ok } from "@/app/api/v1/_utils";
+import { errorResponse, fail, playerOk } from "@/app/api/v1/_utils";
 import { buildCityPulseWorldProjection, buildTownEmergenceQueue, buildTownSituationBrief } from "@/lib/engine";
 import { loadRuntimeWorld } from "@/app/api/v1/_town-runtime";
 
@@ -10,7 +10,7 @@ export async function GET(request: Request) {
     if (!loaded) return fail("WORLD_NOT_FOUND", "World not found", 404);
     const queue = buildTownEmergenceQueue(loaded.world, loaded.events, loaded.runtime);
     const brief = buildTownSituationBrief(loaded.world, loaded.events, loaded.runtime, queue);
-    return ok({ brief, projection: buildCityPulseWorldProjection(brief, loaded.runtime.agentStates.length) });
+    return playerOk({ brief, projection: buildCityPulseWorldProjection(brief, loaded.runtime.agentStates.length) });
   } catch (error) {
     return errorResponse(error);
   }

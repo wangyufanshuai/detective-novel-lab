@@ -715,7 +715,7 @@ export function buildPlayerProofTour(
   const steps: ProofTourStep[] = [];
 
   const push = (step: ProofTourStep) => steps.push(step);
-  const publicEvent = events.find((event) => event.id === caseFromLog.deathEventId) || events.find((event) => event.type === "death") || events[0];
+  const publicEvent = events.find((event) => event.id === (caseFromLog.triggeredEventId || caseFromLog.deathEventId)) || events.find((event) => event.type === "death" || event.type === "incident") || events[0];
   if (publicEvent) {
     push({
       id: `tour:event:${publicEvent.id}`,

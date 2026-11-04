@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
+import { assertBoundRecordWrite, assertWorldWrite, canAccessWorld, hasPrivateWorldRegistry } from "./private-world-access.ts";
 import type {
   PackageCatalogDetail,
   PackageCatalogEntry,
@@ -497,6 +498,7 @@ export const worldRepository = {
 
   saveWorld(world: WorldState) {
     const db = getDb();
+    assertWorldWrite(db, world.id);
     db.prepare(
       `insert into worlds (id, data, created_at, updated_at)
        values (@id, @data, @createdAt, @updatedAt)
@@ -527,6 +529,9 @@ export const worldRepository = {
        on conflict(id) do update set data = excluded.data`
     );
     const saveBundle = db.transaction(({ world, events = [], activeCase = null }: { world: WorldState; events?: WorldEvent[]; activeCase?: CaseFromLog | null }) => {
+      assertWorldWrite(db, world.id);
+      for (const event of events) assertBoundRecordWrite(db, "world_events", event.id, event.worldId);
+      if (activeCase) assertBoundRecordWrite(db, "cases", activeCase.id, activeCase.worldId);
       saveWorldStatement.run({
         id: world.id,
         data: JSON.stringify(world),
@@ -551,6 +556,9 @@ export const worldRepository = {
   saveWorldBundleIfRuntimeRevision(input: { world: WorldState; events?: WorldEvent[]; activeCase?: CaseFromLog | null; expectedRevision: number }) {
     const db = getDb();
     const saveBundle = db.transaction(({ world, events = [], activeCase = null, expectedRevision }: { world: WorldState; events?: WorldEvent[]; activeCase?: CaseFromLog | null; expectedRevision: number }) => {
+      assertWorldWrite(db, world.id);
+      for (const event of events) assertBoundRecordWrite(db, "world_events", event.id, event.worldId);
+      if (activeCase) assertBoundRecordWrite(db, "cases", activeCase.id, activeCase.worldId);
       const now = new Date().toISOString();
       const result = db.prepare(
         `update worlds
@@ -683,12 +691,15 @@ export const worldRepository = {
   },
 
   getWorld(id: string) {
+    if (!canAccessWorld(getDb(), id)) return null;
     const row = getDb().prepare("select id, data from worlds where id = ?").get(id) as Row | undefined;
     return parseData<WorldState>(row);
   },
 
   listWorlds() {
-    return (getDb().prepare("select id, data from worlds order by updated_at desc limit 20").all() as Row[]).map((row) => JSON.parse(row.data) as WorldState);
+    const db = getDb();
+    const filter = hasPrivateWorldRegistry(db) ? "where not exists (select 1 from town_exploration_sessions private where private.world_id = worlds.id)" : "";
+    return (db.prepare(`select id, data from worlds ${filter} order by updated_at desc limit 20`).all() as Row[]).map((row) => JSON.parse(row.data) as WorldState);
   },
 
   addEvents(events: WorldEvent[]) {
@@ -700,6 +711,7 @@ export const worldRepository = {
     );
     const now = new Date().toISOString();
     const insertMany = db.transaction((items: WorldEvent[]) => {
+      for (const event of items) assertBoundRecordWrite(db, "world_events", event.id, event.worldId);
       for (const event of items) statement.run({ id: event.id, worldId: event.worldId, data: JSON.stringify(event), createdAt: now });
     });
     insertMany(events);
@@ -707,12 +719,14 @@ export const worldRepository = {
   },
 
   getEvents(worldId: string) {
+    if (!canAccessWorld(getDb(), worldId)) return [];
     return (getDb().prepare("select id, data from world_events where world_id = ? order by id asc").all(worldId) as Row[]).map(
       (row) => JSON.parse(row.data) as WorldEvent
     );
   },
 
   saveCase(caseFromLog: CaseFromLog) {
+    assertBoundRecordWrite(getDb(), "cases", caseFromLog.id, caseFromLog.worldId);
     getDb()
       .prepare(
         `insert into cases (id, world_id, data, created_at)
@@ -729,16 +743,19 @@ export const worldRepository = {
   },
 
   getCase(id: string) {
-    const row = getDb().prepare("select id, data from cases where id = ?").get(id) as Row | undefined;
+    const row = getDb().prepare("select id, world_id, data from cases where id = ?").get(id) as Row | undefined;
+    if (row?.world_id && !canAccessWorld(getDb(), row.world_id)) return null;
     return parseData<CaseFromLog>(row);
   },
 
   getActiveCase(worldId: string) {
+    if (!canAccessWorld(getDb(), worldId)) return null;
     const row = getDb().prepare("select id, data from cases where world_id = ? order by created_at desc limit 1").get(worldId) as Row | undefined;
     return parseData<CaseFromLog>(row);
   },
 
   saveSession(session: PlayerSession) {
+    assertBoundRecordWrite(getDb(), "sessions", session.id, session.worldId);
     getDb()
       .prepare(
         `insert into sessions (id, world_id, case_id, player_id, data, created_at, updated_at)
@@ -758,7 +775,8 @@ export const worldRepository = {
   },
 
   getSession(id: string) {
-    const row = getDb().prepare("select id, data from sessions where id = ?").get(id) as Row | undefined;
+    const row = getDb().prepare("select id, world_id, data from sessions where id = ?").get(id) as Row | undefined;
+    if (row?.world_id && !canAccessWorld(getDb(), row.world_id)) return null;
     return parseData<PlayerSession>(row);
   },
 
@@ -783,6 +801,7 @@ export const worldRepository = {
   },
 
   listSessions(worldId: string, caseId: string) {
+    if (!canAccessWorld(getDb(), worldId)) return [];
     return (getDb().prepare("select id, data from sessions where world_id = ? and case_id = ? order by updated_at desc").all(worldId, caseId) as Row[]).map(
       (row) => JSON.parse(row.data) as PlayerSession
     );

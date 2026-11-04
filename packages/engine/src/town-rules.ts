@@ -972,6 +972,7 @@ function applyResolution(state: TownRuleRuntimeState, resolution: LongActionReso
   const nextItem: EvidenceChainItem = {
     id: evidenceId,
     caseId: existing?.caseId,
+    caseIds: existing?.caseIds || (existing?.caseId ? [existing.caseId] : []),
     kind: resolution.evidenceDelta.kind || existing?.kind || "trace",
     locationId,
     discoveredByNpcId: existing?.discoveredByNpcId || (contaminationDelta <= 0 ? resolution.action.actorId : undefined),

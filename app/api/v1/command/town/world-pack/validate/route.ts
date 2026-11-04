@@ -1,4 +1,5 @@
 import { errorResponse, fail, adminOk, adminGuard, readJson } from "@/app/api/v1/_utils";
+import { findWorldPackageRegistryEntryById } from "@/app/api/v1/_world-package-registry";
 import { validateWorldPackageFiles, type WorldPackageFiles } from "@/lib/engine";
 
 export async function POST(request: Request) {
@@ -12,7 +13,7 @@ export async function POST(request: Request) {
       const validation = readWorldPackageFiles(body.packageId);
       if (!validation) return fail("PACKAGE_NOT_FOUND", "WorldPackage not found", 404);
       const { package: _package, ...publicValidation } = validation;
-      return adminOk(publicValidation);
+      return adminOk({ ...publicValidation, receipt: findWorldPackageRegistryEntryById(body.packageId)?.worldPackageReceipt });
     }
     if (!body.files) return fail("BAD_REQUEST", "packageId or files is required", 400);
     const validation = validateWorldPackageFiles(body.files);

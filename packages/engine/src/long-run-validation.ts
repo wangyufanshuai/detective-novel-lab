@@ -21,7 +21,7 @@ import {
   type TownRuleRuntimeState
 } from "./town-rules";
 import { createInitialWorld, simulateDailyLife } from "./world-simulator";
-import type { CaseFromLog, WorldEvent, WorldState } from "./world-types";
+import type { CaseFromLog, CaseTriggerKind, WorldEvent, WorldState } from "./world-types";
 import {
   buildCampaignTimelineGraph,
   buildEvidenceGraph,
@@ -58,6 +58,7 @@ export type LongRunValidationConfig = {
 export type CaseContinuityMetric = {
   caseId: string;
   triggeredEventId?: string;
+  triggerKind?: CaseTriggerKind;
   tick: number;
   culpritId: string;
   victimId: string;
@@ -653,20 +654,37 @@ function constrainAblationState(runtime: PersistentTownRuntime, variant: RuleAbl
 }
 
 function caseKey(candidate: CaseCandidate) {
-  return `${candidate.id}:${candidate.triggeredEventId || "forming"}:${candidate.culpritId}:${candidate.victimId}`;
+  // Candidate ids are presentation/cache identities and intentionally include
+  // the current tick and ranking index. They must never decide whether a
+  // campaign trigger has already been extracted. A replayed candidate for the
+  // same trigger is the same case even when its score or rank changed.
+  const triggerIdentity = candidate.triggeredEventId
+    ? `trigger:${candidate.triggeredEventId}`
+    : `forming:${candidate.culpritId}->${candidate.victimId}:${candidate.caseType || "murder"}`;
+  return `${triggerIdentity}:${candidate.culpritId}:${candidate.victimId}`;
 }
 
-function createCampaignCaseId(seed: string, tick: number, ordinal: number, candidate: CaseCandidate) {
+function createCampaignCaseId(seed: string, tick: number, ordinal: number, candidate: CaseCandidate, stableTriggerIdentity = false) {
   const identity = deterministicHash({
     seed,
-    tick,
-    ordinal,
-    caseType: candidate.caseType || "murder",
-    triggeredEventId: candidate.triggeredEventId,
-    culpritId: candidate.culpritId,
-    victimId: candidate.victimId
+    ...(stableTriggerIdentity
+      ? {
+          triggeredEventId: candidate.triggeredEventId,
+          culpritId: candidate.culpritId,
+          victimId: candidate.victimId
+        }
+      : {
+          tick,
+          ordinal,
+          caseType: candidate.caseType || "murder",
+          triggeredEventId: candidate.triggeredEventId,
+          culpritId: candidate.culpritId,
+          victimId: candidate.victimId
+        })
   }).replace("fnv1a-", "");
-  return `case-${tick}-${String(ordinal).padStart(3, "0")}-${identity}`;
+  return stableTriggerIdentity
+    ? `case-${identity}`
+    : `case-${tick}-${String(ordinal).padStart(3, "0")}-${identity}`;
 }
 
 function pairKeyForCandidate(candidate: CaseCandidate) {
@@ -831,6 +849,7 @@ export function computeCausalMetrics(input: {
     return {
       caseId: item.caseId,
       triggeredEventId: item.candidate.triggeredEventId,
+      triggerKind: item.candidate.triggerKind || item.activeCase.triggerKind,
       tick: item.tick,
       culpritId: item.candidate.culpritId,
       victimId: item.candidate.victimId,
@@ -973,7 +992,13 @@ export function runMultiCaseSimulation(config: LongRunValidationConfig = {}): Lo
   installAblationCatalog(state, variant);
   const initialResources = resourceSnapshot(ensureTownRuleRuntimeState(state.world, state.runtime));
   state.runtime.campaignCaseTarget = minimumCaseCount;
+  // High-capacity campaigns opt into the lifecycle-aware policy explicitly.
+  // Short runs and existing saves keep the legacy fatal contract until their
+  // caller elects to migrate, so changing the target never alternates event
+  // kinds inside a run.
+  state.runtime.caseTriggerPolicy = minimumCaseCount >= 30 ? "source-signaled" : (state.runtime.caseTriggerPolicy || "legacy-fatal");
   const extractedCases: ExtractedCase[] = [];
+  const stableTriggerIdentity = minimumCaseCount >= 30;
   const seenCases = new Set<string>();
   const selectedTypes = new Map<string, number>();
   const selectedPairs = new Set<string>();
@@ -1036,7 +1061,7 @@ export function runMultiCaseSimulation(config: LongRunValidationConfig = {}): Lo
       state.world = { ...extracted.world, persistentRuntime: state.runtime } as RuntimeWorldState;
       state.runtime = (state.world as RuntimeWorldState).persistentRuntime || state.runtime;
       const locationId = state.events.find((event) => event.id === extracted.candidate.triggeredEventId)?.locationId;
-      const caseId = createCampaignCaseId(seed, state.runtime.tick, extractedCases.length + 1, extracted.candidate);
+      const caseId = createCampaignCaseId(seed, state.runtime.tick, extractedCases.length + 1, extracted.candidate, stableTriggerIdentity);
       const resolution = resolveCaseInWorld(state.world, state.runtime, {
         caseId,
         outcome: extracted.candidate.validation.valid ? "extracted" : "failed",
@@ -1083,6 +1108,9 @@ export function runMultiCaseSimulation(config: LongRunValidationConfig = {}): Lo
     metrics.candidateDiversityScore < 25 ? `Candidate diversity below minimum: ${metrics.candidateDiversityScore}.` : ""
     ,
     metrics.uniqueCaseCount !== metrics.caseCount ? `Only ${metrics.uniqueCaseCount}/${metrics.caseCount} case ids are unique.` : "",
+    new Set(extractedCases.map((item) => item.candidate.triggeredEventId).filter(Boolean)).size !== extractedCases.length
+      ? "The same trigger event was extracted as more than one campaign case."
+      : "",
     metrics.evidenceGraph.caseUses.some((item) => !item.complete) ? `Evidence graph has incomplete resolved cases: ${metrics.evidenceGraph.warnings.join("; ")}` : ""
   ].filter(Boolean);
   performanceSummary.totalMs = performance.now() - runStartedAt;

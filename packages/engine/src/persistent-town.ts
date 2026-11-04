@@ -25,6 +25,16 @@ import { invalidateTownCandidateCache, reusableTownCandidates, storeTownCandidat
 import { cacheNpcAgentState, eventsForNpc, memoriesForNpc } from "./town/memory";
 import { PERSISTENT_TOWN_TICK_PHASES, type TownTickPhaseName } from "./town/runtime";
 import { cloneTownSnapshotRuntime, cloneTownSnapshotWorld, cloneTownWorldForAdvance } from "./town/snapshots";
+import { advanceTownDailyRoutines, type TownDailyRoutine } from "./town/daily-routine";
+import { beginResidentWorkInterval, advanceResidentWorkInterval, residentWorkOwnsActor, type TownResidentWork } from "./town/resident-work";
+import { beginResidentLifeInterval, ensureResidentLifePlanner, finishResidentLifeInterval, residentLifeOwnsActor, type TownResidentLife } from "./town/resident-life";
+import {
+  advancePopulationFlowCadence,
+  DEFAULT_POPULATION_FLOW_POLICY,
+  normalizePopulationFlowPolicy,
+  type PopulationFlowPolicy
+} from "./town/population-flow";
+import { buildAgentDecisionTraceDigest, buildWorldReplayDigest, type WorldReplayDigest } from "./town/replay-contract";
 import {
   deriveCandidateInfluenceBudget,
   deriveWorldArcCandidateInfluence,
@@ -382,6 +392,7 @@ import {
   createTownTickIndex,
   normalizeTownExecutionPolicy,
   recordTownPhaseTiming,
+  refreshTownEvidenceIndex,
   type TownExecutionPolicy,
   type TownPerformanceSummary,
   type TownSnapshotMode,
@@ -397,9 +408,20 @@ import type { CampaignGraphSummary, EvidenceGraphSummary } from "./campaign-grap
 import type { TownMapPack } from "./town-map-pack";
 import type { DetectiveDirectiveResponseConfig, WorldSystemRuntimeActionKind, WorldSystemRuntimeHints, WorldSystemRuntimeHintSummary } from "./detective-content";
 import { computeSocialPressures, simulateDailyLife, simulateWorldTick } from "./world-simulator";
-import type { CaseFromLog, EmergenceBenchmarkReport, MemoryKind, MemoryRecord, MurderArchetype, NPCProfile, SocialPressure, WorldEvent, WorldMode, WorldState } from "./world-types";
+import { caseTriggerKindForEvent } from "./world-types";
+import type { CaseFromLog, CaseTriggerKind, EmergenceBenchmarkReport, MemoryKind, MemoryRecord, MurderArchetype, NPCProfile, PopulationFlowRecord, SocialPressure, WorldEvent, WorldMode, WorldState } from "./world-types";
 
 export type PersistentTownRuntimeStatus = "paused" | "running" | "completed" | "blocked";
+
+/**
+ * Controls how an agent pressure chain becomes a case event.
+ *
+ * `legacy-fatal` keeps the original town contract for existing saves and
+ * short smoke tests. `source-signaled` requires the source chain itself to
+ * contain an explicit fatal signal; otherwise the chain becomes a nonfatal
+ * incident and leaves both actors alive.
+ */
+export type CaseTriggerPolicy = "legacy-fatal" | "source-signaled";
 
 export type WorldLeadFocus = "search" | "question" | "challenge";
 export type WorldLeadStatus = "pending" | "followed" | "skipped" | "resolved";
@@ -711,10 +733,36 @@ export type AgentDecisionTrace = {
   selectedCandidateId: string;
   createdEventId?: string;
   interventionId?: string;
+  interventionActionId?: string;
+  interventionReason?: string;
+  interventionSourceRefs?: string[];
   phases?: string[];
   propagatedMemoryIds?: string[];
   consequence?: AgentConsequenceSummary;
   observationIds?: string[];
+};
+
+/** Compact, deterministic receipt retained when a full decision trace is evicted. */
+export type AgentDecisionTraceArchiveEntry = {
+  traceId: string;
+  tick: number;
+  npcId: string;
+  interventionId: string;
+  traceDigest: string;
+};
+
+/** Durable receipt for a case extraction issued through an Agent command. */
+export type AgentCaseExtractionReceipt = {
+  schema: "agent-case-extraction-receipt.v1";
+  actionId: string;
+  candidateId: string;
+  reason: string;
+  sourceRefs: string[];
+  caseId: string;
+  triggeredEventId?: string;
+  triggerKind?: CaseTriggerKind;
+  createdAtTick: number;
+  receiptHash: string;
 };
 
 export type CaseCandidateValidation = {
@@ -804,6 +852,7 @@ export type CaseCandidate = {
   chainStageTags?: string[];
   maturityScore?: number;
   triggeredEventId?: string;
+  triggerKind?: CaseTriggerKind;
   caseType?: TownCaseType;
   chainCompleteness?: Record<CaseChainStage, boolean>;
   motiveGap?: string;
@@ -820,6 +869,7 @@ export type PersistentCaseExtractionView = {
   events: WorldEvent[];
   sourceMap: {
     triggeredEventId: string;
+    triggerKind: CaseTriggerKind;
     sourceCandidateId: string;
     sourceEventIds: string[];
     evidenceSourceEventIds: Record<string, string[]>;
@@ -935,6 +985,7 @@ type TownTickContext = {
   runtime: PersistentTownRuntime;
   allEvents: WorldEvent[];
   createdEvents: WorldEvent[];
+  tickEventStartIndex: number;
   createdMemories: MemoryRecord[];
   createdObservations: TownEventObservation[];
   createdConsequences: AgentConsequenceSummary[];
@@ -951,6 +1002,17 @@ export type TownRuntimeIntervention = {
   actorId: string;
   kind: "goal" | "location" | "resource" | "relationship-pressure" | "knowledge" | "action-bias";
   value: string | number | boolean;
+  /** Stable external-agent action id used for idempotent commits and replay receipts. */
+  actionId?: string;
+  /** Human-readable reason supplied by an external agent or reviewer. */
+  reason?: string;
+  /** Source references that justify the intervention. */
+  sourceRefs?: string[];
+  /** Bidirectional audit link populated when a later tick consumes this intervention. */
+  decisionTraceId?: string;
+  /** Digest binding the intervention receipt to the full or archived decision trace. */
+  decisionTraceDigest?: string;
+  decisionStatus?: "pending" | "applied" | "expired";
   createdAt: string;
   branch: "counterfactual";
   impact: string;
@@ -1025,6 +1087,7 @@ export type TownTriggeredCaseRecord = {
   culpritId: string;
   victimId: string;
   eventId: string;
+  kind: CaseTriggerKind;
   causedByEventIds: string[];
   maturityScore: number;
   chainCompleteness: Record<CaseChainStage, boolean>;
@@ -1169,6 +1232,12 @@ export type PersistentTownRuntimeReport = {
   eventIds: string[];
   decisionIds: string[];
   candidateIds: string[];
+  candidateSummaries?: Array<{
+    id: string;
+    valid: boolean;
+    triggeredEventId?: string;
+    evidenceCovered: boolean;
+  }>;
   blockedReason?: string;
 };
 
@@ -1179,6 +1248,9 @@ export type PersistentTownRuntime = {
   revision?: string;
   /** Monotonic persistence revision for command CAS; absent on legacy saves. */
   commandRevision?: number;
+  /** New owned worlds namespace globally persisted events by world identity.
+   * Absent on legacy replay capsules, whose historical IDs remain unchanged. */
+  eventIdentityPolicy?: "world-scoped";
   status: PersistentTownRuntimeStatus;
   currentDay: number;
   currentTime: string;
@@ -1186,7 +1258,15 @@ export type PersistentTownRuntime = {
   maxTicks: number;
   tick: number;
   agentStates: NpcAgentState[];
+  /** Opt-in authored commuting; absent on all legacy worlds. */
+  dailyRoutine?: TownDailyRoutine;
+  /** Explicit three-resident ordinary-work pilot; absent on legacy saves. */
+  residentWork?: TownResidentWork;
+  /** Explicit three-day needs/planning policy; legacy worlds retain old rules. */
+  residentLife?: TownResidentLife;
   decisionTraces: AgentDecisionTrace[];
+  /** Compact receipts for intervention-linked traces evicted by trace retention. */
+  decisionTraceArchive?: AgentDecisionTraceArchiveEntry[];
   candidates: CaseCandidate[];
   interventions: TownRuntimeIntervention[];
   reports: PersistentTownRuntimeReport[];
@@ -1201,7 +1281,14 @@ export type PersistentTownRuntime = {
   longChainLedger?: TownLongChainLedgerEntry[];
   longChainComputedAtTick?: number;
   triggeredCases?: TownTriggeredCaseRecord[];
+  /** Source-backed newcomers created by the explicit population-flow adapter. */
+  populationFlowLedger?: PopulationFlowRecord[];
+  /** Durable action receipts for Agent-driven case extraction. */
+  agentCaseExtractionReceipts?: AgentCaseExtractionReceipt[];
+  /** Opt-in, source-backed population cadence. Disabled in the default runtime. */
+  populationFlowPolicy?: PopulationFlowPolicy;
   campaignCaseTarget?: number;
+  caseTriggerPolicy?: CaseTriggerPolicy;
   caseLifecycle?: TownCaseLifecycleState;
   simulationPhases?: TownTickPhaseName[];
   scenarioPresets?: ScenarioPreset[];
@@ -1317,6 +1404,7 @@ export type TownSituationBrief = {
     candidateCount: number;
     validCount: number;
     triggeredCaseCount: number;
+    latestTriggerKind?: CaseTriggerKind;
     highestMaturityScore: number;
     strongestCandidateId?: string;
   };
@@ -1347,6 +1435,7 @@ export type CityPulseWorldProjection = {
     candidateCount: number;
     validCandidateCount: number;
     triggeredCaseCount: number;
+    latestTriggerKind?: CaseTriggerKind;
     activeNpcCount: number;
     observationCount: number;
   };
@@ -1371,7 +1460,7 @@ export type ScenarioPassCriteria = {
 
 export type ScenarioScheduledIntervention = {
   atTickOffset: number;
-  intervention: Omit<TownRuntimeIntervention, "id" | "tick" | "createdAt" | "branch" | "impact">;
+  intervention: Omit<TownRuntimeIntervention, "id" | "tick" | "createdAt" | "branch" | "impact" | "decisionTraceId" | "decisionTraceDigest" | "decisionStatus">;
 };
 
 export type ScenarioBranchConfig = {
@@ -1434,6 +1523,8 @@ export type TownStateSnapshot = {
   mode?: TownSnapshotMode;
   rollbackEligible?: boolean;
   createdAt: string;
+  /** Persisted receipt for checkpoint truth; the private checkpoint payload remains server-side. */
+  replayDigest?: WorldReplayDigest;
   checkpoint?: {
     world: WorldState;
     runtime: Omit<PersistentTownRuntime, "snapshots" | "scenarioRuns">;
@@ -1571,6 +1662,26 @@ function hashSeed(input: string) {
     hash = Math.imul(hash, 16777619);
   }
   return hash >>> 0;
+}
+
+/** Preserve a small receipt for every intervention-linked trace evicted by retention. */
+function archiveEvictedAgentDecisionTraces(runtime: PersistentTownRuntime, evicted: AgentDecisionTrace[]) {
+  const linkedTraces = evicted.filter((trace) => trace.interventionId);
+  if (!linkedTraces.length) return;
+  const archiveByTraceId = new Map(
+    (runtime.decisionTraceArchive || []).map((entry) => [entry.traceId, entry])
+  );
+  for (const trace of linkedTraces) {
+    archiveByTraceId.set(trace.id, {
+      traceId: trace.id,
+      tick: trace.tick,
+      npcId: trace.npcId,
+      interventionId: trace.interventionId!,
+      traceDigest: buildAgentDecisionTraceDigest(trace, runtime)
+    });
+  }
+  runtime.decisionTraceArchive = Array.from(archiveByTraceId.values())
+    .sort((left, right) => left.tick - right.tick || (left.traceId < right.traceId ? -1 : left.traceId > right.traceId ? 1 : 0));
 }
 
 function makeRandom(seed: string) {
@@ -2187,7 +2298,7 @@ function scoreCandidate(input: {
 function createEventForAction(input: TownActionExecuteInput): WorldEvent {
   const { world, runtime, npc, candidate, intervention } = input;
   return {
-    id: `agent-${world.seed.replace(/[^a-z0-9-]/gi, "-").toLowerCase()}-${runtime.tick}-${npc.id}-${candidate.kind}`,
+    id: `agent-${runtime.eventIdentityPolicy === "world-scoped" ? `${world.id}-` : ""}${world.seed.replace(/[^a-z0-9-]/gi, "-").toLowerCase()}-${runtime.tick}-${npc.id}-${candidate.kind}`,
     worldId: world.id,
     day: runtime.currentDay,
     time: runtime.currentTime,
@@ -2484,7 +2595,8 @@ function scoreNpcActionCandidatesIndexed(
       score.worldSystemBias = worldSystemBias;
       score.reasons.push(`world-system hint favors ${candidate.kind} +${worldSystemBias}`);
     }
-    const legal = candidate.legal && legality.legal && score.locationReachability > 0 && score.resourceAvailability > 0;
+    const routineLegal = !runtime?.dailyRoutine?.enabled || (!runtime.dailyRoutine.journeys[npc.id] && candidate.targetLocationId === state.locationId && (!candidate.targetNpcId || runtime.agentStates.some(agent => agent.npcId === candidate.targetNpcId && agent.locationId === state.locationId && !runtime.dailyRoutine?.journeys[agent.npcId])));
+    const legal = candidate.legal && legality.legal && score.locationReachability > 0 && score.resourceAvailability > 0 && routineLegal;
     return { ...candidate, legal, blockedReason: !legality.legal ? legality.reason : score.reasons.find((reason) => reason.includes("not")), score };
   });
 }
@@ -3612,7 +3724,7 @@ export function deriveWorldArcCasePriorityBonus(runtime: PersistentTownRuntime |
 export function createPersistentTownRuntime(
   world: WorldState,
   events: WorldEvent[] = [],
-  options: Partial<Pick<PersistentTownRuntime, "tickIntervalMinutes" | "maxTicks" | "worldSystemHints">> & { now?: string } = {}
+  options: Partial<Pick<PersistentTownRuntime, "tickIntervalMinutes" | "maxTicks" | "worldSystemHints" | "caseTriggerPolicy">> & { now?: string } = {}
 ): PersistentTownRuntime {
   const now = options.now || new Date().toISOString();
   const runtime: PersistentTownRuntime = {
@@ -3626,6 +3738,7 @@ export function createPersistentTownRuntime(
     tick: 0,
     agentStates: [],
     decisionTraces: [],
+    decisionTraceArchive: [],
     candidates: [],
     interventions: [],
     reports: [],
@@ -3639,6 +3752,10 @@ export function createPersistentTownRuntime(
     consequences: [],
     longChainLedger: [],
     triggeredCases: [],
+    populationFlowLedger: [],
+    agentCaseExtractionReceipts: [],
+    populationFlowPolicy: { ...DEFAULT_POPULATION_FLOW_POLICY },
+    caseTriggerPolicy: options.caseTriggerPolicy || "legacy-fatal",
     caseLifecycle: {
       activeCaseIds: [],
       solvedCaseIds: [],
@@ -3758,6 +3875,7 @@ export function normalizePersistentTownRuntime(
 
   runtime.agentStates = runtimeArray(source.agentStates, baseline.agentStates);
   runtime.decisionTraces = runtimeArray(source.decisionTraces, baseline.decisionTraces);
+  runtime.decisionTraceArchive = runtimeArray(source.decisionTraceArchive, baseline.decisionTraceArchive || []);
   runtime.candidates = runtimeArray(source.candidates, baseline.candidates);
   runtime.interventions = runtimeArray(source.interventions, baseline.interventions);
   runtime.reports = runtimeArray(source.reports, baseline.reports);
@@ -3770,7 +3888,19 @@ export function normalizePersistentTownRuntime(
   runtime.memoryPropagations = runtimeArray(source.memoryPropagations, baseline.memoryPropagations || []);
   runtime.consequences = runtimeArray(source.consequences, baseline.consequences || []);
   runtime.longChainLedger = runtimeArray(source.longChainLedger, baseline.longChainLedger || []);
-  runtime.triggeredCases = runtimeArray(source.triggeredCases, baseline.triggeredCases || []);
+  runtime.populationFlowLedger = runtimeArray(source.populationFlowLedger, baseline.populationFlowLedger || []);
+  runtime.agentCaseExtractionReceipts = runtimeArray(source.agentCaseExtractionReceipts, baseline.agentCaseExtractionReceipts || []);
+  runtime.populationFlowPolicy = normalizePopulationFlowPolicy(source.populationFlowPolicy, baseline.populationFlowPolicy || DEFAULT_POPULATION_FLOW_POLICY);
+  runtime.triggeredCases = runtimeArray(source.triggeredCases, baseline.triggeredCases || []).map((trigger) => {
+    const event = events.find((item) => item.id === trigger.eventId);
+    return {
+      ...trigger,
+      kind: (trigger as Partial<TownTriggeredCaseRecord>).kind || caseTriggerKindForEvent(event || { type: "death", tags: ["death"] })
+    };
+  });
+  runtime.caseTriggerPolicy = source.caseTriggerPolicy === "source-signaled" || source.caseTriggerPolicy === "legacy-fatal"
+    ? source.caseTriggerPolicy
+    : baseline.caseTriggerPolicy;
   runtime.simulationPhases = runtimeArray(source.simulationPhases, baseline.simulationPhases || [...TOWN_TICK_PHASES]);
   runtime.scenarioPresets = runtimeArray(source.scenarioPresets, baseline.scenarioPresets || []);
   runtime.scenarioPacks = runtimeArray(source.scenarioPacks, baseline.scenarioPacks || []);
@@ -3780,6 +3910,7 @@ export function normalizePersistentTownRuntime(
   runtime.runJobs = runtimeArray(source.runJobs, baseline.runJobs || []);
   runtime.benchmarkRuns = runtimeArray(source.benchmarkRuns, baseline.benchmarkRuns || []);
   runtime.snapshots = runtimeArray(source.snapshots, baseline.snapshots || []);
+  if (runtime.residentLife) ensureResidentLifePlanner(runtime);
 
   const lifecycle = runtimeRecord(source.caseLifecycle) || {};
   const baseLifecycle = baseline.caseLifecycle!;
@@ -3840,9 +3971,13 @@ function emptyStageEventIds(): Record<CaseChainStage, string[]> {
   return { motive: [], means: [], opportunity: [], "cover-up": [], memory: [], exclusion: [] };
 }
 
-function observationSupportSummary(runtime: PersistentTownRuntime | null | undefined, eventIds: string[], npcIds: string[] = []): CaseCandidateValidation["observationSupport"] {
-  const relevant = (runtime?.eventObservations || []).filter((observation) =>
-    eventIds.includes(observation.eventId) &&
+function observationSupportSummary(runtime: PersistentTownRuntime | null | undefined, eventIds: string[], npcIds: string[] = [], index?: TownTickIndex): CaseCandidateValidation["observationSupport"] {
+  const eventIdSet = new Set(eventIds);
+  const indexedRelevant = runtime?.caseTriggerPolicy === "source-signaled" && index
+    ? Array.from(new Map(eventIds.flatMap((eventId) => index.observationsByEventId.get(eventId) || []).map((observation) => [observation.id, observation])).values())
+    : undefined;
+  const relevant = (indexedRelevant || runtime?.eventObservations || []).filter((observation) =>
+    eventIdSet.has(observation.eventId) &&
     (!npcIds.length || npcIds.includes(observation.observerNpcId) || (observation.subjectNpcId && npcIds.includes(observation.subjectNpcId)))
   );
   const strongest = (kinds: TownObservationKind[]) => relevant
@@ -3863,12 +3998,13 @@ function observationSupportSummary(runtime: PersistentTownRuntime | null | undef
 }
 
 function memoryConfidenceSummary(world: WorldState, eventIds: string[], npcIds: string[] = [], runtime?: PersistentTownRuntime | null, index?: TownTickIndex): CaseCandidateValidation["memoryConfidence"] {
+  const eventIdSet = new Set(eventIds);
   const source = index
     ? [
         ...eventIds.flatMap((eventId) => index.memoryByEventId.get(eventId) || []),
-        ...(world.memories || []).slice(index.indexedMemoryCount).filter((memory) => eventIds.includes(memory.eventId))
+        ...(world.memories || []).slice(index.indexedMemoryCount).filter((memory) => eventIdSet.has(memory.eventId))
       ]
-    : (world.memories || []).filter((memory) => eventIds.includes(memory.eventId));
+    : (world.memories || []).filter((memory) => eventIdSet.has(memory.eventId));
   const relevant = source.filter((memory) => !npcIds.length || npcIds.includes(memory.npcId));
   const strongest = (kind: MemoryKind) => relevant
     .filter((memory) => memory.kind === kind)
@@ -3876,7 +4012,7 @@ function memoryConfidenceSummary(world: WorldState, eventIds: string[], npcIds: 
   const direct = strongest("direct") || strongest("secret");
   const deduced = strongest("deduced");
   const rumor = strongest("rumor");
-  const observation = observationSupportSummary(runtime, eventIds, npcIds);
+  const observation = observationSupportSummary(runtime, eventIds, npcIds, index);
   return {
     direct: Math.max(direct, observation?.direct || 0, observation?.sameLocation || 0),
     deduced: Math.max(deduced, observation?.deduced || 0),
@@ -3886,7 +4022,9 @@ function memoryConfidenceSummary(world: WorldState, eventIds: string[], npcIds: 
 }
 
 function buildStageEventIdsForPressure(world: WorldState, events: WorldEvent[], pressure: SocialPressure, runtime?: PersistentTownRuntime | null, index?: TownTickIndex) {
-  const selected = selectRiskChainEvents(events, pressure, index);
+  const selected = selectRiskChainEvents(events, pressure, index, runtime);
+  const selectedIds = new Set(selected.map((event) => event.id));
+  const availableIds = index?.eventById || new Set(events.map((event) => event.id));
   const stageEventIds = emptyStageEventIds();
   for (const event of selected) {
     const stage = chainStageForEvent(event);
@@ -3896,19 +4034,21 @@ function buildStageEventIdsForPressure(world: WorldState, events: WorldEvent[], 
   }
   const pairIds = [pressure.npcId, pressure.targetId];
   const pairMemories = index
-    ? [
-        ...(index.memoryByNpcId.get(pressure.npcId) || []),
-        ...(index.memoryByNpcId.get(pressure.targetId) || [])
-      ]
+    ? runtime?.caseTriggerPolicy === "source-signaled"
+      ? selected.flatMap((event) => index.memoryByEventId.get(event.id) || [])
+      : [
+          ...(index.memoryByNpcId.get(pressure.npcId) || []),
+          ...(index.memoryByNpcId.get(pressure.targetId) || [])
+        ]
     : (world.memories || []);
   for (const memory of pairMemories) {
     if (!pairIds.includes(memory.npcId)) continue;
-    if (!selected.some((event) => event.id === memory.eventId)) continue;
+    if (!selectedIds.has(memory.eventId)) continue;
     if (!stageEventIds.memory.includes(memory.eventId)) stageEventIds.memory.push(memory.eventId);
   }
   for (const observation of runtime?.eventObservations || []) {
     if (!pairIds.includes(observation.observerNpcId) && !(observation.subjectNpcId && pairIds.includes(observation.subjectNpcId))) continue;
-    if (index ? !index.eventById.has(observation.eventId) : !events.some((event) => event.id === observation.eventId)) continue;
+    if (!availableIds.has(observation.eventId)) continue;
     if (observation.kind === "direct" || observation.kind === "deduced" || observation.kind === "same-location") {
       if (!stageEventIds.memory.includes(observation.eventId)) stageEventIds.memory.push(observation.eventId);
     }
@@ -3916,10 +4056,16 @@ function buildStageEventIdsForPressure(world: WorldState, events: WorldEvent[], 
       if (!stageEventIds.exclusion.includes(observation.eventId)) stageEventIds.exclusion.push(observation.eventId);
     }
   }
-  for (const event of events) {
-    if (event.type !== "alibi" && !event.tags.includes("alibi_seed")) continue;
+  const exclusionEvents = index?.exclusionEvents || events.filter((event) => event.type === "alibi" || event.tags.includes("alibi_seed"));
+  const exclusionIds = new Set(stageEventIds.exclusion);
+  const exclusionLimit = runtime?.caseTriggerPolicy === "source-signaled" ? 8 : Number.POSITIVE_INFINITY;
+  for (const event of exclusionEvents) {
+    if (stageEventIds.exclusion.length >= exclusionLimit) break;
     if (event.actorIds.includes(pressure.npcId)) continue;
-    if (!stageEventIds.exclusion.includes(event.id)) stageEventIds.exclusion.push(event.id);
+    if (!exclusionIds.has(event.id)) {
+      exclusionIds.add(event.id);
+      stageEventIds.exclusion.push(event.id);
+    }
   }
   return stageEventIds;
 }
@@ -3950,10 +4096,60 @@ function summarizeLongChain(world: WorldState, events: WorldEvent[], runtime: Pe
 
 function refreshLongChainLedger(world: WorldState, events: WorldEvent[], runtime: PersistentTownRuntime, index?: TownTickIndex) {
   if (runtime.longChainComputedAtTick === runtime.tick && runtime.longChainLedger?.length) return runtime.longChainLedger;
-  const pressures = (index?.socialPressures || computeSocialPressures(world, events)).filter((pressure) => pressure.score >= 5).slice(0, (runtime.campaignCaseTarget || 3) > 3 ? 16 : 8);
+  const pressureBudget = runtime.caseTriggerPolicy === "source-signaled" ? 8 : (runtime.campaignCaseTarget || 3) > 3 ? 16 : 8;
+  const allPressures = (index?.socialPressures || computeSocialPressures(world, events))
+    .filter((pressure) => pressure.score >= 5);
+  const populationNpcIds = new Set((runtime.populationFlowLedger || []).map((record) => record.npcId));
+  const pressureKey = (pressure: SocialPressure) => `${pressure.npcId}->${pressure.targetId}`;
+  const authoredPressures = allPressures.filter((pressure) => !populationNpcIds.has(pressure.npcId) && !populationNpcIds.has(pressure.targetId));
+  const newcomerPressures = allPressures.filter((pressure) => populationNpcIds.has(pressure.npcId) || populationNpcIds.has(pressure.targetId));
+  const pressureByKey = new Map(allPressures.map((pressure) => [pressureKey(pressure), pressure]));
+  const preservedKeys = Array.from(new Set([
+    ...(runtime.longChainLedger || []).map((entry) => `${entry.culpritId}->${entry.victimId}`),
+    ...(runtime.triggeredCases || []).map((trigger) => `${trigger.culpritId}->${trigger.victimId}`),
+    ...events.filter((event) => event.tags?.includes("case_trigger") && event.actorIds.length >= 2)
+      .map((event) => `${event.actorIds[0]}->${event.actorIds[1]}`)
+  ])).sort((left, right) => {
+    const [leftNpc, leftTarget] = left.split("->");
+    const [rightNpc, rightTarget] = right.split("->");
+    const leftPopulation = Number(populationNpcIds.has(leftNpc) || populationNpcIds.has(leftTarget));
+    const rightPopulation = Number(populationNpcIds.has(rightNpc) || populationNpcIds.has(rightTarget));
+    return leftPopulation - rightPopulation || left.localeCompare(right);
+  });
+  const selected = preservedKeys
+    .map((key) => pressureByKey.get(key))
+    .filter((pressure): pressure is SocialPressure => Boolean(pressure));
+  const selectedKeys = new Set(selected.map(pressureKey));
+  for (const pressure of [...authoredPressures, ...newcomerPressures]) {
+    if (selected.length >= pressureBudget) break;
+    const key = pressureKey(pressure);
+    if (selectedKeys.has(key)) continue;
+    selected.push(pressure);
+    selectedKeys.add(key);
+  }
+  const pressures = selected.slice(0, pressureBudget);
   runtime.longChainLedger = pressures.map((pressure) => summarizeLongChain(world, events, runtime, pressure, index));
   runtime.longChainComputedAtTick = runtime.tick;
   return runtime.longChainLedger;
+}
+
+const EXPLICIT_FATAL_TRIGGER_TAGS = new Set([
+  "fatal_signal",
+  "lethal_escalation",
+  "weapon_use",
+  "attack",
+  "murder"
+]);
+
+function deriveCaseTriggerKindFromSourceEvents(
+  sourceEvents: WorldEvent[],
+  policy: CaseTriggerPolicy | undefined
+): CaseTriggerKind {
+  if (policy !== "source-signaled") return "fatal";
+  const fatalSignal = sourceEvents.some((event) =>
+    event.type === "death" || event.tags.some((tag) => EXPLICIT_FATAL_TRIGGER_TAGS.has(tag))
+  );
+  return fatalSignal ? "fatal" : "nonfatal_incident";
 }
 
 function triggerLongChainCaseIfReady(world: RuntimeWorld, runtime: PersistentTownRuntime, events: WorldEvent[], createdEvents: WorldEvent[], index?: TownTickIndex) {
@@ -3961,43 +4157,79 @@ function triggerLongChainCaseIfReady(world: RuntimeWorld, runtime: PersistentTow
   const ledger = refreshLongChainLedger(world, events, runtime, index);
   const maturityThreshold = (runtime.campaignCaseTarget || 3) > 3 ? 82 : 90;
   const lifecycle = ensureCaseLifecycle(runtime);
+  const triggerHistory = new Map<string, { count: number; lastTick: number }>();
+  for (const event of events) {
+    if (!event.tags?.includes("case_trigger") || event.actorIds.length < 2) continue;
+    const pairKey = `${event.actorIds[0]}->${event.actorIds[1]}`;
+    const history = triggerHistory.get(pairKey) || { count: 0, lastTick: -1 };
+    history.count += 1;
+    history.lastTick = Math.max(history.lastTick, event.day * 24 * 60 + timeToMinutes(event.time));
+    triggerHistory.set(pairKey, history);
+  }
   const ready = ledger
-    .filter((entry) =>
-      entry.complete &&
-      entry.maturityScore >= maturityThreshold &&
-      world.npcs.some((npc) => npc.id === entry.victimId && npc.alive) &&
-      ((lifecycle.caseCooldownByNpcId[entry.culpritId] || 0) <= runtime.tick) &&
-      ((lifecycle.caseCooldownByNpcId[entry.victimId] || 0) <= runtime.tick) &&
-      ((lifecycle.casePairCooldown?.[`${entry.culpritId}->${entry.victimId}`] || 0) <= runtime.tick) &&
-      !runtime.triggeredCases?.some((trigger) => trigger.culpritId === entry.culpritId && trigger.victimId === entry.victimId)
-    )
-    .sort((a, b) => b.maturityScore - a.maturityScore)[0];
+    .filter((entry) => {
+      const pairKey = `${entry.culpritId}->${entry.victimId}`;
+      const priorPairTrigger = runtime.triggeredCases?.find((trigger) => trigger.culpritId === entry.culpritId && trigger.victimId === entry.victimId);
+      const pairCanRepeat = !priorPairTrigger || (
+        runtime.caseTriggerPolicy === "source-signaled" &&
+        priorPairTrigger.kind === "nonfatal_incident" &&
+        (lifecycle.casePairCooldown?.[pairKey] || 0) <= runtime.tick
+      );
+      return entry.complete &&
+        entry.maturityScore >= maturityThreshold &&
+        world.npcs.some((npc) => npc.id === entry.victimId && npc.alive) &&
+        ((lifecycle.caseCooldownByNpcId[entry.culpritId] || 0) <= runtime.tick) &&
+        ((lifecycle.caseCooldownByNpcId[entry.victimId] || 0) <= runtime.tick) &&
+        ((lifecycle.casePairCooldown?.[pairKey] || 0) <= runtime.tick) &&
+        pairCanRepeat;
+    })
+    .sort((a, b) => {
+      if (runtime.caseTriggerPolicy !== "source-signaled") return b.maturityScore - a.maturityScore;
+      const aKey = `${a.culpritId}->${a.victimId}`;
+      const bKey = `${b.culpritId}->${b.victimId}`;
+      const aHistory = triggerHistory.get(aKey) || { count: 0, lastTick: -1 };
+      const bHistory = triggerHistory.get(bKey) || { count: 0, lastTick: -1 };
+      return aHistory.count - bHistory.count
+        || aHistory.lastTick - bHistory.lastTick
+        || b.maturityScore - a.maturityScore
+        || aKey.localeCompare(bKey);
+    })[0];
   if (!ready || runtime.tick < Math.min(30, runtime.maxTicks)) return null;
   const culprit = world.npcs.find((npc) => npc.id === ready.culpritId);
   const victim = world.npcs.find((npc) => npc.id === ready.victimId);
   if (!culprit || !victim || !victim.alive) return null;
   const causedByEventIds = Object.values(ready.stageEventIds).flat().filter(Boolean).slice(0, 12);
+  const sourceEvents = causedByEventIds
+    .map((eventId) => index?.eventById.get(eventId) || events.find((event) => event.id === eventId))
+    .filter((event): event is WorldEvent => Boolean(event));
+  const triggerKind = deriveCaseTriggerKindFromSourceEvents(sourceEvents, runtime.caseTriggerPolicy);
   const locationId = events.find((event) => event.id === ready.stageEventIds.opportunity[0])?.locationId || runtime.agentStates.find((agent) => agent.npcId === victim.id)?.locationId || victim.homeLocationId;
   const event: WorldEvent = {
-    id: `agent-case-${world.seed.replace(/[^a-z0-9-]/gi, "-").toLowerCase()}-${runtime.tick}-${culprit.id}-${victim.id}`,
+    id: `agent-case-${runtime.eventIdentityPolicy === "world-scoped" ? `${world.id}-` : ""}${world.seed.replace(/[^a-z0-9-]/gi, "-").toLowerCase()}-${runtime.tick}-${culprit.id}-${victim.id}`,
     worldId: world.id,
     day: runtime.currentDay,
     time: runtime.currentTime,
-    type: "death",
+    type: triggerKind === "fatal" ? "death" : "incident",
     actorIds: [culprit.id, victim.id],
     locationId,
-    summary: `${victim.name} dies after a complete simulated pressure chain involving ${culprit.name}.`,
-    publicSummary: `${victim.name} was found dead after a series of visible town tensions.`,
+    summary: triggerKind === "fatal"
+      ? `${victim.name} dies after a complete simulated pressure chain involving ${culprit.name}.`
+      : `${victim.name} is targeted in a nonfatal incident after a complete simulated pressure chain involving ${culprit.name}.`,
+    publicSummary: triggerKind === "fatal"
+      ? `${victim.name} was found dead after a series of visible town tensions.`
+      : `${victim.name} reported a serious incident after a series of visible town tensions.`,
     hidden: true,
     relatedCharacterIds: [culprit.id, victim.id],
-    tags: ["agent_tick", "case_trigger", "death", "long_chain", "source_backed"],
+    tags: ["agent_tick", "case_trigger", triggerKind === "fatal" ? "death" : "nonfatal_incident", "long_chain", "source_backed"],
     intentId: ready.id,
     goalId: `goal-${culprit.id}-case-trigger-${runtime.tick}`,
     causedByEventIds,
     explanation: `Six-stage long chain matured: motive, means, opportunity, cover-up, memory, and exclusion all have local support.`
   };
   createdEvents.push(event);
-  world.npcs = world.npcs.map((npc) => npc.id === victim.id ? { ...npc, alive: false } : npc);
+  if (triggerKind === "fatal") {
+    world.npcs = world.npcs.map((npc) => npc.id === victim.id ? { ...npc, alive: false } : npc);
+  }
   const culpritObservation = addRuntimeObservation(runtime, event, culprit.id, "direct", {
     subjectNpcId: victim.id,
     confidence: 0.84,
@@ -4018,6 +4250,7 @@ function triggerLongChainCaseIfReady(world: RuntimeWorld, runtime: PersistentTow
     culpritId: culprit.id,
     victimId: victim.id,
     eventId: event.id,
+    kind: triggerKind,
     causedByEventIds,
     maturityScore: ready.maturityScore,
     chainCompleteness: Object.fromEntries((Object.keys(emptyChainCompleteness()) as CaseChainStage[]).map((stage) => [stage, true])) as Record<CaseChainStage, boolean>
@@ -4051,7 +4284,11 @@ function eventMinuteValue(event: WorldEvent) {
   return event.day * 24 * 60 + timeToMinutes(event.time);
 }
 
-function selectRiskChainEvents(events: WorldEvent[], pressure: SocialPressure, index?: TownTickIndex) {
+function selectRiskChainEvents(events: WorldEvent[], pressure: SocialPressure, index?: TownTickIndex, runtime?: PersistentTownRuntime | null) {
+  const cacheKey = `${pressure.npcId}->${pressure.targetId}`;
+  const cached = index?.riskChainByPair.get(cacheKey);
+  if (cached) return cached;
+  const sourceEventIds = new Set(pressure.sourceEventIds);
   const relatedSource = index
     ? Array.from(new Map([
         ...(index.eventsByActorId.get(pressure.npcId) || []),
@@ -4059,14 +4296,47 @@ function selectRiskChainEvents(events: WorldEvent[], pressure: SocialPressure, i
         ...pressure.sourceEventIds.map((eventId) => index.eventById.get(eventId)).filter((event): event is WorldEvent => Boolean(event))
       ].map((event) => [event.id, event])).values())
     : events.filter((event) =>
-        pressure.sourceEventIds.includes(event.id) ||
+        sourceEventIds.has(event.id) ||
         event.actorIds.includes(pressure.npcId) ||
         event.actorIds.includes(pressure.targetId) ||
         event.relatedCharacterIds.includes(pressure.npcId) ||
         event.relatedCharacterIds.includes(pressure.targetId)
       );
+  const fallbackEvidenceByEventId = new Map<string, EvidenceChainItem[]>();
+  const fallbackEvidenceByLocationId = new Map<string, EvidenceChainItem[]>();
+  for (const item of runtime?.ruleState?.evidenceChain.items || []) {
+    for (const eventId of item.sourceEventIds) {
+      const items = fallbackEvidenceByEventId.get(eventId) || [];
+      items.push(item);
+      fallbackEvidenceByEventId.set(eventId, items);
+    }
+    const locationItems = fallbackEvidenceByLocationId.get(item.locationId) || [];
+    locationItems.push(item);
+    fallbackEvidenceByLocationId.set(item.locationId, locationItems);
+  }
+  const evidenceQuality = (event: WorldEvent) => {
+    const evidence = Array.from(new Map([
+      ...(index?.evidenceByEventId.get(event.id) || []),
+      ...(index?.evidenceByLocationId.get(event.locationId) || []),
+      ...(fallbackEvidenceByEventId.get(event.id) || []),
+      ...(fallbackEvidenceByLocationId.get(event.locationId) || [])
+    ].map((item) => [item.id, item])).values());
+    const strong = evidence.some((item) => item.provenance === "strong" && item.integrity >= 55);
+    const reviewable = evidence.some((item) => item.provenance !== "weak" && item.integrity >= 45);
+    const sourceBacked = event.tags.includes("source_backed") || event.tags.includes("persistent-source-backed");
+    return (strong ? 100 : 0) + (reviewable ? 20 : 0) + (sourceBacked ? 5 : 0) + (event.type === "forensic_clue" ? 10 : 0);
+  };
   const related = relatedSource
-    .sort((a, b) => eventMinuteValue(a) - eventMinuteValue(b));
+    // Routine output is not automatically investigative evidence. A later
+    // investigation must explicitly establish any connection to a case.
+    .filter(event => event.type !== "work")
+    .sort((a, b) => {
+      const qualityDelta = evidenceQuality(b) - evidenceQuality(a);
+      if (qualityDelta) return qualityDelta;
+      const aMinute = index?.eventMinuteById.get(a.id) ?? eventMinuteValue(a);
+      const bMinute = index?.eventMinuteById.get(b.id) ?? eventMinuteValue(b);
+      return aMinute - bMinute || a.id.localeCompare(b.id);
+    });
   const stageOrder = ["motive", "means", "opportunity", "cover-up", "memory", "exclusion", "context"];
   const selected: WorldEvent[] = [];
   for (const stage of stageOrder) {
@@ -4074,10 +4344,15 @@ function selectRiskChainEvents(events: WorldEvent[], pressure: SocialPressure, i
     if (event) selected.push(event);
   }
   for (const eventId of pressure.sourceEventIds) {
+    // Only the first eight selected events are observable. Do not look up
+    // thousands of additional source events that would be sliced off below.
+    if (selected.length >= 8) break;
     const event = index?.eventById.get(eventId) || events.find((item) => item.id === eventId);
-    if (event && !selected.some((item) => item.id === event.id)) selected.push(event);
+    if (event && event.type !== "work" && !selected.some((item) => item.id === event.id)) selected.push(event);
   }
-  return selected.slice(0, 8);
+  const result = selected.slice(0, 8);
+  index?.riskChainByPair.set(cacheKey, result);
+  return result;
 }
 
 function ensureCaseLifecycle(runtime: PersistentTownRuntime): TownCaseLifecycleState {
@@ -4236,7 +4511,9 @@ export function applyCaseResolutionToWorld(world: WorldState, runtime: Persisten
     lifecycle.caseCooldownByNpcId[npcId] = runtime.tick + (input.valid ? campaignCooldownTicks : Math.max(4, Math.floor(campaignCooldownTicks / 2)));
   }
   if (input.culpritId && input.victimId) {
-    const pairCooldownTicks = (runtime.campaignCaseTarget || 3) >= 30 ? 0 : campaignCooldownTicks * 2;
+    const pairCooldownTicks = runtime.caseTriggerPolicy === "source-signaled"
+      ? 20
+      : (runtime.campaignCaseTarget || 3) >= 30 ? 0 : campaignCooldownTicks * 2;
     lifecycle.casePairCooldown = {
       ...(lifecycle.casePairCooldown || {}),
       [`${input.culpritId}->${input.victimId}`]: runtime.tick + pairCooldownTicks
@@ -4271,7 +4548,11 @@ export function applyCaseResolutionToWorld(world: WorldState, runtime: Persisten
         ? {
           ...item,
           caseId: input.caseId,
-          caseIds: Array.from(new Set([...(item.caseIds || (item.caseId ? [item.caseId] : [])), input.caseId])).slice(-12),
+          // A long campaign intentionally reuses stable evidence nodes across
+          // nonfatal incidents. Keep enough immutable case links for the
+          // evidence graph to audit the whole run; the bounded runtime list is
+          // still protected by the surrounding evidence retention policy.
+          caseIds: Array.from(new Set([...(item.caseIds || (item.caseId ? [item.caseId] : [])), input.caseId])).slice(-120),
           usedInResolution: true
         }
         : item)
@@ -4382,17 +4663,38 @@ function buildCaseCandidatesFromRuntimeIndexed(
   const activeRuntime = runtime || getRuntime(world as RuntimeWorld) || createPersistentTownRuntime(world, events);
   const lifecycle = ensureCaseLifecycle(activeRuntime);
   const pressures = index?.socialPressures || computeSocialPressures(world, events);
+  const aliveNpcIds = new Set(world.npcs.filter((npc) => npc.alive !== false).map((npc) => npc.id));
+  const triggerEventsByPair = new Map<string, WorldEvent>();
+  for (const event of events) {
+    if (!event.tags?.includes("case_trigger") || event.actorIds.length < 2) continue;
+    const pair = `${event.actorIds[0]}->${event.actorIds[1]}`;
+    triggerEventsByPair.set(pair, event);
+  }
+  const triggeredPairs = new Set([
+    ...(activeRuntime.triggeredCases || []).map((trigger) => `${trigger.culpritId}->${trigger.victimId}`),
+    ...triggerEventsByPair.keys()
+  ]);
+  const enforceLivingPairGate = (activeRuntime.campaignCaseTarget || 3) >= 30;
   const sortedPressures = pressures
-    .filter((pressure) =>
+    .filter((pressure) => {
+      const pair = `${pressure.npcId}->${pressure.targetId}`;
+      const hasExistingTrigger = triggeredPairs.has(pair);
+      const actorsAlive = aliveNpcIds.has(pressure.npcId) && aliveNpcIds.has(pressure.targetId);
+      return (!enforceLivingPairGate || hasExistingTrigger || actorsAlive) &&
       pressure.score >= 5 &&
-      ((activeRuntime.campaignCaseTarget || 3) < 30 || ((lifecycle.casePairCooldown?.[`${pressure.npcId}->${pressure.targetId}`] || 0) <= activeRuntime.tick))
-    )
+      ((activeRuntime.campaignCaseTarget || 3) < 30 || ((lifecycle.casePairCooldown?.[pair] || 0) <= activeRuntime.tick));
+    })
     .slice(0, 16);
   const candidates = sortedPressures.map((pressure, candidateIndex): CaseCandidate => {
-    const riskChainEvents = selectRiskChainEvents(events, pressure, index);
+    const riskChainEvents = selectRiskChainEvents(events, pressure, index, activeRuntime);
     const riskChainEventIds = riskChainEvents.map((event) => event.id);
     const ledgerEntry = activeRuntime.longChainLedger?.find((entry) => entry.culpritId === pressure.npcId && entry.victimId === pressure.targetId);
     const triggeredCase = activeRuntime.triggeredCases?.find((item) => item.culpritId === pressure.npcId && item.victimId === pressure.targetId);
+    const retainedTriggerEvent = triggerEventsByPair.get(`${pressure.npcId}->${pressure.targetId}`);
+    const triggerReceipt = triggeredCase || (retainedTriggerEvent ? {
+      eventId: retainedTriggerEvent.id,
+      kind: retainedTriggerEvent.type === "death" || retainedTriggerEvent.tags?.includes("fatal") ? "fatal" as const : "nonfatal_incident" as const
+    } : undefined);
     const chainCompleteness = ledgerEntry
       ? Object.fromEntries((Object.keys(emptyChainCompleteness()) as CaseChainStage[]).map((stage) => [stage, ledgerEntry.stageEventIds[stage].length > 0 || (stage === "memory" && (ledgerEntry.memoryConfidence?.supportScore || 0) >= 55)])) as Record<CaseChainStage, boolean>
       : undefined;
@@ -4406,7 +4708,7 @@ function buildCaseCandidatesFromRuntimeIndexed(
     const memoryIds = memorySource
       .filter((memory) => [pressure.npcId, pressure.targetId].includes(memory.npcId))
       .map((memory) => memory.id);
-    const observationSupport = observationSupportSummary(activeRuntime, riskChainEventIds, [pressure.npcId, pressure.targetId]);
+    const observationSupport = observationSupportSummary(activeRuntime, riskChainEventIds, [pressure.npcId, pressure.targetId], index);
     const goalIds = activeRuntime.agentStates
       .filter((state) => [pressure.npcId, pressure.targetId].includes(state.npcId))
       .map((state) => `goal:${state.npcId}:${state.currentGoal.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`);
@@ -4449,7 +4751,8 @@ function buildCaseCandidatesFromRuntimeIndexed(
       goalIds,
       chainStageTags,
       maturityScore: ledgerEntry?.maturityScore,
-      triggeredEventId: triggeredCase?.eventId || ledgerEntry?.triggeredEventId,
+      triggeredEventId: triggerReceipt?.eventId || ledgerEntry?.triggeredEventId,
+      triggerKind: triggerReceipt?.kind,
       caseType,
       chainCompleteness,
       influenceTrace,
@@ -4550,7 +4853,7 @@ function validateCaseCandidateIndexed(
     : events.filter((event) => candidate.riskChainEventIds.includes(event.id));
   const chainStages = Array.from(new Set(sourceEvents.map(chainStageForEvent)));
   const completeness = candidate.chainCompleteness || emptyChainCompleteness();
-  const observationSupport = candidate.validation.observationSupport || observationSupportSummary(runtime, candidate.riskChainEventIds, [candidate.culpritId, candidate.victimId]) || {
+  const observationSupport = candidate.validation.observationSupport || observationSupportSummary(runtime, candidate.riskChainEventIds, [candidate.culpritId, candidate.victimId], index) || {
     direct: 0,
     deduced: 0,
     rumor: 0,
@@ -4685,6 +4988,7 @@ export function buildPersistentCaseExtractionView(world: WorldState, events: Wor
   const byId = new Map(events.map((event) => [event.id, event]));
   const triggerEvent = byId.get(trigger.eventId);
   if (!triggerEvent) return null;
+  const triggerKind = trigger.kind || caseTriggerKindForEvent(triggerEvent);
 
   const chainStageSourceEventIds = {
     motive: uniqueIds(ledger.stageEventIds.motive),
@@ -4696,13 +5000,14 @@ export function buildPersistentCaseExtractionView(world: WorldState, events: Wor
   } satisfies Record<CaseChainStage, string[]>;
 
   const fallbackSource = events.find((event) => event.actorIds.includes(candidate.culpritId) && event.relatedCharacterIds.includes(candidate.victimId)) || events[0] || triggerEvent;
+  const triggerEvidenceId = triggerKind === "fatal" ? "ev-death-scene" : "ev-incident-scene";
   const evidenceSourceEventIds: Record<string, string[]> = {
     "ev-motive": chainStageSourceEventIds.motive,
     "ev-means": chainStageSourceEventIds.means,
     "ev-opportunity": chainStageSourceEventIds.opportunity,
     "ev-staging": chainStageSourceEventIds["cover-up"],
     "ev-trace": chainStageSourceEventIds.memory,
-    "ev-death-scene": [trigger.eventId],
+    [triggerEvidenceId]: [trigger.eventId],
     "ev-town-rollcall": chainStageSourceEventIds.exclusion
   };
   const extractionEventSourceIds: Record<string, string[]> = {};
@@ -4742,13 +5047,18 @@ export function buildPersistentCaseExtractionView(world: WorldState, events: Wor
     };
   };
 
-  const deathId = `caseview-ev-death-scene-${trigger.eventId}`;
-  extractionEventSourceIds[deathId] = uniqueIds([trigger.eventId, ...(trigger.causedByEventIds || [])]);
-  const death: WorldEvent = {
+  const triggerViewId = `caseview-${triggerEvidenceId}-${trigger.eventId}`;
+  extractionEventSourceIds[triggerViewId] = uniqueIds([trigger.eventId, ...(trigger.causedByEventIds || [])]);
+  const triggerView: WorldEvent = {
     ...triggerEvent,
-    id: deathId,
-    evidenceId: "ev-death-scene",
-    tags: Array.from(new Set([...(triggerEvent.tags || []), "blade", "case_trigger", "death", "persistent-source-backed"])),
+    id: triggerViewId,
+    evidenceId: triggerEvidenceId,
+    tags: Array.from(new Set([
+      ...(triggerEvent.tags || []),
+      "case_trigger",
+      triggerKind === "fatal" ? "death" : "nonfatal_incident",
+      "persistent-source-backed"
+    ])),
     causedByEventIds: uniqueIds([...(triggerEvent.causedByEventIds || []), ...trigger.causedByEventIds])
   };
 
@@ -4779,7 +5089,7 @@ export function buildPersistentCaseExtractionView(world: WorldState, events: Wor
     cloneStageEvent("opportunity", "ev-opportunity", "witness"),
     cloneStageEvent("cover-up", "ev-staging", "destroy_evidence"),
     cloneStageEvent("memory", "ev-trace", "forensic_clue"),
-    death,
+    triggerView,
     rollcall
   ];
   const extractionEventIds = extractionEvents.map((event) => event.id);
@@ -4789,6 +5099,7 @@ export function buildPersistentCaseExtractionView(world: WorldState, events: Wor
     events: extractionEvents,
     sourceMap: {
       triggeredEventId: trigger.eventId,
+      triggerKind,
       sourceCandidateId: candidate.id,
       sourceEventIds: extractionEventIds,
       evidenceSourceEventIds,
@@ -4821,6 +5132,7 @@ export function extractPlayableCaseFromCandidate(
   const activeCase = extractCaseFromWorld(caseWorld, allEvents);
   if (extractionView) {
     activeCase.triggeredEventId = extractionView.sourceMap.triggeredEventId;
+    activeCase.triggerKind = extractionView.sourceMap.triggerKind;
     activeCase.sourceCandidateId = extractionView.sourceMap.sourceCandidateId;
     activeCase.sourceEventIds = extractionView.sourceMap.sourceEventIds;
     activeCase.sourceMap = {
@@ -4881,6 +5193,112 @@ export function extractPlayableCaseFromCandidate(
 
 export function buildAgentDecisionTrace(runtime: PersistentTownRuntime, decisionId: string) {
   return runtime.decisionTraces.find((trace) => trace.id === decisionId) || null;
+}
+
+export type AgentDecisionTraceLinkSummary = {
+  schema: "agent-decision-trace-links.v1";
+  interventionCount: number;
+  decisionTraceCount: number;
+  archivedDecisionCount: number;
+  appliedInterventionCount: number;
+  pendingInterventionCount: number;
+  expiredInterventionCount: number;
+  linkedDecisionCount: number;
+  archivedLinkedDecisionCount: number;
+  brokenInterventionLinks: string[];
+  brokenTraceLinks: string[];
+  brokenArchiveLinks: string[];
+  complete: boolean;
+};
+
+/** Audit the bidirectional link between counterfactual interventions and ticks that consumed them. */
+export function buildAgentDecisionTraceLinkSummary(runtime: PersistentTownRuntime): AgentDecisionTraceLinkSummary {
+  const traceById = new Map((runtime.decisionTraces || []).map((trace) => [trace.id, trace]));
+  const interventionById = new Map((runtime.interventions || []).map((intervention) => [intervention.id, intervention]));
+  const archiveByTraceId = new Map((runtime.decisionTraceArchive || []).map((entry) => [entry.traceId, entry]));
+  const brokenInterventionLinks: string[] = [];
+  const brokenTraceLinks: string[] = [];
+  const brokenArchiveLinks: string[] = [];
+  let appliedInterventionCount = 0;
+  let pendingInterventionCount = 0;
+  let expiredInterventionCount = 0;
+  let linkedDecisionCount = 0;
+  let archivedLinkedDecisionCount = 0;
+
+  for (const intervention of runtime.interventions || []) {
+    if (intervention.decisionStatus === "applied") {
+      appliedInterventionCount += 1;
+      if (!intervention.decisionTraceId) {
+        brokenInterventionLinks.push(intervention.id);
+        continue;
+      }
+      const trace = traceById.get(intervention.decisionTraceId);
+      if (trace) {
+        if (trace.interventionId !== intervention.id || (intervention.decisionTraceDigest && intervention.decisionTraceDigest !== buildAgentDecisionTraceDigest(trace, runtime))) {
+          brokenInterventionLinks.push(intervention.id);
+          continue;
+        }
+        linkedDecisionCount += 1;
+        continue;
+      }
+      const archived = archiveByTraceId.get(intervention.decisionTraceId);
+      if (!archived || archived.interventionId !== intervention.id || archived.npcId !== intervention.actorId || !archived.traceDigest || (intervention.decisionTraceDigest && archived.traceDigest !== intervention.decisionTraceDigest)) {
+        brokenInterventionLinks.push(intervention.id);
+        continue;
+      }
+      archivedLinkedDecisionCount += 1;
+      linkedDecisionCount += 1;
+    } else if (intervention.decisionStatus === "expired") {
+      expiredInterventionCount += 1;
+    } else {
+      pendingInterventionCount += 1;
+    }
+  }
+
+  for (const trace of runtime.decisionTraces || []) {
+    if (!trace.interventionId) continue;
+    const intervention = interventionById.get(trace.interventionId);
+    if (!intervention || intervention.decisionTraceId !== trace.id || intervention.decisionStatus !== "applied") {
+      brokenTraceLinks.push(trace.id);
+    }
+  }
+
+  for (const archive of runtime.decisionTraceArchive || []) {
+    if (!archive.traceId || !archive.interventionId || !archive.traceDigest) {
+      brokenArchiveLinks.push(archive.traceId || "unknown");
+      continue;
+    }
+    const intervention = interventionById.get(archive.interventionId);
+    const trace = traceById.get(archive.traceId);
+    if (!intervention) {
+      brokenArchiveLinks.push(archive.traceId);
+      continue;
+    }
+    if (trace) {
+      const digestMatches = !intervention.decisionTraceDigest || intervention.decisionTraceDigest === buildAgentDecisionTraceDigest(trace, runtime);
+      if (trace.interventionId !== archive.interventionId || !digestMatches || (intervention.decisionTraceDigest && archive.traceDigest !== intervention.decisionTraceDigest)) brokenArchiveLinks.push(archive.traceId);
+      continue;
+    }
+    if (intervention.decisionStatus !== "applied" || intervention.decisionTraceId !== archive.traceId || intervention.actorId !== archive.npcId || (intervention.decisionTraceDigest && archive.traceDigest !== intervention.decisionTraceDigest)) {
+      brokenArchiveLinks.push(archive.traceId);
+    }
+  }
+
+  return {
+    schema: "agent-decision-trace-links.v1",
+    interventionCount: runtime.interventions?.length || 0,
+    decisionTraceCount: runtime.decisionTraces?.length || 0,
+    archivedDecisionCount: runtime.decisionTraceArchive?.length || 0,
+    appliedInterventionCount,
+    pendingInterventionCount,
+    expiredInterventionCount,
+    linkedDecisionCount,
+    archivedLinkedDecisionCount,
+    brokenInterventionLinks,
+    brokenTraceLinks,
+    brokenArchiveLinks,
+    complete: brokenInterventionLinks.length === 0 && brokenTraceLinks.length === 0 && brokenArchiveLinks.length === 0
+  };
 }
 
 export function buildTownEmergenceQueue(world: WorldState, events: WorldEvent[] = [], runtime?: PersistentTownRuntime | null): TownEmergenceQueue {
@@ -5045,6 +5463,7 @@ export function buildTownSituationBrief(
       candidateCount: activeQueue.candidates.length,
       validCount: activeQueue.validCount,
       triggeredCaseCount,
+      latestTriggerKind: triggeredCase?.kind,
       highestMaturityScore,
       strongestCandidateId: undefined
     },
@@ -5073,6 +5492,7 @@ export function buildCityPulseWorldProjection(brief: TownSituationBrief, activeN
       candidateCount: brief.caseReadiness.candidateCount,
       validCandidateCount: brief.caseReadiness.validCount,
       triggeredCaseCount: brief.caseReadiness.triggeredCaseCount,
+      latestTriggerKind: brief.caseReadiness.latestTriggerKind,
       activeNpcCount,
       observationCount
     },
@@ -5161,6 +5581,7 @@ export function createTownStateSnapshot(
     mode,
     rollbackEligible: mode === "checkpoint",
     createdAt,
+    replayDigest: mode === "checkpoint" ? buildWorldReplayDigest(world, events, runtime) : undefined,
   };
   if (mode === "checkpoint") {
     snapshot.checkpoint = {
@@ -5461,18 +5882,25 @@ export function runTownScenario(world: WorldState, events: WorldEvent[] = [], in
   return { world: baselineWorld as WorldState, runtime, events: baselineResult.events, run, report, snapshots: runtime.snapshots };
 }
 
-export function applyTownRuntimeIntervention(world: WorldState, intervention: Omit<TownRuntimeIntervention, "id" | "tick" | "createdAt" | "branch" | "impact">): { world: WorldState; runtime: PersistentTownRuntime; intervention: TownRuntimeIntervention } {
+export function applyTownRuntimeIntervention(world: WorldState, intervention: Omit<TownRuntimeIntervention, "id" | "tick" | "createdAt" | "branch" | "impact" | "decisionTraceId" | "decisionTraceDigest" | "decisionStatus">): { world: WorldState; runtime: PersistentTownRuntime; intervention: TownRuntimeIntervention } {
   const nextWorld = cloneWorld(world);
   const runtime = nextWorld.persistentRuntime || createPersistentTownRuntime(nextWorld, []);
+  const { actorId, kind, value, actionId, reason, sourceRefs } = intervention;
   const created: TownRuntimeIntervention = {
     id: `intervention-${runtime.tick}-${intervention.actorId}-${runtime.interventions.length}`,
     tick: runtime.tick,
     createdAt: new Date().toISOString(),
     branch: "counterfactual",
-    ...intervention,
-    impact: intervention.kind === "action-bias"
-      ? `Director bias favors ${intervention.value} for ${intervention.actorId} on the next tick without forcing illegal actions.`
-      : `${intervention.kind} changed for ${intervention.actorId}; next tick will mark affected decisions as counterfactual.`
+    actorId,
+    kind,
+    value,
+    actionId,
+    reason,
+    sourceRefs,
+    decisionStatus: "pending",
+    impact: kind === "action-bias"
+      ? `Director bias favors ${value} for ${actorId} on the next tick without forcing illegal actions.`
+      : `${kind} changed for ${actorId}; next tick will mark affected decisions as counterfactual.`
   };
   const agent = runtime.agentStates.find((state) => state.npcId === intervention.actorId);
   if (agent) {
@@ -5507,8 +5935,23 @@ function createTownTickContext(
   runtime.consequences ||= [];
   ensureTownRuleRuntimeState(world, runtime);
   const allEvents = [...baseEvents, ...createdEvents];
-  const indexEvents = executionPolicy.indexEventLimit ? allEvents.slice(-executionPolicy.indexEventLimit) : allEvents;
+  const indexEvents = selectCaseIndexEvents(allEvents, runtime, executionPolicy.indexEventLimit);
   const index = createTownTickIndex(world, indexEvents, runtime, memoryIndex);
+  // Keep a bounded, chronological exclusion window for the high-capacity
+  // policy. The chain only needs a small set of non-culprit alibis, while the
+  // legacy path retains its complete history for compatibility. Building the
+  // bounded window backwards avoids repeatedly touching the full event log as
+  // a 5,000-tick run grows.
+  if (runtime.caseTriggerPolicy === "source-signaled") {
+    const recentExclusions: WorldEvent[] = [];
+    for (let eventIndex = allEvents.length - 1; eventIndex >= 0 && recentExclusions.length < 128; eventIndex -= 1) {
+      const event = allEvents[eventIndex];
+      if (event.type === "alibi" || event.tags.includes("alibi_seed")) recentExclusions.push(event);
+    }
+    index.exclusionEvents = recentExclusions.reverse();
+  } else {
+    index.exclusionEvents = allEvents.filter((event) => event.type === "alibi" || event.tags.includes("alibi_seed"));
+  }
   if (runtime.performance) runtime.performance.counters.socialPressureRebuildCount += 1;
   return {
     world,
@@ -5516,6 +5959,7 @@ function createTownTickContext(
     runtime,
     allEvents,
     createdEvents,
+    tickEventStartIndex: createdEvents.length,
     createdMemories: [],
     createdObservations: [],
     createdConsequences: [],
@@ -5527,17 +5971,67 @@ function createTownTickContext(
   };
 }
 
+function selectCaseIndexEvents(
+  allEvents: WorldEvent[],
+  runtime: PersistentTownRuntime,
+  limit?: number
+) {
+  if (!limit) return allEvents;
+  const tailIds = new Set(allEvents.slice(-limit).map((event) => event.id));
+  const referencedIds = new Set<string>();
+  for (const entry of runtime.longChainLedger || []) {
+    for (const eventIds of Object.values(entry.stageEventIds)) {
+      for (const eventId of eventIds) referencedIds.add(eventId);
+    }
+    if (entry.triggeredEventId) referencedIds.add(entry.triggeredEventId);
+  }
+  for (const trigger of runtime.triggeredCases || []) {
+    referencedIds.add(trigger.eventId);
+  }
+  const relevantPairs = new Set([
+    ...(runtime.longChainLedger || []).map((entry) => `${entry.culpritId}->${entry.victimId}`),
+    ...(runtime.triggeredCases || []).map((trigger) => `${trigger.culpritId}->${trigger.victimId}`)
+  ]);
+  for (const observation of runtime.eventObservations || []) {
+    const observerPair = [...relevantPairs].some((pair) => pair.startsWith(`${observation.observerNpcId}->`) || pair.endsWith(`->${observation.observerNpcId}`));
+    const subjectPair = observation.subjectNpcId
+      ? [...relevantPairs].some((pair) => pair.startsWith(`${observation.subjectNpcId}->`) || pair.endsWith(`->${observation.subjectNpcId}`))
+      : false;
+    if (observerPair || subjectPair) referencedIds.add(observation.eventId);
+  }
+  return allEvents.filter((event) => tailIds.has(event.id) || referencedIds.has(event.id));
+}
+
 function tickEventWindow(ctx: TownTickContext) {
   return ctx.executionPolicy.indexEventLimit ? ctx.allEvents.slice(-ctx.executionPolicy.indexEventLimit) : ctx.allEvents;
 }
 
+function caseEventWindow(ctx: TownTickContext) {
+  return ctx.executionPolicy.indexEventLimit
+    ? Array.from(ctx.index.eventById.values())
+    : ctx.allEvents;
+}
+
 function advanceTownClock(ctx: TownTickContext) {
+  const initialMemoryCount = (ctx.world.memories || []).length;
+  const lifeStarted = beginResidentLifeInterval(ctx.world, ctx.runtime, ctx.allEvents);
+  const workStarted = beginResidentWorkInterval(ctx.world, ctx.runtime);
   ctx.runtime.tick += 1;
   const currentMinutes = timeToMinutes(ctx.runtime.currentTime) + ctx.runtime.tickIntervalMinutes;
   if (currentMinutes >= 24 * 60) ctx.runtime.currentDay += 1;
   ctx.runtime.currentTime = minutesToTime(currentMinutes);
   ctx.world.day = ctx.runtime.currentDay;
   ctx.world.currentTime = ctx.runtime.currentTime;
+  const arrivals = advanceTownDailyRoutines(ctx.world, ctx.runtime);
+  const workFinished = advanceResidentWorkInterval(ctx.world, ctx.runtime, arrivals);
+  const lifeFinished = finishResidentLifeInterval(ctx.world, ctx.runtime, workFinished);
+  for (const memory of (ctx.world.memories || []).slice(initialMemoryCount)) {
+    ctx.createdMemories.push(memory);
+    addMemoryToTownTickIndex(ctx.index, memory);
+  }
+  ctx.index.indexedMemoryCount = (ctx.world.memories || []).length;
+  for (const event of [...lifeStarted, ...workStarted, ...arrivals, ...workFinished, ...lifeFinished]) { ctx.createdEvents.push(event); addEventToTownTickIndex(ctx.index, event); }
+  if (lifeStarted.length || workStarted.length || arrivals.length || workFinished.length || lifeFinished.length) ctx.allEvents = [...ctx.baseEvents, ...ctx.createdEvents];
 }
 
 function phaseObserveTown(ctx: TownTickContext) {
@@ -5568,30 +6062,91 @@ function phaseUpdateGoals(ctx: TownTickContext) {
 }
 
 function selectTickActors(ctx: TownTickContext) {
-  const living = ctx.world.npcs.filter((npc) => npc.alive);
-  const random = makeRandom(`${ctx.world.seed}:persistent:${ctx.runtime.tick}`);
+  const living = ctx.world.npcs.filter((npc) => npc.alive && !residentLifeOwnsActor(ctx.runtime,npc.id) && !residentWorkOwnsActor(ctx.runtime, npc.id) && (!ctx.runtime.dailyRoutine?.enabled || !ctx.runtime.dailyRoutine.journeys[npc.id]));
   const actorCount = Math.min(3, living.length);
   const events = tickEventWindow(ctx);
+  const newcomerIds = new Set((ctx.runtime.populationFlowLedger || []).map((record) => record.npcId));
+  const authoredLiving = living.filter((npc) => !newcomerIds.has(npc.id));
+  const newcomerLiving = living.filter((npc) => newcomerIds.has(npc.id));
+  const decisionNpcIds = new Set([
+    ...ctx.runtime.decisionTraces.map((trace) => trace.npcId),
+    ...(ctx.runtime.decisionTraceArchive || []).map((trace) => trace.npcId)
+  ]);
+  const newcomerFirstActionByNpcId = new Map(
+    (ctx.runtime.populationFlowLedger || [])
+      .filter((record) => record.firstActionTick === undefined && !decisionNpcIds.has(record.npcId))
+      .map((record) => [record.npcId, Math.max(0, ctx.runtime.tick - record.createdAtTick)])
+  );
   const recentActorCounts = new Map<string, number>();
-  for (const trace of ctx.runtime.decisionTraces.slice(-12)) {
-    recentActorCounts.set(trace.npcId, (recentActorCounts.get(trace.npcId) || 0) + 1);
+  const populationNpcIdsForCadence = new Set((ctx.runtime.populationFlowLedger || []).map((record) => record.npcId));
+  for (const trace of ctx.runtime.decisionTraces
+    .filter((trace) => !populationNpcIdsForCadence.has(trace.npcId))
+    .slice(-12)) {
+      recentActorCounts.set(trace.npcId, (recentActorCounts.get(trace.npcId) || 0) + 1);
   }
-  return [...living].sort((a, b) => {
-    const aState = ctx.index.agentStateByNpcId.get(a.id) || deriveNpcAgentStateIndexed(ctx.world, a, events, ctx.runtime, ctx.index);
-    const bState = ctx.index.agentStateByNpcId.get(b.id) || deriveNpcAgentStateIndexed(ctx.world, b, events, ctx.runtime, ctx.index);
-    const actorScore = (npc: NPCProfile, state: NpcAgentState) => {
-      const recentPenalty = (recentActorCounts.get(npc.id) || 0) * 1.8;
-      const unresolvedPressure = (ctx.index.pressureByNpcId.get(npc.id)?.[0]?.score || 0) / 2;
-      const chainNeed = chainStageNeedForActor(ctx.runtime, npc.id) * 1.35;
-      const rhythm = ((ctx.runtime.tick + npc.id.length + state.currentPlan.length) % 7) / 10;
-      return state.goalPriority + unresolvedPressure + chainNeed + rhythm - recentPenalty + random() / 4;
-    };
-    return actorScore(b, bState) - actorScore(a, aState);
-  }).slice(0, actorCount);
+  const actorScore = (npc: NPCProfile, state: NpcAgentState, newcomerPriority = 0) => {
+    const recentPenalty = (recentActorCounts.get(npc.id) || 0) * 1.8;
+    const unresolvedPressure = (ctx.index.pressureByNpcId.get(npc.id)?.[0]?.score || 0) / 2;
+    const chainNeed = chainStageNeedForActor(ctx.runtime, npc.id) * 1.35;
+    const rhythm = ((ctx.runtime.tick + npc.id.length + state.currentPlan.length) % 7) / 10;
+    // Derive jitter from the actor identity itself. A shared RNG inside a sort
+    // comparator makes the order depend on how many other NPCs are present,
+    // which lets newcomer insertion perturb authored residents before their
+    // actions are even compared.
+    const jitter = makeRandom(`${ctx.world.seed}:persistent:${ctx.runtime.tick}:actor:${npc.id}`)() / 4;
+    return newcomerPriority + state.goalPriority + unresolvedPressure + chainNeed + rhythm - recentPenalty + jitter;
+  };
+  const score = (npc: NPCProfile, newcomerPriority = 0) => actorScore(
+    npc,
+    ctx.index.agentStateByNpcId.get(npc.id) || deriveNpcAgentStateIndexed(ctx.world, npc, events, ctx.runtime, ctx.index),
+    newcomerPriority
+  );
+  const rank = (left: NPCProfile, right: NPCProfile, newcomerPriority = 0) =>
+    score(right, newcomerPriority) - score(left, newcomerPriority) || left.id.localeCompare(right.id);
+  const selected = authoredLiving
+    .sort((left, right) => rank(left, right))
+    .slice(0, Math.min(actorCount, authoredLiving.length));
+  const selectedIds = new Set(selected.map((npc) => npc.id));
+  // Preserve the authored population's three action slots. A newcomer gets a
+  // bounded extra slot only for its first action so population flow cannot
+  // starve the authored case chain.
+  const pendingNewcomers = newcomerLiving
+    .filter((npc) => newcomerFirstActionByNpcId.has(npc.id))
+    .sort((left, right) => {
+      const ageDelta = (newcomerFirstActionByNpcId.get(left.id) || 0) - (newcomerFirstActionByNpcId.get(right.id) || 0);
+      return ageDelta || rank(left, right, 1_000);
+    });
+  // The first action is the only newcomer action that may use an extra slot
+  // during this fairness profile. Later newcomer behavior is still represented
+  // by its durable schedule/agent state and can be explicitly advanced by an
+  // Agent command; allowing every newcomer into the automatic actor pool would
+  // turn population flow into an unbounded authored-case perturbation.
+  const scheduledNewcomers: NPCProfile[] = [];
+  const newcomer = pendingNewcomers[0];
+  if (newcomer && !selectedIds.has(newcomer.id)) {
+    selected.push(newcomer);
+    selectedIds.add(newcomer.id);
+  }
+  if (selected.length < actorCount) {
+    for (const npc of [...authoredLiving, ...scheduledNewcomers].sort((left, right) => rank(left, right))) {
+      if (selected.length >= actorCount || selectedIds.has(npc.id)) continue;
+      selected.push(npc);
+      selectedIds.add(npc.id);
+    }
+  }
+  return selected;
 }
 
 function recentSelectedActionKinds(runtime: PersistentTownRuntime, window = 12) {
-  return runtime.decisionTraces.slice(-window)
+  // Population-flow newcomers have a separate, bounded orientation lane. Their
+  // first action must be observable, but it must not consume the authored
+  // residents' anti-repetition budget; otherwise adding a newcomer changes an
+  // otherwise identical resident's tie-break even when no authored state was
+  // touched. Keep this history scoped to the authored actor population.
+  const populationNpcIds = new Set((runtime.populationFlowLedger || []).map((record) => record.npcId));
+  return runtime.decisionTraces
+    .filter((trace) => !populationNpcIds.has(trace.npcId))
+    .slice(-window)
     .map((trace) => trace.candidates.find((candidate) => candidate.id === trace.selectedCandidateId)?.kind)
     .filter((kind): kind is NpcActionKind => Boolean(kind));
 }
@@ -5673,15 +6228,37 @@ function selectActionCandidate(runtime: PersistentTownRuntime, npc: NPCProfile, 
   return selected;
 }
 
+function selectNewcomerFirstActionCandidate(runtime: PersistentTownRuntime, npc: NPCProfile, candidates: NpcActionCandidate[], actorIndex: number) {
+  const lowImpactKinds = new Set<NpcActionKind>(["observe", "talk", "move"]);
+  const observe = candidates.find((candidate) => candidate.legal && candidate.kind === "observe");
+  if (observe) {
+    recordSelectedWorldSystemBias(runtime, observe);
+    return observe;
+  }
+  const lowImpact = candidates
+    .filter((candidate) => candidate.legal && lowImpactKinds.has(candidate.kind))
+    .sort((left, right) => right.score.total - left.score.total || left.kind.localeCompare(right.kind) || left.id.localeCompare(right.id));
+  if (lowImpact[0]) {
+    recordSelectedWorldSystemBias(runtime, lowImpact[0]);
+    return lowImpact[0];
+  }
+  return selectActionCandidate(runtime, npc, candidates, actorIndex);
+}
+
 function phaseScoreActions(ctx: TownTickContext) {
   const events = tickEventWindow(ctx);
   ctx.actionPlans = selectTickActors(ctx).map((npc, actorIndex) => {
     const candidates = scoreNpcActionCandidatesIndexed(ctx.world, npc, events, ctx.runtime, ctx.index);
+    const pendingNewcomerFirstAction = (ctx.runtime.populationFlowLedger || []).some((record) =>
+      record.npcId === npc.id && record.firstActionTick === undefined
+    );
     return {
       npc,
       actorIndex,
       candidates,
-      selected: selectActionCandidate(ctx.runtime, npc, candidates, actorIndex)
+      selected: pendingNewcomerFirstAction
+        ? selectNewcomerFirstActionCandidate(ctx.runtime, npc, candidates, actorIndex)
+        : selectActionCandidate(ctx.runtime, npc, candidates, actorIndex)
     };
   });
 }
@@ -5729,7 +6306,9 @@ function enqueueCompletedWorldEventOfferSocialResponses(world: WorldState, runti
 
 function phaseAdvanceLongActions(ctx: TownTickContext) {
   reconcileCampaignRecovery(ctx.runtime);
-  advanceTownLongActions(ctx.world, ensureTownRuleRuntimeState(ctx.world, ctx.runtime), ctx.allEvents, ctx.runtime.tick);
+  const ruleState = ensureTownRuleRuntimeState(ctx.world, ctx.runtime);
+  advanceTownLongActions(ctx.world, ruleState, ctx.allEvents.filter(event => event.type !== "work"), ctx.runtime.tick);
+  refreshTownEvidenceIndex(ctx.index, ruleState);
   const directiveEvents = reconcileWorldArcDirectiveLongAction(ctx.world, ctx.runtime);
   const offerEvents = reconcileWorldEventOfferLongAction(ctx.world, ctx.runtime);
   enqueueCompletedCampaignRecoverySocialResponses(ctx.world, ctx.runtime);
@@ -5761,7 +6340,7 @@ function phaseInstitutionStrategy(ctx: TownTickContext) {
       decision.strategy === "cultivate-informant" ? ["informant", "tip", "witness"] :
       [];
     const event: WorldEvent = {
-      id: `institution-event-${decision.id}`,
+      id: `institution-event-${ctx.runtime.eventIdentityPolicy === "world-scoped" ? `${ctx.world.id}-` : ""}${decision.id}`,
       worldId: ctx.world.id,
       day: ctx.runtime.currentDay,
       time: ctx.runtime.currentTime,
@@ -5794,20 +6373,35 @@ function phaseApplyActionEvolution(ctx: TownTickContext, npc: NPCProfile, select
 
 function phaseExecuteAgentAction(ctx: TownTickContext, plan: TownTickActionPlan) {
   const { npc, candidates, selected } = plan;
+  const populationFlowFirstAction = ctx.runtime.populationFlowLedger?.find((record) =>
+    record.npcId === npc.id && record.firstActionTick === undefined
+  );
   const traceId = `decision-${ctx.world.id}-${ctx.runtime.tick}-${npc.id}`;
   const intervention = ctx.runtime.interventions.find((item) =>
     item.actorId === npc.id &&
     item.tick === ctx.runtime.tick - 1 &&
     (item.kind !== "action-bias" || item.value === selected.kind)
   );
+  if (intervention) {
+    intervention.decisionTraceId = traceId;
+    intervention.decisionStatus = "applied";
+  }
   const definition = getTownActionDefinition(selected.kind);
   const beforeObservationIds = new Set((ctx.runtime.eventObservations || []).map((observation) => observation.id));
   const event = definition.execute({ world: ctx.world, runtime: ctx.runtime, npc, candidate: selected, intervention, allEvents: tickEventWindow(ctx) });
+  if (populationFlowFirstAction && selected.kind === "observe") {
+    // A newcomer's first observation is private orientation, not a public town
+    // incident. Keep the event and the newcomer's direct memory for replay, but
+    // avoid broadcasting same-location witness memories into authored chains.
+    event.hidden = true;
+    event.tags = Array.from(new Set([...event.tags, "population_flow_first_action"]));
+  }
   ctx.createdEvents.push(event);
   addEventToTownTickIndex(ctx.index, event);
   ctx.allEvents = [...ctx.baseEvents, ...ctx.createdEvents];
   const ruleState = ensureTownRuleRuntimeState(ctx.world, ctx.runtime);
   updateTownRulePressureFromEvent(ruleState, event, ctx.runtime.tick);
+  refreshTownEvidenceIndex(ctx.index, ruleState);
   const longAction = maybeStartLongActionFromCandidate(ctx.world, ruleState, npc, selected, ctx.allEvents, ctx.runtime.tick);
   if (longAction) selected.score.reasons.push(`started long action ${longAction.kind}`);
   const participantMemories = observeEventParticipants(ctx.world, ctx.runtime, event, npc.id, selected.targetNpcId);
@@ -5833,6 +6427,9 @@ function phaseExecuteAgentAction(ctx: TownTickContext, plan: TownTickActionPlan)
     selectedCandidateId: selected.id,
     createdEventId: event.id,
     interventionId: intervention?.id,
+    interventionActionId: intervention?.actionId,
+    interventionReason: intervention?.reason,
+    interventionSourceRefs: intervention?.sourceRefs,
     phases: [...ctx.phases],
     propagatedMemoryIds: propagatedMemories.map((item) => item.id),
     observationIds,
@@ -5840,11 +6437,18 @@ function phaseExecuteAgentAction(ctx: TownTickContext, plan: TownTickActionPlan)
   };
   ctx.runtime.decisionTraces.push(trace);
   ctx.decisionIds.push(trace.id);
+  const populationFlowRecord = populationFlowFirstAction;
+  if (populationFlowRecord) {
+    populationFlowRecord.firstActionTick = ctx.runtime.tick;
+    populationFlowRecord.firstActionTraceId = trace.id;
+    populationFlowRecord.firstActionEventId = event.id;
+  }
   const agent = deriveNpcAgentStateIndexed(ctx.world, npc, tickEventWindow(ctx), ctx.runtime, ctx.index);
   agent.locationId = selected.targetLocationId;
   agent.lastDecisionId = trace.id;
   agent.nextActionPreview = selected.description;
   phaseApplyActionEvolution(ctx, npc, selected, event, agent, consequence, memoryIds);
+  if (intervention) intervention.decisionTraceDigest = buildAgentDecisionTraceDigest(trace, ctx.runtime);
   ctx.runtime.agentStates = [agent, ...ctx.runtime.agentStates.filter((state) => state.npcId !== npc.id)];
   cacheNpcAgentState(ctx.index, agent);
 }
@@ -5852,13 +6456,25 @@ function phaseExecuteAgentAction(ctx: TownTickContext, plan: TownTickActionPlan)
 function phaseExecuteActions(ctx: TownTickContext) {
   if (!ctx.actionPlans.length) phaseScoreActions(ctx);
   ctx.actionPlans.forEach((plan) => phaseExecuteAgentAction(ctx, plan));
+  const previousTick = ctx.runtime.tick - 1;
+  for (const intervention of ctx.runtime.interventions) {
+    if (intervention.tick === previousTick && intervention.decisionStatus === "pending") {
+      intervention.decisionStatus = "expired";
+    }
+  }
 }
 
 function phaseAdvanceCaseChain(ctx: TownTickContext) {
+  refreshTownEvidenceIndex(ctx.index, ctx.runtime.ruleState);
   const lifecycleCaseCount = (ctx.runtime.caseLifecycle?.solvedCaseIds.length || 0) + (ctx.runtime.caseLifecycle?.failedCaseIds.length || 0);
   const triggeredCaseCount = ctx.runtime.triggeredCases?.length || 0;
   const target = Math.max(3, ctx.runtime.campaignCaseTarget || 3);
-  if (Math.max(lifecycleCaseCount, triggeredCaseCount) >= target && ctx.runtime.tick % 20 !== 0 && ctx.runtime.longChainComputedAtTick !== undefined) {
+  const forceCadence = ctx.runtime.tick % 20 === 0;
+  const refreshInterval = ctx.runtime.caseTriggerPolicy === "source-signaled" ? 5 : 1;
+  const ledgerFresh = ctx.runtime.longChainComputedAtTick !== undefined &&
+    ctx.runtime.tick - ctx.runtime.longChainComputedAtTick < refreshInterval;
+  if (ledgerFresh && !forceCadence) return;
+  if (Math.max(lifecycleCaseCount, triggeredCaseCount) >= target && !forceCadence && ctx.runtime.longChainComputedAtTick !== undefined) {
     return;
   }
   const triggered = triggerLongChainCaseIfReady(ctx.world, ctx.runtime, ctx.allEvents, ctx.createdEvents, ctx.index);
@@ -5869,6 +6485,31 @@ function phaseAdvanceCaseChain(ctx: TownTickContext) {
   }
 }
 
+function phaseAdvancePopulationFlow(ctx: TownTickContext) {
+  const result = advancePopulationFlowCadence(ctx.world, ctx.runtime, ctx.allEvents);
+  if (!result.createdRecords.length) return;
+
+  const existingMemoryIds = new Set((ctx.world.memories || []).map((memory) => memory.id));
+  const currentWorld = ctx.world;
+  const currentRuntime = ctx.runtime;
+  Object.assign(currentWorld, result.world);
+  Object.assign(currentRuntime, result.runtime);
+  currentWorld.persistentRuntime = currentRuntime;
+
+  for (const event of result.createdEvents) {
+    ctx.createdEvents.push(event);
+    addEventToTownTickIndex(ctx.index, event);
+  }
+  for (const memory of currentWorld.memories || []) {
+    if (existingMemoryIds.has(memory.id)) continue;
+    ctx.createdMemories.push(memory);
+    addMemoryToTownTickIndex(ctx.index, memory);
+  }
+  ctx.index.indexedMemoryCount = (currentWorld.memories || []).length;
+  for (const npc of currentWorld.npcs) ctx.index.npcById.set(npc.id, npc);
+  ctx.allEvents = [...ctx.baseEvents, ...ctx.createdEvents];
+}
+
 function phaseExtractCandidates(ctx: TownTickContext) {
   if (
     ctx.executionPolicy.candidateEveryTicks > 1 &&
@@ -5877,7 +6518,8 @@ function phaseExtractCandidates(ctx: TownTickContext) {
   ) {
     return;
   }
-  storeTownCandidates(ctx.runtime, buildCaseCandidatesFromRuntimeIndexed(ctx.world, tickEventWindow(ctx), ctx.runtime, ctx.index).slice(0, 16));
+  refreshTownEvidenceIndex(ctx.index, ctx.runtime.ruleState);
+  storeTownCandidates(ctx.runtime, buildCaseCandidatesFromRuntimeIndexed(ctx.world, caseEventWindow(ctx), ctx.runtime, ctx.index).slice(0, 16));
   if (ctx.runtime.performance) ctx.runtime.performance.counters.candidateRebuildCount += 1;
 }
 
@@ -5895,15 +6537,30 @@ function finalizeTownTick(ctx: TownTickContext) {
   const report: PersistentTownRuntimeReport = {
     tick: ctx.runtime.tick,
     status: ctx.runtime.status,
-    eventIds: ctx.createdEvents.slice(-ctx.decisionIds.length).map((event) => event.id),
+    eventIds: (ctx.runtime.residentWork ? ctx.createdEvents.slice(ctx.tickEventStartIndex) : ctx.createdEvents.slice(-ctx.decisionIds.length)).map((event) => event.id),
     decisionIds: ctx.decisionIds,
-    candidateIds: ctx.runtime.candidates.map((candidate) => candidate.id)
+    candidateIds: ctx.runtime.candidates.map((candidate) => candidate.id),
+    candidateSummaries: ctx.runtime.candidates.map((candidate) => ({
+      id: candidate.id,
+      valid: candidate.validation.valid,
+      triggeredEventId: candidate.triggeredEventId,
+      evidenceCovered: candidate.validation.evidenceChain?.minimumEvidenceCountMet === true
+        && (candidate.validation.evidenceChain.relatedEvidenceIds || []).length > 0
+    }))
   };
   if (!ctx.runtime.candidates.some((candidate) => candidate.validation.valid) && ctx.runtime.tick >= ctx.runtime.maxTicks) {
     report.blockedReason = "No valid case candidate reached motive + means + opportunity + memory support before max ticks.";
     ctx.runtime.status = "blocked";
   }
   ctx.runtime.reports.push(report);
+  if (ctx.executionPolicy.traceRetention !== undefined) {
+    const evictedCount = Math.max(0, ctx.runtime.decisionTraces.length - ctx.executionPolicy.traceRetention);
+    archiveEvictedAgentDecisionTraces(ctx.runtime, ctx.runtime.decisionTraces.slice(0, evictedCount));
+    ctx.runtime.decisionTraces = ctx.runtime.decisionTraces.slice(evictedCount);
+  }
+  if (ctx.executionPolicy.reportRetention !== undefined) {
+    ctx.runtime.reports = ctx.runtime.reports.slice(-ctx.executionPolicy.reportRetention);
+  }
   ctx.world.persistentRuntime = ctx.runtime;
   if (ctx.runtime.tick % ctx.executionPolicy.snapshotEveryTicks === 0) {
     const mode: TownSnapshotMode = ctx.runtime.tick % ctx.executionPolicy.checkpointEveryTicks === 0 ? "checkpoint" : "summary";
@@ -5931,6 +6588,7 @@ function runTownTickPhases(ctx: TownTickContext) {
     ["institutions", () => phaseInstitutionStrategy(ctx)],
     ["action-execution", () => phaseExecuteActions(ctx)],
     ["case-chain", () => phaseAdvanceCaseChain(ctx)],
+    ["population-flow", () => phaseAdvancePopulationFlow(ctx)],
     ["candidates", () => phaseExtractCandidates(ctx)],
     ["validation", () => phaseValidateCandidates(ctx)],
     ["snapshot", () => finalizeTownTick(ctx)]
@@ -5965,6 +6623,8 @@ export function advancePersistentTownTick(
     candidateEveryTicks?: number;
     actionEveryTicks?: number;
     indexEventLimit?: number;
+    traceRetention?: number;
+    reportRetention?: number;
     /**
      * The caller may opt out of the defensive boundary clone when it owns the
      * world exclusively (for example, an isolated benchmark run). Production

@@ -8,6 +8,7 @@ import {
 } from "./persistent-town";
 import type { EmergenceBenchmarkReport, WorldEvent, WorldState } from "./world-types";
 import { buildRuntimeGraphSummaries, type CampaignGraphSummary, type EvidenceGraphSummary } from "./campaign-graphs";
+import { buildWorldReplayDigest, type WorldReplayDigest } from "./town/replay-contract";
 
 export type RunCatalogEntry = {
   runId: string;
@@ -85,6 +86,7 @@ export type RunDiff = TownStateDiff & {
 export type RunCommand = {
   id: string;
   runId: string;
+  branchId?: string;
   type: "scenario-intervention" | "reviewer-action" | "benchmark-rerun" | "export-action";
   createdAt: string;
   summary: string;
@@ -145,6 +147,9 @@ export type RunReplayBundle = {
     experimentCount: number;
     variantCount: number;
   };
+  replayDigest?: WorldReplayDigest;
+  /** Whether the digest was persisted with the artifact or computed from a live world at query time. */
+  replayDigestSource?: "artifact" | "computed-live";
 };
 
 export type RunJobStatus = "queued" | "running" | "paused" | "cancelled" | "failed" | "completed";
@@ -305,6 +310,7 @@ export function commandsForRun(runtime: PersistentTownRuntime, runId: string): R
         commands.push({
           id: `command-${runId}-${branch.id}-${scheduled.atTickOffset}`,
           runId,
+          branchId: branch.id,
           type: "scenario-intervention",
           createdAt: scenario.startedAt,
           summary: `${scheduled.intervention.kind} for ${scheduled.intervention.actorId} at +${scheduled.atTickOffset}`,
@@ -356,7 +362,13 @@ export function compareRuns(runtime: PersistentTownRuntime, leftRunId: string, r
   };
 }
 
-export function buildRunReplayBundle(runtime: PersistentTownRuntime, runId: string, benchmark?: EmergenceBenchmarkReport | null): RunReplayBundle | null {
+export function buildRunReplayBundle(
+  runtime: PersistentTownRuntime,
+  runId: string,
+  benchmark?: EmergenceBenchmarkReport | null,
+  world?: WorldState,
+  events: WorldEvent[] = []
+): RunReplayBundle | null {
   const manifest = findRunCatalogEntry(runtime, runId);
   if (!manifest) return null;
   const storedBenchmark = runtime.benchmarkRuns?.find((summary) => summary.runId === runId) || null;
@@ -379,7 +391,9 @@ export function buildRunReplayBundle(runtime: PersistentTownRuntime, runId: stri
       qualityScore: manifest.packMetadata?.qualityScore,
       catalogValidationOk: manifest.packMetadata?.catalogValidationOk
     },
-    ...graphSummaries
+    ...graphSummaries,
+    replayDigest: world ? buildWorldReplayDigest(world, events, runtime) : undefined,
+    replayDigestSource: world ? "computed-live" : undefined
   };
 }
 
