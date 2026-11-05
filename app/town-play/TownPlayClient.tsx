@@ -188,7 +188,8 @@ export default function TownPlayClient() {
       </div>
     </header>
     <aside className={styles.dayCard} aria-label="小镇与探索状态"><Icon name="晴" /><div><strong>河湾小镇</strong><span>{world.view ? `第 ${world.view.day} 天 · ${world.view.time}` : "新的一段手记"}</span></div><button aria-label="探索帮助" onClick={() => setPanel("help")}>?</button></aside>
-    <div className={styles.previewLabel}>{world.busy ? "正在保存这一步…" : world.view?.investigation?.solved ? "第七分钟 · 已归档" : "居民与首案 · 开发试玩"}</div>
+    {/* Status chip only when there is something to say; no developer labels in the player view. */}
+    {(world.busy || world.view?.investigation?.solved) && <div className={styles.previewLabel} role="status">{world.busy ? "正在保存这一步…" : "第七分钟 · 已归档"}</div>}
     {waypointName && !overview && <div className={styles.waypoint}><span>◇</span> 前往 {waypointName}<button aria-label="清除地点标记" onClick={() => { setWaypoint(null); setWaypointName(""); }}>×</button></div>}
     {overview && <section className={styles.overview} aria-label="全镇俯瞰地点"><div><span className={styles.eyebrow}>小镇一览</span><h2>从河桥，到每一扇门</h2><p>选择一处地点，在街道上留下标记。</p></div><div className={styles.destinationList}>{destinations.map(d => <button key={d.id} onClick={() => mark(d)}><span>{knownVisited.includes(d.id) ? "✓" : "◇"}</span>{d.label}</button>)}</div><button className={styles.textButton} onClick={() => setPanel("people")}>查看人物目击 · {world.view?.residents.length || 0} 人</button><button className={styles.returnButton} onClick={() => setOverview(false)}>返回角色视角 <kbd>M</kbd></button></section>}
     {!ready && !error && <div className={styles.loading} role="status"><span className={styles.loadingMark}>R</span><h2>正在走进河湾</h2><p>石板路、街角与河水，正在眼前展开。</p></div>}
