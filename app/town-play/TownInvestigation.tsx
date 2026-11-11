@@ -73,3 +73,45 @@ export function TownCaseBook({ investigation: c, disabled, command }: Props) {
     {tab === "ending" && c.resolution && <div className={styles.caseEnding}><span className={styles.eyebrow}>证据支持的经过</span><h4>{c.resolution.person}移走了原图</h4><p>{c.resolution.motive}</p><p>{c.resolution.method}</p><ol>{c.resolution.timeline.map((event, i) => <li key={i}><time>{event.time}</time><span>{event.event}</span></li>)}</ol><h4>后来</h4>{c.resolution.ending.map((text, i) => <p key={i}>{text}</p>)}</div>}
   </section>;
 }
+
+type TrackerProps = {
+  investigation: TownCaseView | null;
+  places: Array<{ id: string; label: string }>;
+  onMark: (sceneId: string) => void;
+  onOpenBook: () => void;
+};
+
+/** The case's next step, always on screen while walking. Only public view data. */
+export function caseNextStep(c: TownCaseView | null) {
+  if (!c) return { title: "旧桥原图不见了", hint: "去旧书店或警务所，领取调查手记。" };
+  if (c.solved) return { title: c.title, hint: "案件已归档。可以回看证词与最后的经过。" };
+  const open = c.leads.reduce((sum, lead) => sum + lead.open, 0);
+  if (open) return { title: c.title, hint: `还有 ${c.leads.length} 处地点有未核对的物品。` };
+  if (!c.conversations.some(line => line.corrected)) return { title: c.title, hint: "物证已经齐了。回到居民面前，出示物证核对说法。" };
+  return { title: c.title, hint: "整理动机、手法与时间，在案件本里提交结论。" };
+}
+
+export function TownCaseTracker({ investigation: c, places, onMark, onOpenBook }: TrackerProps) {
+  const [open, setOpen] = useState(true);
+  // Small screens start folded so the street stays visible.
+  useEffect(() => { if (window.matchMedia("(max-width: 720px)").matches) setOpen(false); }, []);
+  const step = caseNextStep(c);
+  const label = (id: string) => places.find(p => p.id === id)?.label ?? placeNames[id] ?? id;
+  const order = (id: string) => { const index = places.findIndex(p => p.id === id); return index < 0 ? places.length : index; };
+  const leads = c ? (c.solved ? [] : [...c.leads].sort((a, b) => order(a.sceneId) - order(b.sceneId))) : [{ sceneId: "books", open: 0 }, { sceneId: "police", open: 0 }];
+  const found = c?.clues.length ?? 0;
+  const total = c ? found + c.leads.reduce((sum, lead) => sum + lead.open, 0) : 0;
+  return <section className={styles.tracker} aria-label="案件进度" data-open={open} data-solved={c?.solved ?? false}>
+    <button className={styles.trackerHead} aria-expanded={open} onClick={() => setOpen(v => !v)}>
+      <span className={styles.eyebrow}>{c ? (c.solved ? "已归档" : "调查中") : "新委托"}</span>
+      <strong>{step.title}</strong>
+      {c && <span className={styles.trackerPips} aria-label={`物证 ${found}/${total}`}>{Array.from({ length: total }, (_, i) => <i key={i} data-filled={i < found} />)}</span>}
+      <span className={styles.trackerFold} aria-hidden="true">{open ? "−" : "+"}</span>
+    </button>
+    {open && <div className={styles.trackerBody}>
+      <p>{step.hint}</p>
+      {leads.length > 0 && <ul>{leads.map(lead => <li key={lead.sceneId}><button onClick={() => onMark(lead.sceneId)} aria-label={`在地图上标记${label(lead.sceneId)}${lead.open ? `，${lead.open} 处待核对` : ""}`}><span aria-hidden="true">◇</span>{label(lead.sceneId).replace(/^河湾/, "")}{lead.open > 0 && <small aria-hidden="true">{lead.open}</small>}</button></li>)}</ul>}
+      {c && <div className={styles.trackerFoot}><span>证词 {c.questionedIds.length} · 更正 {c.conversations.filter(line => line.corrected).length}</span><button className={styles.textButton} onClick={onOpenBook}>案件本 <kbd>K</kbd></button></div>}
+    </div>}
+  </section>;
+}

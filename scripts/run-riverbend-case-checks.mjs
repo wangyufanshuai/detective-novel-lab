@@ -46,6 +46,8 @@ try {
   const opened = act({ kind: "case-open" });
   assert.equal(view.investigation.title, "第七分钟");
   assert.equal(view.investigation.clues.length, 0);
+  assert.equal(view.investigation.leads.reduce((sum, lead) => sum + lead.open, 0), 8);
+  assert(view.investigation.leads.every(lead => Object.keys(lead).sort().join() === "open,sceneId"), "leads expose only place and count");
   assert(!JSON.stringify(view).includes("被谁保管的历史"));
   assert.equal(commandTownPlay(credentials, opened).replayed, true);
   assert.equal(repository.worldRepository.getCase(view.investigation.id), null);
@@ -65,6 +67,7 @@ try {
   act({ kind: "arrive", sceneId: "inn" }); act({ kind: "case-search", targetId: "rb-search-6" });
   act({ kind: "arrive", sceneId: "station" }); const search = act({ kind: "case-search", targetId: "rb-search-7" });
   assert.equal(view.investigation.clues.length, 8);
+  assert.deepEqual(view.investigation.leads, []);
   assert.equal(commandTownPlay(credentials, search).view.time, view.time);
   check("six-place-search-locality-discovery-and-specific-challenge");
   const theory = { culpritId: "rb-xu-zhiwei", motive: "", method: "", evidenceIds: view.investigation.clues.map(e => e.id), proof: { motiveEvidenceIds: ["rb-clue-02"], methodEvidenceIds: ["rb-clue-01", "rb-clue-07"] } };

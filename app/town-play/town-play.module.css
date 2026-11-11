@@ -87,7 +87,7 @@
 .dayCard strong { display: block; font: 600 14px 'Noto Serif SC', serif; }
 .dayCard span { display: block; margin-top: 3px; color: var(--tp-ink-muted); font-size: 11px; }
 .dayCard button { border-radius: 50%; width: 24px; height: 24px; background: transparent; border: 1px solid var(--tp-line-strong); margin-left: 12px; }
-.previewLabel { position: absolute; top: 114px; right: 29px; color: var(--tp-forest-slate); font-size: 10px; letter-spacing: .1em; background: color-mix(in srgb, var(--tp-paper) 57%, transparent); padding: 4px 9px; border-radius: 3px; }
+.previewLabel { position: absolute; bottom: 118px; left: 50%; transform: translateX(-50%); white-space: nowrap; color: var(--tp-forest-slate); font-size: 10px; letter-spacing: .1em; background: color-mix(in srgb, var(--tp-paper) 57%, transparent); padding: 4px 9px; border-radius: 3px; }
 .waypoint { position: absolute; top: 193px; left: 30px; background: color-mix(in srgb, var(--tp-paper) 92%, transparent); padding: 8px 12px; font-size: 12px; border-radius: 3px; box-shadow: 0 3px 15px color-mix(in srgb, var(--tp-forest-deep) 13%, transparent); }
 .waypoint > span { color: var(--tp-brass); margin-right: 6px; }
 .waypoint button { border: 0; background: transparent; margin-left: 12px; font-size: 16px; }
@@ -151,7 +151,7 @@
 @media (max-width: 1100px) { .walkHint { bottom: 120px; font-size: 10px; }.placeName { font-size: 13px; bottom: 120px; }.notice { top: 175px; } }
 @media (max-width: 720px) {
   .arrival { left: 12px; top: 16px; width: 235px; padding: 13px; gap: 8px; }.arrivalSeal { display: none; }.arrival h1 { font-size: 20px; }.arrival p { font-size: 10px; }.eyebrow { font-size: 9px; }.progress { margin-top: 10px; }
-  .dayCard { right: 12px; top: 16px; padding: 9px; gap: 6px; }.dayCard > svg { width: 23px; height: 23px; }.dayCard strong { font-size: 11px; }.dayCard button { display: none; }.dayCard span { font-size: 9px; }.previewLabel { right: 14px; top: 88px; font-size: 8px; }
+  .dayCard { right: 12px; top: 16px; padding: 9px; gap: 6px; }.dayCard > svg { width: 23px; height: 23px; }.dayCard strong { font-size: 11px; }.dayCard button { display: none; }.dayCard span { font-size: 9px; }.previewLabel { bottom: 96px; font-size: 9px; }
   .toolbar { bottom: max(18px, env(safe-area-inset-bottom)); padding: 5px; }.toolSlots { gap: 3px; }.toolSlot { width: 42px; height: 52px; }.toolSlot svg { width: 22px; height: 22px; }.toolSlot > span { font-size: 8px; }.toolSlot > small { font-size: 8px; left: 3px; }.toolName { font-size: 11px; }
   .placeName { right: 15px; bottom: 115px; font-size: 11px; }.placeName span { font-size: 9px; }.walkHint { left: 14px; bottom: 115px; }.walkHint span:last-child { display: none; }.waypoint { top: 159px; left: 13px; font-size: 10px; }
   .notice { top: 164px; width: 300px; }.notice span { font-size: 10px; }.interact { bottom: 185px; max-width: 250px; white-space: nowrap; padding-right: 10px; font-size: 11px; }
@@ -160,7 +160,7 @@
 }
 @media (max-width: 430px) { .arrival { width: 218px; }.dayCard { padding: 7px; }.dayCard > svg { display: none; }.dayCard strong { font-size: 10px; }.toolSlot { width: clamp(34px, calc((100vw - 43px) / 8), 44px); }.toolSlots { gap: 3px; }.touchPad { left: 14px; bottom: 140px; grid-template-columns: repeat(3,44px); grid-template-rows: repeat(2,44px); }.previewLabel { max-width: 110px; font-size: 8px; }.placeName { display: none; }.interact { left: auto; right: 12px; bottom: 155px; transform: none; max-width: calc(100vw - 182px); gap: 6px; padding: 7px; font-size: 10px; }.interact span { overflow: hidden; text-overflow: ellipsis; }.interact kbd { flex: none; } }
 @media (max-width: 1100px) and (min-height: 561px) { .overview { top: auto; bottom: 130px; left: 24px; width: calc(100% - 48px); max-width: 520px; padding: 14px; }.overview > div:first-child { display: none; }.destinationList { grid-template-columns: repeat(3, minmax(0, 1fr)); }.destinationList button { min-height: 40px; font-size: 10px; padding: 7px 4px; }.returnButton { margin-top: 10px; padding-top: 8px; } }
-@media (max-height: 560px) and (min-width: 600px) { .arrival { transform: scale(.8); transform-origin: top left; }.dayCard { transform: scale(.85); transform-origin: top right; }.toolbar { bottom: 12px; }.toolSlot { height: 45px; }.toolSlot svg { width: 21px; height: 21px; }.previewLabel { top: 98px; }.walkHint { display: none; }.overview { top: 156px; bottom: auto; padding: 12px; width: 280px; }.overview > div:first-child { display: none; }.interact { left: auto; right: 24px; bottom: 100px; transform: none; max-width: calc(50vw - 40px); }.interact span { overflow: hidden; text-overflow: ellipsis; }.touchPad { bottom: 98px; }.placeName { display: none; } }
+@media (max-height: 560px) and (min-width: 600px) { .arrival { transform: scale(.8); transform-origin: top left; }.dayCard { transform: scale(.85); transform-origin: top right; }.toolbar { bottom: 12px; }.toolSlot { height: 45px; }.toolSlot svg { width: 21px; height: 21px; }.previewLabel { bottom: 76px; }.walkHint { display: none; }.overview { top: 156px; bottom: auto; padding: 12px; width: 280px; }.overview > div:first-child { display: none; }.interact { left: auto; right: 24px; bottom: 100px; transform: none; max-width: calc(50vw - 40px); }.interact span { overflow: hidden; text-overflow: ellipsis; }.touchPad { bottom: 98px; }.placeName { display: none; } }
 @media (prefers-reduced-motion: reduce) { .toolSlot { transition: none; } }
 
 .caseWork { margin: 24px 0; color: var(--tp-ink); }
@@ -230,3 +230,29 @@
   .streetWords p { font-size: 13px; line-height: 1.9; }
   .streetActions { gap: 10px; }
 }
+
+/* Case tracker: the quest log that stays on screen while walking. */
+.tracker { position: absolute; right: 24px; top: 104px; width: 252px; border: 2px solid var(--tp-wood); border-radius: 5px; background: color-mix(in srgb, var(--tp-paper) 96%, transparent); box-shadow: 0 3px 0 var(--tp-ink), 0 10px 26px color-mix(in srgb, var(--tp-teal-deep) 15%, transparent); color: var(--tp-ink); }
+.tracker[data-solved='true'] { border-color: var(--tp-forest-light); }
+.trackerHead { width: 100%; display: grid; grid-template-columns: 1fr auto; align-items: center; column-gap: 8px; row-gap: 3px; padding: 11px 14px 10px; border: 0; background: transparent; text-align: left; color: inherit; cursor: pointer; min-height: 44px; }
+.trackerHead .eyebrow { grid-column: 1; color: var(--tp-brass); }
+.trackerHead strong { grid-column: 1; font: 600 15px 'Noto Serif SC', serif; letter-spacing: .06em; }
+.trackerFold { grid-column: 2; grid-row: 1 / span 2; width: 22px; height: 22px; display: grid; place-items: center; border: 1px solid var(--tp-line-strong); border-radius: 50%; color: var(--tp-ink-muted); font-size: 13px; }
+.trackerPips { grid-column: 1 / -1; display: flex; gap: 3px; margin-top: 4px; }
+.trackerPips i { flex: 1; height: 5px; border-radius: 1px; background: var(--tp-line); }
+.trackerPips i[data-filled='true'] { background: var(--tp-brass); }
+.tracker[data-solved='true'] .trackerPips i { background: var(--tp-forest-light); }
+.trackerBody { border-top: 1px dashed var(--tp-line); padding: 9px 14px 12px; font-size: 12px; line-height: 1.7; }
+.trackerBody p { margin: 0 0 8px; color: var(--tp-ink); }
+.trackerBody ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.trackerBody li button { width: 100%; min-height: 34px; display: flex; align-items: center; gap: 5px; padding: 5px 7px; border: 1px solid var(--tp-line); border-radius: 3px; background: var(--tp-paper-deep); color: var(--tp-ink); font-size: 12px; text-align: left; cursor: pointer; }
+.trackerBody li button:hover { background: var(--tp-paper-glow); border-color: var(--tp-brass-light); }
+.trackerBody li button > span { color: var(--tp-brass); }
+.trackerBody li small { margin-left: auto; min-width: 16px; height: 16px; display: grid; place-items: center; border-radius: 8px; background: var(--tp-brass); color: var(--tp-paper-glow); font-size: 10px; font-weight: 600; }
+.trackerFoot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 9px; color: var(--tp-ink-muted); font-size: 11px; }
+.trackerFoot .textButton { margin: 0; }
+.trackerFoot kbd { margin-left: 4px; }
+.leadBadge { margin-left: auto; min-width: 18px; height: 18px; display: inline-grid; place-items: center; padding: 0 4px; border-radius: 9px; background: var(--tp-brass); color: var(--tp-paper-glow); font-size: 10px; font-weight: 600; }
+.town[data-panel='person'] .tracker, .town[data-view='overview'] .tracker { display: none; }
+@media (max-width: 720px) { .tracker { right: 12px; top: 154px; width: 200px; }.trackerHead { padding: 8px 10px; }.trackerHead strong { font-size: 12px; }.trackerBody { padding: 8px 10px 10px; font-size: 11px; } }
+@media (max-height: 560px) and (min-width: 600px) { .tracker { top: 84px; transform: scale(.85); transform-origin: top right; } }

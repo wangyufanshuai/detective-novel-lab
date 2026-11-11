@@ -30,6 +30,7 @@ export function projectTownInvestigation(worldId: string, sceneId: string | null
     suspects: c.deductionCase.characters.filter(p => p.isSuspect !== false).map(p => ({ id: p.id, name: p.name, role: p.role })),
     clues: c.deductionCase.evidence.filter(e => found.has(e.id)).map(e => ({ id: e.id, title: e.title, sceneId: e.location, description: e.visibleDescription })),
     searchTargets: ref.script.targets.filter(t => t.sceneId === sceneId).map(t => ({ id: t.id, label: t.label, found: found.has(t.evidenceId) })),
+    leads: [...ref.script.targets.filter(t => !found.has(t.evidenceId)).reduce((open, t) => open.set(t.sceneId, (open.get(t.sceneId) || 0) + 1), new Map<string, number>())].map(([leadSceneId, open]) => ({ sceneId: leadSceneId, open })),
     conversations: session.interrogationLog.map(l => ({ id: l.id, characterId: l.characterId, name: name(l.characterId), question: l.question, answer: l.answer, ...(l.evidenceId ? { evidenceId: l.evidenceId } : {}), corrected: l.challenge?.hit === true })),
     questionedIds: [...new Set(session.interrogationLog.filter(l => !l.evidenceId).map(l => l.characterId))],
     ...(session.judgement ? { message: solved ? "证词、时间与物证已相互印证，案件归档。" : "这份结论还不能归档。请核对动机、手法、时间与排除依据，并当面核对有冲突的证词。" } : {}),

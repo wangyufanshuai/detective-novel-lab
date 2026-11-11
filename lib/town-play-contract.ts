@@ -7,6 +7,8 @@ export type TownCaseView = {
   suspects: Array<{ id: string; name: string; role: string }>;
   clues: Array<{ id: string; title: string; sceneId: string; description: string }>;
   searchTargets: Array<{ id: string; label: string; found: boolean }>;
+  /** Places that still hold unchecked items, with a count only; never which items. */
+  leads: Array<{ sceneId: string; open: number }>;
   conversations: Array<{ id: string; characterId: string; name: string; question: string; answer: string; evidenceId?: string; corrected: boolean }>;
   questionedIds: string[];
   message?: string;
