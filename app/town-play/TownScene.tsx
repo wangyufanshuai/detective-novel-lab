@@ -8,6 +8,7 @@ import { batchTownResidents } from "./resident-batching";
 import { createRefreshCadence } from "./frame-cadence";
 import { createResidentMotion, RESIDENT_RADIUS } from "./resident-motion";
 import { chooseTownInteraction, type TownInteraction } from "./town-interaction";
+import { clockHours, easeGrade, gradeAt } from "./town-lighting";
 import { createResidentEncounter } from "./resident-encounter";
 import type { TownPlayView } from "@/lib/town-play-contract";
 
@@ -67,6 +68,7 @@ export default function TownScene(props: Props) {
     sun.shadow.mapSize.set(2048, 2048);
     sun.shadow.bias = -.0002;
     sun.shadow.normalBias = .04;
+    sun.shadow.radius = 2.5;
     scene.add(sun);
     const fill = new THREE.DirectionalLight("#dce8f7", .65);
     fill.position.set(10, 20, -30);
@@ -76,13 +78,17 @@ export default function TownScene(props: Props) {
     const ring = new THREE.Mesh(new THREE.RingGeometry(.40, .46, 40), new THREE.MeshBasicMaterial({ color: "#f5cf79", side: THREE.DoubleSide, depthTest: false }));
     ring.rotation.x = -Math.PI / 2; ring.renderOrder = 5;
     scene.add(ring);
-    const marker = new THREE.Mesh(new THREE.RingGeometry(.62, .74, 40), new THREE.MeshBasicMaterial({ color: "#dcaf5a", side: THREE.DoubleSide, depthTest: false }));
+    const marker = new THREE.Mesh(new THREE.RingGeometry(.62, .74, 40), new THREE.MeshBasicMaterial({ color: "#dcaf5a", side: THREE.DoubleSide, depthTest: false, transparent: true }));
     marker.rotation.x = -Math.PI / 2; marker.renderOrder = 4; marker.visible = false;
     scene.add(marker);
     const contactRing = new THREE.Mesh(new THREE.RingGeometry(.65, .69, 40), new THREE.MeshBasicMaterial({ color: "#ebc980", side: THREE.DoubleSide, depthTest: false }));
     contactRing.rotation.x = -Math.PI / 2; contactRing.renderOrder = 4; contactRing.visible = false;
     scene.add(contactRing);
     let aspect = 16 / 9, quality = "";
+    // Time-of-day grade follows the world clock; it eases so a "wait" reads as dusk falling, not a cut.
+    const grade = gradeAt(clockHours(live.current.worldView?.time)), targetGrade = gradeAt(12);
+    const glowMaterials: THREE.MeshStandardMaterial[] = [], waterMaterials: THREE.MeshStandardMaterial[] = [];
+    const glowColor = new THREE.Color("#ffb75e"), waterGlint = new THREE.Color("#9fd2e8");
     const resize = () => {
       const width = container.clientWidth, height = container.clientHeight;
       if (!width || !height) return;
@@ -101,7 +107,21 @@ export default function TownScene(props: Props) {
     let residents: ReturnType<typeof batchTownResidents> | null = null;
     const query = new URLSearchParams(location.search);
     const diagnostics = query.get("diagnostics") === "1";
+    // Visual-only preview of other hours; never touches the world clock.
+    const clockOverride = diagnostics ? query.get("clock") : null;
 
+    function applyGrade(now: number, still: boolean) {
+      hemisphere.color.copy(grade.sky); hemisphere.groundColor.copy(grade.ground); hemisphere.intensity = grade.hemi;
+      sun.color.copy(grade.sun); sun.intensity = grade.sunI;
+      sun.position.set(-25 - (1 - grade.elevation) * 12, 10 + grade.elevation * 32, 35);
+      fill.intensity = .45 + grade.glow * .35;
+      (scene.fog as THREE.Fog).color.copy(grade.fog); renderer.setClearColor(grade.fog);
+      renderer.toneMappingExposure = grade.exposure;
+      for (const material of glowMaterials) { material.emissive.copy(glowColor); material.emissiveIntensity = grade.glow * (material.name.startsWith("lamp") ? 2.2 : .9); }
+      const shimmer = still ? .5 : (Math.sin(now / 900) + Math.sin(now / 370 + 1.3)) / 4 + .5;
+      for (const material of waterMaterials) { material.emissive.copy(waterGlint); material.emissiveIntensity = (.05 + shimmer * .1) * (1 - grade.glow * .6); }
+    }
+    applyGrade(0, true);
     async function load() {
       try {
         const [manifestResponse, residentManifestResponse] = await Promise.all([
@@ -138,8 +158,16 @@ export default function TownScene(props: Props) {
           if (!cast.scene.getObjectByName(name)) { disposeModel(cast.scene); throw new Error("居民模型不完整，请重新载入。"); }
         }
         model.add(cast.scene);
+        const seenMaterials = new Set<THREE.Material>();
         model.traverse(object => {
-          if (object instanceof THREE.Mesh) { object.castShadow = true; object.receiveShadow = true; }
+          if (!(object instanceof THREE.Mesh)) return;
+          object.castShadow = true; object.receiveShadow = true;
+          for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
+            if (seenMaterials.has(material) || !(material instanceof THREE.MeshStandardMaterial)) continue;
+            seenMaterials.add(material);
+            if (/^(glass|lamp)/.test(material.name)) glowMaterials.push(material);
+            else if (/^water/.test(material.name)) waterMaterials.push(material);
+          }
         });
         scene.add(model);
         const multiDraw = renderer.extensions.has("WEBGL_multi_draw");
@@ -245,7 +273,7 @@ export default function TownScene(props: Props) {
           }
           player!.position.y += moving ? Math.abs(Math.sin(phase)) * .025 : 0;
           ring.position.set(position[0], groundHeight + .065, -position[1]);
-          lamp.position.set(position[0], 2, -position[1]); lamp.intensity = settings.lantern ? 16 : 0;
+          lamp.position.set(position[0], 2, -position[1]); lamp.intensity = settings.lantern ? 16 + grade.glow * 10 : 0;
           marker.visible = !!settings.waypoint;
           if (settings.waypoint) marker.position.set(settings.waypoint[0], nav.height(settings.waypoint) + .025, -settings.waypoint[1]);
           const conversationActor = settings.conversationActorId ? people.get(settings.conversationActorId) : null;
@@ -277,6 +305,14 @@ export default function TownScene(props: Props) {
           const highlighted = talking ? conversationActor : !settings.paused && !settings.overview && interaction?.kind === "resident" ? people.get(interaction.person.actorId) : null;
           contactRing.visible = !!highlighted?.visible;
           if (highlighted?.visible) contactRing.position.set(highlighted.position.x, highlighted.position.y + .07, highlighted.position.z);
+          gradeAt(clockHours(clockOverride ?? settings.worldView?.time), targetGrade);
+          easeGrade(grade, targetGrade, reducedMotion.matches ? 1 : 1 - Math.exp(-delta * 1.5));
+          applyGrade(now, reducedMotion.matches);
+          if (settings.waypoint) {
+            const pulse = reducedMotion.matches ? 0 : (Math.sin(now / 260) + 1) / 2;
+            marker.scale.setScalar(1 + pulse * .14);
+            (marker.material as THREE.MeshBasicMaterial).opacity = .95 - pulse * .35;
+          }
           residents?.sync();
           renderer.render(scene, camera);
           const duration = now - lastRender; lastRender = now;
