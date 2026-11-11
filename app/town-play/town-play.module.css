@@ -256,3 +256,64 @@
 .town[data-panel='person'] .tracker, .town[data-view='overview'] .tracker { display: none; }
 @media (max-width: 720px) { .tracker { right: 12px; top: 154px; width: 200px; }.trackerHead { padding: 8px 10px; }.trackerHead strong { font-size: 12px; }.trackerBody { padding: 8px 10px 10px; font-size: 11px; } }
 @media (max-height: 560px) and (min-width: 600px) { .tracker { top: 84px; transform: scale(.85); transform-origin: top right; } }
+
+/* Case board: full-screen corkboard. Strings join people and the evidence shown to them. */
+.journal.boardDialog { width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0 28px 28px; border: 0; border-radius: 0; box-shadow: none; background: radial-gradient(color-mix(in srgb, var(--tp-wood) 22%, transparent) 1px, transparent 1.4px) 0 0 / 9px 9px, radial-gradient(color-mix(in srgb, var(--tp-paper-glow) 30%, transparent) 1px, transparent 1.6px) 4px 5px / 13px 13px, var(--tp-wood-light); }
+.journal.boardDialog .dialogTop { background: var(--tp-wood-dark); color: var(--tp-paper); margin-inline: -28px; padding: 14px 28px; box-shadow: 0 3px 0 var(--tp-ink); }
+.journal.boardDialog .dialogTop .eyebrow { color: var(--tp-gold-soft); }
+.journal.boardDialog > h2 { margin: 18px 0 14px; color: var(--tp-wood-dark); }
+.board { color: var(--tp-ink); }
+.boardCanvas { position: relative; display: grid; grid-template-columns: minmax(220px, 260px) minmax(0, 1fr) minmax(210px, 250px); gap: 28px; align-items: start; }
+.boardCanvas h3 { display: flex; align-items: baseline; gap: 8px; margin: 0 0 12px; font: 600 16px 'Noto Serif SC', serif; color: var(--tp-wood-dark); letter-spacing: .1em; }
+.boardCanvas h3 small { font: 400 11px 'Noto Sans SC', sans-serif; letter-spacing: 0; color: var(--tp-wood); }
+.boardStrings { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 2; }
+.boardStrings path { fill: none; stroke: var(--tp-ink-muted); stroke-width: 1.6; stroke-dasharray: 5 5; opacity: .7; transition: opacity .15s; }
+.boardStrings path[data-corrected='true'] { stroke: var(--tp-rust); stroke-width: 2.2; stroke-dasharray: none; }
+.board[data-picked='person'] .boardStrings path, .board[data-picked='clue'] .boardStrings path { opacity: .18; }
+.board .boardStrings path[data-active='true'] { opacity: 1; }
+.boardPeople, .boardClues, .boardTheory { position: relative; display: grid; gap: 10px; align-content: start; }
+.boardPin { position: absolute; top: -5px; left: 50%; width: 11px; height: 11px; margin-left: -5px; border-radius: 50%; background: var(--tp-rust); box-shadow: inset -2px -2px 0 color-mix(in srgb, var(--tp-ink) 35%, transparent), 0 2px 2px color-mix(in srgb, var(--tp-ink) 40%, transparent); z-index: 3; }
+.boardCard, .boardClue { position: relative; width: 100%; text-align: left; color: var(--tp-ink); background: var(--tp-paper); border: 1px solid var(--tp-line); border-radius: 2px; box-shadow: 0 2px 0 var(--tp-line-strong), 0 6px 14px color-mix(in srgb, var(--tp-wood-dark) 22%, transparent); cursor: pointer; transition: transform .12s, opacity .12s, box-shadow .12s; }
+.boardCard { display: grid; grid-template-columns: 38px 1fr; gap: 10px; padding: 14px 12px 12px; }
+.boardCard:nth-of-type(odd) { transform: rotate(-.6deg); }
+.boardCard:nth-of-type(even) { transform: rotate(.5deg); }
+.boardCard strong { display: block; font: 600 15px 'Noto Serif SC', serif; }
+.boardCard small { display: block; color: var(--tp-ink-muted); font-size: 11px; margin-top: 2px; }
+.boardCard em { display: block; font-style: normal; font-size: 11px; color: var(--tp-olive); margin-top: 6px; }
+.boardChips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
+.boardChips i { font-style: normal; font-size: 10px; padding: 1px 6px; border-radius: 2px; background: var(--tp-sage-mist); color: var(--tp-forest-deep); }
+.boardChips i[data-muted='true'] { background: var(--tp-paper-deep); color: var(--tp-ink-muted); }
+.boardChips i[data-tone='red'] { background: color-mix(in srgb, var(--tp-rust) 18%, var(--tp-paper)); color: var(--tp-rust); }
+.boardPlaces { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 18px 16px; align-items: start; }
+.boardPlace { display: grid; gap: 10px; align-content: start; }
+.boardPlace h4 { margin: 0; justify-self: start; padding: 3px 10px; font: 600 12px 'Noto Serif SC', serif; letter-spacing: .12em; color: var(--tp-paper); background: var(--tp-forest); border-radius: 2px; box-shadow: 0 2px 0 var(--tp-forest-deep); }
+.boardClue { display: grid; gap: 5px; padding: 14px 12px 12px; }
+.boardClue:nth-of-type(odd) { transform: rotate(.7deg); }
+.boardClue:nth-of-type(even) { transform: rotate(-.5deg); }
+.boardClue strong { font: 600 13px 'Noto Serif SC', serif; }
+.boardClue > span:last-child { font-size: 11px; line-height: 1.7; color: var(--tp-wood); display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.boardBlank { display: grid; place-items: center; gap: 2px; min-height: 74px; border: 2px dashed color-mix(in srgb, var(--tp-wood-dark) 35%, transparent); border-radius: 2px; color: color-mix(in srgb, var(--tp-wood-dark) 55%, transparent); font: 600 22px 'Noto Serif SC', serif; }
+.boardBlank span { font: 400 10px 'Noto Sans SC', sans-serif; letter-spacing: .1em; }
+.boardCard[aria-pressed='true'], .boardClue[aria-pressed='true'] { transform: translateY(-3px) rotate(0); outline: 2px solid var(--tp-brass); outline-offset: 2px; box-shadow: 0 0 0 5px color-mix(in srgb, var(--tp-focus) 45%, transparent), 0 10px 20px color-mix(in srgb, var(--tp-wood-dark) 30%, transparent); }
+.board[data-picked='person'] .boardCard:not([data-linked='true']),
+.board[data-picked='person'] .boardClue:not([data-linked='true']),
+.board[data-picked='clue'] .boardCard:not([data-linked='true']),
+.board[data-picked='clue'] .boardClue:not([data-linked='true']) { opacity: .5; }
+.boardTheory { padding: 16px; background: var(--tp-paper); border: 1px solid var(--tp-line); border-radius: 2px; box-shadow: 0 2px 0 var(--tp-line-strong), 0 6px 14px color-mix(in srgb, var(--tp-wood-dark) 22%, transparent); }
+.boardTheory .primary { margin-top: 4px; width: 100%; min-height: 44px; }
+.boardNext { margin: 0; font-size: 13px; line-height: 1.8; color: var(--tp-forest-deep); }
+.boardDraft { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 4px 0; font-size: 12px; }
+.boardDraft dt { color: var(--tp-ink-muted); }
+.boardDraft dd { margin: 0; font-weight: 600; }
+.boardVerdict { display: grid; gap: 4px; padding: 12px; border: 2px solid var(--tp-forest-light); transform: rotate(-2deg); text-align: center; }
+.boardVerdict small { color: var(--tp-forest-light); letter-spacing: .2em; font-size: 10px; }
+.boardVerdict strong { font: 600 20px 'Noto Serif SC', serif; color: var(--tp-forest-deep); }
+.boardFocus { margin-top: 26px; padding: 14px 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; background: color-mix(in srgb, var(--tp-paper) 92%, transparent); border-top: 3px solid var(--tp-wood-dark); }
+.boardFocus > p { grid-column: 1 / -1; margin: 0; }
+.boardFocus article { padding: 10px 12px; border-left: 3px solid var(--tp-ink-muted); background: var(--tp-paper-deep); }
+.boardFocus article[data-corrected='true'] { border-left-color: var(--tp-rust); }
+.boardFocus article small { font-size: 11px; color: var(--tp-ink-muted); }
+.boardFocus article p { margin: 6px 0 0; font-size: 13px; line-height: 1.8; }
+@media (max-width: 1100px) { .boardCanvas { grid-template-columns: minmax(200px, 240px) minmax(0, 1fr); } .boardTheory { grid-column: 1 / -1; } }
+@media (max-width: 720px) { .journal.boardDialog { padding: 0 14px 20px; } .journal.boardDialog .dialogTop { margin-inline: -14px; padding: 12px 14px; } .boardCanvas { grid-template-columns: 1fr; gap: 20px; } .boardStrings { display: none; } .boardPeople { grid-template-columns: 1fr 1fr; } .boardPeople h3 { grid-column: 1 / -1; } .boardCard { grid-template-columns: 1fr; padding: 12px 10px 10px; } .boardCard > .personInitial { display: none; } .boardCard strong { font-size: 14px; } .boardPlaces { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } }
+@media (prefers-reduced-motion: reduce) { .boardCard, .boardClue, .boardStrings path { transition: none; } }

@@ -6,7 +6,8 @@ import type { TownDestination, TownPoint } from "@/lib/riverbend-navigation";
 import type { TownSceneControls, TownSnapshot } from "./TownScene";
 import styles from "./town-play.module.css";
 import { useTownWorld } from "./useTownWorld";
-import { TownCaseBook, TownCasePlace, TownCaseTracker } from "./TownInvestigation";
+import { TownCaseBook, TownCasePlace, TownCaseTracker, type CaseBookTab } from "./TownInvestigation";
+import { TownCaseBoard } from "./TownCaseBoard";
 import { TownStreetConversation } from "./TownStreetConversation";
 import { interactionKey, type TownContact, type TownInteraction } from "./town-interaction";
 
@@ -21,7 +22,7 @@ const placeCopy: Record<string, string> = {
   post: "邮局在广场东侧。沿着街边向南走，可以到达集市与河岸；向北则是住宅后街。",
   inn: "旅馆守着河桥西侧。木质阳台朝向步道，过桥后回望，这里是进入河湾时的另一处路标。"
 };
-type Panel = "journal" | "case" | "notes" | "settings" | "bag" | "place" | "help" | "people" | "person" | null;
+type Panel = "journal" | "case" | "board" | "notes" | "settings" | "bag" | "place" | "help" | "people" | "person" | null;
 
 function Icon({ name }: { name: string }) {
   const paths: Record<string, ReactNode> = {
@@ -58,6 +59,8 @@ export default function TownPlayClient() {
   const [waypointName, setWaypointName] = useState("");
   const [selected, setSelected] = useState(0);
   const [panel, setPanel] = useState<Panel>(null);
+  const [caseTab, setCaseTab] = useState<CaseBookTab | undefined>(undefined);
+  const openCase = useCallback((tab?: CaseBookTab) => { setCaseTab(tab); setPanel("case"); }, []);
   const [visited, setVisited] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
   const [loadedSave, setLoadedSave] = useState(false);
@@ -150,7 +153,8 @@ export default function TownPlayClient() {
       if (key === "e" && !overview) { event.preventDefault(); inspect(); }
       if (key === "m") { event.preventDefault(); chooseTool(1); }
       if (key === "j") { event.preventDefault(); chooseTool(2); }
-      if (key === "k" && world.view?.investigation) { event.preventDefault(); setPanel("case"); }
+      if (key === "k" && world.view?.investigation) { event.preventDefault(); openCase(); }
+      if (key === "b" && world.view?.investigation) { event.preventDefault(); setPanel("board"); }
       if (/^[1-8]$/.test(key)) { event.preventDefault(); chooseTool(Number(key) - 1); }
       if (key === "escape") { if (overview) setOverview(false); else setPanel("settings"); }
     };
@@ -162,7 +166,7 @@ export default function TownPlayClient() {
       window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); window.removeEventListener("blur", clear);
       document.removeEventListener("visibilitychange", clear);
     };
-  }, [panel, ready, error, overview, inspect, chooseTool, worldPaused, world.status, world.view?.investigation]);
+  }, [panel, ready, error, overview, inspect, chooseTool, worldPaused, world.status, world.view?.investigation, openCase]);
   const mark = (destination: TownDestination) => {
     setWaypoint(destination.entrance); setWaypointName(destination.label); setPanel(null); setOverview(false);
     setToast(`已在地面标记「${destination.label}」，可以步行前往。`);
@@ -174,7 +178,7 @@ export default function TownPlayClient() {
     const url = URL.createObjectURL(new Blob([text], { type: "text/markdown;charset=utf-8" }));
     download(url, "河湾手记.md"); window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
-  const panelTitle = panel === "place" ? place?.label : ({ journal: "河湾手记", case: "调查与推断", notes: "随手记", settings: "稍作停留", bag: "随身行囊", help: "如何探索河湾", people: "在河湾遇见的人" } as Record<string, string>)[panel ?? ""];
+  const panelTitle = panel === "place" ? place?.label : ({ journal: "河湾手记", case: "调查与推断", board: "案件看板", notes: "随手记", settings: "稍作停留", bag: "随身行囊", help: "如何探索河湾", people: "在河湾遇见的人" } as Record<string, string>)[panel ?? ""];
   const nextDestination = destinations.find(d => !knownVisited.includes(d.id));
   const openLeads = new Map((world.view?.investigation?.solved ? [] : world.view?.investigation?.leads ?? []).map(lead => [lead.sceneId, lead.open]));
   const markScene = (sceneId: string) => { const target = destinations.find(d => d.id === sceneId); if (target) mark(target); };
@@ -193,7 +197,7 @@ export default function TownPlayClient() {
     <aside className={styles.dayCard} aria-label="小镇与探索状态"><Icon name="晴" /><div><strong>河湾小镇</strong><span>{world.view ? `第 ${world.view.day} 天 · ${world.view.time}` : "新的一段手记"}</span></div><button aria-label="探索帮助" onClick={() => setPanel("help")}>?</button></aside>
     {/* Status chip only when there is something to say; no developer labels in the player view. */}
     {(world.busy || world.view?.investigation?.solved) && <div className={styles.previewLabel} role="status">{world.busy ? "正在保存这一步…" : "第七分钟 · 已归档"}</div>}
-    {ready && !error && world.status === "ready" && <TownCaseTracker investigation={world.view?.investigation ?? null} places={destinations} onMark={markScene} onOpenBook={() => setPanel("case")} />}
+    {ready && !error && world.status === "ready" && <TownCaseTracker investigation={world.view?.investigation ?? null} places={destinations} onMark={markScene} onOpenBook={() => openCase()} onOpenBoard={() => setPanel("board")} />}
     {waypointName && !overview && <div className={styles.waypoint}><span>◇</span> 前往 {waypointName}<button aria-label="清除地点标记" onClick={() => { setWaypoint(null); setWaypointName(""); }}>×</button></div>}
     {overview && <section className={styles.overview} aria-label="全镇俯瞰地点"><div><span className={styles.eyebrow}>小镇一览</span><h2>从河桥，到每一扇门</h2><p>选择一处地点，在街道上留下标记。</p></div><div className={styles.destinationList}>{destinations.map(d => <button key={d.id} onClick={() => mark(d)}><span>{knownVisited.includes(d.id) ? "✓" : "◇"}</span>{d.label}{openLeads.get(d.id) ? <b className={styles.leadBadge} aria-label={`${openLeads.get(d.id)} 处待核对`}>{openLeads.get(d.id)}</b> : null}</button>)}</div><button className={styles.textButton} onClick={() => setPanel("people")}>查看人物目击 · {world.view?.residents.length || 0} 人</button><button className={styles.returnButton} onClick={() => setOverview(false)}>返回角色视角 <kbd>M</kbd></button></section>}
     {!ready && !error && <div className={styles.loading} role="status"><span className={styles.loadingMark}>R</span><h2>正在走进河湾</h2><p>石板路、街角与河水，正在眼前展开。</p></div>}
@@ -208,19 +212,20 @@ export default function TownPlayClient() {
       onPointerUp={() => keys.current.delete(direction.key)} onPointerCancel={() => keys.current.delete(direction.key)} onLostPointerCapture={() => keys.current.delete(direction.key)}>{direction.symbol}</button>)}</div>
     <nav className={styles.toolbar} aria-label="随身工具栏"><div className={styles.toolName}>{tools[selected]}{selected === 5 && lantern ? " · 已点亮" : ""}</div><div className={styles.toolSlots}>{tools.map((name, index) => <button key={name} className={styles.toolSlot} aria-label={`${index + 1} ${name}`} aria-pressed={selected === index} disabled={!ready || !!error || world.status !== "ready"} onClick={() => chooseTool(index)}><small>{index + 1}</small><Icon name={name} /><span>{name}</span>{name === "提灯" && lantern && <i />}</button>)}</div></nav>
     <div className={styles.placeName}>RIVERBEND<span>河湾 · 广场与河岸</span></div>
-    <dialog ref={dialog} className={`${styles.journal}${panel === "person" ? ` ${styles.streetConversation}` : ""}`} onCancel={() => setPanel(null)} onClose={() => setPanel(null)} aria-labelledby="town-dialog-title">
+    <dialog ref={dialog} className={`${styles.journal}${panel === "person" ? ` ${styles.streetConversation}` : panel === "board" ? ` ${styles.boardDialog}` : ""}`} onCancel={() => setPanel(null)} onClose={() => setPanel(null)} aria-labelledby="town-dialog-title">
       <div className={styles.dialogTop}>{panel === "person" && conversation ? <div className={styles.streetIdentity}><span className={styles.eyebrow}>街角交谈</span><h2 id="town-dialog-title">{conversation.name}<small>{conversation.role}</small></h2></div> : <span className={styles.eyebrow}>河湾手记 · FIELD NOTES</span>}<button className={styles.close} aria-label="关闭窗口" onClick={() => setPanel(null)}>×</button></div>
       {panel !== "person" && <h2 id="town-dialog-title">{panelTitle}</h2>}
       {panel && connectionNotice}
-      {panel === "person" && conversation && <TownStreetConversation key={conversation.actorId} person={conversation} view={world.view} disabled={worldPaused} command={world.command} openBook={() => setPanel("case")} close={() => setPanel(null)} />}
-      {panel === "place" && place && <><p className={styles.prose}>{placeCopy[place.id]}</p><div className={styles.entryStamp}>✓ 已记入初访手记 · 第 {world.view?.day} 天 {world.view?.time}</div><div className={styles.metPeople}>{world.view?.residents.filter(person => person.visibility === "observed").map(person => <span key={person.npcId}>遇见 {person.name} · {person.role}</span>)}</div>{world.view?.investigation ? <TownCasePlace investigation={world.view.investigation} residents={world.view.residents} disabled={worldPaused || world.view.sceneId !== place.id} command={world.command} openBook={() => setPanel("case")} /> : <div className={styles.caseInvitation}><h3>旧桥原图不见了</h3><p>揭幕前，旧书店的原图被换成了描图纸。去书店或警务所领取调查手记，沿着六处地点查下去。</p>{["books", "police"].includes(place.id) && <button className={styles.primary} disabled={worldPaused || world.view?.sceneId !== place.id} onClick={() => void world.command({ kind: "case-open" })}>领取调查手记</button>}</div>}<button className={styles.primary} onClick={() => setPanel(null)}>继续走走</button></>}
-      {panel === "journal" && <><p className={styles.prose}>每一次到访，都会在这里留下记号。选中地点可以标记方向。</p><div className={styles.journalPlaces}>{destinations.map((d, i) => <button key={d.id} onClick={() => mark(d)}><small>0{i + 1}</small><strong>{d.label}</strong><span>{knownVisited.includes(d.id) ? "已探访 ✓" : "尚未探访"}</span></button>)}</div><button className={styles.textButton} onClick={() => setPanel("people")}>人物目击 · {world.view?.residents.length || 0} 人</button><div className={styles.emptyCase}><Icon name="观察" /><div><strong>{world.view?.investigation?.title || "旧桥原图失踪"}</strong><p>{world.view?.investigation ? `${world.view.investigation.clues.length} 份物证 · ${world.view.investigation.solved ? "已经归档" : "继续核对证词与时间"}` : "到旧书店或警务所领取调查手记。"}</p>{world.view?.investigation ? <button className={styles.textButton} onClick={() => setPanel("case")}>翻开案件本 →</button> : <button className={styles.textButton} onClick={() => { const target = destinations.find(d => d.id === "books"); if (target) mark(target); }}>标记旧书店 →</button>}</div></div><button className={styles.textButton} onClick={exportNotes}>导出手记 ↓</button></>}
-      {panel === "case" && world.view?.investigation && <TownCaseBook key={world.view.investigation.id} investigation={world.view.investigation} residents={world.view.residents} disabled={worldPaused} command={world.command} />}
+      {panel === "person" && conversation && <TownStreetConversation key={conversation.actorId} person={conversation} view={world.view} disabled={worldPaused} command={world.command} openBook={() => openCase()} close={() => setPanel(null)} />}
+      {panel === "place" && place && <><p className={styles.prose}>{placeCopy[place.id]}</p><div className={styles.entryStamp}>✓ 已记入初访手记 · 第 {world.view?.day} 天 {world.view?.time}</div><div className={styles.metPeople}>{world.view?.residents.filter(person => person.visibility === "observed").map(person => <span key={person.npcId}>遇见 {person.name} · {person.role}</span>)}</div>{world.view?.investigation ? <TownCasePlace investigation={world.view.investigation} residents={world.view.residents} disabled={worldPaused || world.view.sceneId !== place.id} command={world.command} openBook={() => openCase()} /> : <div className={styles.caseInvitation}><h3>旧桥原图不见了</h3><p>揭幕前，旧书店的原图被换成了描图纸。去书店或警务所领取调查手记，沿着六处地点查下去。</p>{["books", "police"].includes(place.id) && <button className={styles.primary} disabled={worldPaused || world.view?.sceneId !== place.id} onClick={() => void world.command({ kind: "case-open" })}>领取调查手记</button>}</div>}<button className={styles.primary} onClick={() => setPanel(null)}>继续走走</button></>}
+      {panel === "journal" && <><p className={styles.prose}>每一次到访，都会在这里留下记号。选中地点可以标记方向。</p><div className={styles.journalPlaces}>{destinations.map((d, i) => <button key={d.id} onClick={() => mark(d)}><small>0{i + 1}</small><strong>{d.label}</strong><span>{knownVisited.includes(d.id) ? "已探访 ✓" : "尚未探访"}</span></button>)}</div><button className={styles.textButton} onClick={() => setPanel("people")}>人物目击 · {world.view?.residents.length || 0} 人</button><div className={styles.emptyCase}><Icon name="观察" /><div><strong>{world.view?.investigation?.title || "旧桥原图失踪"}</strong><p>{world.view?.investigation ? `${world.view.investigation.clues.length} 份物证 · ${world.view.investigation.solved ? "已经归档" : "继续核对证词与时间"}` : "到旧书店或警务所领取调查手记。"}</p>{world.view?.investigation ? <><button className={styles.textButton} onClick={() => openCase()}>翻开案件本 →</button> <button className={styles.textButton} onClick={() => setPanel("board")}>案件看板 →</button></> : <button className={styles.textButton} onClick={() => { const target = destinations.find(d => d.id === "books"); if (target) mark(target); }}>标记旧书店 →</button>}</div></div><button className={styles.textButton} onClick={exportNotes}>导出手记 ↓</button></>}
+      {panel === "board" && world.view?.investigation && <TownCaseBoard key={world.view.investigation.id} investigation={world.view.investigation} residents={world.view.residents} places={destinations} openBook={openCase} />}
+      {panel === "case" && world.view?.investigation && <TownCaseBook key={`${world.view.investigation.id}-${caseTab ?? ""}`} initialTab={caseTab} investigation={world.view.investigation} residents={world.view.residents} disabled={worldPaused} command={world.command} />}
       {panel === "people" && <><p className={styles.prose}>这里只记下亲眼见到的人。离开后保留上次目击地点与时间。</p>{peopleList}</>}
       {panel === "notes" && <><label htmlFor="riverbend-notes" className={styles.quiet}>记下一个地标、一条路线，或你想回来的理由。</label><textarea id="riverbend-notes" value={notes} onChange={event => setNotes(event.target.value)} maxLength={8000} placeholder="钟楼在广场的北面……" rows={7} /><div className={styles.notesFooter}><span>{saveStatus}</span><button className={styles.textButton} onClick={exportNotes}>导出手记 ↓</button></div></>}
       {panel === "settings" && <><p className={styles.prose}>打开手记时，角色会停下脚步。到访和等待会推进居民的日程。</p><fieldset className={styles.settings}><legend>画面</legend><label><input type="radio" name="quality" checked={quality === "high"} onChange={() => setQuality("high")} /> 清晰 · 较高画质</label><label><input type="radio" name="quality" checked={quality === "balanced"} onChange={() => setQuality("balanced")} /> 轻量 · 降低功耗</label></fieldset><div className={styles.waitChoices}><span>在这里歇一会儿</span>{([15, 30, 60] as const).map(minutes => <button key={minutes} disabled={worldPaused || areaId !== world.view?.sceneId} onClick={() => void world.command({ kind: "wait", minutes })}>{minutes === 60 ? "一小时" : `${minutes} 分钟`}</button>)}</div><p className={styles.quiet}>居民会按日程改变地点。首案可在旧书店或警务所开启。手记保存到本机项目，随手写的笔记保存在这个浏览器。</p><button className={styles.primary} onClick={() => setPanel(null)}>返回小镇</button></>}
       {panel === "bag" && <><p className={styles.prose}>观察镜、地图、手记本、铅笔、相机与提灯，已经放进你的行囊。</p><div className={styles.bagTools}>{tools.slice(0, 6).map(name => <div key={name}><Icon name={name} /><span>{name}</span></div>)}</div><p className={styles.quiet}>{world.view?.investigation ? `案件本里已收录 ${world.view.investigation.clues.length} 份物证记录。原件留在保管地点。` : "案件物品会在调查后记入手记。底部工具栏可直接使用这些探索工具。"}</p></>}
-      {panel === "help" && <><div className={styles.helpRow}><kbd>W A S D</kbd><span>或方向键，沿着画面方向走动</span></div><div className={styles.helpRow}><kbd>E</kbd><span>走近居民交谈，靠近店门观察</span></div><div className={styles.helpRow}><kbd>M / J</kbd><span>全镇俯瞰 / 打开手记</span></div><div className={styles.helpRow}><kbd>K</kbd><span>领取调查手记后，翻开案件本</span></div><div className={styles.helpRow}><kbd>1 — 8</kbd><span>切换底部随身工具</span></div><p className={styles.quiet}>触屏可按住左下方方向键行走，点击出现的交谈或地点提示。涉及案件的询问与物证核对会用五分钟，并保存到手记。</p></>}
+      {panel === "help" && <><div className={styles.helpRow}><kbd>W A S D</kbd><span>或方向键，沿着画面方向走动</span></div><div className={styles.helpRow}><kbd>E</kbd><span>走近居民交谈，靠近店门观察</span></div><div className={styles.helpRow}><kbd>M / J</kbd><span>全镇俯瞰 / 打开手记</span></div><div className={styles.helpRow}><kbd>K / B</kbd><span>领取调查手记后，翻开案件本 / 案件看板</span></div><div className={styles.helpRow}><kbd>1 — 8</kbd><span>切换底部随身工具</span></div><p className={styles.quiet}>触屏可按住左下方方向键行走，点击出现的交谈或地点提示。涉及案件的询问与物证核对会用五分钟，并保存到手记。</p></>}
     </dialog>
   </main>;
 }

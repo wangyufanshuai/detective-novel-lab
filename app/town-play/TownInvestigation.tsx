@@ -30,8 +30,9 @@ export function TownCasePlace({ investigation: c, residents, disabled, command, 
   </section>;
 }
 
-export function TownCaseBook({ investigation: c, disabled, command }: Props) {
-  const [tab, setTab] = useState<"clues" | "testimony" | "theory" | "ending">(c.solved ? "ending" : "clues");
+export type CaseBookTab = "clues" | "testimony" | "theory" | "ending";
+export function TownCaseBook({ investigation: c, disabled, command, initialTab }: Props & { initialTab?: CaseBookTab }) {
+  const [tab, setTab] = useState<CaseBookTab>(initialTab && (initialTab !== "ending" || c.solved) ? initialTab : c.solved ? "ending" : "clues");
   const [draft, setDraft] = useState<PlayerTheory>({ culpritId: "", motive: "", method: "", evidenceIds: [], proof: { motiveEvidenceIds: [], methodEvidenceIds: [] } });
   const [loaded, setLoaded] = useState(false);
   const [draftMessage, setDraftMessage] = useState("");
@@ -79,6 +80,7 @@ type TrackerProps = {
   places: Array<{ id: string; label: string }>;
   onMark: (sceneId: string) => void;
   onOpenBook: () => void;
+  onOpenBoard: () => void;
 };
 
 /** The case's next step, always on screen while walking. Only public view data. */
@@ -91,7 +93,7 @@ export function caseNextStep(c: TownCaseView | null) {
   return { title: c.title, hint: "整理动机、手法与时间，在案件本里提交结论。" };
 }
 
-export function TownCaseTracker({ investigation: c, places, onMark, onOpenBook }: TrackerProps) {
+export function TownCaseTracker({ investigation: c, places, onMark, onOpenBook, onOpenBoard }: TrackerProps) {
   const [open, setOpen] = useState(true);
   // Small screens start folded so the street stays visible.
   useEffect(() => { if (window.matchMedia("(max-width: 720px)").matches) setOpen(false); }, []);
@@ -111,7 +113,7 @@ export function TownCaseTracker({ investigation: c, places, onMark, onOpenBook }
     {open && <div className={styles.trackerBody}>
       <p>{step.hint}</p>
       {leads.length > 0 && <ul>{leads.map(lead => <li key={lead.sceneId}><button onClick={() => onMark(lead.sceneId)} aria-label={`在地图上标记${label(lead.sceneId)}${lead.open ? `，${lead.open} 处待核对` : ""}`}><span aria-hidden="true">◇</span>{label(lead.sceneId).replace(/^河湾/, "")}{lead.open > 0 && <small aria-hidden="true">{lead.open}</small>}</button></li>)}</ul>}
-      {c && <div className={styles.trackerFoot}><span>证词 {c.questionedIds.length} · 更正 {c.conversations.filter(line => line.corrected).length}</span><button className={styles.textButton} onClick={onOpenBook}>案件本 <kbd>K</kbd></button></div>}
+      {c && <div className={styles.trackerFoot}><span>证词 {c.questionedIds.length} · 更正 {c.conversations.filter(line => line.corrected).length}</span><span><button className={styles.textButton} onClick={onOpenBoard}>看板 <kbd>B</kbd></button><button className={styles.textButton} onClick={onOpenBook}>案件本 <kbd>K</kbd></button></span></div>}
     </div>}
   </section>;
 }
