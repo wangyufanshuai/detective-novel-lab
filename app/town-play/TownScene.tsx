@@ -10,6 +10,8 @@ import { createResidentMotion, RESIDENT_RADIUS } from "./resident-motion";
 import { chooseTownInteraction, type TownInteraction } from "./town-interaction";
 import { clockHours, easeGrade, gradeAt } from "./town-lighting";
 import { createResidentEncounter } from "./resident-encounter";
+import { createWorldLabels, type TownPlaceTag } from "./world-labels";
+import styles from "./town-play.module.css";
 import type { TownPlayView } from "@/lib/town-play-contract";
 
 export interface TownSnapshot {
@@ -28,6 +30,8 @@ interface Props {
   lantern: boolean;
   quality: "high" | "balanced";
   waypoint: TownPoint | null;
+  placeTags: TownPlaceTag[];
+  onMarkPlace: (sceneId: string) => void;
   worldView: TownPlayView | null;
   restore: { key: string; sceneId: string } | null;
   onReady: (destinations: TownDestination[], controls: TownSceneControls) => void;
@@ -105,6 +109,7 @@ export default function TownScene(props: Props) {
     renderer.domElement.addEventListener("webglcontextlost", lost);
     let model: THREE.Group | null = null;
     let residents: ReturnType<typeof batchTownResidents> | null = null;
+    let labels: ReturnType<typeof createWorldLabels> | null = null;
     const query = new URLSearchParams(location.search);
     const diagnostics = query.get("diagnostics") === "1";
     // Visual-only preview of other hours; never touches the world clock.
@@ -183,6 +188,7 @@ export default function TownScene(props: Props) {
         const limbs = ["leg_left", "leg_right", "arm_left", "arm_right"].map(name => model?.getObjectByName("player_" + name));
         const rest = limbs.map(limb => limb?.rotation.clone());
         const nav = createTownNavigator(data);
+        labels = createWorldLabels(container!, data.destinations, { layer: styles.worldLabels, place: styles.placeSign, person: styles.personTag }, id => live.current.onMarkPlace(id));
         const motion = createResidentMotion(people, data);
         const encounter = createResidentEncounter(people);
         const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
@@ -313,6 +319,14 @@ export default function TownScene(props: Props) {
             marker.scale.setScalar(1 + pulse * .14);
             (marker.material as THREE.MeshBasicMaterial).opacity = .95 - pulse * .35;
           }
+          const persons = [];
+          if (!settings.overview && !talking) for (const person of settings.worldView?.residents ?? []) {
+            const actor = person.visibility === "observed" ? people.get(person.actorId) : undefined;
+            const distance = actor?.visible ? Math.hypot(actor.position.x - position[0], actor.position.z + position[1]) : Infinity;
+            if (!actor || distance > 8) continue;
+            persons.push({ actorId: person.actorId, name: person.name, role: person.role, position: actor.position, active: actor === highlighted, distance });
+          }
+          labels?.update(camera, nav.height, { overview: settings.overview, talking, tags: settings.placeTags, persons });
           residents?.sync();
           renderer.render(scene, camera);
           const duration = now - lastRender; lastRender = now;
@@ -338,7 +352,7 @@ export default function TownScene(props: Props) {
     return () => {
       stopped = true; abort.abort(); cancelAnimationFrame(frame); observer.disconnect();
       renderer.domElement.removeEventListener("webglcontextlost", lost);
-      residents?.dispose();
+      residents?.dispose(); labels?.dispose();
       if (model) disposeModel(model);
       ring.geometry.dispose(); ring.material.dispose(); marker.geometry.dispose(); marker.material.dispose();
       contactRing.geometry.dispose(); contactRing.material.dispose();

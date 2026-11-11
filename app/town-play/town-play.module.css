@@ -317,3 +317,46 @@
 @media (max-width: 1100px) { .boardCanvas { grid-template-columns: minmax(200px, 240px) minmax(0, 1fr); } .boardTheory { grid-column: 1 / -1; } }
 @media (max-width: 720px) { .journal.boardDialog { padding: 0 14px 20px; } .journal.boardDialog .dialogTop { margin-inline: -14px; padding: 12px 14px; } .boardCanvas { grid-template-columns: 1fr; gap: 20px; } .boardStrings { display: none; } .boardPeople { grid-template-columns: 1fr 1fr; } .boardPeople h3 { grid-column: 1 / -1; } .boardCard { grid-template-columns: 1fr; padding: 12px 10px 10px; } .boardCard > .personInitial { display: none; } .boardCard strong { font-size: 14px; } .boardPlaces { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } }
 @media (prefers-reduced-motion: reduce) { .boardCard, .boardClue, .boardStrings path { transition: none; } }
+
+/* World labels: name plates drawn over the 3D canvas, positioned per frame by world-labels.ts. */
+.worldLabels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.town .placeSign, .personTag { position: absolute; left: 0; top: 0; will-change: transform; }
+.town .placeSign[hidden], .personTag[hidden] { display: none; }
+.town .placeSign { pointer-events: auto; display: flex; align-items: center; gap: 6px; margin: 0; padding: 6px 12px 6px 11px; translate: -50% -100%; font: 600 13px 'Noto Serif SC', serif; letter-spacing: .12em; color: var(--tp-paper); background: var(--tp-wood-dark); border: 1px solid color-mix(in srgb, var(--tp-gold-soft) 45%, transparent); border-radius: 3px; box-shadow: 0 3px 0 var(--tp-ink), 0 8px 18px color-mix(in srgb, var(--tp-teal-deep) 35%, transparent); cursor: pointer; transition: background .15s, scale .15s; }
+.town .placeSign::after { content: ""; position: absolute; left: 50%; bottom: -7px; width: 2px; height: 7px; margin-left: -1px; background: var(--tp-wood-dark); }
+.town .placeSign:hover, .town .placeSign:focus-visible { background: var(--tp-forest); scale: 1.06; outline: none; }
+.town .placeSign:focus-visible { box-shadow: 0 0 0 3px var(--tp-focus), 0 3px 0 var(--tp-ink); }
+.town .placeSign[data-visited='false'] { background: var(--tp-paper); color: var(--tp-wood-dark); border-color: var(--tp-wood); }
+.town .placeSign[data-visited='false']::after { background: var(--tp-wood); }
+.town .placeSign[data-visited='false']:hover { background: var(--tp-paper-glow); }
+.town .placeSign[data-marked='true'] { box-shadow: 0 0 0 3px var(--tp-brass-light), 0 3px 0 var(--tp-ink), 0 8px 18px color-mix(in srgb, var(--tp-teal-deep) 35%, transparent); }
+.town .placeSign i { font-style: normal; font-size: 11px; color: var(--tp-gold-soft); letter-spacing: 0; }
+.town .placeSign b { display: grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; font: 700 10px 'Noto Sans SC', sans-serif; letter-spacing: 0; color: var(--tp-paper); background: var(--tp-rust); box-shadow: 0 0 0 2px var(--tp-paper); }
+.personTag { display: grid; justify-items: center; translate: -50% -100%; padding: 3px 9px 4px; border-radius: 3px; background: color-mix(in srgb, var(--tp-paper) 88%, transparent); border: 1px solid var(--tp-line); box-shadow: 0 2px 6px color-mix(in srgb, var(--tp-teal-deep) 22%, transparent); opacity: .94; transition: opacity .15s; }
+.personTag strong { font: 600 12px 'Noto Serif SC', serif; color: var(--tp-ink); line-height: 1.3; }
+.personTag small { font-size: 9px; color: var(--tp-ink-muted); line-height: 1.2; }
+.personTag[data-active='true'] { opacity: 1; border-color: var(--tp-brass); box-shadow: 0 0 0 2px color-mix(in srgb, var(--tp-focus) 70%, transparent), 0 4px 10px color-mix(in srgb, var(--tp-teal-deep) 25%, transparent); }
+.town[data-panel='person'] .worldLabels { visibility: hidden; }
+
+/* Day dial: the clock card follows the same hour as the scene light. */
+.dayCard > .dayDial { width: 54px; height: 33px; flex: none; overflow: visible; }
+.dialArc { fill: none; stroke: var(--tp-line); stroke-width: 1.4; stroke-dasharray: 2 3; }
+.dialTrail { fill: none; stroke: var(--tp-brass-light); stroke-width: 1.8; stroke-linecap: round; }
+.dialHorizon { stroke: var(--tp-wood); stroke-width: 1.4; stroke-linecap: round; }
+.dialSun { fill: var(--tp-focus); stroke: var(--tp-brass); stroke-width: 1.2; }
+.dialRay { stroke: var(--tp-brass); stroke-width: 1.2; stroke-linecap: round; }
+.dialMoon { fill: var(--tp-gold-soft); }
+.dialMoonCut { fill: var(--tp-teal-deep); }
+.dayDial[data-phase='night'] .dialTrail { stroke: var(--tp-gold-soft); }
+.dayCard strong { font-variant-numeric: tabular-nums; }
+.dayCard[data-period='night'] { background: var(--tp-teal-deep); color: var(--tp-paper); border-color: var(--tp-slate); }
+.dayCard[data-period='night'] span { color: var(--tp-sage-mist); }
+.dayCard[data-period='night'] button { color: var(--tp-paper); border-color: var(--tp-sage); }
+.dayCard[data-period='night'] .dialArc { stroke: var(--tp-slate); }
+
+/* Key hints sit on a soft paper strip so they read over bright paving. */
+.walkHint { padding: 9px 12px; border-radius: 4px; color: var(--tp-ink); text-shadow: none; background: color-mix(in srgb, var(--tp-paper) 78%, transparent); border: 1px solid color-mix(in srgb, var(--tp-line) 70%, transparent); backdrop-filter: blur(3px); }
+
+@media (max-width: 720px) { /* The overview list below is the touch target; signs stay compact (beats the global 44px button rule). */ .town .placeSign { padding: 3px 7px; font-size: 10px; letter-spacing: .04em; min-height: 0 !important; } .personTag { padding: 2px 7px; } .personTag small { display: none; } .dayCard > .dayDial { width: 38px; height: 24px; } }
+@media (max-width: 430px) { .dayCard > .dayDial { display: none; } }
+@media (prefers-reduced-motion: reduce) { .placeSign, .personTag { transition: none; } }

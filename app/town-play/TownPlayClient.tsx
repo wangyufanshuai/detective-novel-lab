@@ -5,6 +5,8 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import type { TownDestination, TownPoint } from "@/lib/riverbend-navigation";
 import type { TownSceneControls, TownSnapshot } from "./TownScene";
 import styles from "./town-play.module.css";
+import { TownDayDial, dayPeriod } from "./TownDayDial";
+import { clockHours } from "./town-lighting";
 import { useTownWorld } from "./useTownWorld";
 import { TownCaseBook, TownCasePlace, TownCaseTracker, type CaseBookTab } from "./TownInvestigation";
 import { TownCaseBoard } from "./TownCaseBoard";
@@ -182,11 +184,13 @@ export default function TownPlayClient() {
   const nextDestination = destinations.find(d => !knownVisited.includes(d.id));
   const openLeads = new Map((world.view?.investigation?.solved ? [] : world.view?.investigation?.leads ?? []).map(lead => [lead.sceneId, lead.open]));
   const markScene = (sceneId: string) => { const target = destinations.find(d => d.id === sceneId); if (target) mark(target); };
+  const placeTags = destinations.map(d => ({ id: d.id, label: d.label, visited: knownVisited.includes(d.id), leads: openLeads.get(d.id) ?? 0, marked: waypointName === d.label }));
+  const hours = clockHours(world.view?.time);
   const peopleList = <div className={styles.peopleList}>{world.view?.residents.map(person => <div key={person.npcId}><strong>{person.name}<small>{person.role}</small></strong><span>{person.visibility === "observed" && areaId === person.sceneId ? "本次到访见于" : "上次见于"} {person.locationName}</span><small>第 {person.day} 天 · {person.time}</small></div>)}{!world.view?.residents.length && <p>亲眼见过的人，会记在这里。</p>}</div>;
   const connectionNotice = world.message && world.status !== "new" && <div className={styles.connectionNotice} role="alert"><p>{world.message}</p><button disabled={world.busy} onClick={() => void world.retry()}>重试保存</button><button disabled={world.busy} onClick={() => void world.reload()}>重新连接手记</button></div>;
 
   return <main id="detective-town-main" tabIndex={-1} className={styles.town} lang="zh-CN" aria-label="河湾小镇探索" data-ready={ready && !error} data-world-state={world.status} data-world-busy={world.busy} data-world-pending={world.pending} data-view={overview ? "overview" : "explore"} data-panel={panel ?? "none"}>
-    <TownScene keys={keys} overview={overview} paused={!!panel || !!error || worldPaused} conversationActorId={panel === "person" ? conversation?.actorId ?? null : null} lantern={lantern} quality={quality} waypoint={waypoint} worldView={world.view} restore={world.restore} onReady={onReady} onUpdate={onUpdate} onError={setError} />
+    <TownScene keys={keys} overview={overview} paused={!!panel || !!error || worldPaused} conversationActorId={panel === "person" ? conversation?.actorId ?? null : null} lantern={lantern} quality={quality} waypoint={waypoint} placeTags={placeTags} onMarkPlace={markScene} worldView={world.view} restore={world.restore} onReady={onReady} onUpdate={onUpdate} onError={setError} />
     <div className={styles.vignette} aria-hidden="true" />
     <header className={styles.arrival}>
       <div className={styles.arrivalSeal}><Icon name="手记" /></div>
@@ -194,7 +198,7 @@ export default function TownPlayClient() {
         <div className={styles.progress}><span>初访地点</span><span className={styles.progressDots} aria-hidden="true">{Array.from({ length: 6 }, (_, i) => <i key={i} data-filled={i < knownVisited.length} />)}</span><b>{knownVisited.length}/6</b></div>
       </div>
     </header>
-    <aside className={styles.dayCard} aria-label="小镇与探索状态"><Icon name="晴" /><div><strong>河湾小镇</strong><span>{world.view ? `第 ${world.view.day} 天 · ${world.view.time}` : "新的一段手记"}</span></div><button aria-label="探索帮助" onClick={() => setPanel("help")}>?</button></aside>
+    <aside className={styles.dayCard} aria-label="小镇时间" data-period={hours >= 6 && hours < 18 ? "day" : "night"}><TownDayDial time={world.view?.time} /><div>{world.view ? <><strong>{world.view.time}</strong><span>第 {world.view.day} 天 · {dayPeriod(hours)}</span></> : <><strong>河湾小镇</strong><span>新的一段手记</span></>}</div><button aria-label="探索帮助" onClick={() => setPanel("help")}>?</button></aside>
     {/* Status chip only when there is something to say; no developer labels in the player view. */}
     {(world.busy || world.view?.investigation?.solved) && <div className={styles.previewLabel} role="status">{world.busy ? "正在保存这一步…" : "第七分钟 · 已归档"}</div>}
     {ready && !error && world.status === "ready" && <TownCaseTracker investigation={world.view?.investigation ?? null} places={destinations} onMark={markScene} onOpenBook={() => openCase()} onOpenBoard={() => setPanel("board")} />}
