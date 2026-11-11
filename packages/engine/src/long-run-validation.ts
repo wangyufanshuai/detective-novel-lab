@@ -3,9 +3,11 @@ import {
   buildTownEmergenceQueue,
   createPersistentTownRuntime,
   extractPlayableCaseFromCandidate,
+  longChainBlockers,
   resolveCaseInWorld,
   type CaseCandidate,
   type CampaignCaseTimelineEntry,
+  type LongChainBlocker,
   type PersistentTownRuntime,
   type TownCaseLifecycleState,
   type TownCaseType,
@@ -100,6 +102,7 @@ export type CandidateLifecycleDiagnostic = {
   ledgerCount: number;
   completeChainCount: number;
   triggerReadyChainCount: number;
+  chainBlockers?: Partial<Record<LongChainBlocker, number>>;
   candidateCount: number;
   validCandidateCount: number;
   triggerBackedCandidateCount: number;
@@ -757,24 +760,16 @@ function countTriggerReadyChains(
   world: WorldState,
   runtime: PersistentTownRuntime
 ) {
-  const lifecycle = runtime.caseLifecycle;
-  const maturityThreshold = (runtime.campaignCaseTarget || 3) > 3 ? 82 : 90;
-  return (runtime.longChainLedger || []).filter((entry) => {
-    const victimAlive = world.npcs.some((npc) => npc.id === entry.victimId && npc.alive);
-    const culpritCooldown = lifecycle?.caseCooldownByNpcId?.[entry.culpritId] || 0;
-    const victimCooldown = lifecycle?.caseCooldownByNpcId?.[entry.victimId] || 0;
-    const pairCooldown = lifecycle?.casePairCooldown?.[`${entry.culpritId}->${entry.victimId}`] || 0;
-    const alreadyTriggered = (runtime.triggeredCases || []).some((trigger) =>
-      trigger.culpritId === entry.culpritId && trigger.victimId === entry.victimId
-    );
-    return entry.complete &&
-      entry.maturityScore >= maturityThreshold &&
-      victimAlive &&
-      culpritCooldown <= runtime.tick &&
-      victimCooldown <= runtime.tick &&
-      pairCooldown <= runtime.tick &&
-      !alreadyTriggered;
-  }).length;
+  return (runtime.longChainLedger || []).filter((entry) => longChainBlockers(world, runtime, entry).length === 0).length;
+}
+
+/** Histogram of why ledger chains cannot trigger (a chain may have several blockers). */
+function countLongChainBlockers(world: WorldState, runtime: PersistentTownRuntime) {
+  const counts: Partial<Record<LongChainBlocker, number>> = {};
+  for (const entry of runtime.longChainLedger || []) {
+    for (const blocker of longChainBlockers(world, runtime, entry)) counts[blocker] = (counts[blocker] || 0) + 1;
+  }
+  return counts;
 }
 
 function percentShare(part: number, total: number) {
@@ -1038,6 +1033,7 @@ export function runMultiCaseSimulation(config: LongRunValidationConfig = {}): Lo
       ledgerCount: state.runtime.longChainLedger?.length || 0,
       completeChainCount: (state.runtime.longChainLedger || []).filter((entry) => entry.complete).length,
       triggerReadyChainCount: countTriggerReadyChains(state.world, state.runtime),
+      chainBlockers: countLongChainBlockers(state.world, state.runtime),
       candidateCount: queue.candidates.length,
       validCandidateCount: queue.validCount,
       triggerBackedCandidateCount: queue.candidates.filter((candidate) => Boolean(candidate.triggeredEventId)).length

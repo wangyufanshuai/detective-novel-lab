@@ -81,16 +81,27 @@ function normalizeIdentityString(value: string, context: ReplayIdentityContext):
   let normalized = value;
   const runtimeId = context.runtimeId;
   const worldId = context.worldId;
-  if (runtimeId) normalized = normalized.split(runtimeId).join("@runtime");
-  if (worldId) normalized = normalized.split(worldId).join("@world");
+  // Most strings carry neither id; the includes() probe avoids a split/join allocation per string.
+  if (runtimeId && normalized.includes(runtimeId)) normalized = normalized.split(runtimeId).join("@runtime");
+  if (worldId && normalized.includes(worldId)) normalized = normalized.split(worldId).join("@world");
   return normalized;
+}
+
+const NO_OMIT_KEYS: ReadonlySet<string> = new Set();
+
+/** Path segments are kept on a stack and only formatted when an error needs them. */
+function formatReplayPath(stack: Array<string | number>): string {
+  if (!stack.length) return "$";
+  let out = "";
+  for (const part of stack) out += typeof part === "number" ? `[${part}]` : out ? `.${part}` : `$.${part}`;
+  return out;
 }
 
 function canonicalizeValue(
   value: unknown,
   context: ReplayIdentityContext,
   rootOmitKeys: ReadonlySet<string>,
-  path: string,
+  path: Array<string | number>,
   seen: WeakSet<object>
 ): unknown {
   if (value === undefined) return undefined;
@@ -98,32 +109,33 @@ function canonicalizeValue(
   if (typeof value === "string") return normalizeIdentityString(value, context);
   if (typeof value === "boolean") return value;
   if (typeof value === "number") {
-    if (!Number.isFinite(value)) throw new Error(`Replay canonicalization rejected non-finite number at ${path || "$"}.`);
+    if (!Number.isFinite(value)) throw new Error(`Replay canonicalization rejected non-finite number at ${formatReplayPath(path)}.`);
     return Object.is(value, -0) ? 0 : value;
   }
   if (typeof value === "bigint") return value.toString();
-  if (typeof value !== "object") throw new Error(`Replay canonicalization rejected unsupported value at ${path || "$"}.`);
-  if (seen.has(value)) throw new Error(`Replay canonicalization rejected cyclic value at ${path || "$"}.`);
+  if (typeof value !== "object") throw new Error(`Replay canonicalization rejected unsupported value at ${formatReplayPath(path)}.`);
+  if (seen.has(value)) throw new Error(`Replay canonicalization rejected cyclic value at ${formatReplayPath(path)}.`);
   seen.add(value);
 
   let result: unknown;
   if (Array.isArray(value)) {
-    result = value.map((item, index) => {
-      const canonical = canonicalizeValue(item, context, new Set(), `${path}[${index}]`, seen);
-      return canonical === undefined ? null : canonical;
-    });
+    const items: unknown[] = new Array(value.length);
+    for (let index = 0; index < value.length; index += 1) {
+      path.push(index);
+      const canonical = canonicalizeValue(value[index], context, NO_OMIT_KEYS, path, seen);
+      path.pop();
+      items[index] = canonical === undefined ? null : canonical;
+    }
+    result = items;
   } else {
     const record: Record<string, unknown> = {};
+    const isRoot = path.length === 0;
     for (const key of Object.keys(value as Record<string, unknown>).sort()) {
       if (REPLAY_METADATA_KEYS.has(key)) continue;
-      if (!path && rootOmitKeys.has(key)) continue;
-      const canonical = canonicalizeValue(
-        (value as Record<string, unknown>)[key],
-        context,
-        new Set(),
-        path ? `${path}.${key}` : `$.${key}`,
-        seen
-      );
+      if (isRoot && rootOmitKeys.has(key)) continue;
+      path.push(key);
+      const canonical = canonicalizeValue((value as Record<string, unknown>)[key], context, NO_OMIT_KEYS, path, seen);
+      path.pop();
       if (canonical !== undefined) record[key] = canonical;
     }
     result = record;
@@ -133,7 +145,7 @@ function canonicalizeValue(
 }
 
 function canonicalizeRoot(value: unknown, context: ReplayIdentityContext, rootOmitKeys: ReadonlySet<string>): unknown {
-  return canonicalizeValue(value, context, rootOmitKeys, "", new WeakSet<object>());
+  return canonicalizeValue(value, context, rootOmitKeys, [], new WeakSet<object>());
 }
 
 function stableStringify(value: unknown): string {

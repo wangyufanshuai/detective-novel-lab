@@ -2916,11 +2916,25 @@ function summarizeLongChain(world: WorldState, events: WorldEvent[], runtime: Pe
   };
 }
 
+/** Spent chains kept in the ledger for extraction/history; they do not use the pressure budget. */
+const SPENT_CHAIN_RETENTION = 12;
+
 function refreshLongChainLedger(world: WorldState, events: WorldEvent[], runtime: PersistentTownRuntime, index?: TownTickIndex) {
   if (runtime.longChainComputedAtTick === runtime.tick && runtime.longChainLedger?.length) return runtime.longChainLedger;
   const pressureBudget = runtime.caseTriggerPolicy === "source-signaled" ? 8 : (runtime.campaignCaseTarget || 3) > 3 ? 16 : 8;
+  const aliveNpcIds = new Set(world.npcs.filter((npc) => npc.alive).map((npc) => npc.id));
   const allPressures = (index?.socialPressures || computeSocialPressures(world, events))
     .filter((pressure) => pressure.score >= 5);
+  // A chain is spent once either side is dead or its pair can no longer repeat.
+  // Spent chains stay visible (their cases may still be extracted) but must not
+  // occupy the pressure budget, or the ledger saturates and long runs stop
+  // producing new cases.
+  const isSpentKey = (key: string) => {
+    const [npcId, targetId] = key.split("->");
+    if (!aliveNpcIds.has(npcId) || !aliveNpcIds.has(targetId)) return true;
+    const prior = runtime.triggeredCases?.find((trigger) => trigger.culpritId === npcId && trigger.victimId === targetId);
+    return Boolean(prior) && !(runtime.caseTriggerPolicy === "source-signaled" && prior?.kind === "nonfatal_incident");
+  };
   const populationNpcIds = new Set((runtime.populationFlowLedger || []).map((record) => record.npcId));
   const pressureKey = (pressure: SocialPressure) => `${pressure.npcId}->${pressure.targetId}`;
   const authoredPressures = allPressures.filter((pressure) => !populationNpcIds.has(pressure.npcId) && !populationNpcIds.has(pressure.targetId));
@@ -2938,18 +2952,26 @@ function refreshLongChainLedger(world: WorldState, events: WorldEvent[], runtime
     const rightPopulation = Number(populationNpcIds.has(rightNpc) || populationNpcIds.has(rightTarget));
     return leftPopulation - rightPopulation || left.localeCompare(right);
   });
-  const selected = preservedKeys
+  const recentTriggerKeys = (runtime.triggeredCases || []).map((trigger) => `${trigger.culpritId}->${trigger.victimId}`);
+  const spentKeys = preservedKeys.filter(isSpentKey)
+    .sort((left, right) => {
+      const rank = (key: string) => { const at = recentTriggerKeys.indexOf(key); return at < 0 ? Number.MAX_SAFE_INTEGER : at; };
+      return rank(left) - rank(right) || left.localeCompare(right);
+    })
+    .slice(0, SPENT_CHAIN_RETENTION);
+  const toPressures = (keys: string[]) => keys
     .map((key) => pressureByKey.get(key))
     .filter((pressure): pressure is SocialPressure => Boolean(pressure));
-  const selectedKeys = new Set(selected.map(pressureKey));
+  const selected = toPressures(preservedKeys.filter((key) => !isSpentKey(key))).slice(0, pressureBudget);
+  const selectedKeys = new Set([...selected.map(pressureKey), ...spentKeys]);
   for (const pressure of [...authoredPressures, ...newcomerPressures]) {
     if (selected.length >= pressureBudget) break;
     const key = pressureKey(pressure);
-    if (selectedKeys.has(key)) continue;
+    if (selectedKeys.has(key) || isSpentKey(key)) continue;
     selected.push(pressure);
     selectedKeys.add(key);
   }
-  const pressures = selected.slice(0, pressureBudget);
+  const pressures = [...selected, ...toPressures(spentKeys)];
   runtime.longChainLedger = pressures.map((pressure) => summarizeLongChain(world, events, runtime, pressure, index));
   runtime.longChainComputedAtTick = runtime.tick;
   return runtime.longChainLedger;
@@ -2974,11 +2996,44 @@ function deriveCaseTriggerKindFromSourceEvents(
   return fatalSignal ? "fatal" : "nonfatal_incident";
 }
 
+export type LongChainBlocker = "incomplete" | "immature" | "victim-dead" | "culprit-dead" | "culprit-cooldown" | "victim-cooldown" | "pair-cooldown" | "pair-used";
+
+export function longChainMaturityThreshold(runtime: PersistentTownRuntime) {
+  return (runtime.campaignCaseTarget || 3) > 3 ? 82 : 90;
+}
+
+/**
+ * Why a long-chain ledger entry cannot trigger a case right now. An empty list
+ * means it is ready. Shared by the trigger and by long-run diagnostics so the
+ * two can never disagree. Read-only: does not create lifecycle state.
+ */
+export function longChainBlockers(world: WorldState, runtime: PersistentTownRuntime, entry: TownLongChainLedgerEntry): LongChainBlocker[] {
+  const lifecycle = runtime.caseLifecycle;
+  const pairKey = `${entry.culpritId}->${entry.victimId}`;
+  const pairCooldown = lifecycle?.casePairCooldown?.[pairKey] || 0;
+  const priorPairTrigger = runtime.triggeredCases?.find((trigger) => trigger.culpritId === entry.culpritId && trigger.victimId === entry.victimId);
+  const pairCanRepeat = !priorPairTrigger || (
+    runtime.caseTriggerPolicy === "source-signaled" &&
+    priorPairTrigger.kind === "nonfatal_incident" &&
+    pairCooldown <= runtime.tick
+  );
+  const blockers: LongChainBlocker[] = [];
+  if (!entry.complete) blockers.push("incomplete");
+  if (entry.maturityScore < longChainMaturityThreshold(runtime)) blockers.push("immature");
+  if (!world.npcs.some((npc) => npc.id === entry.victimId && npc.alive)) blockers.push("victim-dead");
+  // A resident who has died cannot act as the culprit of a new case.
+  if (!world.npcs.some((npc) => npc.id === entry.culpritId && npc.alive)) blockers.push("culprit-dead");
+  if ((lifecycle?.caseCooldownByNpcId?.[entry.culpritId] || 0) > runtime.tick) blockers.push("culprit-cooldown");
+  if ((lifecycle?.caseCooldownByNpcId?.[entry.victimId] || 0) > runtime.tick) blockers.push("victim-cooldown");
+  if (pairCooldown > runtime.tick) blockers.push("pair-cooldown");
+  if (!pairCanRepeat) blockers.push("pair-used");
+  return blockers;
+}
+
 function triggerLongChainCaseIfReady(world: RuntimeWorld, runtime: PersistentTownRuntime, events: WorldEvent[], createdEvents: WorldEvent[], index?: TownTickIndex) {
   runtime.triggeredCases ||= [];
   const ledger = refreshLongChainLedger(world, events, runtime, index);
-  const maturityThreshold = (runtime.campaignCaseTarget || 3) > 3 ? 82 : 90;
-  const lifecycle = ensureCaseLifecycle(runtime);
+  ensureCaseLifecycle(runtime);
   const triggerHistory = new Map<string, { count: number; lastTick: number }>();
   for (const event of events) {
     if (!event.tags?.includes("case_trigger") || event.actorIds.length < 2) continue;
@@ -2989,22 +3044,7 @@ function triggerLongChainCaseIfReady(world: RuntimeWorld, runtime: PersistentTow
     triggerHistory.set(pairKey, history);
   }
   const ready = ledger
-    .filter((entry) => {
-      const pairKey = `${entry.culpritId}->${entry.victimId}`;
-      const priorPairTrigger = runtime.triggeredCases?.find((trigger) => trigger.culpritId === entry.culpritId && trigger.victimId === entry.victimId);
-      const pairCanRepeat = !priorPairTrigger || (
-        runtime.caseTriggerPolicy === "source-signaled" &&
-        priorPairTrigger.kind === "nonfatal_incident" &&
-        (lifecycle.casePairCooldown?.[pairKey] || 0) <= runtime.tick
-      );
-      return entry.complete &&
-        entry.maturityScore >= maturityThreshold &&
-        world.npcs.some((npc) => npc.id === entry.victimId && npc.alive) &&
-        ((lifecycle.caseCooldownByNpcId[entry.culpritId] || 0) <= runtime.tick) &&
-        ((lifecycle.caseCooldownByNpcId[entry.victimId] || 0) <= runtime.tick) &&
-        ((lifecycle.casePairCooldown?.[pairKey] || 0) <= runtime.tick) &&
-        pairCanRepeat;
-    })
+    .filter((entry) => longChainBlockers(world, runtime, entry).length === 0)
     .sort((a, b) => {
       if (runtime.caseTriggerPolicy !== "source-signaled") return b.maturityScore - a.maturityScore;
       const aKey = `${a.culpritId}->${a.victimId}`;
