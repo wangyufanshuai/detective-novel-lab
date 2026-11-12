@@ -1,3 +1,6 @@
+// RETIRED 2026-11-12. These covered the earlier workbench homepage, now at /legacy;
+// all 14 already failed before retirement (the page had moved on). Kept for reference,
+// outside playwright testDir so `npm run test:e2e` runs only the mainline /town-play suite.
 ﻿import { expect, test, type Page } from "@playwright/test";
 
 async function clickMapLocation(page: Page, title: string) {

@@ -101,7 +101,7 @@ checks.push("ordinary-agent-compounds-survive-technical-reference-filter");
 const campaign = { campaignLabel: "Midnight Chorus", routeLabel: "Public Reckoning" };
 assert.equal(enabled("server", campaign, "The Printed Whisper"), true);
 for (const input of [["static", campaign, "The Printed Whisper"], ["server", campaign, "The Missing Chorus"], ["server", campaign, "Print Whisper"], ["server", { ...campaign, routeLabel: "Backstage Compact" }, "The Printed Whisper"], ["server", undefined, "The Printed Whisper"]]) assert.equal(enabled(...input), false);
-const page = await fs.readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+const page = await fs.readFile(new URL("../app/legacy/page.tsx", import.meta.url), "utf8");
 assert.match(page, /isFirstCaseSolutionReview\(runtimeMode, campaignSession \|\| townRuntime\?\.campaignSessionSummary, activeCase\?\.deductionCase\.title\)/);
 assert.match(page, /<FirstCaseSolutionReview accepted=\{Boolean\(session\?\.judgement\?\.accepted && session\.caseId === activeCase\?\.id && session\.worldId === world\?\.id\)\} revealText=\{revealText\} \/>/);
 checks.push("only-fixed-first-case-uses-new-review-and-existing-reveal-gate");

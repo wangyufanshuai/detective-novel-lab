@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 
 const component = await fs.readFile("app/components/InvestigationRoomProjectionSurface.tsx", "utf8");
 const styles = await fs.readFile("app/components/InvestigationRoomProjectionSurface.module.css", "utf8");
-const page = await fs.readFile("app/page.tsx", "utf8");
+const page = await fs.readFile("app/legacy/page.tsx", "utf8");
 const query = await fs.readFile("app/hooks/useInvestigationReadQueries.ts", "utf8");
 const route = await fs.readFile("app/api/v1/query/case/room-projection/route.ts", "utf8");
 

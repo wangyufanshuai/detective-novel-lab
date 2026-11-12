@@ -47,7 +47,7 @@ assert.equal(actionModel.deriveCurrentWorldAction({ session: null }).surface, "o
 const read = (file) => fs.readFile(path.join(root, file), "utf8");
 const [panel, page, deckComponent, deckCss, deckResponsiveCss, pulseCss, pacingCss, briefModel, briefHook, presentation, drill, authoring, navigation] = await Promise.all([
   read("app/components/WorldCampaignPanel.tsx"),
-  read("app/page.tsx"),
+  read("app/legacy/page.tsx"),
   read("app/components/CommandDeckShell.tsx"),
   read("app/components/CommandDeckShell.module.css"),
   read("app/components/CommandDeckShell.responsive.module.css"),

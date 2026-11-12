@@ -218,7 +218,7 @@ assert.doesNotMatch(theatreSource, /commandBrief\?\.nextAction|presentation\.ben
 assert.match(componentSource, /ariaLive=\{ledger\.runtimeMode === "static-demo" \? "polite" : undefined\}/, "Static owns one local polite result announcement while Server leaves live ownership to Theatre");
 
 const hookSource = await fs.readFile(path.join(root, "app/hooks/useCampaignResolutionLedger.ts"), "utf8");
-const pageSource = await fs.readFile(path.join(root, "app/page.tsx"), "utf8");
+const pageSource = await fs.readFile(path.join(root, "app/legacy/page.tsx"), "utf8");
 assert.equal(source.split(/\r?\n/).length < 350, true, "Ledger model stays below 350 lines");
 assert.equal(hookSource.split(/\r?\n/).length < 100, true, "Ledger hook stays below 100 lines");
 assert.equal(pageSource.split(/\r?\n/).length < 1100, true, "page.tsx stays below 1,100 lines");

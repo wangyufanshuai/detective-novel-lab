@@ -39,7 +39,7 @@ const controllerFiles = [
   "app/controllers/useReplayController.ts",
   "app/controllers/useReviewController.ts"
 ];
-const pageSource = await read("app/page.tsx");
+const pageSource = await read("app/legacy/page.tsx");
 const requestSource = [
   pageSource,
   await read("app/hooks/usePersistentTownLifecycle.ts"),
@@ -72,7 +72,7 @@ for (const endpoint of expectedCoreRequests) {
 }
 
 const lineBudgets = [
-  ["app/page.tsx", 1100],
+  ["app/legacy/page.tsx", 1100],
   ["app/components/InvestigationSurface.tsx", 350],
   ["app/components/DetectiveTownUI.tsx", 3200],
   ["app/globals.css", 6500]

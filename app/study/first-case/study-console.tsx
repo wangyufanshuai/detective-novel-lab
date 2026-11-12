@@ -141,7 +141,7 @@ export default function FirstCaseStudyConsole({ buildId }: { buildId: string }) 
   const withdrawalPair = withdrawalRun ? `${withdrawalRun.participantId}/${withdrawalRun.attemptId}` : "";
 
   return <main className={styles.page}>
-    <header className={styles.header}><div><p className={styles.eyebrow}>DETECTIVE TOWN / 主持人专用</p><h1>首案理解度测试</h1><p>固定案例：午夜合唱 · 公开追责路线 · 印刷低语</p></div><a className={styles.link} href="/?runtime=server&lang=zh-CN" target="_blank" rel="noreferrer">打开参与者游戏页 ↗</a></header>
+    <header className={styles.header}><div><p className={styles.eyebrow}>DETECTIVE TOWN / 主持人专用</p><h1>首案理解度测试</h1><p>固定案例：午夜合唱 · 公开追责路线 · 印刷低语</p></div><a className={styles.link} href="/legacy?runtime=server&lang=zh-CN" target="_blank" rel="noreferrer">打开参与者游戏页 ↗</a></header>
     <p className={styles.notice}>这是观察者手动打点工具，不读取游戏状态或答案。参与者只看游戏页。计时包含思考与系统等待；记录秒数存在主持人反应误差。预试记录永不计入真人样本。</p>
     <p className={styles.version}>冻结版本 <code>{buildId}</code> · 最多 30 分钟游戏，再访谈 5–10 分钟</p>
     {error && <p role="alert" className={styles.error}>{error}</p>}

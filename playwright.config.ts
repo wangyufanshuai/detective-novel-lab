@@ -21,7 +21,7 @@ export default defineConfig({
   ],
   webServer: {
     command: `npm run dev -- -p ${port}`,
-    url: `http://localhost:${port}/?runtime=static`,
+    url: `http://localhost:${port}/town-play`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     env: { NEXT_PUBLIC_DEMO_MODE: "static" }

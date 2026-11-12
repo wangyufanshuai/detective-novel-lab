@@ -7,7 +7,7 @@ const root = process.cwd();
 const read = (file) => fs.readFile(path.join(root, file), "utf8");
 
 const [page, worldSession, readQueries, launch, transient, choices, lifecycle, persistence] = await Promise.all([
-  read("app/page.tsx"),
+  read("app/legacy/page.tsx"),
   read("app/hooks/useWorldSessionActions.ts"),
   read("app/hooks/useInvestigationReadQueries.ts"),
   read("app/hooks/useCampaignLaunchActions.ts"),
@@ -77,7 +77,7 @@ assert.match(choices, /investigatorHeadquartersDecision/);
 assert.match(lifecycle, /appMode !== "persistent-town"/);
 
 const budgets = [
-  ["app/page.tsx", 1100],
+  ["app/legacy/page.tsx", 1100],
   ["app/hooks/useWorldSessionActions.ts", 500],
   ["app/hooks/useCampaignLaunchActions.ts", 300],
   ["app/hooks/useInvestigationReadQueries.ts", 250],

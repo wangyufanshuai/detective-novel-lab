@@ -55,7 +55,7 @@ try {
     read("app/components/InvestigationSurface.tsx"),
     read("app/components/InvestigationRouteReviewSurface.tsx"),
     read("app/components/InvestigationDebriefReplaySurface.tsx"),
-    read("app/page.tsx")
+    read("app/legacy/page.tsx")
   ]);
 
   const adapterMethods = ["joinCase", "discoverEvidence", "discoverFirstSceneEvidence", "runInterrogationTarget", "interrogateSelected", "toggleTheoryEvidence", "revealSolution"];

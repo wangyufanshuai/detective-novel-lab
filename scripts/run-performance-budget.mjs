@@ -101,7 +101,7 @@ for (let index = 0; index < 24; index += 1) {
 
 const sorted = [...durations].sort((left, right) => left - right);
 const metrics = {
-  pageLines: lineCount("app/page.tsx"),
+  pageLines: lineCount("app/legacy/page.tsx"),
   detectiveTownUiLines: lineCount("app/components/DetectiveTownUI.tsx"),
   globalCssLines: lineCount("app/globals.css"),
   investigationSurfaceLines: lineCount("app/components/InvestigationSurface.tsx"),

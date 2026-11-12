@@ -181,7 +181,7 @@ const [source, component, css, page, strategic, navigation, actions] = await Pro
   read("app/campaign/certified-case-rhythm-model.ts"),
   read("app/components/CertifiedCaseRhythmSurface.tsx"),
   read("app/components/CertifiedCaseRhythmSurface.module.css"),
-  read("app/page.tsx"),
+  read("app/legacy/page.tsx"),
   read("app/campaign/strategic-command-model.ts"),
   read("app/hooks/useInvestigationNavigationActions.ts"),
   read("app/hooks/useCertifiedCaseRhythmActions.ts")
