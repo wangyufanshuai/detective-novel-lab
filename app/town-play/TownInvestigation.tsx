@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { TownCaseAction, TownCaseView, TownPlayView } from "@/lib/town-play-contract";
+import type { TownCaseAction, TownCaseView, TownCommissionView, TownPlayView } from "@/lib/town-play-contract";
 import type { PlayerTheory } from "@/packages/engine/src/types";
 import styles from "./town-play.module.css";
 
@@ -53,17 +53,17 @@ export function TownCaseBook({ investigation: c, disabled, command, initialTab }
     const next = current.includes(id) ? current.filter(v => v !== id) : [...current, id];
     return kind === "evidenceIds" ? { ...old, evidenceIds: next } : { ...old, proof: { motiveEvidenceIds: old.proof?.motiveEvidenceIds || [], methodEvidenceIds: old.proof?.methodEvidenceIds || [], [kind]: next } };
   });
-  const tabs = [{ id: "clues", label: `物证 ${c.clues.length}/8` }, { id: "testimony", label: `证词 ${c.questionedIds.length}` }, { id: "theory", label: "整理推断" }, ...(c.solved ? [{ id: "ending", label: "案件归档" }] : [])] as const;
+  const tabs = [{ id: "clues", label: `物证 ${c.clues.length}/${c.clues.length + c.leads.reduce((sum, lead) => sum + lead.open, 0)}` }, { id: "testimony", label: `证词 ${c.questionedIds.length}` }, { id: "theory", label: "整理推断" }, ...(c.solved ? [{ id: "ending", label: "案件归档" }] : [])] as const;
   return <section className={styles.caseWork} aria-label="案件本">
-    <div className={styles.caseHeading}><div><span className={styles.eyebrow}>河湾 · 第一宗</span><h3>{c.title}</h3></div><span className={styles.caseSeal}>{c.solved ? "已归档" : "调查中"}</span></div>
+    <div className={styles.caseHeading}><div><span className={styles.eyebrow}>河湾 · {c.ordinal}</span><h3>{c.title}</h3></div><span className={styles.caseSeal}>{c.solved ? "已归档" : "调查中"}</span></div>
     <p className={styles.prose}>{c.premise}</p>
     <details className={styles.caseBrief}><summary>展开受理记录</summary><p>{c.brief}</p></details>
     <div className={styles.caseTabs} aria-label="案件页签">{tabs.map(t => <button key={t.id} aria-pressed={tab === t.id} onClick={() => setTab(t.id as typeof tab)}>{t.label}</button>)}</div>
-    {tab === "clues" && <><p className={styles.quiet}>只有亲自核对过的物证会写入这一页。六处地点都可以继续调查。</p>{c.clues.length ? <div className={styles.clueCards}>{c.clues.map((e, i) => <article key={e.id}><div><small>物证 {String(i + 1).padStart(2, "0")} · {placeNames[e.sceneId]}</small><h4>{e.title}</h4></div><p>{e.description}</p></article>)}</div> : <p className={styles.caseEmpty}>先到店门前按 E，检查展台、信件或交接记录。</p>}</>}
+    {tab === "clues" && <><p className={styles.quiet}>只有亲自核对过的物证会写入这一页。六处地点都可以继续调查。</p>{c.clues.length ? <div className={styles.clueCards}>{c.clues.map((e, i) => <article key={e.id}><div><small>物证 {String(i + 1).padStart(2, "0")} · {placeNames[e.sceneId]}</small><h4>{e.title}</h4></div><p>{e.description}</p></article>)}</div> : <p className={styles.caseEmpty}>先到店门前按 E，检查现场的物品和记录。</p>}</>}
     {tab === "testimony" && <><p className={styles.quiet}>保留原话，也保留出示物证后的更正。记错与隐瞒需要分别判断。</p>{c.conversations.length ? <div className={styles.clueCards}>{c.conversations.map(l => <article key={l.id}><small>{l.evidenceId ? "物证核对" : "初次询问"}{l.corrected ? " · 说法已更正" : ""}</small><h4>{l.name}</h4><p className={styles.questionLine}>{l.question}</p><p>{l.answer}</p></article>)}</div> : <p className={styles.caseEmpty}>走近居民所在的地点，听听他们亲眼见过什么。</p>}</>}
     {tab === "theory" && <form className={styles.theoryForm} onSubmit={async e => { e.preventDefault(); await command({ kind: "case-submit", theory: draft }); }}>
       <p className={styles.quiet}>选出调查对象，将支持动机与手法的物证分开。时间核对和排除其他人的依据，也应列入提交材料。</p>
-      <label htmlFor="town-case-person">谁移走了原图<select aria-label="谁移走了原图" id="town-case-person" disabled={c.solved || disabled} value={draft.culpritId} onChange={e => setDraft(old => ({ ...old, culpritId: e.target.value }))}><option value="">选择调查对象</option>{c.suspects.map(p => <option key={p.id} value={p.id}>{p.name} · {p.role}</option>)}</select></label>
+      <label htmlFor="town-case-person">{c.question}<select aria-label={c.question} id="town-case-person" disabled={c.solved || disabled} value={draft.culpritId} onChange={e => setDraft(old => ({ ...old, culpritId: e.target.value }))}><option value="">选择调查对象</option>{c.suspects.map(p => <option key={p.id} value={p.id}>{p.name} · {p.role}</option>)}</select></label>
       {([{ kind: "motiveEvidenceIds", title: "哪些物证解释动机" }, { kind: "methodEvidenceIds", title: "哪些物证证明使用的手法" }, { kind: "evidenceIds", title: "这次结论引用的全部材料" }] as const).map(group => <fieldset key={group.kind} disabled={c.solved || disabled}><legend>{group.title}</legend>{c.clues.map(e => <label key={e.id}><input type="checkbox" checked={(group.kind === "evidenceIds" ? draft.evidenceIds : draft.proof?.[group.kind] || []).includes(e.id)} onChange={() => toggle(group.kind, e.id)} />{e.title}</label>)}{!c.clues.length && <p className={styles.quiet}>还没有可引用的物证。</p>}{group.kind === "evidenceIds" && c.clues.length > 0 && <button type="button" className={styles.textButton} onClick={() => setDraft(old => ({ ...old, evidenceIds: c.clues.map(e => e.id) }))}>引用已取得的全部材料</button>}</fieldset>)}
       <label htmlFor="town-case-note">补充推断（可选）<textarea id="town-case-note" disabled={c.solved || disabled} rows={3} maxLength={600} value={draft.motive} onChange={e => setDraft(old => ({ ...old, motive: e.target.value }))} placeholder="把时间与物证如何相接写在这里……" /></label>
       {draftMessage && <p role="status" className={styles.quiet}>{draftMessage}</p>}
@@ -71,11 +71,12 @@ export function TownCaseBook({ investigation: c, disabled, command, initialTab }
       {!c.solved && <button className={styles.primary} type="submit" disabled={disabled || !draft.culpritId || !draft.evidenceIds.length}>提交这份结论 · 五分钟</button>}
       {c.solved && <button className={styles.primary} type="button" onClick={() => setTab("ending")}>翻到案件归档 →</button>}
     </form>}
-    {tab === "ending" && c.resolution && <div className={styles.caseEnding}><span className={styles.eyebrow}>证据支持的经过</span><h4>{c.resolution.person}移走了原图</h4><p>{c.resolution.motive}</p><p>{c.resolution.method}</p><ol>{c.resolution.timeline.map((event, i) => <li key={i}><time>{event.time}</time><span>{event.event}</span></li>)}</ol><h4>后来</h4>{c.resolution.ending.map((text, i) => <p key={i}>{text}</p>)}</div>}
+    {tab === "ending" && c.resolution && <div className={styles.caseEnding}><span className={styles.eyebrow}>证据支持的经过</span><h4>{c.resolution.headline}</h4><p>{c.resolution.motive}</p><p>{c.resolution.method}</p><ol>{c.resolution.timeline.map((event, i) => <li key={i}><time>{event.time}</time><span>{event.event}</span></li>)}</ol><h4>后来</h4>{c.resolution.ending.map((text, i) => <p key={i}>{text}</p>)}</div>}
   </section>;
 }
 
 type TrackerProps = {
+  commission?: TownCommissionView | null;
   investigation: TownCaseView | null;
   places: Array<{ id: string; label: string }>;
   onMark: (sceneId: string) => void;
@@ -84,8 +85,14 @@ type TrackerProps = {
 };
 
 /** The case's next step, always on screen while walking. Only public view data. */
-export function caseNextStep(c: TownCaseView | null) {
-  if (!c) return { title: "旧桥原图不见了", hint: "去旧书店或警务所，领取调查手记。" };
+/** A commission waiting to be taken, when no case is open. */
+export function commissionHint(commission: TownCommissionView) {
+  return `去${commission.openAt.map(id => placeNames[id] ?? id).join("或")}，领取调查手记。`;
+}
+
+export function caseNextStep(c: TownCaseView | null, commission?: TownCommissionView | null) {
+  if (commission && (!c || c.solved)) return { title: commission.hook, hint: commissionHint(commission) };
+  if (!c) return { title: "暂时没有委托", hint: "沿着街道走走，认一认河湾的居民。" };
   if (c.solved) return { title: c.title, hint: "案件已归档。可以回看证词与最后的经过。" };
   const open = c.leads.reduce((sum, lead) => sum + lead.open, 0);
   if (open) return { title: c.title, hint: `还有 ${c.leads.length} 处地点有未核对的物品。` };
@@ -93,19 +100,21 @@ export function caseNextStep(c: TownCaseView | null) {
   return { title: c.title, hint: "整理动机、手法与时间，在案件本里提交结论。" };
 }
 
-export function TownCaseTracker({ investigation: c, places, onMark, onOpenBook, onOpenBoard }: TrackerProps) {
+export function TownCaseTracker({ investigation: active, commission, places, onMark, onOpenBook, onOpenBoard }: TrackerProps) {
+  // A finished case steps aside for the next commission.
+  const c = commission && active?.solved ? null : active;
   const [open, setOpen] = useState(true);
   // Small screens start folded so the street stays visible.
   useEffect(() => { if (window.matchMedia("(max-width: 720px)").matches) setOpen(false); }, []);
-  const step = caseNextStep(c);
+  const step = caseNextStep(c, commission);
   const label = (id: string) => places.find(p => p.id === id)?.label ?? placeNames[id] ?? id;
   const order = (id: string) => { const index = places.findIndex(p => p.id === id); return index < 0 ? places.length : index; };
-  const leads = c ? (c.solved ? [] : [...c.leads].sort((a, b) => order(a.sceneId) - order(b.sceneId))) : [{ sceneId: "books", open: 0 }, { sceneId: "police", open: 0 }];
+  const leads = c ? (c.solved ? [] : [...c.leads].sort((a, b) => order(a.sceneId) - order(b.sceneId))) : (commission?.openAt ?? []).map(sceneId => ({ sceneId, open: 0 }));
   const found = c?.clues.length ?? 0;
   const total = c ? found + c.leads.reduce((sum, lead) => sum + lead.open, 0) : 0;
   return <section className={styles.tracker} aria-label="案件进度" data-open={open} data-solved={c?.solved ?? false}>
     <button className={styles.trackerHead} aria-expanded={open} onClick={() => setOpen(v => !v)}>
-      <span className={styles.eyebrow}>{c ? (c.solved ? "已归档" : "调查中") : "新委托"}</span>
+      <span className={styles.eyebrow}>{c ? (c.solved ? "已归档" : `调查中 · ${c.ordinal}`) : commission ? `新委托 · ${commission.ordinal}` : "河湾"}</span>
       <strong>{step.title}</strong>
       {c && <span className={styles.trackerPips} aria-label={`物证 ${found}/${total}`}>{Array.from({ length: total }, (_, i) => <i key={i} data-filled={i < found} />)}</span>}
       <span className={styles.trackerFold} aria-hidden="true">{open ? "−" : "+"}</span>

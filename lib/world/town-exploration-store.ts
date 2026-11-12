@@ -12,7 +12,7 @@ import { chooseResidentWork, residentDecisionProviderFromEnv, type ResidentDecis
 import { executeTownArrival, observeTownResidents, startTownExploration, townExplorationPlayerView, validateTownExplorationBinding, type TownExplorationBinding, type TownExplorationState } from "@/packages/engine/src/town-exploration";
 import type { WorldState } from "@/packages/engine/src/world-types";
 import type { TownPlayCommand, TownPlayResult, TownPlayView } from "@/lib/town-play-contract";
-import { executeTownInvestigation, projectTownInvestigation, InvestigationError, type TownInvestigation } from "./riverbend-investigation";
+import { executeTownInvestigation, projectTownInvestigation, projectTownCommission, projectClosedCases, InvestigationError, type TownInvestigation } from "./riverbend-investigation";
 import { CLASSIC_LIVING_ACTORS, CLASSIC_LIVING_ASSET_SHA256, CLASSIC_LIVING_PLACES, CLASSIC_LIVING_REVISION } from "@/lib/classic-living-contract";
 
 export class TownPlayError extends Error {
@@ -20,7 +20,7 @@ export class TownPlayError extends Error {
 }
 export type TownPlayCredentials = { id: string; secret: string };
 export type TownPlayProfile = "riverbend" | "classic-living";
-type Session = { state: TownExplorationState; binding: TownExplorationBinding; visitedSceneIds: string[]; investigation?: TownInvestigation; createdAt: string; updatedAt: string };
+type Session = { state: TownExplorationState; binding: TownExplorationBinding; visitedSceneIds: string[]; investigation?: TownInvestigation; closedInvestigations?: TownInvestigation[]; createdAt: string; updatedAt: string };
 type Row = { id: string; world_id: string; owner_hash: string; data: string };
 type RuntimeWorld = WorldState & { persistentRuntime: PersistentTownRuntime };
 type Owned = { db: ReturnType<typeof getDb>; row: Row; session: Session; world: RuntimeWorld; map: NonNullable<PersistentTownRuntime["mapPacks"]>[number] };
@@ -77,7 +77,7 @@ function withOwned<T>(credentials: TownPlayCredentials, action: (owned: Owned) =
 function project(world: RuntimeWorld, session: Session): TownPlayView {
   const publicWorld = townExplorationPlayerView(world, session.binding, session.state, world.persistentRuntime);
   const life=world.persistentRuntime.residentLife;
-  return { ...publicWorld, assetSha256: session.binding.assetSha256, visitedSceneIds: [...session.visitedSceneIds], lastArrival: session.state.lastArrival ? { ...session.state.lastArrival } : undefined, investigation: projectTownInvestigation(world.id, publicWorld.sceneId, session.investigation), ...(world.persistentRuntime.residentWork ? { residentWorkEnabled: true } : {}),
+  return { ...publicWorld, assetSha256: session.binding.assetSha256, visitedSceneIds: [...session.visitedSceneIds], lastArrival: session.state.lastArrival ? { ...session.state.lastArrival } : undefined, investigation: projectTownInvestigation(world.id, publicWorld.sceneId, session.investigation), commission: session.binding.revision === RIVERBEND_WORLD_REVISION ? projectTownCommission(world.id, session.investigation, session.closedInvestigations) : null, closedCases: projectClosedCases(world.id, session.closedInvestigations), ...(world.persistentRuntime.residentWork ? { residentWorkEnabled: true } : {}),
     ...(life?{residentLife:{schema:life.schema,elapsedMinutes:(world.persistentRuntime.tick-life.startedAtTick)*world.persistentRuntime.tickIntervalMinutes,remainingMinutes:Math.max(0,(life.endTick-world.persistentRuntime.tick)*world.persistentRuntime.tickIntervalMinutes),plannerMode:life.planner.mode,proposalCount:life.planner.proposals.length,modelCalls:life.planner.providerBudget.used?null:0 as const,modelAttemptsReserved:life.planner.providerBudget.used}}:{}), };
 }
 
@@ -188,13 +188,14 @@ export function commandTownPlay(credentials: TownPlayCredentials, command: TownP
       const visible = townExplorationPlayerView(world, session.binding, session.state, world.persistentRuntime).residents.filter(p => p.visibility === "observed").map(p => p.npcId);
       try {
         const sceneId = session.binding.places.find(p => p.locationId === session.state.locationId)!.sceneId;
-        const action = executeTownInvestigation({ world, sceneId, observedNpcIds: visible, ownerId: credentials.id, ref: session.investigation, command, events });
+        const action = executeTownInvestigation({ world, sceneId, observedNpcIds: visible, ownerId: credentials.id, ref: session.investigation, closed: session.closedInvestigations, command, events });
         const actingWorld = action.world as RuntimeWorld;
         if ((command.kind === "case-question" || command.kind === "case-challenge") && actingWorld.persistentRuntime.dailyRoutine) actingWorld.persistentRuntime.dailyRoutine.holds[command.characterId] = { untilTick: actingWorld.persistentRuntime.tick + 1, reason: "访客正在当面核对案情" };
         const result = advancePersistentTownTick(actingWorld, liveEvents, { steps: 1, status: "paused" });
         nextWorld = { ...result.world, persistentRuntime: result.runtime };
         nextState = observeTownResidents(nextWorld, session.binding, { ...session.state, revision: session.state.revision + 1 }, result.runtime);
         session.investigation = action.ref;
+        if (action.closed.length) session.closedInvestigations = action.closed;
         addedEvents = [...action.events, ...result.events];
       } catch (error) {
         if (error instanceof InvestigationError) throw new TownPlayError("INVESTIGATION_ACTION", error.message, error.status);

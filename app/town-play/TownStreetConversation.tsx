@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { TownCaseAction, TownPlayView } from "@/lib/town-play-contract";
 import type { TownContact } from "./town-interaction";
 import styles from "./town-play.module.css";
+import { commissionHint } from "./TownInvestigation";
 
 // Authored public flavour, not generated testimony or private simulation state.
 const greetings: Record<string, string> = {
@@ -36,7 +37,7 @@ export function TownStreetConversation({ person, view, disabled, command, openBo
       <span className={styles.eyebrow}>{entry ? fresh ? entry.corrected ? "核对后的说法" : "当面听到的说法" : "手记里记下的原话" : "路上相遇"}</span>
       <p>{entry?.answer || greetings[person.npcId] || "你好。先沿着街道走走，认一认河湾的路吧。"}</p>
       {!present && <p role="status" className={styles.quiet}>对方已离开这次目击地点。先回街道看看吧。</p>}
-      {!c && <small>关于旧桥原图，可以先到旧书店或警务所领取调查手记。</small>}
+      {(!c || c.solved) && view?.commission && <small>{view.commission.hook}。{commissionHint(view.commission)}</small>}
     </div>
     <div className={styles.streetActions}>
       {c && !c.solved && <button className={styles.primary} disabled={disabled || !present} onClick={() => void ask({ kind: "case-question", characterId: person.npcId })}>{entry ? "再问问早晨的事" : "问问早晨的事"}<small>交谈用五分钟</small></button>}

@@ -3,7 +3,7 @@ import type { PlayerTheory } from "@/packages/engine/src/types";
 import type { TownObservedMotion } from "@/packages/engine/src/town/observed-passages";
 
 export type TownCaseView = {
-  id: string; revision: string; title: string; premise: string; brief: string; solved: boolean;
+  id: string; revision: string; ordinal: string; question: string; title: string; premise: string; brief: string; solved: boolean;
   suspects: Array<{ id: string; name: string; role: string }>;
   clues: Array<{ id: string; title: string; sceneId: string; description: string }>;
   searchTargets: Array<{ id: string; label: string; found: boolean }>;
@@ -13,8 +13,11 @@ export type TownCaseView = {
   questionedIds: string[];
   message?: string;
   lastTheory?: PlayerTheory;
-  resolution?: { person: string; motive: string; method: string; timeline: Array<{ time: string; event: string }>; ending: string[] };
+  resolution?: { person: string; headline: string; motive: string; method: string; timeline: Array<{ time: string; event: string }>; ending: string[] };
 };
+/** The next authored case the player can take, and where its notebook is handed out. */
+export type TownCommissionView = { ordinal: string; hook: string; detail: string; openAt: string[] };
+export type TownClosedCaseView = { id: string; ordinal: string; title: string; person: string };
 export type TownCaseAction = { kind: "case-open" } | { kind: "case-search"; targetId: string } |
   { kind: "case-question"; characterId: string } | { kind: "case-challenge"; characterId: string; evidenceId: string } |
   { kind: "case-submit"; theory: PlayerTheory };
@@ -27,6 +30,8 @@ export type TownPlayView = ReturnType<typeof townExplorationPlayerView> & {
   visitedSceneIds: string[];
   lastArrival?: TownExplorationState["lastArrival"];
   investigation: TownCaseView | null;
+  commission?: TownCommissionView | null;
+  closedCases?: TownClosedCaseView[];
   residentWorkEnabled?: boolean;
   residentLife?: { schema:"town-resident-life.v1"; elapsedMinutes:number; remainingMinutes:number; plannerMode:"rules"|"offline-agent"; proposalCount:number; modelCalls:0|null; modelAttemptsReserved:number };
 };

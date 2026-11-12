@@ -156,5 +156,25 @@ test.describe("town-play", () => {
     await expect(form.getByRole("button", { name: "案件归档", exact: true })).toBeVisible({ timeout: 15_000 });
     await form.getByRole("button", { name: "翻到案件归档 →" }).click();
     await expect(form).toContainText("许知微移走了原图");
+    await page.keyboard.press("Escape");
+
+    // Case two is offered once case one closes, and opens at its own places.
+    const tracker2 = page.getByLabel("案件进度");
+    await expect(tracker2).toContainText("新委托 · 第二宗");
+    await expect(tracker2).toContainText("旅馆的募捐箱被撬了");
+    await act(page, { kind: "arrive", sceneId: "inn" });
+    view = await act(page, { kind: "case-open" });
+    expect(view.investigation?.solved).toBe(false);
+    await reloadTown(page);
+    await expect(page.getByLabel("案件进度")).toContainText("借来的凿子");
+    await page.keyboard.press("k");
+    const book2 = dialog(page).getByLabel("案件本");
+    await expect(book2).toContainText("河湾 · 第二宗");
+    await book2.getByRole("button", { name: "整理推断" }).click();
+    await expect(book2.getByLabel("谁撬开了募捐箱")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("j");
+    await expect(dialog(page).getByLabel("已归档的案件")).toContainText("第七分钟");
+    await expect(dialog(page).getByLabel("已归档的案件")).toContainText("许知微");
   });
 });

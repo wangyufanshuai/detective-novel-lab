@@ -360,3 +360,11 @@
 @media (max-width: 720px) { /* The overview list below is the touch target; signs stay compact (beats the global 44px button rule). */ .town .placeSign { padding: 3px 7px; font-size: 10px; letter-spacing: .04em; min-height: 0 !important; } .personTag { padding: 2px 7px; } .personTag small { display: none; } .dayCard > .dayDial { width: 38px; height: 24px; } }
 @media (max-width: 430px) { .dayCard > .dayDial { display: none; } }
 @media (prefers-reduced-motion: reduce) { .placeSign, .personTag { transition: none; } }
+
+/* Journal: cases already closed, newest last. */
+.closedCases { list-style: none; margin: 12px 0 0; padding: 10px 0 0; border-top: 1px dashed var(--tp-line); display: grid; gap: 6px; }
+.closedCases li { display: grid; grid-template-columns: auto 1fr auto; align-items: baseline; gap: 10px; font-size: 12px; }
+.closedCases small { color: var(--tp-ink-muted); letter-spacing: .1em; }
+.closedCases span { font: 600 13px 'Noto Serif SC', serif; color: var(--tp-ink); }
+.closedCases em { font-style: normal; color: var(--tp-forest); }
+.closedCases em::before { content: "已归档 · "; color: var(--tp-ink-muted); }
