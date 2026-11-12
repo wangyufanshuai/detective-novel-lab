@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode, useMemo } from "react";
 import type { TownDestination, TownPoint } from "@/lib/riverbend-navigation";
 import type { TownSceneControls, TownSnapshot } from "./TownScene";
 import styles from "./town-play.module.css";
@@ -12,6 +12,8 @@ import { TownCaseBook, TownCasePlace, TownCaseTracker, commissionHint, type Case
 import { TownSoundSettings } from "./TownSoundSettings";
 import { townSound } from "./town-sound";
 import { useTownSound } from "./useTownSound";
+import type { TownEmote } from "./world-labels";
+import { TownCaseFinale } from "./TownCaseFinale";
 import { TownCaseBoard } from "./TownCaseBoard";
 import { TownStreetConversation } from "./TownStreetConversation";
 import { interactionKey, type TownContact, type TownInteraction } from "./town-interaction";
@@ -74,6 +76,40 @@ export default function TownPlayClient() {
   const knownVisited = world.view?.visitedSceneIds ?? visited;
   const worldPaused = world.status !== "ready" || world.busy || world.pending;
   useTownSound(world.view, panel, overview);
+  // The verdict moment: only when a case turns solved during this visit, never on reload.
+  const [finale, setFinale] = useState<string | null>(null);
+  const solvedCase = useRef<{ id: string; solved: boolean } | null>(null);
+  useEffect(() => {
+    const c = world.view?.investigation;
+    if (!c) return;
+    const before = solvedCase.current;
+    solvedCase.current = { id: c.id, solved: c.solved };
+    if (before && before.id === c.id && !before.solved && c.solved) setFinale(c.id);
+  }, [world.view?.investigation]);
+  // A corrected statement shows a brief "!" over the person who said it.
+  const [shocked, setShocked] = useState<string | null>(null);
+  const correctedLines = world.view?.investigation?.conversations.filter(line => line.corrected) ?? [];
+  const lastCorrected = correctedLines.at(-1)?.id ?? "";
+  const seenCorrection = useRef<string | null>(null);
+  useEffect(() => {
+    if (seenCorrection.current === null) { seenCorrection.current = lastCorrected; return; }
+    if (!lastCorrected || lastCorrected === seenCorrection.current) return;
+    seenCorrection.current = lastCorrected;
+    const who = world.view?.investigation?.conversations.find(line => line.id === lastCorrected)?.characterId ?? null;
+    setShocked(who);
+    const timer = window.setTimeout(() => setShocked(null), 2600);
+    return () => window.clearTimeout(timer);
+  }, [lastCorrected, world.view?.investigation?.conversations]);
+  const emotes = useMemo(() => {
+    const out: Record<string, TownEmote> = {};
+    const c = world.view?.investigation;
+    for (const person of world.view?.residents ?? []) {
+      if (person.visibility !== "observed") continue;
+      if (shocked === person.npcId) out[person.actorId] = "shock";
+      else if (c && !c.solved && !c.questionedIds.includes(person.npcId)) out[person.actorId] = "ask";
+    }
+    return out;
+  }, [world.view?.investigation, world.view?.residents, shocked]);
 
   useEffect(() => {
     try {
@@ -153,7 +189,7 @@ export default function TownPlayClient() {
       if (event.target instanceof HTMLElement && (event.target.matches("input, textarea, select") || event.target.isContentEditable)) return;
       if (event.ctrlKey || event.metaKey || event.altKey) return;
       const key = event.key.toLowerCase();
-      if (panel || !ready || error || world.status !== "ready") return;
+      if (panel || finale || !ready || error || world.status !== "ready") return;
       if (["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(key)) {
         event.preventDefault(); keys.current.add(key); return;
       }
@@ -174,7 +210,7 @@ export default function TownPlayClient() {
       window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); window.removeEventListener("blur", clear);
       document.removeEventListener("visibilitychange", clear);
     };
-  }, [panel, ready, error, overview, inspect, chooseTool, worldPaused, world.status, world.view?.investigation, openCase]);
+  }, [panel, finale, ready, error, overview, inspect, chooseTool, worldPaused, world.status, world.view?.investigation, openCase]);
   const mark = (destination: TownDestination) => {
     setWaypoint(destination.entrance); setWaypointName(destination.label); setPanel(null); setOverview(false);
     setToast(`已在地面标记「${destination.label}」，可以步行前往。`);
@@ -196,7 +232,7 @@ export default function TownPlayClient() {
   const connectionNotice = world.message && world.status !== "new" && <div className={styles.connectionNotice} role="alert"><p>{world.message}</p><button disabled={world.busy} onClick={() => void world.retry()}>重试保存</button><button disabled={world.busy} onClick={() => void world.reload()}>重新连接手记</button></div>;
 
   return <main id="detective-town-main" tabIndex={-1} className={styles.town} lang="zh-CN" aria-label="河湾小镇探索" data-ready={ready && !error} data-world-state={world.status} data-world-busy={world.busy} data-world-pending={world.pending} data-view={overview ? "overview" : "explore"} data-panel={panel ?? "none"}>
-    <TownScene keys={keys} overview={overview} paused={!!panel || !!error || worldPaused} conversationActorId={panel === "person" ? conversation?.actorId ?? null : null} lantern={lantern} quality={quality} waypoint={waypoint} placeTags={placeTags} onMarkPlace={markScene} worldView={world.view} restore={world.restore} onReady={onReady} onUpdate={onUpdate} onError={setError} />
+    <TownScene keys={keys} overview={overview} paused={!!panel || !!error || worldPaused} conversationActorId={panel === "person" ? conversation?.actorId ?? null : null} lantern={lantern} quality={quality} waypoint={waypoint} placeTags={placeTags} emotes={emotes} onMarkPlace={markScene} worldView={world.view} restore={world.restore} onReady={onReady} onUpdate={onUpdate} onError={setError} />
     <div className={styles.vignette} aria-hidden="true" />
     <header className={styles.arrival}>
       <div className={styles.arrivalSeal}><Icon name="手记" /></div>
@@ -237,5 +273,7 @@ export default function TownPlayClient() {
       {panel === "bag" && <><p className={styles.prose}>观察镜、地图、手记本、铅笔、相机与提灯，已经放进你的行囊。</p><div className={styles.bagTools}>{tools.slice(0, 6).map(name => <div key={name}><Icon name={name} /><span>{name}</span></div>)}</div><p className={styles.quiet}>{world.view?.investigation ? `案件本里已收录 ${world.view.investigation.clues.length} 份物证记录。原件留在保管地点。` : "案件物品会在调查后记入手记。底部工具栏可直接使用这些探索工具。"}</p></>}
       {panel === "help" && <><div className={styles.helpRow}><kbd>W A S D</kbd><span>或方向键，沿着画面方向走动</span></div><div className={styles.helpRow}><kbd>E</kbd><span>走近居民交谈，靠近店门观察</span></div><div className={styles.helpRow}><kbd>M / J</kbd><span>全镇俯瞰 / 打开手记</span></div><div className={styles.helpRow}><kbd>K / B</kbd><span>领取调查手记后，翻开案件本 / 案件看板</span></div><div className={styles.helpRow}><kbd>1 — 8</kbd><span>切换底部随身工具</span></div><p className={styles.quiet}>触屏可按住左下方方向键行走，点击出现的交谈或地点提示。涉及案件的询问与物证核对会用五分钟，并保存到手记。</p></>}
     </dialog>
+    {finale && world.view?.investigation?.id === finale && <TownCaseFinale investigation={world.view.investigation} commission={world.view.commission}
+      onRead={() => { setFinale(null); openCase("ending"); }} onClose={() => { setFinale(null); setPanel(null); }} />}
   </main>;
 }

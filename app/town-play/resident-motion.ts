@@ -6,7 +6,11 @@ type LocalResident = {
   actor: THREE.Object3D; sceneId: string; position: TownPoint; path: TownPoint[];
   waypoint: number; pause: number; phase: number; blocked: number; walking: boolean;
   joints: Map<string, { object: THREE.Object3D; rest: THREE.Euler }>;
+  /** Standing life: where the head looks, an occasional hand gesture, breathing. */
+  idle: { look: number; lookTarget: number; nextLook: number; gesture: number; nextGesture: number; side: "arm_left" | "arm_right"; clock: number };
 };
+/** A standing resident turns to face the player inside this distance. */
+const NOTICE_DISTANCE = 3.4;
 // Includes the full foot/satchel envelope over the measured walk cycle, not just a torso.
 export const RESIDENT_RADIUS = .63;
 const distance = (a: TownPoint, b: TownPoint) => Math.hypot(a[0] - b[0], a[1] - b[1]);
@@ -62,7 +66,8 @@ export function createResidentMotion(people: Map<string, THREE.Object3D>, data: 
       if (!path) { actor.visible = false; continue; }
       const joints = new Map<string, { object: THREE.Object3D; rest: THREE.Euler }>();
       actor.traverse(object => { if (typeof object.userData.joint === "string") joints.set(object.userData.joint, { object, rest: new THREE.Euler(0, 0, 0) }); });
-      const local: LocalResident = { actor, sceneId: person.sceneId, position: [...path[0]], path, waypoint: path.length > 1 ? 1 : 0, pause: 1.3 + seed % 5 * .8, phase: seed * 1.7, blocked: 0, walking: false, joints };
+      const local: LocalResident = { actor, sceneId: person.sceneId, position: [...path[0]], path, waypoint: path.length > 1 ? 1 : 0, pause: 1.3 + seed % 5 * .8, phase: seed * 1.7, blocked: 0, walking: false, joints,
+        idle: { look: 0, lookTarget: 0, nextLook: 1 + seed % 4, gesture: 0, nextGesture: 5 + seed % 7 * 1.3, side: seed % 2 ? "arm_left" : "arm_right", clock: seed * .9 } };
       locals.set(person.actorId, local);
       actor.position.set(local.position[0], nav.height(local.position) - .04, -local.position[1]);
       actor.rotation.y = (seed % 3 - 1) * .35;
@@ -97,6 +102,28 @@ export function createResidentMotion(people: Map<string, THREE.Object3D>, data: 
         }
       }
       local.actor.position.set(local.position[0], nav.height(local.position) - .04, -local.position[1]);
+      const idle = local.idle;
+      if (!local.walking) {
+        idle.clock += delta;
+        // Notice the player: the body turns slowly, the head leads.
+        const near = distance(local.position, player) < NOTICE_DISTANCE;
+        if (near) {
+          const heading = Math.atan2(player[0] - local.position[0], -(player[1] - local.position[1]));
+          const angle = Math.atan2(Math.sin(heading - local.actor.rotation.y), Math.cos(heading - local.actor.rotation.y));
+          local.actor.rotation.y += angle * Math.min(1, delta * 2.2);
+          idle.lookTarget = THREE.MathUtils.clamp(angle * .8, -.5, .5);
+        } else if (idle.clock > idle.nextLook) {
+          idle.lookTarget = Math.sin(idle.clock * 12.9898 + local.phase) * .5 * (Math.abs(idle.lookTarget) > .2 ? .3 : 1);
+          idle.nextLook = idle.clock + 2.2 + (local.phase * 7 + idle.clock) % 3.5;
+        }
+        // Now and then a small gesture: a hand to the collar, a glance at a watch.
+        if (!near && idle.clock > idle.nextGesture) { idle.gesture = 1.6; idle.nextGesture = idle.clock + 7 + (local.phase * 3 + idle.clock) % 8; idle.side = idle.side === "arm_left" ? "arm_right" : "arm_left"; }
+      } else { idle.lookTarget = 0; idle.gesture = 0; }
+      idle.look += (idle.lookTarget - idle.look) * Math.min(1, delta * 3.5);
+      idle.gesture = Math.max(0, idle.gesture - delta);
+      const lift = idle.gesture > 0 ? Math.sin(Math.min(1, (1.6 - idle.gesture) / 1.6) * Math.PI) : 0;
+      // Breathing, kept well under a centimetre of rise.
+      local.actor.scale.y = local.walking ? 1 : 1 + Math.sin(idle.clock * 1.6 + local.phase) * .006;
       for (const [name, joint] of local.joints) {
         joint.object.rotation.copy(joint.rest);
         const stride = Math.sin(local.phase + (name.endsWith("right") ? Math.PI : 0));
@@ -104,7 +131,13 @@ export function createResidentMotion(people: Map<string, THREE.Object3D>, data: 
           if (name.startsWith("leg_")) joint.object.rotation.x += stride * .30;
           if (name.startsWith("knee_")) joint.object.rotation.x -= Math.max(0, -stride) * .42;
           if (name.startsWith("arm_")) joint.object.rotation.x -= stride * .23;
-        } else if (name === "head") joint.object.rotation.y += Math.sin(local.phase + local.pause * .25) * .055;
+        } else if (name === "head") {
+          joint.object.rotation.y += idle.look;
+          joint.object.rotation.x += Math.sin(idle.clock * .8 + local.phase) * .025;
+        } else if (name === idle.side && lift > 0) {
+          joint.object.rotation.x -= lift * .55;
+          joint.object.rotation.z += (name === "arm_left" ? -1 : 1) * lift * .12;
+        } else if (name.startsWith("arm_")) joint.object.rotation.x += Math.sin(idle.clock * 1.6 + local.phase) * .02;
       }
     }
   }

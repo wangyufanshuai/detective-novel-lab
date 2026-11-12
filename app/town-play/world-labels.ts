@@ -3,7 +3,9 @@ import type { TownDestination } from "@/lib/riverbend-navigation";
 
 export type TownPlaceTag = { id: string; label: string; visited: boolean; leads: number; marked: boolean };
 type ClassNames = { layer: string; place: string; person: string };
-type PersonTag = { actorId: string; name: string; role: string; position: THREE.Vector3; active: boolean; distance: number };
+/** ask: not yet questioned in the open case; talk: speaking now; shock: a statement was just corrected. */
+export type TownEmote = "ask" | "talk" | "shock";
+type PersonTag = { actorId: string; name: string; role: string; position: THREE.Vector3; active: boolean; distance: number; emote?: TownEmote };
 
 /**
  * Screen-space name plates for the 3D town. Plain DOM over the canvas, so text
@@ -55,19 +57,24 @@ export function createWorldLabels(container: HTMLElement, destinations: TownDest
       }
       const seen = new Set<string>(), placed: Array<[number, number]> = [];
       // Nearest first; a plate that would overlap a nearer one is dropped.
-      const persons = view.overview || view.talking ? [] : [...view.persons].sort((a, b) => Number(b.active) - Number(a.active) || a.distance - b.distance);
+      // While talking, only the speaker keeps a bubble (no name: the conversation panel names them).
+      const persons = view.overview ? [] : view.talking ? view.persons.filter(p => p.active) : [...view.persons].sort((a, b) => Number(b.active) - Number(a.active) || a.distance - b.distance);
       for (const person of persons) {
         seen.add(person.actorId);
         let entry = people.get(person.actorId);
         if (!entry) { const el = document.createElement("div"); el.className = classes.person; el.setAttribute("aria-hidden", "true"); layer.appendChild(el); entry = { el, key: "", x: NaN, y: NaN }; people.set(person.actorId, entry); }
-        const key = `${person.name}|${person.role}|${person.active}`;
+        const bubble = view.talking;
+        const key = `${person.name}|${person.role}|${person.active}|${person.emote ?? ""}|${bubble}`;
         if (key !== entry.key) {
-          entry.key = key; entry.el.dataset.active = String(person.active);
+          entry.key = key; entry.el.dataset.active = String(person.active); entry.el.dataset.emote = person.emote ?? "none"; entry.el.dataset.bubble = String(bubble);
           entry.el.innerHTML = "";
+          if (person.emote) { const mark = document.createElement("i"); mark.textContent = person.emote === "ask" ? "?" : person.emote === "shock" ? "!" : ""; if (person.emote === "talk") for (let i = 0; i < 3; i++) mark.appendChild(document.createElement("b")); entry.el.appendChild(mark); }
+          if (bubble) { /* bubble only */ } else {
           const name = document.createElement("strong"); name.textContent = person.name; entry.el.appendChild(name);
           const role = document.createElement("small"); role.textContent = person.role; entry.el.appendChild(role);
+          }
         }
-        if (!place(entry.el, entry, camera, point.copy(person.position).setY(person.position.y + 2.2))) continue;
+        if (!place(entry.el, entry, camera, point.copy(person.position).setY(person.position.y + (bubble ? 2.05 : 2.2)))) continue;
         if (placed.some(([x, y]) => Math.abs(x - entry!.x) < 84 && Math.abs(y - entry!.y) < 34)) { entry.el.hidden = true; continue; }
         placed.push([entry.x, entry.y]);
       }

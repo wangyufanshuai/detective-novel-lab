@@ -10,7 +10,7 @@ import { createResidentMotion, RESIDENT_RADIUS } from "./resident-motion";
 import { chooseTownInteraction, type TownInteraction } from "./town-interaction";
 import { clockHours, easeGrade, gradeAt } from "./town-lighting";
 import { createResidentEncounter } from "./resident-encounter";
-import { createWorldLabels, type TownPlaceTag } from "./world-labels";
+import { createWorldLabels, type TownEmote, type TownPlaceTag } from "./world-labels";
 import styles from "./town-play.module.css";
 import type { TownPlayView } from "@/lib/town-play-contract";
 
@@ -31,6 +31,8 @@ interface Props {
   quality: "high" | "balanced";
   waypoint: TownPoint | null;
   placeTags: TownPlaceTag[];
+  /** Expression per actor id; the conversation partner defaults to "talk". */
+  emotes: Record<string, TownEmote>;
   onMarkPlace: (sceneId: string) => void;
   worldView: TownPlayView | null;
   restore: { key: string; sceneId: string } | null;
@@ -320,11 +322,12 @@ export default function TownScene(props: Props) {
             (marker.material as THREE.MeshBasicMaterial).opacity = .95 - pulse * .35;
           }
           const persons = [];
-          if (!settings.overview && !talking) for (const person of settings.worldView?.residents ?? []) {
+          if (!settings.overview) for (const person of settings.worldView?.residents ?? []) {
             const actor = person.visibility === "observed" ? people.get(person.actorId) : undefined;
             const distance = actor?.visible ? Math.hypot(actor.position.x - position[0], actor.position.z + position[1]) : Infinity;
             if (!actor || distance > 8) continue;
-            persons.push({ actorId: person.actorId, name: person.name, role: person.role, position: actor.position, active: actor === highlighted, distance });
+            const emote = talking && actor === conversationActor ? (settings.emotes[person.actorId] === "shock" ? "shock" : "talk") : settings.emotes[person.actorId];
+            persons.push({ actorId: person.actorId, name: person.name, role: person.role, position: actor.position, active: actor === highlighted, distance, ...(emote ? { emote } : {}) });
           }
           labels?.update(camera, nav.height, { overview: settings.overview, talking, tags: settings.placeTags, persons });
           residents?.sync();

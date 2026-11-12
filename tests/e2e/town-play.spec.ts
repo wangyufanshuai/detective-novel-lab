@@ -153,8 +153,14 @@ test.describe("town-play", () => {
     await group("哪些物证证明使用的手法").getByLabel(titles["rb-clue-01"], { exact: true }).check();
     await group("哪些物证证明使用的手法").getByLabel(titles["rb-clue-07"], { exact: true }).check();
     await form.getByRole("button", { name: /提交这份结论/ }).click();
-    await expect(form.getByRole("button", { name: "案件归档", exact: true })).toBeVisible({ timeout: 15_000 });
-    await form.getByRole("button", { name: "翻到案件归档 →" }).click();
+    // The verdict moment: a stamped dossier over the case book.
+    const finale = page.getByRole("dialog", { name: "许知微移走了原图" });
+    await expect(finale).toBeVisible({ timeout: 15_000 });
+    await expect(finale).toContainText("结案");
+    await expect(finale).toContainText("新委托 · 第二宗");
+    await finale.getByRole("button", { name: "读完整的经过 →" }).click();
+    await expect(finale).toHaveCount(0);
+    await expect(form.getByRole("button", { name: "案件归档", exact: true })).toBeVisible();
     await expect(form).toContainText("许知微移走了原图");
     await page.keyboard.press("Escape");
 

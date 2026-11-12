@@ -336,7 +336,7 @@
 .personTag strong { font: 600 12px 'Noto Serif SC', serif; color: var(--tp-ink); line-height: 1.3; }
 .personTag small { font-size: 9px; color: var(--tp-ink-muted); line-height: 1.2; }
 .personTag[data-active='true'] { opacity: 1; border-color: var(--tp-brass); box-shadow: 0 0 0 2px color-mix(in srgb, var(--tp-focus) 70%, transparent), 0 4px 10px color-mix(in srgb, var(--tp-teal-deep) 25%, transparent); }
-.town[data-panel='person'] .worldLabels { visibility: hidden; }
+.town[data-panel='person'] .personTag:not([data-bubble='true']), .town[data-panel='person'] .placeSign { visibility: hidden; }
 
 /* Day dial: the clock card follows the same hour as the scene light. */
 .dayCard > .dayDial { width: 54px; height: 33px; flex: none; overflow: visible; }
@@ -374,3 +374,38 @@
 .soundSlider { display: grid; gap: 4px; font-size: 12px; color: var(--tp-ink-muted); }
 .soundSlider input[type='range'] { width: 100%; accent-color: var(--tp-forest); min-height: 28px; }
 .soundSlider input[type='range']:disabled { opacity: .4; }
+
+/* Emotes over residents: "?" not yet questioned; a speech bubble while talking; "!" when corrected. */
+.personTag > i { position: absolute; left: -9px; top: -9px; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; font: 700 11px 'Noto Sans SC', sans-serif; font-style: normal; color: var(--tp-paper); background: var(--tp-brass); box-shadow: 0 0 0 2px var(--tp-paper), 0 2px 4px color-mix(in srgb, var(--tp-ink) 35%, transparent); }
+.personTag[data-emote='shock'] > i { background: var(--tp-rust); animation: emotePop .45s cubic-bezier(.3, 1.6, .5, 1) both; }
+.personTag[data-bubble='true'] { padding: 0; border: 0; background: none; box-shadow: none; opacity: 1; }
+.personTag[data-bubble='true'] > i { position: relative; left: auto; top: auto; width: auto; min-width: 34px; height: 24px; padding: 0 8px; gap: 3px; grid-auto-flow: column; border-radius: 12px; color: var(--tp-ink); background: var(--tp-paper); border: 1.5px solid var(--tp-wood); box-shadow: 0 3px 0 var(--tp-line-strong), 0 6px 12px color-mix(in srgb, var(--tp-teal-deep) 25%, transparent); font-size: 14px; }
+.personTag[data-bubble='true'] > i::after { content: ""; position: absolute; left: 50%; bottom: -6px; width: 9px; height: 9px; margin-left: -5px; background: var(--tp-paper); border-right: 1.5px solid var(--tp-wood); border-bottom: 1.5px solid var(--tp-wood); transform: rotate(45deg); }
+.personTag[data-bubble='true'][data-emote='shock'] > i { color: var(--tp-paper); background: var(--tp-rust); border-color: var(--tp-rust); }
+.personTag[data-bubble='true'][data-emote='shock'] > i::after { background: var(--tp-rust); border-color: var(--tp-rust); }
+.personTag > i > b { width: 5px; height: 5px; border-radius: 50%; background: var(--tp-ink-muted); animation: emoteDot 1.2s ease-in-out infinite; }
+.personTag > i > b:nth-child(2) { animation-delay: .15s; }
+.personTag > i > b:nth-child(3) { animation-delay: .3s; }
+@keyframes emoteDot { 0%, 60%, 100% { transform: translateY(0); opacity: .45; } 30% { transform: translateY(-3px); opacity: 1; } }
+@keyframes emotePop { from { transform: scale(.3); } to { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .personTag > i, .personTag > i > b { animation: none !important; } }
+
+/* Case finale: a stamped dossier over the case book. */
+.finale { width: min(620px, calc(100vw - 32px)); max-height: calc(100dvh - 40px); padding: 0; border: 0; background: transparent; overflow: visible; }
+.finale::backdrop { background: color-mix(in srgb, var(--tp-teal-deep) 62%, transparent); backdrop-filter: blur(2px); animation: finaleFade .4s ease both; }
+.finalePaper { position: relative; display: grid; gap: 14px; padding: 34px 36px 28px; color: var(--tp-ink); background: var(--tp-paper); border: 2px solid var(--tp-wood); border-radius: 4px; box-shadow: 0 4px 0 var(--tp-ink), 0 24px 60px color-mix(in srgb, var(--tp-ink) 45%, transparent); animation: finaleRise .55s cubic-bezier(.2, .9, .3, 1.1) both; max-height: calc(100dvh - 40px); overflow: auto; }
+.finalePaper h2 { margin: 0; font: 600 30px/1.3 'Noto Serif SC', serif; color: var(--tp-forest-deep); letter-spacing: .04em; }
+.finaleStamp { position: absolute; right: 26px; top: 22px; padding: 6px 14px; font: 700 26px 'Noto Serif SC', serif; letter-spacing: .3em; color: var(--tp-rust); border: 3px solid var(--tp-rust); border-radius: 4px; transform: rotate(-9deg); opacity: .88; animation: finaleStamp .5s .45s cubic-bezier(.4, 1.8, .5, 1) both; mix-blend-mode: multiply; }
+.finaleFacts { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; font-size: 13px; line-height: 1.75; }
+.finaleFacts dt { color: var(--tp-ink-muted); font-weight: 600; }
+.finaleFacts dd { margin: 0; }
+.finaleEnding { margin: 0; padding: 12px 14px; font-size: 13px; line-height: 1.9; background: var(--tp-paper-deep); border-left: 3px solid var(--tp-forest); animation: finaleFade .6s 1s both; }
+.finaleNext { margin: 0; display: grid; gap: 2px; font: 600 14px 'Noto Serif SC', serif; color: var(--tp-wood-dark); animation: finaleFade .6s 1.3s both; }
+.finaleNext small { font: 600 11px 'Noto Sans SC', sans-serif; color: var(--tp-brass); letter-spacing: .12em; }
+.finaleActions { display: flex; align-items: center; gap: 18px; margin-top: 4px; }
+.finaleActions .primary { margin: 0; }
+@keyframes finaleFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes finaleRise { from { opacity: 0; transform: translateY(18px) scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes finaleStamp { from { opacity: 0; transform: rotate(-9deg) scale(2.4); } 70% { opacity: .95; } to { opacity: .88; transform: rotate(-9deg) scale(1); } }
+@media (max-width: 520px) { .finalePaper { padding: 26px 20px 22px; } .finalePaper h2 { font-size: 23px; padding-right: 70px; } .finaleStamp { font-size: 19px; right: 14px; top: 16px; } .finaleActions { flex-wrap: wrap; } }
+@media (prefers-reduced-motion: reduce) { .finale::backdrop, .finalePaper, .finaleStamp, .finaleEnding, .finaleNext { animation: none !important; } }
