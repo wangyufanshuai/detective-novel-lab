@@ -1,0 +1,143 @@
+# 河湾案件写作说明
+
+写给负责案件内容的作者（包括 Codex）。前端、界面和引擎由另一位开发者负责；你只写案件数据。
+
+## 一分钟流程
+
+1. 读 [`riverbend-world-reference.md`](riverbend-world-reference.md)：居民、地点、步行时间，以及每位居民在已有案件里已经被占用的时间。
+2. 读完整范例 [`packages/engine/src/cases/borrowed-chisel.ts`](../../packages/engine/src/cases/borrowed-chisel.ts)。
+3. 复制它，新建 `packages/engine/src/cases/<你的-key>.ts`，导出一个 `CasePack`。
+4. 在 [`packages/engine/src/riverbend-case.ts`](../../packages/engine/src/riverbend-case.ts) 的 `RIVERBEND_CASES` 末尾加上你的案件（加一行 import、一个数组元素）。
+5. 运行自查，直到通过：
+
+   ```bash
+   node scripts/check-cases.mjs --no-play   # 规则检查，几秒
+   node scripts/check-cases.mjs             # 加上自动试玩，约半分钟
+   ```
+
+6. 在自己的分支上提交。只提交下面「你可以改的文件」。
+
+## 你可以改的文件
+
+| 可以改 | 不要改 |
+|---|---|
+| `packages/engine/src/cases/*.ts`（新增你的案件文件） | `app/` 下的任何文件（界面） |
+| `packages/engine/src/riverbend-case.ts`（只在 `RIVERBEND_CASES` 里加你的案件） | `packages/engine/src/case-pack.ts`（格式与校验） |
+| `docs/cases/riverbend-world-reference.md`（只能用 `--reference` 重新生成） | `lib/`、其余引擎文件、测试 |
+
+需要格式里没有的东西（新地点、室内、跨天、新玩法），不要自己改引擎：在交付说明里写清楚需求，交给前端/引擎负责人。
+
+## 案件是怎么玩的（写之前要懂）
+
+- 游戏从**第 1 天 08:00** 开始。案件的**真实经过发生在开局之前**（`history`），玩家只能通过物证和居民的说法还原它。
+- 前一宗结案后，右上角出现你的 `commission`（新委托）。玩家走到 `openAt` 里的地点，领取调查手记。
+- 玩家到各地点**搜查**，每份物证对应一个搜查点（`evidence[].search` 是按钮上的文字）。
+- 玩家在街上找到居民，**询问**（听 `statements` 里的原话），再**出示物证核对**。只有你在 `revisions` 里写了的「居民 + 物证」组合，说法才会被改正。
+- 玩家在案件本里**提交结论**：选一个嫌疑人，勾选证明动机和手法的物证。只有指认真凶、物证足够、并且每一处必需的说法都已当面核对改正，才会结案。
+- 结案后显示 `verdict` 标题、真实时间线和 `ending` 三段结局。
+
+## 字段说明
+
+以 `borrowed-chisel.ts` 为准。下面按写作顺序说明。
+
+### 身份与文案
+
+| 字段 | 含义 | 例 |
+|---|---|---|
+| `revision` | 内容版本，发布后不要改；大改时升版本号 | `"riverbend-borrowed-chisel.v1"` |
+| `key` | 案件唯一 key，小写加连字符 | `"borrowed-chisel"` |
+| `ordinal` | 第几宗 | `"第三宗"` |
+| `title` | 案件名，短而有画面 | `"借来的凿子"` |
+| `theme` | 一句主题，写给自己看，引导结局 | `"离开小镇的代价"` |
+| `premise` | 案件本开头的两三句：发生了什么、镇上先怀疑了谁 | |
+| `publicCaseFile` | 「展开受理记录」：公开已知事实、接触过现场的人、调查方向。**不能透露真凶** | |
+| `question` | 结论表单上的提问 | `"谁撬开了募捐箱"` |
+| `verdict` | 结案标题，`{person}` 会替换成真凶名字 | `"{person}撬开了募捐箱"` |
+| `commission` | 新委托：`hook` 一句话标题；`detail` 两句说明；`openAt` 领取地点（可进入的地点，1—2 个）；`refusal` 在别处领取时的提示 | |
+| `after` | 前一宗的 `key`。不写就是第一宗（只有《第七分钟》可以不写） | `"borrowed-chisel"` |
+| `window` | 案发历史的时间窗，**必须在 08:00 以前结束** | `{ from: "05:00", to: "05:59" }` |
+| `ids` | 物证和搜查点的 id 前缀，每个案件不同 | `{ clue: "rb3-clue", search: "rb3-search" }` |
+| `historyTag` / `historyNote` / `timelineSource` | 照抄范例，`historyNote` 改成本案的名字 | |
+
+### 人物
+
+| 字段 | 含义 |
+|---|---|
+| `culpritId` | 真凶（必须在 `suspectIds` 里） |
+| `witnessId` | 主要证人：说法会被物证改正、但不是真凶的那个人 |
+| `suspectIds` | 嫌疑人，建议 4 个（含真凶） |
+| `culprit` | 真凶的动机、手法、时机，结案时展示给玩家 |
+| `others` | 其他人的这三项占位，照抄范例即可 |
+| `statements` | **12 位居民每人一段**第一人称说法（玩家当面询问时听到的）。只说本人亲眼见到、亲手做过的事；可以隐瞒或说错，但不能凭空知道没见过的事 |
+| `revisions` | `{ 居民id: { 物证编号: "改正后的说法" } }`。被物证当面戳穿后说的话：承认什么、为什么之前那样说、仍然不知道什么 |
+
+### 物证（`evidence`，建议 8 份）
+
+```ts
+{ n: 3, at: "inn", title: "厨房的出餐单", text: "玩家看到的内容……", meaning: "这份物证真正说明什么……",
+  related: [LIN, BAI, SHEN], contradicts: [BAI], search: "翻看厨房的出餐单", needsPresent?: GU }
+```
+
+- `n` 从 1 开始连续编号。
+- `at` 只能是可进入的六处：`cafe` `books` `police` `station` `post` `inn`。分散到至少四处，让玩家走起来。
+- `text` 只写**看得见的事实**（时间、签名、痕迹、数字），推理留给玩家；`meaning` 写它真正说明什么（结案后才展示）。
+- `contradicts`：这份物证能改正谁的说法（和 `revisions` 对应）。
+- `needsPresent`：必须某位居民在场才能核对（例如寄存柜要站员开）。玩家要等这个人回到 `at`，慎用。
+- 每份物证都要在 `history` 里有来源（某条 `clue: n`）。
+
+### 真实经过（`history`）
+
+```ts
+{ key: "pry", time: "06:36", at: "inn", type: "obtain_item", actors: [CHEN], summary: "……", tags: ["means", "staging"], clue: 1 }
+```
+
+- 按时间顺序写这个早晨真正发生的事。`at` 可以是任何地点（包括住宅、广场）。
+- `type`：`conflict`（动机）、`alibi`（不在场）、`witness`（被看见）、`move`（走动）、`obtain_item`（取得/动手）、`incident`（案件被发现，**恰好一条**）、`forensic_clue`（留下痕迹）、`conversation`（交谈、报案）。
+- 必须有：真凶的一条 `conflict` + `tags: ["motive"]`；真凶的 `tags: ["means"]`；一条带真凶、`tags: ["opportunity"]` 的事件。
+- **会被改正的说法**：给对应事件写 `publicVersion`（这个人对外的说法）和 `contradictedBy: [物证编号]`。
+- **步行时间是硬规则**：同一个人相邻两条事件之间，时间差必须 ≥ 步行时间（见参考页），也包括他在**其他案件**里的事件。
+
+### 推理
+
+| 字段 | 含义 |
+|---|---|
+| `scenes` | 六处可进入地点的显示顺序 |
+| `relationships` | 2—3 条人物关系，显示在案件里 |
+| `exclusions` | 每个非真凶嫌疑人一条：为什么不是他，引用哪些物证 |
+| `reasoning` | 5 步左右的推理链：动机、手法、时机、关键矛盾、排除 |
+| `redHerrings` | 误导点，2—3 条 |
+| `decisive` | 结案必需的关键物证编号 |
+| `answer` | 正确结论里，证明动机和手法的物证编号。自动试玩用它提交 |
+| `sources` / `events` | 把动机、手法、时机等环节指向物证编号和 history 的 key，照范例填 |
+| `ending` | 三段结局：物归何处、被误会的人怎样了、真凶承担了什么 |
+
+## 质量要求（自查不会替你检查，但会被审阅）
+
+1. **公平**：只靠玩家能找到的物证和能听到的话，就能推出唯一的真凶。不要把关键信息只藏在 `meaning` 里。
+2. **至少一个像样的误导**：一件指向错误的人的物证，或一个有嫌疑但另有原因的人。
+3. **说谎不等于有罪**：至少一位非真凶隐瞒了什么，并且有人情上说得通的理由（参考页「私事」一栏是好材料）。
+4. **时间有来源**：每个关键时间都说明是谁、看了哪块钟（电波钟、收银机、手表），延续河湾「钟表不一定可信」的气质。
+5. **小镇的尺度**：非致命事件（遗失、调包、撬锁、冒名……），没有暴力。结局温和，承担后果，但不把人写成坏人。
+6. **文字**：中文，简洁具体。物证 `text` 60—120 字，说法 60—120 字，结局每段 60—100 字。不要用"首先、其次、综上"这类腔调。
+7. **和已有案件不打架**：同一位居民在不同案件里的说法不能互相矛盾（例如第二宗里陈蕙说"六点二十起在邮局"，第一宗里她七点二十八在邮局，两者能接上）。
+
+## 现在的限制
+
+- 所有案件的历史都在**第 1 天 08:00 以前**。06:00—08:00 已经被前两宗占用了一部分，新案件请用 05:00—05:59，或者只用参考页里在那段时间空闲的居民。
+- 同一个早晨放太多案件会不可信。写到第三、四宗时，需要「跨天」支持，这由引擎负责人来做；先写好内容、注明需要跨天即可。
+- 只有六处地点可以搜查；住宅、广场只能出现在 `history` 里。
+
+## 交付前的清单
+
+- [ ] `node scripts/check-cases.mjs` 输出「✓ 全部通过」，并且你的案件显示「从领取到结案可以玩通」
+- [ ] `node scripts/check-cases.mjs --reference` 重新生成了参考页
+- [ ] 只改了「你可以改的文件」
+- [ ] 读一遍 `statements`：每个人只说自己知道的事
+- [ ] 交付说明里写：真凶、关键推理、误导点、需要引擎支持的地方（如果有）
+
+## 给 Codex 的任务模板
+
+> 在仓库 `detective-town-noir-ui` 新建分支 `cases/<key>`，按 `docs/cases/CASE-AUTHORING.md` 写河湾第 N 宗案件。
+> 主题：……；真凶：……（或由你提议）；希望的诡计：……。
+> 只修改说明里允许的文件。每次修改后运行 `node scripts/check-cases.mjs`，直到全部通过（包括自动试玩）。
+> 完成后重新生成参考页，提交到该分支，并写一段交付说明（真凶、推理链、误导点、需要的引擎支持）。

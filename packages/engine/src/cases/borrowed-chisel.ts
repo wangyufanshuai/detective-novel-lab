@@ -90,6 +90,7 @@ export const BORROWED_CHISEL: CasePack = {
   ],
   redHerrings: ["凿子刻着程渡的姓，但工具箱没有上锁。", "白露欠林阿梨育苗钱，又隐瞒了到过旅馆。", "06:40 前后下过小雨，穿雨衣的人不止一个。"],
   decisive: [1, 2, 3, 6, 8],
+  answer: { motive: [8], method: [1, 2] },
   sources: { motive: 8, means: 2, opportunity: 7, staging: 1, trace: 8, groupAlibi: 4 },
   events: { trigger: "found", motive: "deadline", means: ["take-chisel", "pry"], opportunity: "seen", staging: "pry", trace: "register", groupAlibi: "freight", scene: "inn", prep: "inn" },
   ending: [

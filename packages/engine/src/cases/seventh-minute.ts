@@ -89,6 +89,7 @@ export const SEVENTH_MINUTE: CasePack = {
   ],
   redHerrings: ["周砚携带的长筒装着空白海报纸。", "韩朔的校时遗漏造成误会，不能由此推定盗取。", "沈映预约拍图，却并未到店。"],
   decisive: [1, 2, 3, 7, 8],
+  answer: { motive: [2], method: [1, 7] },
   sources: { motive: 2, means: 1, opportunity: 8, staging: 1, trace: 7, groupAlibi: 5 },
   events: { trigger: "copy-found", motive: "delay", means: ["seal", "deposit"], opportunity: "last-original", staging: "seal", trace: "deposit", groupAlibi: "mail", scene: "books", prep: "books" },
   ending: [

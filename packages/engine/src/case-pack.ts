@@ -51,6 +51,9 @@ export type CasePack = {
   reasoning: Array<{ id: string; conclusion: string; clues: number[] }>;
   redHerrings: string[];
   decisive: number[];
+  /** The intended accepted theory: clue numbers that prove motive and method. Used by the
+   * auto-playthrough check, never sent to a player. */
+  answer: { motive: number[]; method: number[] };
   sources: { motive: number; means: number; opportunity: number; staging: number; trace: number; groupAlibi: number };
   events: { trigger: string; motive: string; means: string[]; opportunity: string; staging: string; trace: string; groupAlibi: string; scene: string; prep: string };
   ending: string[];
