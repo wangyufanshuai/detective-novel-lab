@@ -445,3 +445,61 @@
 .welcomeGuide input[type='checkbox'] { flex: none; width: 17px !important; height: 17px !important; min-height: 0 !important; margin: 0; accent-color: var(--tp-forest); }
 /* Nothing to steer until the notebook is opened. */
 .town:not([data-world-state='ready']) .touchPad { display: none; }
+
+/* Interiors: a room of its own over the paused town. */
+.interior { position: absolute; inset: 0; z-index: 5; background: #1f2b2e; animation: interiorIn .45s ease both; }
+.interiorCanvas { position: absolute; inset: 0; }
+.interiorCanvas canvas { display: block; width: 100%; height: 100%; }
+.interiorLabels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.interiorTag { position: absolute; left: 0; top: 0; display: flex; align-items: center; gap: 5px; translate: -50% -100%; padding: 3px 9px; font: 600 12px 'Noto Serif SC', serif; color: var(--tp-ink); background: color-mix(in srgb, var(--tp-paper) 92%, transparent); border: 1px solid var(--tp-line); border-radius: 3px; box-shadow: 0 2px 6px color-mix(in srgb, var(--tp-teal-deep) 30%, transparent); white-space: nowrap; transition: transform .05s linear; }
+.interiorTag i { display: grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; font: 700 10px 'Noto Sans SC', sans-serif; font-style: normal; color: var(--tp-paper); background: var(--tp-brass); }
+.interiorTag[data-state='done'] i { background: var(--tp-forest-light); }
+.interiorTag[data-state='commission'] i { background: var(--tp-rust); }
+.interiorTag[data-state='door'] { color: var(--tp-paper); background: var(--tp-wood-dark); border-color: var(--tp-wood-dark); }
+.interiorTag[data-near='true'] { border-color: var(--tp-brass); box-shadow: 0 0 0 2px color-mix(in srgb, var(--tp-focus) 70%, transparent), 0 3px 8px color-mix(in srgb, var(--tp-teal-deep) 30%, transparent); }
+.interiorCard { position: absolute; left: 24px; top: 26px; width: 280px; display: grid; gap: 8px; padding: 18px 18px 14px; color: var(--tp-ink); background: var(--tp-paper); border: 2px solid var(--tp-wood); border-radius: 5px; box-shadow: 0 3px 0 var(--tp-ink), 0 10px 26px color-mix(in srgb, var(--tp-teal-deep) 30%, transparent); }
+.interiorCard h2 { margin: 0; font: 600 22px 'Noto Serif SC', serif; color: var(--tp-forest-deep); }
+.interiorCard > p { margin: 0; font-size: 12px; line-height: 1.7; color: var(--tp-ink-muted); }
+.interiorCard ul { display: grid; gap: 4px; margin: 4px 0 0; padding: 0; list-style: none; }
+.interiorCard li button { width: 100%; display: flex; align-items: center; gap: 8px; padding: 7px 10px; text-align: left; font: 13px 'Noto Sans SC', sans-serif; color: var(--tp-ink); background: var(--tp-paper-deep); border: 1px solid transparent; border-radius: 3px; cursor: pointer; }
+.interiorCard li button:hover:not(:disabled) { border-color: var(--tp-brass); }
+.interiorCard li button > span { font-size: 11px; color: var(--tp-ink-muted); min-width: 52px; }
+.interiorCard li button[data-state='open'] > span, .interiorCard li button[data-state='commission'] > span { color: var(--tp-rust); font-weight: 600; }
+.interiorCard li button small { margin-left: auto; color: var(--tp-forest); font-variant-numeric: tabular-nums; }
+.interiorActions { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 6px; }
+.interiorActions .primary { margin: 0; }
+.interiorPrompt { position: absolute; left: 50%; bottom: 40px; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; padding: 9px 17px 9px 10px; font: 600 14px 'Noto Serif SC', serif; color: var(--tp-ink); background: var(--tp-paper-glow); border: 2px solid var(--tp-ink-muted); border-radius: 5px; box-shadow: 0 3px 0 var(--tp-ink); cursor: pointer; }
+.interiorPrompt kbd { color: var(--tp-paper-glow); background: var(--tp-forest); border-color: var(--tp-forest-deep); width: 27px; height: 27px; }
+.interiorSlip { position: absolute; left: 50%; bottom: 36px; width: min(460px, calc(100vw - 32px)); transform: translateX(-50%); display: grid; gap: 6px; padding: 18px 22px 14px; color: var(--tp-ink); background: var(--tp-paper); border: 2px solid var(--tp-wood); border-radius: 3px; box-shadow: 0 4px 0 var(--tp-ink), 0 16px 40px color-mix(in srgb, var(--tp-ink) 35%, transparent); animation: slipIn .35s cubic-bezier(.2, .9, .3, 1.2) both; }
+.interiorSlip[data-tone='found'] { border-color: var(--tp-forest-light); }
+.interiorSlip[data-tone='refuse'] { border-color: var(--tp-rust); }
+.interiorSlip h3 { margin: 0; font: 600 18px 'Noto Serif SC', serif; color: var(--tp-forest-deep); }
+.interiorSlip p { margin: 0; font-size: 13px; line-height: 1.85; }
+.interiorSlip .textButton { justify-self: end; }
+.town > .guide { z-index: 6; }
+@keyframes interiorIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slipIn { from { opacity: 0; transform: translate(-50%, 14px) rotate(-1deg); } to { opacity: 1; transform: translate(-50%, 0); } }
+@media (max-width: 720px) {
+  .interiorCard { left: 12px; right: 12px; top: 12px; width: auto; padding: 12px 14px 10px; gap: 6px; }
+  .interiorCard h2 { font-size: 18px; }
+  .interiorCard > p { display: none; }
+  .interiorCard ul { grid-template-columns: 1fr 1fr; }
+  .interiorCard li button { padding: 6px 8px; font-size: 12px; }
+  .interiorCard li button > span { min-width: 0; }
+  .interiorPrompt { bottom: 24px; left: auto; right: 12px; transform: none; }
+  .interiorSlip { bottom: 16px; }
+  .interior .touchPad { bottom: 24px; }
+}
+@media (pointer: coarse) { .interior .touchPad { display: grid; } }
+@media (prefers-reduced-motion: reduce) { .interior, .interiorSlip { animation: none; } }
+@media (max-width: 720px) {
+  .interiorCard { grid-template-columns: 1fr auto; align-items: center; padding: 10px 12px; }
+  .interiorCard > .eyebrow { display: none; }
+  .interiorCard h2 { font-size: 16px; }
+  .interiorCard ul { grid-column: 1 / -1; grid-row: 2; display: flex; overflow-x: auto; gap: 6px; margin: 0; scrollbar-width: none; }
+  .interiorCard li { flex: none; }
+  .interiorCard li button { min-height: 36px !important; white-space: nowrap; }
+  .interiorActions { grid-column: 2; grid-row: 1; margin: 0; gap: 8px; }
+  .interiorActions .primary { min-height: 34px !important; padding: 4px 10px; font-size: 12px; }
+  .interiorSlip { bottom: 176px; }
+}

@@ -16,6 +16,8 @@ import type { TownEmote } from "./world-labels";
 import { TownCaseFinale } from "./TownCaseFinale";
 import { useTownGuide } from "./town-guide";
 import { TownGuideCard } from "./TownGuideCard";
+import { TownInterior } from "./TownInterior";
+import { ROOMS, hasInterior } from "./interior-rooms";
 import { TownCaseBoard } from "./TownCaseBoard";
 import { TownStreetConversation } from "./TownStreetConversation";
 import { interactionKey, type TownContact, type TownInteraction } from "./town-interaction";
@@ -80,6 +82,7 @@ export default function TownPlayClient() {
   useTownSound(world.view, panel, overview);
   const [hasMoved, setHasMoved] = useState(false);
   const [wantGuide, setWantGuide] = useState(true);
+  const [interior, setInterior] = useState<string | null>(null);
   const guide = useTownGuide({ view: world.view, status: world.status, panel, overview, moved: hasMoved });
   // The verdict moment: only when a case turns solved during this visit, never on reload.
   const [finale, setFinale] = useState<string | null>(null);
@@ -154,6 +157,7 @@ export default function TownPlayClient() {
       setConversation(target.person); setPanel("person");
     } else {
       if (world.view?.sceneId !== target.place.id) { setToast("稍候，正在记下这次到访。"); return; }
+      if (hasInterior(target.place.id)) { keys.current.clear(); setInterior(target.place.id); return; }
       setPlace(target.place); setPanel("place");
     }
   }, [worldPaused, world.view?.sceneId]);
@@ -195,7 +199,7 @@ export default function TownPlayClient() {
       if (event.target instanceof HTMLElement && (event.target.matches("input, textarea, select") || event.target.isContentEditable)) return;
       if (event.ctrlKey || event.metaKey || event.altKey) return;
       const key = event.key.toLowerCase();
-      if (panel || finale || !ready || error || world.status !== "ready") return;
+      if (panel || finale || interior || !ready || error || world.status !== "ready") return;
       if (["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(key)) {
         event.preventDefault(); keys.current.add(key); return;
       }
@@ -216,7 +220,7 @@ export default function TownPlayClient() {
       window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); window.removeEventListener("blur", clear);
       document.removeEventListener("visibilitychange", clear);
     };
-  }, [panel, finale, ready, error, overview, inspect, chooseTool, worldPaused, world.status, world.view?.investigation, openCase]);
+  }, [panel, finale, interior, ready, error, overview, inspect, chooseTool, worldPaused, world.status, world.view?.investigation, openCase]);
   const mark = (destination: TownDestination) => {
     setWaypoint(destination.entrance); setWaypointName(destination.label); setPanel(null); setOverview(false);
     setToast(`已在地面标记「${destination.label}」，可以步行前往。`);
@@ -238,7 +242,7 @@ export default function TownPlayClient() {
   const connectionNotice = world.message && world.status !== "new" && <div className={styles.connectionNotice} role="alert"><p>{world.message}</p><button disabled={world.busy} onClick={() => void world.retry()}>重试保存</button><button disabled={world.busy} onClick={() => void world.reload()}>重新连接手记</button></div>;
 
   return <main id="detective-town-main" tabIndex={-1} className={styles.town} lang="zh-CN" aria-label="河湾小镇探索" data-ready={ready && !error} data-world-state={world.status} data-world-busy={world.busy} data-world-pending={world.pending} data-view={overview ? "overview" : "explore"} data-panel={panel ?? "none"} data-guide={guide.step && ready && world.status === "ready" ? guide.step.id : "none"} data-guide-slot={guide.step && ready && world.status === "ready" ? guide.step.slot ?? "" : ""}>
-    <TownScene keys={keys} overview={overview} paused={!!panel || !!error || worldPaused} conversationActorId={panel === "person" ? conversation?.actorId ?? null : null} lantern={lantern} quality={quality} waypoint={waypoint} placeTags={placeTags} emotes={emotes} onMarkPlace={markScene} worldView={world.view} restore={world.restore} onReady={onReady} onUpdate={onUpdate} onError={setError} />
+    <TownScene keys={keys} overview={overview} paused={!!panel || !!error || worldPaused || !!interior} suspended={!!interior} conversationActorId={panel === "person" ? conversation?.actorId ?? null : null} lantern={lantern} quality={quality} waypoint={waypoint} placeTags={placeTags} emotes={emotes} onMarkPlace={markScene} worldView={world.view} restore={world.restore} onReady={onReady} onUpdate={onUpdate} onError={setError} />
     <div className={styles.vignette} aria-hidden="true" />
     <header className={styles.arrival}>
       <div className={styles.arrivalSeal}><Icon name="手记" /></div>
@@ -279,6 +283,8 @@ export default function TownPlayClient() {
       {panel === "bag" && <><p className={styles.prose}>观察镜、地图、手记本、铅笔、相机与提灯，已经放进你的行囊。</p><div className={styles.bagTools}>{tools.slice(0, 6).map(name => <div key={name}><Icon name={name} /><span>{name}</span></div>)}</div><p className={styles.quiet}>{world.view?.investigation ? `案件本里已收录 ${world.view.investigation.clues.length} 份物证记录。原件留在保管地点。` : "案件物品会在调查后记入手记。底部工具栏可直接使用这些探索工具。"}</p></>}
       {panel === "help" && <><button className={styles.textButton} onClick={() => { guide.restart(); setPanel(null); }}>重新开始新手引导 →</button><div className={styles.helpRow}><kbd>W A S D</kbd><span>或方向键，沿着画面方向走动</span></div><div className={styles.helpRow}><kbd>E</kbd><span>走近居民交谈，靠近店门观察</span></div><div className={styles.helpRow}><kbd>M / J</kbd><span>全镇俯瞰 / 打开手记</span></div><div className={styles.helpRow}><kbd>K / B</kbd><span>领取调查手记后，翻开案件本 / 案件看板</span></div><div className={styles.helpRow}><kbd>1 — 8</kbd><span>切换底部随身工具</span></div><p className={styles.quiet}>触屏可按住左下方方向键行走，点击出现的交谈或地点提示。涉及案件的询问与物证核对会用五分钟，并保存到手记。</p></>}
     </dialog>
+    {interior && world.view && <TownInterior key={interior} room={ROOMS[interior]} view={world.view} paused={!!panel || !!finale} busy={worldPaused} message={world.message} command={world.command}
+      onTalk={person => { setConversation(person); setPanel("person"); }} onOpenBook={() => openCase()} onExit={() => setInterior(null)} />}
     {ready && !error && world.status === "ready" && !overview && !finale && guide.step && <TownGuideCard step={guide.step} index={guide.index} total={guide.total} finishing={guide.finishing} onSkip={guide.skip} />}
     {finale && world.view?.investigation?.id === finale && <TownCaseFinale investigation={world.view.investigation} commission={world.view.commission}
       onRead={() => { setFinale(null); openCase("ending"); }} onClose={() => { setFinale(null); setPanel(null); }} />}

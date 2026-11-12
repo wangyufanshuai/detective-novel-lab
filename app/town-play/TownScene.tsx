@@ -26,6 +26,8 @@ interface Props {
   keys: RefObject<Set<string>>;
   overview: boolean;
   paused: boolean;
+  /** Another view covers the town (an interior): skip drawing entirely. */
+  suspended?: boolean;
   conversationActorId: string | null;
   lantern: boolean;
   quality: "high" | "balanced";
@@ -244,9 +246,10 @@ export default function TownScene(props: Props) {
             if (shownView && shownView.assetSha256 !== manifest.asset.sha256) { live.current.onError("手记与小镇模型版本不一致，原记录已保留。"); stopped = true; return; }
             motion.reconcile(shownView?.residents ?? [], position);
           }
+          if (settings.suspended) return;
           if (!cadence.shouldRender(now, settings.quality)) return;
           const cpuStart = diagnostics ? performance.now() : 0;
-          const delta = Math.min((now - previous) / 1000, .05);
+          const delta = THREE.MathUtils.clamp((now - previous) / 1000, 0, .05);
           previous = now;
           if (quality !== settings.quality) {
             quality = settings.quality;

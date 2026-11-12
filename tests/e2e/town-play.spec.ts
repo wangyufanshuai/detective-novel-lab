@@ -91,6 +91,30 @@ test.describe("town-play", () => {
     await expect(dialog(page)).toHaveCount(0);
   });
 
+  test("bookshop interior: walk in, take the notebook, search, walk out", async ({ page }) => {
+    await openTown(page);
+    await page.getByLabel("第一次来，陪我走完第一宗（新手引导）").uncheck();
+    await page.getByRole("button", { name: "开始河湾手记" }).click();
+    await expect(page.locator("main[data-world-state='ready']")).toBeVisible({ timeout: 30_000 });
+    await act(page, { kind: "arrive", sceneId: "books" });
+    await reloadTown(page);
+    await page.keyboard.press("e");
+    const room = page.locator("[class*=interior]").filter({ has: page.getByRole("heading", { name: "旧书店" }) }).first();
+    await expect(room).toBeVisible({ timeout: 15_000 });
+    const spots = page.getByLabel("房间里可以查看的地方");
+    await spots.getByRole("button").filter({ hasText: "柜台" }).click();
+    const slip = page.locator("[class*=interiorSlip]");
+    await expect(slip).toContainText("领取了调查手记");
+    await slip.getByRole("button", { name: "收好" }).click();
+    await spots.getByRole("button").filter({ hasText: "展台" }).click();
+    await expect(slip).toContainText("断开的蓝封条");
+    await expect(spots.getByRole("button").filter({ hasText: "展台" })).toContainText("1/1");
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("heading", { name: "旧书店" })).toHaveCount(0);
+    await expect(page.getByLabel("案件进度")).toContainText("第七分钟");
+  });
+
   test("case path: open, search, question, board, wrong theory, solve", async ({ page }, testInfo) => {
     await startNotebook(page);
 
