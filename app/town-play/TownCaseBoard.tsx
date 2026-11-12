@@ -5,6 +5,7 @@ import type { TownCaseView, TownPlayView } from "@/lib/town-play-contract";
 import type { PlayerTheory } from "@/packages/engine/src/types";
 import { caseNextStep } from "./TownInvestigation";
 import styles from "./town-play.module.css";
+import { townSound } from "./town-sound";
 
 type Props = {
   investigation: TownCaseView;
@@ -82,7 +83,7 @@ export function TownCaseBoard({ investigation: c, residents, places, openBook }:
   const name = (id: string) => c.suspects.find(p => p.id === id)?.name ?? c.conversations.find(l => l.characterId === id)?.name;
   const clueTitle = (id: string) => c.clues.find(e => e.id === id)?.title;
   const focusLines = pick ? c.conversations.filter(l => pick.kind === "person" ? l.characterId === pick.id : l.evidenceId === pick.id) : [];
-  const toggle = (next: NonNullable<Pick>) => setPick(old => old?.kind === next.kind && old.id === next.id ? null : next);
+  const toggle = (next: NonNullable<Pick>) => { townSound().play("pin"); setPick(old => old?.kind === next.kind && old.id === next.id ? null : next); };
 
   return <div className={styles.board} data-picked={pick ? pick.kind : "none"}>
     <div ref={canvas} className={styles.boardCanvas}>

@@ -9,6 +9,9 @@ import { TownDayDial, dayPeriod } from "./TownDayDial";
 import { clockHours } from "./town-lighting";
 import { useTownWorld } from "./useTownWorld";
 import { TownCaseBook, TownCasePlace, TownCaseTracker, commissionHint, type CaseBookTab } from "./TownInvestigation";
+import { TownSoundSettings } from "./TownSoundSettings";
+import { townSound } from "./town-sound";
+import { useTownSound } from "./useTownSound";
 import { TownCaseBoard } from "./TownCaseBoard";
 import { TownStreetConversation } from "./TownStreetConversation";
 import { interactionKey, type TownContact, type TownInteraction } from "./town-interaction";
@@ -70,6 +73,7 @@ export default function TownPlayClient() {
   const [toast, setToast] = useState("");
   const knownVisited = world.view?.visitedSceneIds ?? visited;
   const worldPaused = world.status !== "ready" || world.busy || world.pending;
+  useTownSound(world.view, panel, overview);
 
   useEffect(() => {
     try {
@@ -117,6 +121,7 @@ export default function TownPlayClient() {
   }, []);
   const onUpdate = useCallback((snapshot: TownSnapshot) => {
     lastSnapshot.current = snapshot;
+    townSound().setWorld({ position: snapshot.position, moving: snapshot.moving });
     setInteraction(old => interactionKey(old) === interactionKey(snapshot.interaction) ? old : snapshot.interaction);
     setAreaId(old => old === snapshot.areaId ? old : snapshot.areaId);
   }, []);
@@ -130,6 +135,7 @@ export default function TownPlayClient() {
   };
   const chooseTool = useCallback((index: number) => {
     setSelected(index);
+    townSound().play("tick");
     if (index === 0) setToast("用 WASD 或方向键走动，走近居民或店门，按 E 交谈或观察。");
     if (index === 1) { keys.current.clear(); setOverview(v => !v); }
     if (index === 2) setPanel("journal");
@@ -227,7 +233,7 @@ export default function TownPlayClient() {
       {panel === "case" && world.view?.investigation && <TownCaseBook key={`${world.view.investigation.id}-${caseTab ?? ""}`} initialTab={caseTab} investigation={world.view.investigation} residents={world.view.residents} disabled={worldPaused} command={world.command} />}
       {panel === "people" && <><p className={styles.prose}>这里只记下亲眼见到的人。离开后保留上次目击地点与时间。</p>{peopleList}</>}
       {panel === "notes" && <><label htmlFor="riverbend-notes" className={styles.quiet}>记下一个地标、一条路线，或你想回来的理由。</label><textarea id="riverbend-notes" value={notes} onChange={event => setNotes(event.target.value)} maxLength={8000} placeholder="钟楼在广场的北面……" rows={7} /><div className={styles.notesFooter}><span>{saveStatus}</span><button className={styles.textButton} onClick={exportNotes}>导出手记 ↓</button></div></>}
-      {panel === "settings" && <><p className={styles.prose}>打开手记时，角色会停下脚步。到访和等待会推进居民的日程。</p><fieldset className={styles.settings}><legend>画面</legend><label><input type="radio" name="quality" checked={quality === "high"} onChange={() => setQuality("high")} /> 清晰 · 较高画质</label><label><input type="radio" name="quality" checked={quality === "balanced"} onChange={() => setQuality("balanced")} /> 轻量 · 降低功耗</label></fieldset><div className={styles.waitChoices}><span>在这里歇一会儿</span>{([15, 30, 60] as const).map(minutes => <button key={minutes} disabled={worldPaused || areaId !== world.view?.sceneId} onClick={() => void world.command({ kind: "wait", minutes })}>{minutes === 60 ? "一小时" : `${minutes} 分钟`}</button>)}</div><p className={styles.quiet}>居民会按日程改变地点。首案可在旧书店或警务所开启。手记保存到本机项目，随手写的笔记保存在这个浏览器。</p><button className={styles.primary} onClick={() => setPanel(null)}>返回小镇</button></>}
+      {panel === "settings" && <><p className={styles.prose}>打开手记时，角色会停下脚步。到访和等待会推进居民的日程。</p><fieldset className={styles.settings}><legend>画面</legend><label><input type="radio" name="quality" checked={quality === "high"} onChange={() => setQuality("high")} /> 清晰 · 较高画质</label><label><input type="radio" name="quality" checked={quality === "balanced"} onChange={() => setQuality("balanced")} /> 轻量 · 降低功耗</label></fieldset><TownSoundSettings /><div className={styles.waitChoices}><span>在这里歇一会儿</span>{([15, 30, 60] as const).map(minutes => <button key={minutes} disabled={worldPaused || areaId !== world.view?.sceneId} onClick={() => void world.command({ kind: "wait", minutes })}>{minutes === 60 ? "一小时" : `${minutes} 分钟`}</button>)}</div><p className={styles.quiet}>居民会按日程改变地点。首案可在旧书店或警务所开启。手记保存到本机项目，随手写的笔记保存在这个浏览器。</p><button className={styles.primary} onClick={() => setPanel(null)}>返回小镇</button></>}
       {panel === "bag" && <><p className={styles.prose}>观察镜、地图、手记本、铅笔、相机与提灯，已经放进你的行囊。</p><div className={styles.bagTools}>{tools.slice(0, 6).map(name => <div key={name}><Icon name={name} /><span>{name}</span></div>)}</div><p className={styles.quiet}>{world.view?.investigation ? `案件本里已收录 ${world.view.investigation.clues.length} 份物证记录。原件留在保管地点。` : "案件物品会在调查后记入手记。底部工具栏可直接使用这些探索工具。"}</p></>}
       {panel === "help" && <><div className={styles.helpRow}><kbd>W A S D</kbd><span>或方向键，沿着画面方向走动</span></div><div className={styles.helpRow}><kbd>E</kbd><span>走近居民交谈，靠近店门观察</span></div><div className={styles.helpRow}><kbd>M / J</kbd><span>全镇俯瞰 / 打开手记</span></div><div className={styles.helpRow}><kbd>K / B</kbd><span>领取调查手记后，翻开案件本 / 案件看板</span></div><div className={styles.helpRow}><kbd>1 — 8</kbd><span>切换底部随身工具</span></div><p className={styles.quiet}>触屏可按住左下方方向键行走，点击出现的交谈或地点提示。涉及案件的询问与物证核对会用五分钟，并保存到手记。</p></>}
     </dialog>

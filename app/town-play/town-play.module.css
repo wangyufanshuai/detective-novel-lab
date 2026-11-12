@@ -368,3 +368,9 @@
 .closedCases span { font: 600 13px 'Noto Serif SC', serif; color: var(--tp-ink); }
 .closedCases em { font-style: normal; color: var(--tp-forest); }
 .closedCases em::before { content: "已归档 · "; color: var(--tp-ink-muted); }
+
+/* Sound settings */
+.soundSettings { display: grid; gap: 10px; }
+.soundSlider { display: grid; gap: 4px; font-size: 12px; color: var(--tp-ink-muted); }
+.soundSlider input[type='range'] { width: 100%; accent-color: var(--tp-forest); min-height: 28px; }
+.soundSlider input[type='range']:disabled { opacity: .4; }
