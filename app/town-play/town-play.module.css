@@ -151,7 +151,7 @@
 @media (max-width: 1100px) { .walkHint { bottom: 120px; font-size: 10px; }.placeName { font-size: 13px; bottom: 120px; }.notice { top: 175px; } }
 @media (max-width: 720px) {
   .arrival { left: 12px; top: 16px; width: 235px; padding: 13px; gap: 8px; }.arrivalSeal { display: none; }.arrival h1 { font-size: 20px; }.arrival p { font-size: 10px; }.eyebrow { font-size: 9px; }.progress { margin-top: 10px; }
-  .dayCard { right: 12px; top: 16px; padding: 9px; gap: 6px; }.dayCard > svg { width: 23px; height: 23px; }.dayCard strong { font-size: 11px; }.dayCard button { display: none; }.dayCard span { font-size: 9px; }.previewLabel { bottom: 96px; font-size: 9px; }
+  .dayCard { right: 12px; top: 16px; padding: 9px; gap: 6px; }.dayCard > svg { width: 23px; height: 23px; }.dayCard strong { font-size: 11px; }.dayCard button { width: 34px; height: 34px; min-height: 0 !important; margin-left: 4px; flex: none; }.dayCard span { font-size: 9px; }.previewLabel { bottom: 96px; font-size: 9px; }
   .toolbar { bottom: max(18px, env(safe-area-inset-bottom)); padding: 5px; }.toolSlots { gap: 3px; }.toolSlot { width: 42px; height: 52px; }.toolSlot svg { width: 22px; height: 22px; }.toolSlot > span { font-size: 8px; }.toolSlot > small { font-size: 8px; left: 3px; }.toolName { font-size: 11px; }
   .placeName { right: 15px; bottom: 115px; font-size: 11px; }.placeName span { font-size: 9px; }.walkHint { left: 14px; bottom: 115px; }.walkHint span:last-child { display: none; }.waypoint { top: 159px; left: 13px; font-size: 10px; }
   .notice { top: 164px; width: 300px; }.notice span { font-size: 10px; }.interact { bottom: 185px; max-width: 250px; white-space: nowrap; padding-right: 10px; font-size: 11px; }
