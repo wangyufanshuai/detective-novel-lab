@@ -409,3 +409,39 @@
 @keyframes finaleStamp { from { opacity: 0; transform: rotate(-9deg) scale(2.4); } 70% { opacity: .95; } to { opacity: .88; transform: rotate(-9deg) scale(1); } }
 @media (max-width: 520px) { .finalePaper { padding: 26px 20px 22px; } .finalePaper h2 { font-size: 23px; padding-right: 70px; } .finaleStamp { font-size: 19px; right: 14px; top: 16px; } .finaleActions { flex-wrap: wrap; } }
 @media (prefers-reduced-motion: reduce) { .finale::backdrop, .finalePaper, .finaleStamp, .finaleEnding, .finaleNext { animation: none !important; } }
+
+/* First-play guide: one step at a time, bottom-left where the key hints sit. */
+.guide { position: absolute; left: 24px; bottom: 28px; width: 330px; display: grid; gap: 7px; padding: 14px 16px 12px; color: var(--tp-ink); background: var(--tp-paper); border: 2px solid var(--tp-wood); border-radius: 5px; box-shadow: 0 3px 0 var(--tp-ink), 0 10px 24px color-mix(in srgb, var(--tp-teal-deep) 22%, transparent); animation: guideIn .35s cubic-bezier(.2, .9, .3, 1.1) both; }
+.guide[data-finishing='true'] { border-color: var(--tp-forest-light); }
+.guideHead { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.guideHead .textButton { font-size: 11px; color: var(--tp-ink-muted); }
+.guide > strong { display: flex; align-items: center; gap: 6px; font: 600 16px 'Noto Serif SC', serif; color: var(--tp-forest-deep); }
+.guideTick { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; font-size: 12px; color: var(--tp-paper); background: var(--tp-forest); animation: emotePop .4s cubic-bezier(.3, 1.6, .5, 1) both; }
+.guide > p { margin: 0; font-size: 13px; line-height: 1.85; }
+.guide > p kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; margin: 0 2px; padding: 0 4px; font: 600 11px 'Noto Sans SC', sans-serif; vertical-align: 1px; }
+.guide > p b { font-weight: 600; color: var(--tp-wood-dark); }
+.guideDots { display: flex; gap: 4px; margin: 2px 0 0; padding: 0; list-style: none; }
+.guideDots li { flex: 1; height: 4px; border-radius: 2px; background: var(--tp-paper-deep); transition: background .3s; }
+.guideDots li[data-state='done'] { background: var(--tp-forest-light); }
+.guideDots li[data-state='now'] { background: var(--tp-brass-light); }
+.town:not([data-guide='none']) .walkHint { display: none; }
+.town[data-guide-slot='2'] .toolSlot:nth-of-type(2), .town[data-guide-slot='3'] .toolSlot:nth-of-type(3) { animation: guideSlot 1.6s ease-in-out infinite; }
+@keyframes guideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes guideSlot { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--tp-focus) 0%, transparent); } 50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--tp-focus) 80%, transparent); } }
+@media (max-width: 1100px) { .guide { bottom: 120px; } }
+@media (max-width: 720px) { .guide { left: 12px; right: 12px; bottom: 100px; width: auto; padding: 10px 12px 9px; gap: 4px; } .guide > strong { font-size: 14px; } .guide > p { font-size: 12px; line-height: 1.7; } }
+@media (pointer: coarse) { .town:not([data-guide='none']) .touchPad { bottom: 236px; } }
+@media (prefers-reduced-motion: reduce) { .guide, .guideTick, .town[data-guide-slot] .toolSlot { animation: none !important; } }
+
+/* Opening card: what a day in Riverbend involves, and the guide opt-in. */
+.welcomeSteps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 0 0 16px; padding: 0; list-style: none; counter-reset: step; }
+.welcomeSteps li { counter-increment: step; display: grid; gap: 2px; padding: 8px 6px; font-size: 10.5px; line-height: 1.5; text-align: center; color: var(--tp-ink-muted); background: var(--tp-paper-deep); border-radius: 3px; }
+.welcomeSteps li::before { content: counter(step); font: 600 10px 'Noto Sans SC', sans-serif; color: var(--tp-brass); }
+.welcomeSteps b { font: 600 14px 'Noto Serif SC', serif; color: var(--tp-forest-deep); }
+.welcomeGuide { display: flex; align-items: center; gap: 8px; margin: 0 0 16px; font-size: 12px; color: var(--tp-ink); }
+@media (max-width: 430px) { .welcomeSteps { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 720px) { .town:not([data-guide='none']) .interact { bottom: 226px; } }
+.welcomeGuide { justify-content: flex-start; text-align: left; line-height: 1.6; cursor: pointer; }
+.welcomeGuide input[type='checkbox'] { flex: none; width: 17px !important; height: 17px !important; min-height: 0 !important; margin: 0; accent-color: var(--tp-forest); }
+/* Nothing to steer until the notebook is opened. */
+.town:not([data-world-state='ready']) .touchPad { display: none; }

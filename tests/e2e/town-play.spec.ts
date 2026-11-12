@@ -57,6 +57,16 @@ test.describe("town-play", () => {
     await expect(page.getByLabel("随身工具栏").getByRole("button")).toHaveCount(8);
     await expect(main).toContainText("旧桥原图不见了");
 
+    // First-play guide: it finishes steps when the player does them, and can be skipped.
+    const guide = page.getByLabel("新手引导");
+    await expect(guide).toContainText("新手引导 · 1/9");
+    await expect(guide).toContainText("在河湾走一走");
+    await page.locator("canvas").click({ position: { x: 20, y: 300 } });
+    await page.keyboard.down("w"); await page.waitForTimeout(1500); await page.keyboard.up("w");
+    await expect(guide).toContainText("和居民打个招呼", { timeout: 15_000 });
+    await guide.getByRole("button", { name: "跳过引导" }).click();
+    await expect(guide).toHaveCount(0);
+
     // Overview: one clickable sign per destination; a sign marks the place.
     await page.getByRole("button", { name: /^2\s*地图$/ }).click();
     await expect(main).toHaveAttribute("data-view", "overview");

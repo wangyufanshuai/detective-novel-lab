@@ -14,6 +14,8 @@ import { townSound } from "./town-sound";
 import { useTownSound } from "./useTownSound";
 import type { TownEmote } from "./world-labels";
 import { TownCaseFinale } from "./TownCaseFinale";
+import { useTownGuide } from "./town-guide";
+import { TownGuideCard } from "./TownGuideCard";
 import { TownCaseBoard } from "./TownCaseBoard";
 import { TownStreetConversation } from "./TownStreetConversation";
 import { interactionKey, type TownContact, type TownInteraction } from "./town-interaction";
@@ -76,6 +78,9 @@ export default function TownPlayClient() {
   const knownVisited = world.view?.visitedSceneIds ?? visited;
   const worldPaused = world.status !== "ready" || world.busy || world.pending;
   useTownSound(world.view, panel, overview);
+  const [hasMoved, setHasMoved] = useState(false);
+  const [wantGuide, setWantGuide] = useState(true);
+  const guide = useTownGuide({ view: world.view, status: world.status, panel, overview, moved: hasMoved });
   // The verdict moment: only when a case turns solved during this visit, never on reload.
   const [finale, setFinale] = useState<string | null>(null);
   const solvedCase = useRef<{ id: string; solved: boolean } | null>(null);
@@ -158,6 +163,7 @@ export default function TownPlayClient() {
   const onUpdate = useCallback((snapshot: TownSnapshot) => {
     lastSnapshot.current = snapshot;
     townSound().setWorld({ position: snapshot.position, moving: snapshot.moving });
+    if (snapshot.moving) setHasMoved(true);
     setInteraction(old => interactionKey(old) === interactionKey(snapshot.interaction) ? old : snapshot.interaction);
     setAreaId(old => old === snapshot.areaId ? old : snapshot.areaId);
   }, []);
@@ -231,7 +237,7 @@ export default function TownPlayClient() {
   const peopleList = <div className={styles.peopleList}>{world.view?.residents.map(person => <div key={person.npcId}><strong>{person.name}<small>{person.role}</small></strong><span>{person.visibility === "observed" && areaId === person.sceneId ? "本次到访见于" : "上次见于"} {person.locationName}</span><small>第 {person.day} 天 · {person.time}</small></div>)}{!world.view?.residents.length && <p>亲眼见过的人，会记在这里。</p>}</div>;
   const connectionNotice = world.message && world.status !== "new" && <div className={styles.connectionNotice} role="alert"><p>{world.message}</p><button disabled={world.busy} onClick={() => void world.retry()}>重试保存</button><button disabled={world.busy} onClick={() => void world.reload()}>重新连接手记</button></div>;
 
-  return <main id="detective-town-main" tabIndex={-1} className={styles.town} lang="zh-CN" aria-label="河湾小镇探索" data-ready={ready && !error} data-world-state={world.status} data-world-busy={world.busy} data-world-pending={world.pending} data-view={overview ? "overview" : "explore"} data-panel={panel ?? "none"}>
+  return <main id="detective-town-main" tabIndex={-1} className={styles.town} lang="zh-CN" aria-label="河湾小镇探索" data-ready={ready && !error} data-world-state={world.status} data-world-busy={world.busy} data-world-pending={world.pending} data-view={overview ? "overview" : "explore"} data-panel={panel ?? "none"} data-guide={guide.step && ready && world.status === "ready" ? guide.step.id : "none"} data-guide-slot={guide.step && ready && world.status === "ready" ? guide.step.slot ?? "" : ""}>
     <TownScene keys={keys} overview={overview} paused={!!panel || !!error || worldPaused} conversationActorId={panel === "person" ? conversation?.actorId ?? null : null} lantern={lantern} quality={quality} waypoint={waypoint} placeTags={placeTags} emotes={emotes} onMarkPlace={markScene} worldView={world.view} restore={world.restore} onReady={onReady} onUpdate={onUpdate} onError={setError} />
     <div className={styles.vignette} aria-hidden="true" />
     <header className={styles.arrival}>
@@ -248,7 +254,7 @@ export default function TownPlayClient() {
     {overview && <section className={styles.overview} aria-label="全镇俯瞰地点"><div><span className={styles.eyebrow}>小镇一览</span><h2>从河桥，到每一扇门</h2><p>选择一处地点，在街道上留下标记。</p></div><div className={styles.destinationList}>{destinations.map(d => <button key={d.id} onClick={() => mark(d)}><span>{knownVisited.includes(d.id) ? "✓" : "◇"}</span>{d.label}{openLeads.get(d.id) ? <b className={styles.leadBadge} aria-label={`${openLeads.get(d.id)} 处待核对`}>{openLeads.get(d.id)}</b> : null}</button>)}</div><button className={styles.textButton} onClick={() => setPanel("people")}>查看人物目击 · {world.view?.residents.length || 0} 人</button><button className={styles.returnButton} onClick={() => setOverview(false)}>返回角色视角 <kbd>M</kbd></button></section>}
     {!ready && !error && <div className={styles.loading} role="status"><span className={styles.loadingMark}>R</span><h2>正在走进河湾</h2><p>石板路、街角与河水，正在眼前展开。</p></div>}
     {error && <div className={styles.loading} role="alert"><h2>小镇暂时没有载入</h2><p>{error}</p><button onClick={() => location.reload()}>重新载入</button></div>}
-    {ready && !error && world.status === "new" && <div className={styles.welcome}><span className={styles.eyebrow}>第一天 · 河湾</span><h2>把日子，写成手记</h2><p>沿石板路走近居民。到访会推进小镇时间，你亲眼见到的人和地点会留下记录。</p><button className={styles.primary} disabled={world.busy} onClick={() => void world.start()}>开始河湾手记</button>{world.message && <p role="alert">{world.message}</p>}</div>}
+    {ready && !error && world.status === "new" && <div className={styles.welcome}><span className={styles.eyebrow}>第一天 · 河湾</span><h2>把日子，写成手记</h2><p>沿石板路走近居民。到访会推进小镇时间，你亲眼见到的人和地点会留下记录。</p><ol className={styles.welcomeSteps}><li><b>走访</b>六处店铺与街角</li><li><b>询问</b>先听居民说完</li><li><b>核对</b>拿物证对照说法</li><li><b>结案</b>写下结论</li></ol><label className={styles.welcomeGuide}><input type="checkbox" checked={wantGuide} onChange={e => setWantGuide(e.target.checked)} /> 第一次来，陪我走完第一宗（新手引导）</label><button className={styles.primary} disabled={world.busy} onClick={() => { guide.setEnabled(wantGuide); void world.start(); }}>开始河湾手记</button>{world.message && <p role="alert">{world.message}</p>}</div>}
     {!panel && connectionNotice}
     <div className={styles.notice} role="status" aria-live="polite">{toast && <span>{toast}</span>}</div>
     {ready && !overview && !panel && !worldPaused && interaction && <button className={styles.interact} onClick={inspect}><kbd>E</kbd><span>{interaction.kind === "resident" ? `交谈 · ${interaction.person.name}` : `观察 · ${interaction.place.label}`}</span></button>}
@@ -271,8 +277,9 @@ export default function TownPlayClient() {
       {panel === "notes" && <><label htmlFor="riverbend-notes" className={styles.quiet}>记下一个地标、一条路线，或你想回来的理由。</label><textarea id="riverbend-notes" value={notes} onChange={event => setNotes(event.target.value)} maxLength={8000} placeholder="钟楼在广场的北面……" rows={7} /><div className={styles.notesFooter}><span>{saveStatus}</span><button className={styles.textButton} onClick={exportNotes}>导出手记 ↓</button></div></>}
       {panel === "settings" && <><p className={styles.prose}>打开手记时，角色会停下脚步。到访和等待会推进居民的日程。</p><fieldset className={styles.settings}><legend>画面</legend><label><input type="radio" name="quality" checked={quality === "high"} onChange={() => setQuality("high")} /> 清晰 · 较高画质</label><label><input type="radio" name="quality" checked={quality === "balanced"} onChange={() => setQuality("balanced")} /> 轻量 · 降低功耗</label></fieldset><TownSoundSettings /><div className={styles.waitChoices}><span>在这里歇一会儿</span>{([15, 30, 60] as const).map(minutes => <button key={minutes} disabled={worldPaused || areaId !== world.view?.sceneId} onClick={() => void world.command({ kind: "wait", minutes })}>{minutes === 60 ? "一小时" : `${minutes} 分钟`}</button>)}</div><p className={styles.quiet}>居民会按日程改变地点。首案可在旧书店或警务所开启。手记保存到本机项目，随手写的笔记保存在这个浏览器。</p><button className={styles.primary} onClick={() => setPanel(null)}>返回小镇</button></>}
       {panel === "bag" && <><p className={styles.prose}>观察镜、地图、手记本、铅笔、相机与提灯，已经放进你的行囊。</p><div className={styles.bagTools}>{tools.slice(0, 6).map(name => <div key={name}><Icon name={name} /><span>{name}</span></div>)}</div><p className={styles.quiet}>{world.view?.investigation ? `案件本里已收录 ${world.view.investigation.clues.length} 份物证记录。原件留在保管地点。` : "案件物品会在调查后记入手记。底部工具栏可直接使用这些探索工具。"}</p></>}
-      {panel === "help" && <><div className={styles.helpRow}><kbd>W A S D</kbd><span>或方向键，沿着画面方向走动</span></div><div className={styles.helpRow}><kbd>E</kbd><span>走近居民交谈，靠近店门观察</span></div><div className={styles.helpRow}><kbd>M / J</kbd><span>全镇俯瞰 / 打开手记</span></div><div className={styles.helpRow}><kbd>K / B</kbd><span>领取调查手记后，翻开案件本 / 案件看板</span></div><div className={styles.helpRow}><kbd>1 — 8</kbd><span>切换底部随身工具</span></div><p className={styles.quiet}>触屏可按住左下方方向键行走，点击出现的交谈或地点提示。涉及案件的询问与物证核对会用五分钟，并保存到手记。</p></>}
+      {panel === "help" && <><button className={styles.textButton} onClick={() => { guide.restart(); setPanel(null); }}>重新开始新手引导 →</button><div className={styles.helpRow}><kbd>W A S D</kbd><span>或方向键，沿着画面方向走动</span></div><div className={styles.helpRow}><kbd>E</kbd><span>走近居民交谈，靠近店门观察</span></div><div className={styles.helpRow}><kbd>M / J</kbd><span>全镇俯瞰 / 打开手记</span></div><div className={styles.helpRow}><kbd>K / B</kbd><span>领取调查手记后，翻开案件本 / 案件看板</span></div><div className={styles.helpRow}><kbd>1 — 8</kbd><span>切换底部随身工具</span></div><p className={styles.quiet}>触屏可按住左下方方向键行走，点击出现的交谈或地点提示。涉及案件的询问与物证核对会用五分钟，并保存到手记。</p></>}
     </dialog>
+    {ready && !error && world.status === "ready" && !overview && !finale && guide.step && <TownGuideCard step={guide.step} index={guide.index} total={guide.total} finishing={guide.finishing} onSkip={guide.skip} />}
     {finale && world.view?.investigation?.id === finale && <TownCaseFinale investigation={world.view.investigation} commission={world.view.commission}
       onRead={() => { setFinale(null); openCase("ending"); }} onClose={() => { setFinale(null); setPanel(null); }} />}
   </main>;
