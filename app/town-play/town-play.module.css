@@ -176,6 +176,32 @@
 .caseTabs { display: flex; gap: 5px; flex-wrap: wrap; border-bottom: 1px solid var(--tp-line); margin: 20px 0 16px; }
 .caseTabs button { min-height: 44px; padding: 8px 13px; border: 1px solid transparent; border-bottom: none; background: transparent; color: var(--tp-wood); font-size: 12px; }
 .caseTabs button[aria-pressed='true'] { background: var(--tp-paper-deep); border-color: var(--tp-line); color: var(--tp-forest-deep); }
+.notebookFilters { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); align-items: end; gap: 12px; padding: 14px; border: 1px solid var(--tp-line); background: var(--tp-paper-deep); }
+.notebookFilters label { display: grid; min-width: 0; gap: 7px; font-size: 12px; color: var(--tp-forest-deep); }
+.notebookFilters input[type='search'], .notebookFilters select { box-sizing: border-box; width: 100%; min-width: 0; min-height: 44px; border: 1px solid var(--tp-line-strong); border-radius: 3px; padding: 9px; background: var(--tp-paper); color: var(--tp-ink); font: inherit; }
+.notebookFilters .notebookCheck { display: flex; align-items: center; min-height: 44px; gap: 8px; line-height: 1.7; }
+.notebookCheck input { width: 18px; height: 18px; flex: none; accent-color: var(--tp-forest); }
+.notebookCount { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; margin: 8px 0; color: var(--tp-olive-deep); font-size: 11px; }
+.notebookCount button { min-height: 44px; }
+.peopleDirectory { border-block: 1px solid var(--tp-line); margin: 14px 0; padding: 4px 0; }
+.peopleDirectory summary { min-height: 44px; align-content: center; color: var(--tp-forest-deep); font-size: 13px; cursor: pointer; }
+.peopleDirectory ul { padding: 0; margin: 0; list-style: none; }
+.peopleDirectory li { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid var(--tp-line); padding: 12px 0; }
+.peopleDirectory strong { display: block; font: 600 16px 'Noto Serif SC', serif; }
+.peopleDirectory small { display: block; margin-top: 5px; font-size: 11px; color: var(--tp-olive-deep); }
+.peopleDirectory li p, .boardSighting p { margin: 6px 0; font-size: 11px; line-height: 1.8; color: var(--tp-olive-deep); overflow-wrap: anywhere; }
+.peopleDirectoryActions { display: flex; flex-wrap: wrap; justify-content: end; gap: 4px 10px; }
+.peopleDirectoryActions button, .boardSighting button { min-height: 44px; }
+.evidencePreview { min-width: 0; margin-top: 10px; padding: 12px; border: 1px solid var(--tp-line); background: var(--tp-paper-deep); overflow-wrap: anywhere; }
+.evidencePreview > small { font-size: 10px; line-height: 1.7; color: var(--tp-olive-deep); }
+.evidencePreview h4 { font: 600 14px/1.7 'Noto Serif SC', serif; margin: 7px 0; }
+.evidencePreview p, .streetSpeech .evidencePreview p { margin: 6px 0 0; font-size: 12px; line-height: 1.9; }
+.evidencePreview .evidenceHistory { border-top: 1px solid var(--tp-line); padding-top: 9px; color: var(--tp-forest-deep); }
+.originalStatement { margin: 14px 0; border-top: 1px solid var(--tp-line); padding-top: 8px; }
+.originalStatement summary { min-height: 44px; align-content: center; font-size: 12px; color: var(--tp-forest-deep); cursor: pointer; }
+.streetWords .originalStatement p { font-size: 12px; color: var(--tp-olive-deep); }
+@media (max-width: 560px) { .peopleDirectory li { align-items: start; flex-direction: column; gap: 4px; }.peopleDirectoryActions { justify-content: start; } }
+@media (max-width: 560px) { .notebookFilters { grid-template-columns: minmax(0, 1fr); padding: 12px; }.notebookCount { line-height: 1.8; } }
 .searchChoices { display: grid; gap: 8px; margin: 16px 0 24px; }
 .searchChoices button { text-align: left; min-height: 46px; border: 1px solid var(--tp-line); border-radius: 3px; background: var(--tp-paper); padding: 11px 13px; font-size: 12px; line-height: 1.6; }
 .searchChoices button span { color: var(--tp-forest-light); padding-right: 10px; }
@@ -361,13 +387,17 @@
 @media (max-width: 430px) { .dayCard > .dayDial { display: none; } }
 @media (prefers-reduced-motion: reduce) { .placeSign, .personTag { transition: none; } }
 
-/* Journal: cases already closed, newest last. */
-.closedCases { list-style: none; margin: 12px 0 0; padding: 10px 0 0; border-top: 1px dashed var(--tp-line); display: grid; gap: 6px; }
-.closedCases li { display: grid; grid-template-columns: auto 1fr auto; align-items: baseline; gap: 10px; font-size: 12px; }
-.closedCases small { color: var(--tp-ink-muted); letter-spacing: .1em; }
-.closedCases span { font: 600 13px 'Noto Serif SC', serif; color: var(--tp-ink); }
-.closedCases em { font-style: normal; color: var(--tp-forest); }
-.closedCases em::before { content: "已归档 · "; color: var(--tp-ink-muted); }
+/* Read-only, browser-local copies of completed cases. */
+.archiveShelf { margin-top: 24px; border-top: 1px solid var(--tp-line); padding-top: 16px; }
+.archiveShelf h3 { font: 600 20px 'Noto Serif SC', serif; color: var(--tp-forest-deep); }
+.archiveShelf ul { list-style: none; padding: 0; margin: 14px 0; }
+.archiveShelf li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 0; border-top: 1px dashed var(--tp-line); }
+.archiveShelf small, .archiveShelf span { display: block; font-size: 11px; color: var(--tp-olive-deep); line-height: 1.8; }
+.archiveShelf strong { display: block; font: 600 16px/1.8 'Noto Serif SC', serif; }
+.archiveShelf button { flex: none; min-height: 44px; }
+.archiveActions { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.archiveActions button { min-height: 44px; }
+@media (max-width: 430px) { .archiveShelf li { align-items: start; flex-direction: column; gap: 5px; } }
 
 /* Sound settings */
 .soundSettings { display: grid; gap: 10px; }

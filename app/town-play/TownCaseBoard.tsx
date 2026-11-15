@@ -6,12 +6,14 @@ import type { PlayerTheory } from "@/packages/engine/src/types";
 import { caseNextStep } from "./TownInvestigation";
 import styles from "./town-play.module.css";
 import { townSound } from "./town-sound";
+import { casePeople } from "./case-notebook";
 
 type Props = {
   investigation: TownCaseView;
   residents: TownPlayView["residents"];
   places: Array<{ id: string; label: string }>;
   openBook: (tab: "clues" | "testimony" | "theory" | "ending") => void;
+  onMark?: (sceneId: string) => void;
 };
 type Pick = { kind: "person" | "clue"; id: string } | null;
 type Line = { key: string; x1: number; y1: number; x2: number; y2: number; corrected: boolean; active: boolean };
@@ -22,7 +24,7 @@ const fallbackPlaces = [
 ];
 
 /** Corkboard view of one case. Reads only the public case view and the local draft. */
-export function TownCaseBoard({ investigation: c, residents, places, openBook }: Props) {
+export function TownCaseBoard({ investigation: c, residents, places, openBook, onMark }: Props) {
   const canvas = useRef<HTMLDivElement>(null);
   const [pick, setPick] = useState<Pick>(null);
   const [lines, setLines] = useState<Line[]>([]);
@@ -83,6 +85,7 @@ export function TownCaseBoard({ investigation: c, residents, places, openBook }:
   const name = (id: string) => c.suspects.find(p => p.id === id)?.name ?? c.conversations.find(l => l.characterId === id)?.name;
   const clueTitle = (id: string) => c.clues.find(e => e.id === id)?.title;
   const focusLines = pick ? c.conversations.filter(l => pick.kind === "person" ? l.characterId === pick.id : l.evidenceId === pick.id) : [];
+  const focusedPerson = pick?.kind === "person" ? casePeople(c, residents, placeList).find(person => person.id === pick.id) : null;
   const toggle = (next: NonNullable<Pick>) => { townSound().play("pin"); setPick(old => old?.kind === next.kind && old.id === next.id ? null : next); };
 
   return <div className={styles.board} data-picked={pick ? pick.kind : "none"}>
@@ -101,7 +104,7 @@ export function TownCaseBoard({ investigation: c, residents, places, openBook }:
             <span className={styles.boardPin} aria-hidden="true" />
             <span className={styles.personInitial} aria-hidden="true">{p.name.slice(0, 1)}</span>
             <span><strong>{p.name}</strong><small>{p.role}</small>
-              <em>{seen ? `上次见于${seen.locationName} · ${seen.time}` : "尚未亲眼见到"}</em>
+              <em>{seen ? `上次见于${seen.locationName} · 第 ${seen.day} 天 ${seen.time}` : "尚未亲眼见到"}</em>
               <span className={styles.boardChips}>{p.witness && <i data-muted="true">证人</i>}{c.questionedIds.includes(p.id) ? <i>已询问</i> : <i data-muted="true">未询问</i>}{corrected > 0 && <i data-tone="red">说法更正 {corrected}</i>}</span>
             </span>
           </button>;
@@ -146,6 +149,7 @@ export function TownCaseBoard({ investigation: c, residents, places, openBook }:
     </div>
 
     <section className={styles.boardFocus} aria-live="polite" aria-label="对照">
+      {focusedPerson && <div className={styles.boardSighting}><p>{focusedPerson.sighting}。地点是目击记录，居民可能已经离开。</p>{focusedPerson.sceneId && onMark && <button type="button" className={styles.textButton} onClick={() => onMark(focusedPerson.sceneId!)} aria-label={`标记${focusedPerson.name}上次目击地点`}>标记目击地点 →</button>}</div>}
       {!pick && <p className={styles.quiet}>选中一个人或一件物证。红线是物证改正了说法，虚线是出示过但没有改变说法。</p>}
       {pick && !focusLines.length && <p className={styles.quiet}>{pick.kind === "person" ? `还没有和${name(pick.id)}谈过。走到其所在地点，按 E 交谈。` : `还没有拿「${clueTitle(pick.id)}」核对任何人的说法。`}</p>}
       {focusLines.map(l => <article key={l.id} data-corrected={l.corrected}>

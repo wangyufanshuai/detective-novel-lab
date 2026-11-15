@@ -39,6 +39,7 @@
   "exclude": [
     "node_modules",
     "output",
+    "outputs",
     "docs/3d-town",
     "docs/3d-rooms"
   ]

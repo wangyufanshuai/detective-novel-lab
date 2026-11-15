@@ -1,0 +1,21 @@
+import assert from "node:assert/strict";
+import { createNoirTestLoader } from "./noir-player-test-loader.mjs";
+
+const { load } = createNoirTestLoader();
+const { restoreCaseDraft, missingTheoryFields, caseClueNumber } = load("app/town-play/case-notebook.ts");
+const c = { suspects: [{ id: "person-a" }], clues: [{ id: "rb3-clue-08" }, { id: "rb3-clue-03" }] };
+const empty = restoreCaseDraft(null, c);
+assert.equal(missingTheoryFields(empty).length, 4);
+assert.deepEqual(restoreCaseDraft({ culpritId: {}, evidenceIds: [null, {}, "hidden"], proof: "broken" }, c), empty);
+const restored = restoreCaseDraft({ culpritId: "person-a", motive: "x".repeat(700), method: 7, evidenceIds: ["rb3-clue-08", "hidden", "rb3-clue-08"], proof: { motiveEvidenceIds: ["rb3-clue-03", null, "hidden"], methodEvidenceIds: ["rb3-clue-08"] } }, c);
+assert.equal(restored.motive.length, 600);
+assert.equal(restored.method, "");
+assert.deepEqual(restored.evidenceIds, ["rb3-clue-08", "rb3-clue-03"]);
+assert.deepEqual(restored.proof.motiveEvidenceIds, ["rb3-clue-03"]);
+assert.deepEqual(missingTheoryFields(restored), []);
+assert.equal(restoreCaseDraft({ ...restored, culpritId: "unknown-person" }, c).culpritId, "");
+assert.equal(caseClueNumber("rb3-clue-08", 1), "08");
+assert.equal(caseClueNumber("unstructured-clue", 3), "03");
+assert.deepEqual(restoreCaseDraft(restored, { ...c, clues: [] }).evidenceIds, []);
+assert.deepEqual(restoreCaseDraft(restored, { ...c, suspects: [] }).culpritId, "");
+console.log("✓ Notebook: corrupt drafts, discovery boundary, proof references, required fields, stable numbers and case isolation passed");
