@@ -146,12 +146,61 @@ try {
   act({ kind: "case-submit", theory: truthful });
   assert(view.investigation.solved);
   assert.equal(view.investigation.resolution.headline, "陈蕙撬开了募捐箱");
-  assert.equal(view.commission, null);
+  assert.equal(view.commission.ordinal, "第三宗");
+  assert.deepEqual(view.commission.openAt, ["station", "police"]);
   act({ kind: "arrive", sceneId: "inn" });
   fail({ kind: "case-open" });
-  check("second-case-solves-archives-first-and-offers-nothing-more");
+  check("second-case-solves-and-offers-third-only-at-its-places");
 
-  const files = ["packages/engine/src/riverbend-case.ts", "packages/engine/src/case-pack.ts", "packages/engine/src/cases/seventh-minute.ts", "packages/engine/src/cases/borrowed-chisel.ts", "packages/engine/src/riverbend-world.ts", "packages/engine/src/persistent-town.ts", "packages/engine/src/types.ts", "packages/engine/src/validators.ts", "packages/engine/src/world-analysis.ts", "lib/world/riverbend-investigation.ts", "lib/world/town-exploration-store.ts", "lib/town-play-contract.ts", "scripts/run-riverbend-case-checks.mjs"];
+  act({ kind: "arrive", sceneId: "station" });
+  act({ kind: "case-open" });
+  assert.equal(view.investigation.title, "撕下的那一页");
+  assert.equal(view.investigation.clues.length, 0);
+  assert.equal(view.investigation.leads.reduce((sum, lead) => sum + lead.open, 0), 8);
+  assert.deepEqual(view.closedCases.map(c => c.title), ["第七分钟", "借来的凿子"]);
+  fail({ kind: "case-search", targetId: "rb2-search-1" });
+  check("third-case-opens-with-clean-evidence-and-two-archived-cases");
+  for (const targetId of ["rb3-search-1", "rb3-search-2", "rb3-search-8"]) act({ kind: "case-search", targetId });
+  // The original remains in the station: its custodian must open the book.
+  for (let tries = 0; !view.residents.some(p => p.npcId === "rb-gu-yuanshan" && p.visibility === "observed"); tries++) {
+    assert(tries < 48, "Station custodian did not return within a day");
+    fail({ kind: "case-search", targetId: "rb3-search-3" });
+    act({ kind: "wait", minutes: 30 });
+  }
+  act({ kind: "case-search", targetId: "rb3-search-3" });
+  act({ kind: "case-question", characterId: "rb-gu-yuanshan" });
+  act({ kind: "case-challenge", characterId: "rb-gu-yuanshan", evidenceId: "rb3-clue-02" });
+  assert.equal(view.investigation.conversations.at(-1).corrected, false);
+  act({ kind: "case-challenge", characterId: "rb-gu-yuanshan", evidenceId: "rb3-clue-03" });
+  assert(view.investigation.conversations.at(-1).corrected);
+  searchAt("post", "rb3-search-4"); searchAt("cafe", "rb3-search-5");
+  searchAt("inn", "rb3-search-6"); searchAt("police", "rb3-search-7");
+  assert.equal(view.investigation.clues.length, 8);
+  const pageTheory = { culpritId: "rb-gu-yuanshan", motive: "", method: "", evidenceIds: view.investigation.clues.map(e => e.id), proof: { motiveEvidenceIds: ["rb3-clue-04"], methodEvidenceIds: ["rb3-clue-01", "rb3-clue-02", "rb3-clue-03"] } };
+  act({ kind: "case-submit", theory: pageTheory });
+  assert.equal(view.investigation.solved, false, "The innocent witness must also be heard and challenged");
+  for (const field of ["truth", "secret", "sourceEventIds", "decisiveEvidenceIds", "isCulprit", "revisions"]) assert(!JSON.stringify(view).includes(`"${field}"`), field);
+  find("rb-zhou-yan");
+  act({ kind: "case-question", characterId: "rb-zhou-yan" });
+  act({ kind: "case-challenge", characterId: "rb-zhou-yan", evidenceId: "rb3-clue-07" });
+  assert(view.investigation.conversations.at(-1).corrected);
+  act({ kind: "case-submit", theory: { ...pageTheory, culpritId: "rb-zhou-yan" } });
+  assert.equal(view.investigation.solved, false, "A private errand must not convict the innocent witness");
+  act({ kind: "case-submit", theory: { ...pageTheory, proof: { ...pageTheory.proof, motiveEvidenceIds: ["rb3-clue-05"] } } });
+  assert.equal(view.investigation.solved, false, "An alibi receipt cannot establish the culprit's motive");
+  const pageAccepted = act({ kind: "case-submit", theory: pageTheory });
+  assert(view.investigation.solved);
+  assert.equal(view.investigation.resolution.headline, "顾远山取走了留言册第十七页");
+  assert.equal(view.investigation.resolution.ending.length, 3);
+  assert.equal(view.commission, null);
+  const pageStable = structuredClone(view);
+  repository.closeDatabase();
+  assert.deepEqual(readTownPlay(credentials), pageStable);
+  assert.deepEqual(commandTownPlay(credentials, pageAccepted).view, pageStable);
+  fail({ kind: "case-open" });
+  check("third-case-specific-proof-innocent-lie-private-projection-and-durable-finale");
+
+  const files = ["packages/engine/src/riverbend-case.ts", "packages/engine/src/case-pack.ts", "packages/engine/src/cases/seventh-minute.ts", "packages/engine/src/cases/borrowed-chisel.ts", "packages/engine/src/cases/missing-farewell-page.ts", "packages/engine/src/riverbend-world.ts", "packages/engine/src/persistent-town.ts", "packages/engine/src/types.ts", "packages/engine/src/validators.ts", "packages/engine/src/world-analysis.ts", "lib/world/riverbend-investigation.ts", "lib/world/town-exploration-store.ts", "lib/town-play-contract.ts", "scripts/run-riverbend-case-checks.mjs"];
   const report = { schema: "riverbend-case-checks.v1", status: "passed", createdAt: new Date().toISOString(), scope: "original authored case and owned SQLite commands; browser and literary review not performed by this script", checks, finishedTime: view.time, sources: Object.fromEntries(files.map(file => [file, crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex")])) };
   fs.writeFileSync(path.join(run, "report.json"), JSON.stringify(report, null, 2));
   fs.writeFileSync("docs/3d-town/riverbend-v1/case-review.json", JSON.stringify(report, null, 2));

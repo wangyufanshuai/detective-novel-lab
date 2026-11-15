@@ -2,10 +2,11 @@ import type { WorldState } from "./world-types";
 import { buildCasePackage, validateCasePackage, validateCaseSeries, type CasePack, type CasePackage, type CaseScript } from "./case-pack";
 import { SEVENTH_MINUTE } from "./cases/seventh-minute";
 import { BORROWED_CHISEL } from "./cases/borrowed-chisel";
+import { MISSING_FAREWELL_PAGE } from "./cases/missing-farewell-page";
 
 /** PRIVATE. Riverbend's authored cases, in play order. Each opens after the
  * previous one is closed. Never import values from this module in a client. */
-export const RIVERBEND_CASES: readonly CasePack[] = [SEVENTH_MINUTE, BORROWED_CHISEL];
+export const RIVERBEND_CASES: readonly CasePack[] = [SEVENTH_MINUTE, BORROWED_CHISEL, MISSING_FAREWELL_PAGE];
 export const RIVERBEND_CASE_REVISION = SEVENTH_MINUTE.revision;
 
 export type RiverbendCaseScript = CaseScript;

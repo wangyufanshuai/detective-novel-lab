@@ -59,20 +59,21 @@
 |---|---|---|---|---|---|
 | 1 | `seventh-minute` | 第七分钟 | 07:00—08:00 | 许知微 | books, police |
 | 2 | `borrowed-chisel` | 借来的凿子 | 06:00—06:59 | 陈蕙 | inn, police |
+| 3 | `missing-farewell-page` | 撕下的那一页 | 05:00—05:59 | 顾远山 | station, police |
 
 ## 居民在已有案件里的行踪
 
 新案件里同一位居民的行踪必须和这里接得上（来得及走过去）。没有列出的时间都是空闲的。
 
-- **宋棠**：06:38 河湾咖啡馆（borrowed-chisel）；07:18 河湾咖啡馆（seventh-minute）；07:35 旧书店（seventh-minute）
-- **周砚**：07:18 旧书店（seventh-minute）；07:23 警务所（seventh-minute）；07:28 邮局（seventh-minute）
+- **宋棠**：05:18 河湾咖啡馆（missing-farewell-page）；06:38 河湾咖啡馆（borrowed-chisel）；07:18 河湾咖啡馆（seventh-minute）；07:35 旧书店（seventh-minute）
+- **周砚**：05:00 河湾车站（missing-farewell-page）；05:16 警务所（missing-farewell-page）；05:41 邮局（missing-farewell-page）；05:42 邮局（missing-farewell-page）；07:18 旧书店（seventh-minute）；07:23 警务所（seventh-minute）；07:28 邮局（seventh-minute）
 - **许知微**：07:05 旧书店（seventh-minute）；07:30 旧书店（seventh-minute）；07:31 旧书店（seventh-minute）；07:32 旧书店（seventh-minute）；07:37 河湾咖啡馆（seventh-minute）；07:42 河湾车站（seventh-minute）；07:47 河湾车站（seventh-minute）；07:52 河湾咖啡馆（seventh-minute）；07:57 旧书店（seventh-minute）
-- **陆行舟**：06:25 警务所（borrowed-chisel）；06:55 警务所（borrowed-chisel）；07:10 警务所（seventh-minute）；08:00 警务所（seventh-minute）
-- **陈蕙**：06:05 邮局后巷住宅（borrowed-chisel）；06:25 警务所（borrowed-chisel）；06:35 桥畔旅馆（borrowed-chisel）；06:36 桥畔旅馆（borrowed-chisel）；06:40 桥畔旅馆（borrowed-chisel）；06:56 邮局（borrowed-chisel）；06:58 邮局（borrowed-chisel）；07:28 邮局（seventh-minute）
-- **顾远山**：06:30 河湾车站（borrowed-chisel）；07:42 河湾车站（seventh-minute）
-- **白露**：06:25 桥畔旅馆（borrowed-chisel）；06:38 河湾咖啡馆（borrowed-chisel）
-- **林阿梨**：06:10 桥畔旅馆（borrowed-chisel）；06:25 桥畔旅馆（borrowed-chisel）；06:30 桥畔旅馆（borrowed-chisel）；06:45 桥畔旅馆（borrowed-chisel）；06:55 警务所（borrowed-chisel）；07:20 桥畔旅馆（seventh-minute）
-- **程渡**：06:15 桥畔旅馆（borrowed-chisel）；06:30 河湾车站（borrowed-chisel）
-- **沈映**：06:30 桥畔旅馆（borrowed-chisel）；07:20 桥畔旅馆（seventh-minute）
+- **陆行舟**：05:16 警务所（missing-farewell-page）；05:45 警务所（missing-farewell-page）；06:25 警务所（borrowed-chisel）；06:55 警务所（borrowed-chisel）；07:10 警务所（seventh-minute）；08:00 警务所（seventh-minute）
+- **陈蕙**：05:41 邮局（missing-farewell-page）；06:05 邮局后巷住宅（borrowed-chisel）；06:25 警务所（borrowed-chisel）；06:35 桥畔旅馆（borrowed-chisel）；06:36 桥畔旅馆（borrowed-chisel）；06:40 桥畔旅馆（borrowed-chisel）；06:56 邮局（borrowed-chisel）；06:58 邮局（borrowed-chisel）；07:28 邮局（seventh-minute）
+- **顾远山**：05:00 河湾车站（missing-farewell-page）；05:00 河湾车站（missing-farewell-page）；05:08 河湾车站（missing-farewell-page）；05:16 河湾车站（missing-farewell-page）；05:19 河湾车站（missing-farewell-page）；05:20 河湾车站（missing-farewell-page）；05:21 河湾车站（missing-farewell-page）；05:26 河湾车站（missing-farewell-page）；06:30 河湾车站（borrowed-chisel）；07:42 河湾车站（seventh-minute）
+- **白露**：05:08 河湾车站（missing-farewell-page）；05:18 河湾咖啡馆（missing-farewell-page）；06:25 桥畔旅馆（borrowed-chisel）；06:38 河湾咖啡馆（borrowed-chisel）
+- **林阿梨**：05:12 桥畔旅馆（missing-farewell-page）；06:10 桥畔旅馆（borrowed-chisel）；06:25 桥畔旅馆（borrowed-chisel）；06:30 桥畔旅馆（borrowed-chisel）；06:45 桥畔旅馆（borrowed-chisel）；06:55 警务所（borrowed-chisel）；07:20 桥畔旅馆（seventh-minute）
+- **程渡**：05:16 河湾车站（missing-farewell-page）；05:26 河湾车站（missing-farewell-page）；05:45 警务所（missing-farewell-page）；06:15 桥畔旅馆（borrowed-chisel）；06:30 河湾车站（borrowed-chisel）
+- **沈映**：05:12 桥畔旅馆（missing-farewell-page）；06:30 桥畔旅馆（borrowed-chisel）；07:20 桥畔旅馆（seventh-minute）
 - **韩朔**：07:10 警务所（seventh-minute）
 - **江芷**：07:30 旧书店（seventh-minute）
