@@ -1,5 +1,6 @@
 "use client";
 
+import { commissionLabel } from "./TownInvestigation";
 import { useEffect, useRef } from "react";
 import type { TownCaseView, TownCommissionView } from "@/lib/town-play-contract";
 import styles from "./town-play.module.css";
@@ -36,7 +37,7 @@ export function TownCaseFinale({ investigation: c, commission, onRead, onClose }
         <dt>手法</dt><dd>{r.method}</dd>
       </dl>
       {r.ending[0] && <p className={styles.finaleEnding}>{r.ending[0]}</p>}
-      {commission && <p className={styles.finaleNext}><small>新委托 · {commission.ordinal}</small>{commission.hook}</p>}
+      {commission && <p className={styles.finaleNext}><small>{commissionLabel(commission)}</small>{commission.hook}</p>}
       <div className={styles.finaleActions}>
         <button ref={primary} className={styles.primary} onClick={onRead}>读完整的经过 →</button>
         <button className={styles.textButton} onClick={onClose}>回到小镇</button>

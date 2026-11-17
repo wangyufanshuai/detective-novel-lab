@@ -115,6 +115,25 @@ test.describe("town-play", () => {
     await expect(page.getByLabel("案件进度")).toContainText("第七分钟");
   });
 
+  test("night at the inn: rest from the evening, wake on day 2", async ({ page }) => {
+    await openTown(page);
+    await page.getByLabel("第一次来，陪我走完第一宗（新手引导）").uncheck();
+    await page.getByRole("button", { name: "开始河湾手记" }).click();
+    await expect(page.locator("main[data-world-state='ready']")).toBeVisible({ timeout: 30_000 });
+    let view = await act(page, { kind: "arrive", sceneId: "inn" });
+    while (view.time < "17:00") view = await act(page, { kind: "wait", minutes: 60 });
+    await reloadTown(page);
+    await page.keyboard.press("e");
+    const room = dialog(page).getByRole("button", { name: "订房过夜" });
+    await expect(room).toBeVisible({ timeout: 15_000 });
+    await expect(dialog(page)).toContainText("睡到第 2 天早上 8 点");
+    await room.click();
+    // The night is simulated on the server (a few seconds), then a morning card.
+    await expect(page.getByRole("status", { name: "新的一天" })).toContainText("第 2 天", { timeout: 60_000 });
+    await expect(page.getByLabel("小镇时间")).toContainText("08:00");
+    await expect(page.getByLabel("小镇时间")).toContainText("第 2 天");
+  });
+
   test("case path: open, search, question, board, wrong theory, solve", async ({ page }, testInfo) => {
     // Two full reloads of the 3D town plus the archive read: ~3 minutes on a busy dev machine.
     test.setTimeout(360_000);

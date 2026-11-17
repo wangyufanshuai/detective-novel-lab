@@ -134,7 +134,14 @@ type TrackerProps = {
 /** The case's next step, always on screen while walking. Only public view data. */
 /** A commission waiting to be taken, when no case is open. */
 export function commissionHint(commission: TownCommissionView) {
+  // Waiting for a later morning: the server already says when and how.
+  if (commission.opensOnDay) return commission.detail;
   return `去${commission.openAt.map(id => placeNames[id] ?? id).join("或")}，领取调查手记。`;
+}
+
+/** Eyebrow for the next case: taken now, or on a later morning. */
+export function commissionLabel(commission: TownCommissionView) {
+  return commission.opensOnDay ? `下一宗 · 第 ${commission.opensOnDay} 天早上` : `新委托 · ${commission.ordinal}`;
 }
 
 export function caseNextStep(c: TownCaseView | null, commission?: TownCommissionView | null) {
@@ -161,7 +168,7 @@ export function TownCaseTracker({ investigation: active, commission, places, onM
   const total = c ? found + c.leads.reduce((sum, lead) => sum + lead.open, 0) : 0;
   return <section className={styles.tracker} aria-label="案件进度" data-open={open} data-solved={c?.solved ?? false}>
     <button className={styles.trackerHead} aria-expanded={open} onClick={() => setOpen(v => !v)}>
-      <span className={styles.eyebrow}>{c ? (c.solved ? "已归档" : `调查中 · ${c.ordinal}`) : commission ? `新委托 · ${commission.ordinal}` : "河湾"}</span>
+      <span className={styles.eyebrow}>{c ? (c.solved ? "已归档" : `调查中 · ${c.ordinal}`) : commission ? commissionLabel(commission) : "河湾"}</span>
       <strong>{step.title}</strong>
       {c && <span className={styles.trackerPips} aria-label={`物证 ${found}/${total}`}>{Array.from({ length: total }, (_, i) => <i key={i} data-filled={i < found} />)}</span>}
       <span className={styles.trackerFold} aria-hidden="true">{open ? "−" : "+"}</span>

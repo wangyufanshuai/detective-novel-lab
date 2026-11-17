@@ -533,3 +533,15 @@
   .interiorActions .primary { min-height: 34px !important; padding: 4px 10px; font-size: 12px; }
   .interiorSlip { bottom: 176px; }
 }
+
+/* Overnight stay at the inn, and the morning card after it. */
+.restRoom { border-block: 1px solid var(--tp-line); padding: 14px 0; margin: 16px 0; font-size: 13px; line-height: 1.8; }
+.restRoom p { margin: 4px 0 12px; }
+.restRoom button[aria-busy='true'] { cursor: progress; }
+.dawn { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); z-index: 6; min-width: 240px; padding: 22px 34px; text-align: center; pointer-events: none;
+  border: 2px solid var(--tp-wood); border-radius: 5px; background: var(--paper); box-shadow: 0 3px 0 var(--tp-ink), 0 18px 40px color-mix(in srgb, var(--tp-teal-deep) 22%, transparent);
+  animation: dawnCard 4.2s ease both; }
+.dawn strong { display: block; margin: 6px 0 4px; font: 600 28px 'Noto Serif SC', serif; letter-spacing: .08em; }
+.dawn p { margin: 0; color: var(--tp-ink-muted); font-size: 13px; }
+@keyframes dawnCard { 0% { opacity: 0; transform: translate(-50%, 10px); } 12%, 80% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, -6px); } }
+@media (prefers-reduced-motion: reduce) { .dawn { animation: none; } }
