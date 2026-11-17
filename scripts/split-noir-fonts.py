@@ -13,9 +13,11 @@ Inputs (local, not in git): outputs/noir-font-subset/originals/*.ttf, the
 charset.txt the full subset was built from, and Brotli in python-deps.
 """
 from pathlib import Path
+import hashlib
 import json
 import re
 import sys
+
 
 ROOT = Path(__file__).resolve().parents[1]
 TOOL = ROOT / 'outputs/noir-font-subset'
@@ -69,9 +71,10 @@ def build(source, points, target):
     options.notdef_glyph = True
     options.notdef_outline = True
     options.recalc_timestamp = False
-    font = TTFont(source)
+    # Keep the source timestamp, so the same characters give the same bytes and ?v= URL.
+    font = TTFont(source, recalcTimestamp=False)
     subsetter = subset.Subsetter(options)
-    subsetter.populate(unicodes=points)
+    subsetter.populate(unicodes=sorted(points))
     subsetter.subset(font)
     font.flavor = 'woff2'
     font.save(target)
@@ -96,11 +99,13 @@ def main():
         for part, points in reversed(parts):
             name = f'{stem}.{part}.woff2'
             size = build(source, points, PUBLIC / name)
+            # ?v= lets next.config cache the file for a year; a rebuild changes the URL.
+            version = hashlib.sha256((PUBLIC / name).read_bytes()).hexdigest()[:12]
             report.append({'file': name, 'codepoints': len(points), 'bytes': size})
             unicode_range = f"\n  unicode-range: {HAN_RANGE};" if part == 'rest' else ''
             css.append(
                 f"@font-face {{\n  font-family: '{family}';\n  font-style: normal;\n  font-weight: {weight};\n"
-                f"  font-display: swap;\n  src: url('/fonts/noir/{name}') format('woff2');{unicode_range}\n}}\n"
+                f"  font-display: swap;\n  src: url('/fonts/noir/{name}?v={version}') format('woff2');{unicode_range}\n}}\n"
             )
         old = PUBLIC / f'{stem}.woff2'
         if old.exists():

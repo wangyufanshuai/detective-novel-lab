@@ -143,11 +143,13 @@ export default function TownScene(props: Props) {
         const residentManifest = await residentManifestResponse.json();
         if (residentManifest.baseAssetSha256 !== manifest.asset.sha256 || residentManifest.collisionRadius !== RESIDENT_RADIUS) throw new Error("居民与街区版本不一致，请重新载入。");
         const delivery: { url: string; sha256: string } = manifest.delivery?.identitySha256 === manifest.asset.sha256 ? manifest.delivery : manifest.asset;
+        // ?v= is the file's own hash, so next.config can let the browser keep it for a year.
+        const versioned = (url: string, sha256: string) => `${url}?v=${sha256.slice(0, 16)}`;
         const [navResponse, assetResponse, residentResponse] = await Promise.all([
-          fetch(manifest.navigation.url, { signal: abort.signal }),
+          fetch(versioned(manifest.navigation.url, manifest.navigation.sha256), { signal: abort.signal }),
           // The lossless meshopt copy when one is published; asset.sha256 stays the identity notebooks record.
-          fetch(delivery.url, { signal: abort.signal }),
-          fetch(residentManifest.asset.url, { signal: abort.signal })
+          fetch(versioned(delivery.url, delivery.sha256), { signal: abort.signal }),
+          fetch(versioned(residentManifest.asset.url, residentManifest.asset.sha256), { signal: abort.signal })
         ]);
         if (!navResponse.ok || !assetResponse.ok || !residentResponse.ok) throw new Error("小镇资源未能载入");
         const navBytes = await navResponse.arrayBuffer(), asset = await assetResponse.arrayBuffer(), residentAsset = await residentResponse.arrayBuffer();

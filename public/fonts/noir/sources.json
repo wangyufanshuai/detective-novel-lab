@@ -207,42 +207,42 @@
       {
         "file": "noir-sans-sc-regular.rest.woff2",
         "codepoints": 2556,
-        "bytes": 380856
+        "bytes": 380352
       },
       {
         "file": "noir-sans-sc-regular.core.woff2",
         "codepoints": 1729,
-        "bytes": 199040
+        "bytes": 199028
       },
       {
         "file": "noir-sans-sc-semibold.rest.woff2",
         "codepoints": 2556,
-        "bytes": 388616
+        "bytes": 388508
       },
       {
         "file": "noir-sans-sc-semibold.core.woff2",
         "codepoints": 1729,
-        "bytes": 202280
+        "bytes": 202236
       },
       {
         "file": "noir-serif-sc-regular.rest.woff2",
         "codepoints": 2556,
-        "bytes": 494012
+        "bytes": 494532
       },
       {
         "file": "noir-serif-sc-regular.core.woff2",
         "codepoints": 1729,
-        "bytes": 261044
+        "bytes": 261444
       },
       {
         "file": "noir-serif-sc-semibold.rest.woff2",
         "codepoints": 2556,
-        "bytes": 501192
+        "bytes": 501140
       },
       {
         "file": "noir-serif-sc-semibold.core.woff2",
         "codepoints": 1729,
-        "bytes": 264812
+        "bytes": 264556
       }
     ]
   }
