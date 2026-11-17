@@ -29,7 +29,12 @@ export type CasePack = {
   commission: { hook: string; detail: string; openAt: string[]; refusal: string };
   /** The previous case that must be closed first. */
   after?: string;
-  /** Hidden history window on day 1, inclusive ("HH:MM"). */
+  /** The town day this case's history happens on (default 1). Play starts at
+   * day 1 08:00 and the player sleeps through each night at the inn, so a day-N
+   * case's history fills the early hours of day N and its commission opens at
+   * 08:00 that morning, once the previous case is closed. */
+  day?: number;
+  /** Hidden history window on that day, inclusive ("HH:MM"); must end by 08:00. */
   window: { from: string; to: string };
   ids: { clue: string; search: string };
   historyTag: string;
@@ -70,6 +75,14 @@ export type CaseScript = {
 export type CasePackage = { caseFromLog: CaseFromLog; events: WorldEvent[]; memories: MemoryRecord[]; script: CaseScript };
 
 const minutes = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3));
+/** Minutes since day 1 00:00, so histories on different days order correctly. */
+const absolute = (e: Pick<WorldEvent, "day" | "time">) => (e.day - 1) * 24 * 60 + minutes(e.time);
+export const casePackDay = (pack: Pick<CasePack, "day">) => pack.day ?? 1;
+/** Morning play starts; a pack's commission opens no earlier than 08:00 on its day. */
+export const CASE_DAY_OPENS = "08:00";
+export function casePackReady(pack: Pick<CasePack, "day">, clock: { day: number; currentTime: string }) {
+  return clock.day > casePackDay(pack) || (clock.day === casePackDay(pack) && clock.currentTime >= CASE_DAY_OPENS);
+}
 
 export function buildCasePackage(world: WorldState, pack: CasePack, now: string): CasePackage {
   const id = `${world.id}-${pack.key}-v1`;
@@ -77,7 +90,7 @@ export function buildCasePackage(world: WorldState, pack: CasePack, now: string)
   const clue = (n: number) => `${pack.ids.clue}-${String(n).padStart(2, "0")}`;
   const { culpritId, suspectIds, statements } = pack;
   const evidence: Evidence[] = pack.evidence.map(e => ({ id: clue(e.n), title: e.title, location: e.at, visibleDescription: e.text, trueMeaning: e.meaning, relatedCharacterIds: e.related, discoverable: true, isKey: true, unlocks: [], contradicts: e.contradicts ?? [], supportsConclusion: [], discoveryDifficulty: "easy" }));
-  const events: WorldEvent[] = pack.history.map(h => ({ id: eventId(h.key), worldId: world.id, day: 1, time: h.time, locationId: h.at, type: h.type, actorIds: h.actors, relatedCharacterIds: [...h.actors], summary: h.summary, publicSummary: pack.historyNote, hidden: true, tags: [pack.historyTag, ...(h.tags ?? [])], ...(h.clue ? { evidenceId: clue(h.clue) } : {}) }));
+  const events: WorldEvent[] = pack.history.map(h => ({ id: eventId(h.key), worldId: world.id, day: casePackDay(pack), time: h.time, locationId: h.at, type: h.type, actorIds: h.actors, relatedCharacterIds: [...h.actors], summary: h.summary, publicSummary: pack.historyNote, hidden: true, tags: [pack.historyTag, ...(h.tags ?? [])], ...(h.clue ? { evidenceId: clue(h.clue) } : {}) }));
   const revisions: CaseScript["revisions"] = Object.fromEntries(Object.entries(pack.revisions).map(([npcId, byClue]) => [npcId, Object.fromEntries(Object.entries(byClue).map(([n, text]) => [clue(Number(n)), text]))]));
   const characters: Character[] = world.npcs.map(npc => {
     const facts = npc.id === culpritId ? pack.culprit : pack.others;
@@ -105,7 +118,7 @@ export function buildCasePackage(world: WorldState, pack: CasePack, now: string)
       redHerrings: pack.redHerrings, requiredClueOrder: []
     }
   };
-  const memories: MemoryRecord[] = characters.flatMap(character => events.filter(e => e.actorIds.includes(character.id)).map(e => ({ id: `${e.id}-memory-${character.id}`, worldId: world.id, npcId: character.id, kind: "direct" as const, eventId: e.id, day: 1, summary: e.summary, confidence: 1, visibleToPlayer: false, challengeableEvidenceIds: character.contradictionTriggers })));
+  const memories: MemoryRecord[] = characters.flatMap(character => events.filter(e => e.actorIds.includes(character.id)).map(e => ({ id: `${e.id}-memory-${character.id}`, worldId: world.id, npcId: character.id, kind: "direct" as const, eventId: e.id, day: e.day, summary: e.summary, confidence: 1, visibleToPlayer: false, challengeableEvidenceIds: character.contradictionTriggers })));
   const testimonies = characters.map(character => ({ id: `${id}-testimony-${character.id}`, caseId: id, characterId: character.id, initialStatement: character.initialStatement, currentStatement: character.initialStatement, contradictionEvidenceIds: character.contradictionTriggers, exposedContradictions: [], revised: false, memoryIds: memories.filter(m => m.npcId === character.id).map(m => m.id) })).filter(t => t.memoryIds.length > 0);
   const s = pack.sources, k = pack.events;
   const sourceMap: CaseFromLog["sourceMap"] = {
@@ -128,7 +141,7 @@ export function buildCasePackage(world: WorldState, pack: CasePack, now: string)
     ending: pack.ending
   };
   const bundle = { caseFromLog, events, memories, script };
-  const problems = validateCasePackage(world, bundle, pack.window);
+  const problems = validateCasePackage(world, bundle, pack.window, casePackDay(pack));
   if (problems.length) throw new Error(`Case ${pack.key} authoring failed: ${problems.join("; ")}`);
   return bundle;
 }
@@ -136,14 +149,14 @@ export function buildCasePackage(world: WorldState, pack: CasePack, now: string)
 /** Stronger than structural references alone: every clue resolves to real
  * source events, all sources use this world and actual actors/places, and
  * dialogue revisions have corresponding testimony evidence. */
-export function validateCasePackage(world: WorldState, bundle: CasePackage, window: CasePack["window"]): string[] {
+export function validateCasePackage(world: WorldState, bundle: CasePackage, window: CasePack["window"], day = 1): string[] {
   const errors: string[] = [];
   const { caseFromLog: c, events, memories, script } = bundle;
   const eventIds = new Set(events.map(e => e.id)), npcIds = new Set(world.npcs.map(n => n.id)), places = new Set(world.locations.map(l => l.id));
   if (eventIds.size !== events.length) errors.push("Duplicate source identity");
   for (const e of events) {
     if (e.worldId !== world.id || !places.has(e.locationId) || e.actorIds.some(id => !npcIds.has(id))) errors.push(`Invalid source ownership ${e.id}`);
-    if (e.day !== 1 || !/^\d\d:[0-5]\d$/.test(e.time) || e.time < window.from || e.time > window.to) errors.push(`Invalid opening time ${e.id}`);
+    if (!Number.isSafeInteger(day) || day < 1 || e.day !== day || !/^\d\d:[0-5]\d$/.test(e.time) || e.time < window.from || e.time > window.to || window.to > CASE_DAY_OPENS) errors.push(`Invalid opening time ${e.id}`);
   }
   for (const t of c.deductionCase.truth.trueTimeline) {
     const source = events.find(e => e.id === t.id);
@@ -170,20 +183,25 @@ function journeyProblems(world: WorldState, events: WorldEvent[]) {
   const errors: string[] = [];
   const roads = buildTravelConstraint(world);
   for (const npc of world.npcs) {
-    const route = events.filter(e => e.actorIds.includes(npc.id)).sort((a, b) => minutes(a.time) - minutes(b.time));
-    for (let i = 1; i < route.length; i++) if (shortestTravelMinutes(roads, route[i - 1].locationId, route[i].locationId) > minutes(route[i].time) - minutes(route[i - 1].time)) errors.push(`Impossible historical journey ${npc.id}: ${route[i].id}`);
+    const route = events.filter(e => e.actorIds.includes(npc.id)).sort((a, b) => absolute(a) - absolute(b));
+    for (let i = 1; i < route.length; i++) if (shortestTravelMinutes(roads, route[i - 1].locationId, route[i].locationId) > absolute(route[i]) - absolute(route[i - 1])) errors.push(`Impossible historical journey ${npc.id}: ${route[i].id}`);
   }
   return errors;
 }
 
-/** Cases in one town share one morning: their histories together must stay walkable,
- * ids must not collide, and each `after` must name an earlier case. */
+/** Cases in one town share its mornings: their histories together must stay walkable,
+ * ids must not collide, each `after` must name an earlier case, and a case may not
+ * happen on an earlier day than the case it follows. */
 export function validateCaseSeries(world: WorldState, packages: Array<{ pack: CasePack; bundle: CasePackage }>): string[] {
   const errors: string[] = [];
   const keys = packages.map(p => p.pack.key);
   if (new Set(keys).size !== keys.length) errors.push("Duplicate case key");
   for (const prefix of ["clue", "search"] as const) { const all = packages.map(p => p.pack.ids[prefix]); if (new Set(all).size !== all.length) errors.push(`Shared ${prefix} prefix`); }
-  packages.forEach((p, i) => { if (p.pack.after && !keys.slice(0, i).includes(p.pack.after)) errors.push(`Case ${p.pack.key} follows an unknown or later case`); });
+  packages.forEach((p, i) => {
+    if (p.pack.after && !keys.slice(0, i).includes(p.pack.after)) errors.push(`Case ${p.pack.key} follows an unknown or later case`);
+    const before = packages.find(q => q.pack.key === p.pack.after);
+    if (before && casePackDay(p.pack) < casePackDay(before.pack)) errors.push(`Case ${p.pack.key} happens on an earlier day than ${before.pack.key}`);
+  });
   errors.push(...journeyProblems(world, packages.flatMap(p => p.bundle.events)).map(e => `Across cases: ${e}`));
   return errors;
 }

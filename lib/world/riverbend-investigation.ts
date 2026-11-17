@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { buildCasePackage, type CasePack } from "@/packages/engine/src/case-pack";
+import { buildCasePackage, casePackDay, casePackReady, type CasePack } from "@/packages/engine/src/case-pack";
 import { RIVERBEND_CASES, riverbendCasePack, type RiverbendCaseScript } from "@/packages/engine/src/riverbend-case";
 import { detectContradictionHit, makeRuleBoundInterrogation, submitWorldTheory, updateTestimonyWithContradiction } from "@/packages/engine/src/world-case";
 import { isPlayerTheoryInput } from "@/packages/engine/src/judgement";
@@ -22,16 +22,21 @@ function ownedRecords(worldId: string, ref: TownInvestigation) {
 }
 const isSolved = (worldId: string, ref?: TownInvestigation) => !!ref && ownedRecords(worldId, ref).session.judgement?.accepted === true;
 
-/** The next authored case the player may take: none while one is still open. */
+/** The next authored case in line: none while one is still open. It may not be
+ * ready yet when its history belongs to a later morning (`casePackReady`). */
 function nextPack(worldId: string, ref: TownInvestigation | undefined, closed: TownInvestigation[]) {
   if (ref && !isSolved(worldId, ref)) return null;
   const done = new Set([...closed, ...(ref ? [ref] : [])].map(r => packOf(r).key));
   return RIVERBEND_CASES.find(pack => !done.has(pack.key) && (!pack.after || done.has(pack.after))) ?? null;
 }
 
-export function projectTownCommission(worldId: string, ref: TownInvestigation | undefined, closed: TownInvestigation[] = []): TownCommissionView | null {
+/** A commission waiting for a later morning names only that day: its hook would
+ * describe something that has not happened in the town yet. */
+export function projectTownCommission(worldId: string, ref: TownInvestigation | undefined, closed: TownInvestigation[] = [], clock?: { day: number; currentTime: string }): TownCommissionView | null {
   const pack = nextPack(worldId, ref, closed);
-  return pack ? { ordinal: pack.ordinal, hook: pack.commission.hook, detail: pack.commission.detail, openAt: [...pack.commission.openAt] } : null;
+  if (!pack) return null;
+  if (clock && !casePackReady(pack, clock)) return { ordinal: pack.ordinal, hook: "河湾暂时没有新的委托。", detail: `第 ${casePackDay(pack)} 天早上再来看看；旅馆傍晚起可以订房过夜。`, openAt: [], opensOnDay: casePackDay(pack) };
+  return { ordinal: pack.ordinal, hook: pack.commission.hook, detail: pack.commission.detail, openAt: [...pack.commission.openAt] };
 }
 
 export function projectClosedCases(worldId: string, closed: TownInvestigation[] = []): TownClosedCaseView[] {
@@ -74,6 +79,7 @@ export function executeTownInvestigation(input: { world: WorldState; sceneId: st
     if (input.ref && !isSolved(world.id, input.ref)) return { world, ref: input.ref, closed, events: [] as WorldEvent[] };
     const pack = nextPack(world.id, input.ref, closed);
     if (!pack) throw new InvestigationError("眼下没有新的委托。可以在手记里回看已归档的案件。");
+    if (!casePackReady(pack, world)) throw new InvestigationError(`下一宗委托要到第 ${casePackDay(pack)} 天早上才会出现。`);
     if (!pack.commission.openAt.includes(sceneId)) throw new InvestigationError(pack.commission.refusal);
     const bundle = buildCasePackage(world, pack, now);
     const session: PlayerSession = { id: `${input.ownerId}-${pack.key}`, worldId: world.id, caseId: bundle.caseFromLog.id, playerId: input.ownerId, displayName: "河湾访客", discoveredEvidenceIds: [], interrogationLog: [], createdAt: now, updatedAt: now };

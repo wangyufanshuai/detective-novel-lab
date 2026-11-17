@@ -16,7 +16,7 @@ const root = process.cwd();
 const run = fs.mkdtempSync(path.join(root, "outputs", "check-cases-"));
 process.env.DATABASE_URL = path.join(run, "isolated.db");
 const { load } = createNoirTestLoader(root);
-const { createRiverbendWorld, RIVERBEND_VISITABLE_SCENES } = load("packages/engine/src/riverbend-world.ts");
+const { createRiverbendWorld, RIVERBEND_PLAY_DAYS, RIVERBEND_VISITABLE_SCENES } = load("packages/engine/src/riverbend-world.ts");
 const { RIVERBEND_CASES } = load("packages/engine/src/riverbend-case.ts");
 const { buildCasePackage, validateCaseSeries } = load("packages/engine/src/case-pack.ts");
 const { buildTravelConstraint, shortestTravelMinutes } = load("packages/engine/src/world-analysis.ts");
@@ -27,6 +27,10 @@ const npcName = id => world.npcs.find(n => n.id === id)?.name ?? id;
 const placeName = id => world.locations.find(l => l.id === id)?.name ?? id;
 const travel = (a, b) => shortestTravelMinutes(roads, a, b);
 const minutes = t => Number(t.slice(0, 2)) * 60 + Number(t.slice(3));
+const dayOf = pack => pack.day ?? 1;
+/** Minutes since day 1 00:00: a day-2 move comes after every day-1 move. */
+const at = (day, time) => (day - 1) * 1440 + minutes(time);
+const when = (day, time) => `第 ${day} 天 ${time}`;
 const visitable = new Set(RIVERBEND_VISITABLE_SCENES);
 const problems = [];
 const report = (pack, message) => problems.push(`[${pack?.key ?? "series"}] ${message}`);
@@ -36,7 +40,10 @@ function lint(pack) {
   const npcs = new Set(world.npcs.map(n => n.id)), places = new Set(world.locations.map(l => l.id));
   const say = message => report(pack, message);
   if (!/^\d\d:\d\d$/.test(pack.window.from) || !/^\d\d:\d\d$/.test(pack.window.to) || pack.window.from > pack.window.to) say(`window 应写成 { from: "HH:MM", to: "HH:MM" } 且 from ≤ to`);
-  if (pack.window.to > "08:00") say(`window 必须在 08:00 之前结束：游戏从 08:00 开始，案发历史只能发生在开局之前`);
+  if (pack.window.to > "08:00") say(`window 必须在 08:00 之前结束：玩家每天 08:00 起在镇上活动，案发历史只能写在当天早上 8 点以前`);
+  if (pack.day !== undefined && (!Number.isInteger(pack.day) || pack.day < 1 || pack.day > RIVERBEND_PLAY_DAYS)) say(`day 只能是 1—${RIVERBEND_PLAY_DAYS} 的整数（不写就是第 1 天）；现在是 ${pack.day}`);
+  const before = RIVERBEND_CASES.find(p => p.key === pack.after);
+  if (before && dayOf(pack) < dayOf(before)) say(`本案在第 ${dayOf(pack)} 天，却排在第 ${dayOf(before)} 天的 ${before.key} 之后；day 不能比前一宗早`);
   const numbers = pack.evidence.map(e => e.n);
   numbers.forEach((n, i) => { if (n !== i + 1) say(`evidence 的 n 必须从 1 开始连续编号；第 ${i + 1} 条写成了 ${n}`); });
   if (pack.evidence.length < 4) say(`至少需要 4 份物证（现在 ${pack.evidence.length} 份）`);
@@ -79,15 +86,15 @@ function journeys(packs) {
   const moves = new Map();
   for (const pack of packs) for (const h of pack.history) for (const id of h.actors) {
     if (!moves.has(id)) moves.set(id, []);
-    moves.get(id).push({ time: h.time, at: h.at, key: h.key, case: pack.key });
+    moves.get(id).push({ day: dayOf(pack), time: h.time, at: h.at, key: h.key, case: pack.key });
   }
-  for (const list of moves.values()) list.sort((a, b) => minutes(a.time) - minutes(b.time));
+  for (const list of moves.values()) list.sort((a, b) => at(a.day, a.time) - at(b.day, b.time));
   return moves;
 }
 function journeyProblems(packs) {
   for (const [id, list] of journeys(packs)) for (let i = 1; i < list.length; i++) {
-    const a = list[i - 1], b = list[i], need = travel(a.at, b.at), have = minutes(b.time) - minutes(a.time);
-    if (need > have) report(null, `${npcName(id)} 赶不上：${a.time} 在${placeName(a.at)}（${a.case}/${a.key}）→ ${b.time} 在${placeName(b.at)}（${b.case}/${b.key}），只有 ${have} 分钟，路上至少要 ${need} 分钟`);
+    const a = list[i - 1], b = list[i], need = travel(a.at, b.at), have = at(b.day, b.time) - at(a.day, a.time);
+    if (need > have) report(null, `${npcName(id)} 赶不上：${when(a.day, a.time)} 在${placeName(a.at)}（${a.case}/${a.key}）→ ${when(b.day, b.time)} 在${placeName(b.at)}（${b.case}/${b.key}），只有 ${have} 分钟，路上至少要 ${need} 分钟`);
   }
 }
 
@@ -97,16 +104,16 @@ function writeReference() {
     "## 地点", "", "| id | 名称 | 玩家能进入调查 |", "|---|---|---|", ...world.locations.map(l => `| \`${l.id}\` | ${l.name} | ${visitable.has(l.id) ? "是" : "否（只能出现在 history 里）"} |`), "",
     "## 步行时间（分钟，最短路线）", "", `| 从 \\ 到 | ${ids.map(id => `\`${id}\``).join(" | ")} |`, `|---|${ids.map(() => "---").join("|")}|`,
     ...ids.map(a => `| \`${a}\` | ${ids.map(b => travel(a, b)).join(" | ")} |`), "",
-    "## 居民", "", "开局（08:00）之后居民按日程走动；案件历史只写 08:00 以前。询问居民时，玩家要在游戏里找到他本人。", "",
+    "## 居民", "", `游戏共 ${RIVERBEND_PLAY_DAYS} 天。每天 08:00 起居民按日程走动，19:00 回家；玩家傍晚在旅馆过夜，醒来是第二天 08:00。案件历史只写某一天 08:00 以前（用 day 指定哪一天）。询问居民时，玩家要在游戏里找到他本人。`, "",
     "| id | 姓名 | 身份 | 家 | 08:00 | 12:00 | 14:00 | 16:00 | 19:00 | 私事（可以用作动机或隐瞒的理由） |", "|---|---|---|---|---|---|---|---|---|---|",
     ...world.npcs.map(n => `| \`${n.id}\` | ${n.name} | ${n.role} | ${n.homeLocationId} | ${n.schedule["08:00"]} | ${n.schedule["12:00"]} | ${n.schedule["14:00"]} | ${n.schedule["16:00"]} | ${n.schedule["19:00"]} | ${n.secret} |`), "",
-    "## 已经写好的案件", "", "| 顺序 | key | 标题 | 时间窗 | 真凶 | 在哪里领取 |", "|---|---|---|---|---|---|",
-    ...RIVERBEND_CASES.map((p, i) => `| ${i + 1} | \`${p.key}\` | ${p.title} | ${p.window.from}—${p.window.to} | ${npcName(p.culpritId)} | ${p.commission.openAt.join(", ")} |`), "",
+    "## 已经写好的案件", "", "| 顺序 | key | 标题 | 第几天 | 时间窗 | 真凶 | 在哪里领取 |", "|---|---|---|---|---|---|---|",
+    ...RIVERBEND_CASES.map((p, i) => `| ${i + 1} | \`${p.key}\` | ${p.title} | ${dayOf(p)} | ${p.window.from}—${p.window.to} | ${npcName(p.culpritId)} | ${p.commission.openAt.join(", ")} |`), "",
     "## 居民在已有案件里的行踪", "", "新案件里同一位居民的行踪必须和这里接得上（来得及走过去）。没有列出的时间都是空闲的。", ""];
   const moves = journeys(RIVERBEND_CASES);
   for (const npc of world.npcs) {
     const list = moves.get(npc.id) ?? [];
-    lines.push(`- **${npc.name}**：${list.length ? list.map(m => `${m.time} ${placeName(m.at)}（${m.case}）`).join("；") : "空闲"}`);
+    lines.push(`- **${npc.name}**：${list.length ? list.map(m => `${when(m.day, m.time)} ${placeName(m.at)}（${m.case}）`).join("；") : "空闲"}`);
   }
   const file = path.join(root, "docs", "cases", "riverbend-world-reference.md");
   fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -131,10 +138,19 @@ function playthrough(bundles) {
       }
       throw new Error(`游戏里找不到 ${npcName(id)}${prefer ? `（在${placeName(prefer)}等了五个小时）` : ""}`);
     };
+    // A later-day case: go to the inn, wait for the evening, sleep until its morning.
+    const sleepUntil = day => {
+      while (view.day < day) {
+        act({ kind: "arrive", sceneId: "inn" });
+        while (!view.rest?.open) act({ kind: "wait", minutes: 60 });
+        act({ kind: "rest" });
+      }
+    };
     for (const { pack } of bundles) {
       const step = label => { stepLabel = label; };
       let stepLabel = "";
       try {
+        if (dayOf(pack) > view.day) { step(`在旅馆过夜，等到第 ${dayOf(pack)} 天早上`); sleepUntil(dayOf(pack)); }
         step(`在 ${pack.commission.openAt[0]} 领取委托`);
         act({ kind: "arrive", sceneId: pack.commission.openAt[0] });
         act({ kind: "case-open" });
