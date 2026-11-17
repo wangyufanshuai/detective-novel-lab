@@ -195,4 +195,16 @@ if (problems.length) {
   for (const p of problems) console.log(`  - ${p}`);
   process.exit(1);
 }
+fontNotice();
 console.log(`\n✓ 全部通过${args.has("--no-play") ? "（未试玩）" : ""}`);
+
+/** Not a failure: missing characters still render, from the larger "rest" font file. */
+function fontNotice() {
+  let core = "";
+  try { core = JSON.parse(fs.readFileSync(path.join(root, "public/fonts/noir/sources.json"), "utf8")).split?.coreHanChars ?? ""; } catch { return; }
+  if (!core) return;
+  const have = new Set(core);
+  const text = fs.readdirSync(path.join(root, "packages/engine/src/cases")).map(f => fs.readFileSync(path.join(root, "packages/engine/src/cases", f), "utf8")).join("");
+  const missing = [...new Set([...text].filter(c => /\p{Script=Han}/u.test(c) && !have.has(c)))];
+  if (missing.length) console.log(`\n提示：案件里有 ${missing.length} 个字不在首屏字体里（${missing.slice(0, 20).join("")}${missing.length > 20 ? "…" : ""}）。能正常显示，但会多下载一份字体。请告诉前端负责人运行 python scripts/split-noir-fonts.py。`);
+}

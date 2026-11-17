@@ -173,20 +173,24 @@ test.describe("town-play", () => {
     const form = dialog(page).getByLabel("案件本");
     await form.getByRole("button", { name: "整理推断" }).click();
 
-    // A wrong person is refused without revealing the answer.
+    // The form only submits once person, motive, method and cited material are all chosen.
+    const group = (legend: string) => form.locator("fieldset", { has: page.locator("legend", { hasText: legend }) });
+    const submit = form.getByRole("button", { name: /提交这份结论/ });
     await form.getByLabel("谁移走了原图").selectOption("rb-zhou-yan");
+    await expect(submit).toBeDisabled();
+    await group("哪些物证解释动机").getByLabel(titles["rb-clue-02"], { exact: true }).check();
+    await group("哪些物证证明使用的手法").getByLabel(titles["rb-clue-01"], { exact: true }).check();
+    await group("哪些物证证明使用的手法").getByLabel(titles["rb-clue-07"], { exact: true }).check();
     await form.getByRole("button", { name: "引用已取得的全部材料" }).click();
-    await form.getByRole("button", { name: /提交这份结论/ }).click();
-    await expect(form.getByRole("status")).toBeVisible();
+
+    // A wrong person is refused without revealing the answer.
+    await submit.click();
+    await expect(form.getByRole("status").filter({ hasText: "还不能归档" })).toBeVisible();
     await expect(form.getByRole("button", { name: "案件归档", exact: true })).toHaveCount(0);
 
     // The supported theory closes the case.
     await form.getByLabel("谁移走了原图").selectOption("rb-xu-zhiwei");
-    const group = (legend: string) => form.locator("fieldset", { has: page.locator("legend", { hasText: legend }) });
-    await group("哪些物证解释动机").getByLabel(titles["rb-clue-02"], { exact: true }).check();
-    await group("哪些物证证明使用的手法").getByLabel(titles["rb-clue-01"], { exact: true }).check();
-    await group("哪些物证证明使用的手法").getByLabel(titles["rb-clue-07"], { exact: true }).check();
-    await form.getByRole("button", { name: /提交这份结论/ }).click();
+    await submit.click();
     // The verdict moment: a stamped dossier over the case book.
     const finale = page.getByRole("dialog", { name: "许知微移走了原图" });
     await expect(finale).toBeVisible({ timeout: 15_000 });
@@ -214,7 +218,11 @@ test.describe("town-play", () => {
     await expect(book2.getByLabel("谁撬开了募捐箱")).toBeVisible();
     await page.keyboard.press("Escape");
     await page.keyboard.press("j");
-    await expect(dialog(page).getByLabel("已归档的案件")).toContainText("第七分钟");
-    await expect(dialog(page).getByLabel("已归档的案件")).toContainText("许知微");
+    // The closed case stays readable from the journal, kept in this browser.
+    const shelf = dialog(page).getByLabel("已结案手记", { exact: true });
+    await expect(shelf).toContainText("第七分钟");
+    await expect(shelf).toContainText("许知微");
+    await shelf.getByRole("button", { name: /回看.*第七分钟.*本机留存/ }).click();
+    await expect(dialog(page).getByLabel("已结案手记回看")).toContainText("许知微");
   });
 });

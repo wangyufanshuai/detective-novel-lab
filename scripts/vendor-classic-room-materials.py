@@ -42,7 +42,7 @@ def main():
         ledger.append({'id':asset,'provider':'Poly Haven','page':'https://polyhaven.com/a/'+asset,'license':'CC0-1.0','licenseUrl':'https://polyhaven.com/license','maps':maps})
     from fontTools.ttLib import TTFont
     from fontTools import subset
-    original=ROOT/'public/fonts/noir/noir-serif-sc-regular.woff2'
+    original=ROOT/'public/fonts/noir/noir-serif-sc-regular.core.woff2'
     font=TTFont(original);font.flavor=None
     options=subset.Options();options.name_IDs=['*'];options.name_legacy=True
     sub=subset.Subsetter(options=options);sub.populate(unicodes=list(range(32,127))+[0x2013,0x2014]);sub.subset(font)
@@ -52,7 +52,7 @@ def main():
         if record.nameID in names:record.string=names[record.nameID].encode(record.getEncoding())
     out=folder/'railway-serif-study.ttf';font.save(out)
     license_src=ROOT/'public/fonts/noir/notoserifsc-OFL.txt';shutil.copyfile(license_src,folder/'font-OFL.txt')
-    ledger.append({'id':'railway-serif-study','source':'public/fonts/noir/noir-serif-sc-regular.woff2','sourceSha256':sha(original),'license':'SIL-OFL-1.1','licensePath':'licensed/font-OFL.txt','licenseSha256':sha(folder/'font-OFL.txt'),'modification':'Latin sign subset and WOFF2-to-SFNT conversion; renamed Railway Serif Study; copyright records retained.','path':str(out.relative_to(PACKAGE)).replace('\\','/'),'sha256':sha(out)})
+    ledger.append({'id':'railway-serif-study','source':'public/fonts/noir/noir-serif-sc-regular.core.woff2','sourceSha256':sha(original),'license':'SIL-OFL-1.1','licensePath':'licensed/font-OFL.txt','licenseSha256':sha(folder/'font-OFL.txt'),'modification':'Latin sign subset and WOFF2-to-SFNT conversion; renamed Railway Serif Study; copyright records retained.','path':str(out.relative_to(PACKAGE)).replace('\\','/'),'sha256':sha(out)})
     write(folder/'provenance.json',{'retrievedAt':datetime.now(timezone.utc).isoformat(),'assets':ledger,'uploads':[]})
     (folder/'CREDITS.md').write_text('# Third-party material and font credits\n\nThe wood_table_001 and leather_red_02 texture sets are from Poly Haven, CC0-1.0.\n\n- https://polyhaven.com/a/wood_table_001\n- https://polyhaven.com/a/leather_red_02\n- https://polyhaven.com/license\n\nThe sign font is a renamed Latin subset of the project Noto Serif SC font, under SIL Open Font License 1.1. See font-OFL.txt. Source copyright is retained in the font.\n\nAll room geometry and additional mathematical patterns are authored in this project. These material credits do not assert rights over any third-party trademark or franchise.\n',encoding='utf-8')
     print(json.dumps({'assets':[entry['id'] for entry in ledger],'files':sum(len(entry.get('maps',{})) for entry in ledger)+1},ensure_ascii=False))
