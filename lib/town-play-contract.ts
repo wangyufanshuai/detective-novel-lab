@@ -17,11 +17,13 @@ export type TownCaseView = {
 };
 /** The next authored case the player can take, and where its notebook is handed out. */
 export type TownCommissionView = { ordinal: string; hook: string; detail: string; openAt: string[] };
+/** Resting skips to 08:00 the next morning. `wake` is the day it lands on. */
+export type TownRestView = { open: true; wakeDay: number } | { open: false; reason: string };
 export type TownClosedCaseView = { id: string; ordinal: string; title: string; person: string };
 export type TownCaseAction = { kind: "case-open" } | { kind: "case-search"; targetId: string } |
   { kind: "case-question"; characterId: string } | { kind: "case-challenge"; characterId: string; evidenceId: string } |
   { kind: "case-submit"; theory: PlayerTheory };
-export type TownPlayAction = { kind: "arrive"; sceneId: string } | { kind: "wait"; minutes: 15 | 30 | 60 } | { kind: "work-enable" } | { kind:"life-enable" } | {kind:"life-mode";mode:"rules"|"offline-agent"} | { kind: "work-step" } | { kind: "work-interrupt"; npcId: string } | TownCaseAction;
+export type TownPlayAction = { kind: "arrive"; sceneId: string } | { kind: "wait"; minutes: 15 | 30 | 60 } | { kind: "work-enable" } | { kind:"life-enable" } | {kind:"life-mode";mode:"rules"|"offline-agent"} | { kind: "work-step" } | { kind: "work-interrupt"; npcId: string } | { kind: "rest" } | TownCaseAction;
 
 /** Public transport only. The private world, schedules and identity secret must
  * never be attached to this response as extra convenience fields. */
@@ -33,6 +35,8 @@ export type TownPlayView = ReturnType<typeof townExplorationPlayerView> & {
   commission?: TownCommissionView | null;
   closedCases?: TownClosedCaseView[];
   residentWorkEnabled?: boolean;
+  /** Overnight stay at the inn: open, or closed with the reason shown to the player. */
+  rest?: TownRestView | null;
   residentLife?: { schema:"town-resident-life.v1"; elapsedMinutes:number; remainingMinutes:number; plannerMode:"rules"|"offline-agent"; proposalCount:number; modelCalls:0|null; modelAttemptsReserved:number };
 };
 export type TownPlayCommand = {

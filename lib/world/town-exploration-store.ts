@@ -5,13 +5,13 @@ import { chooseResidentLife } from "./resident-life-provider";
 import { observedTownPassages, rememberTownPassages, type TownObservedMotion } from "@/packages/engine/src/town/observed-passages";
 import { getDb, worldRepository } from "./repository";
 import { withPrivateWorldAccess } from "./private-world-access";
-import { createRiverbendWorld, RIVERBEND_VISITABLE_SCENES, RIVERBEND_WORLD_REVISION } from "@/packages/engine/src/riverbend-world";
+import { createRiverbendWorld, RIVERBEND_PLAY_TICKS, RIVERBEND_VISITABLE_SCENES, RIVERBEND_WORLD_REVISION } from "@/packages/engine/src/riverbend-world";
 import { advancePersistentTownTick, type PersistentTownRuntime } from "@/packages/engine/src/persistent-town";
 import { enableTownResidentWork, prepareResidentWorkDecision, queueResidentWorkDecision, reserveResidentWorkModelAttempt, RESIDENT_WORK_JOBS, type ResidentWorkChoice, type ResidentWorkContext } from "@/packages/engine/src/town/resident-work";
 import { chooseResidentWork, residentDecisionProviderFromEnv, type ResidentDecisionProvider } from "./resident-decision-provider";
 import { executeTownArrival, TOWN_PLAY_TICK_POLICY, observeTownResidents, startTownExploration, townExplorationPlayerView, validateTownExplorationBinding, type TownExplorationBinding, type TownExplorationState } from "@/packages/engine/src/town-exploration";
-import type { WorldState } from "@/packages/engine/src/world-types";
-import type { TownPlayCommand, TownPlayResult, TownPlayView } from "@/lib/town-play-contract";
+import type { WorldEvent, WorldState } from "@/packages/engine/src/world-types";
+import type { TownPlayCommand, TownPlayResult, TownPlayView, TownRestView } from "@/lib/town-play-contract";
 import { executeTownInvestigation, projectTownInvestigation, projectTownCommission, projectClosedCases, InvestigationError, type TownInvestigation } from "./riverbend-investigation";
 import { CLASSIC_LIVING_ACTORS, CLASSIC_LIVING_ASSET_SHA256, CLASSIC_LIVING_PLACES, CLASSIC_LIVING_REVISION } from "@/lib/classic-living-contract";
 
@@ -74,10 +74,39 @@ function withOwned<T>(credentials: TownPlayCredentials, action: (owned: Owned) =
   });
 }
 
+/** Applied to every world a command loads, before it acts. */
+function normalizeLoadedWorld(world: RuntimeWorld, session: Session) {
+  world.persistentRuntime.eventIdentityPolicy = "world-scoped";
+  // Town play never restores tick snapshots; saves made before the light
+  // tick policy carried up to 30 full-world copies. Drop them on next action.
+  if (world.persistentRuntime.snapshots?.length) world.persistentRuntime.snapshots = [];
+  world.persistentRuntime.maxTicks = playWindowTicks(world, session);
+}
+
+/** One-day Riverbend saves get the full play window; never shortens a run. */
+function playWindowTicks(world: RuntimeWorld, session: Session) {
+  return session.binding.revision === RIVERBEND_WORLD_REVISION ? Math.max(world.persistentRuntime.maxTicks, RIVERBEND_PLAY_TICKS) : world.persistentRuntime.maxTicks;
+}
+
+const REST_OPENS = 17 * 60, REST_CLOSES = 6 * 60, WAKE = 8 * 60;
+/** The inn lets rooms from 17:00 until 06:00; the stay ends at 08:00. */
+function restPlan(world: RuntimeWorld, session: Session): { view: TownRestView; ticks: number } {
+  const runtime = world.persistentRuntime;
+  const sceneId = session.binding.places.find(place => place.locationId === session.state.locationId)?.sceneId;
+  if (session.binding.revision !== RIVERBEND_WORLD_REVISION || sceneId !== "inn") return { view: { open: false, reason: "到旅馆才能订房过夜。" }, ticks: 0 };
+  const [hours, minutes] = runtime.currentTime.split(":").map(Number);
+  const now = hours * 60 + minutes;
+  if (now >= REST_CLOSES && now < REST_OPENS) return { view: { open: false, reason: "旅馆傍晚五点起开房。" }, ticks: 0 };
+  const evening = now >= REST_OPENS;
+  const ticks = Math.ceil(((evening ? 24 * 60 : 0) + WAKE - now) / runtime.tickIntervalMinutes);
+  if (runtime.tick + ticks > playWindowTicks(world, session)) return { view: { open: false, reason: "河湾手记的日程到此为止。" }, ticks: 0 };
+  return { view: { open: true, wakeDay: runtime.currentDay + (evening ? 1 : 0) }, ticks };
+}
+
 function project(world: RuntimeWorld, session: Session): TownPlayView {
   const publicWorld = townExplorationPlayerView(world, session.binding, session.state, world.persistentRuntime);
   const life=world.persistentRuntime.residentLife;
-  return { ...publicWorld, assetSha256: session.binding.assetSha256, visitedSceneIds: [...session.visitedSceneIds], lastArrival: session.state.lastArrival ? { ...session.state.lastArrival } : undefined, investigation: projectTownInvestigation(world.id, publicWorld.sceneId, session.investigation), commission: session.binding.revision === RIVERBEND_WORLD_REVISION ? projectTownCommission(world.id, session.investigation, session.closedInvestigations) : null, closedCases: projectClosedCases(world.id, session.closedInvestigations), ...(world.persistentRuntime.residentWork ? { residentWorkEnabled: true } : {}),
+  return { ...publicWorld, assetSha256: session.binding.assetSha256, visitedSceneIds: [...session.visitedSceneIds], lastArrival: session.state.lastArrival ? { ...session.state.lastArrival } : undefined, investigation: projectTownInvestigation(world.id, publicWorld.sceneId, session.investigation), commission: session.binding.revision === RIVERBEND_WORLD_REVISION ? projectTownCommission(world.id, session.investigation, session.closedInvestigations) : null, closedCases: projectClosedCases(world.id, session.closedInvestigations), ...(session.binding.revision === RIVERBEND_WORLD_REVISION ? { rest: restPlan(world, session).view } : {}), ...(world.persistentRuntime.residentWork ? { residentWorkEnabled: true } : {}),
     ...(life?{residentLife:{schema:life.schema,elapsedMinutes:(world.persistentRuntime.tick-life.startedAtTick)*world.persistentRuntime.tickIntervalMinutes,remainingMinutes:Math.max(0,(life.endTick-world.persistentRuntime.tick)*world.persistentRuntime.tickIntervalMinutes),plannerMode:life.planner.mode,proposalCount:life.planner.proposals.length,modelCalls:life.planner.providerBudget.used?null:0 as const,modelAttemptsReserved:life.planner.providerBudget.used}}:{}), };
 }
 
@@ -111,11 +140,12 @@ export function startTownPlay(existing?: TownPlayCredentials, profile: TownPlayP
 
 /** Every state change and durable retry receipt shares one SQLite transaction.
  * No network/model await belongs inside this synchronous command boundary. */
-export function commandTownPlay(credentials: TownPlayCredentials, command: TownPlayCommand, modelBatch?: { choices: ResidentWorkChoice[] }): TownPlayResult {
+export function commandTownPlay(credentials: TownPlayCredentials, command: TownPlayCommand, modelBatch?: { choices: ResidentWorkChoice[] }, night?: RestNight): TownPlayResult {
+  if (command.kind === "rest" && !night) night = simulateRestNight(credentials, command);
   const db = database();
   return db.transaction(() => withOwned(credentials, ({ session, world, map }) => {
     if (typeof command.actionId !== "string" || !/^[a-zA-Z0-9_-]{1,120}$/.test(command.actionId) || !Number.isSafeInteger(command.expectedSessionRevision) || !Number.isSafeInteger(command.expectedWorldRevision)) throw new TownPlayError("BAD_COMMAND", "请重新载入手记后再试。", 400);
-    if (!["arrive", "wait", "work-enable", "life-enable", "life-mode", "work-step", "work-interrupt", "case-open", "case-search", "case-question", "case-challenge", "case-submit"].includes(command.kind)) throw new TownPlayError("BAD_COMMAND", "未知的小镇动作。", 400);
+    if (!["arrive", "wait", "work-enable", "life-enable", "life-mode", "work-step", "work-interrupt", "case-open", "case-search", "case-question", "case-challenge", "case-submit", "rest"].includes(command.kind)) throw new TownPlayError("BAD_COMMAND", "未知的小镇动作。", 400);
     if (session.binding.revision === CLASSIC_LIVING_REVISION && (command.kind.startsWith("case-") || (command.kind === "arrive" && !(CLASSIC_LIVING_PLACES as readonly string[]).includes(command.sceneId)))) throw new TownPlayError("PLACE_CLOSED", "这段日常目前开放车站、旧书店与旅馆。", 400);
     // Preserve the v1 arrival/wait fingerprint so pre-case durable retries work.
     const fingerprint = command.kind === "arrive" || command.kind === "wait" ? JSON.stringify({ kind: command.kind, target: command.kind === "arrive" ? command.sceneId : command.minutes, sessionRevision: command.expectedSessionRevision, worldRevision: command.expectedWorldRevision }) : JSON.stringify(command);
@@ -142,10 +172,7 @@ export function commandTownPlay(credentials: TownPlayCredentials, command: TownP
     }
     // Existing riverbend.v1 saves retain their old records. Only new events
     // adopt the world namespace; reading or restoring does not rewrite history.
-    world.persistentRuntime.eventIdentityPolicy = "world-scoped";
-    // Town play never restores tick snapshots; saves made before the light
-    // tick policy carried up to 30 full-world copies. Drop them on next action.
-    if (world.persistentRuntime.snapshots?.length) world.persistentRuntime.snapshots = [];
+    normalizeLoadedWorld(world, session);
     // Authored opening history is immutable case evidence, not a new live
     // incident for the autonomous candidate extractor to consume again.
     const liveEvents = events.filter(e => !e.tags.includes("riverbend-authored-history"));
@@ -172,6 +199,14 @@ export function commandTownPlay(credentials: TownPlayCredentials, command: TownP
       nextWorld = result.world;
       nextState = result.state;
       addedEvents = result.events;
+    } else if (command.kind === "rest") {
+      const plan = restPlan(world, session);
+      if (!plan.view.open) throw new TownPlayError("REST_CLOSED", plan.view.reason, 409);
+      if (!night || night.fromRevision !== revision) throw new TownPlayError("STATE_CHANGED", "小镇已发生变化，已保留你的手记；请刷新后继续。", 409);
+      const resting = night;
+      nextWorld = resting.world;
+      nextState = observeTownResidents(nextWorld, session.binding, { ...session.state, revision: session.state.revision + 1 }, nextWorld.persistentRuntime);
+      addedEvents = resting.events;
     } else if (command.kind === "wait" || command.kind === "work-step" || command.kind === "work-interrupt") {
       if (command.kind === "wait" && ![15, 30, 60].includes(command.minutes)) throw new TownPlayError("BAD_WAIT", "请选择手记中提供的等待时长。", 400);
       if (command.kind === "work-step" && !world.persistentRuntime.residentWork) throw new TownPlayError("WORK_DISABLED", "请先启用居民工作试验。", 409);
@@ -227,6 +262,33 @@ export function commandTownPlay(credentials: TownPlayCredentials, command: TownP
     if (batch) db.prepare("update town_resident_work_batches set status = 'completed' where session_id = ? and action_id = ?").run(credentials.id, command.actionId);
     return result;
   })).immediate();
+}
+
+type RestNight = { fromRevision: number; world: RuntimeWorld; events: WorldEvent[] };
+/** A night at the inn is ~180 real ticks (a few seconds). It runs on a private
+ * copy outside the write transaction so other notebooks are never blocked;
+ * commandTownPlay then commits it only if the world has not moved since.
+ * Returns undefined when the command will be refused or replayed anyway. */
+function simulateRestNight(credentials: TownPlayCredentials, command: TownPlayCommand): RestNight | undefined {
+  const db = database();
+  return withOwned(credentials, ({ session, world }) => {
+    const revision = world.persistentRuntime.commandRevision ?? 0;
+    if (typeof command.actionId !== "string" || db.prepare("select 1 from town_exploration_receipts where session_id = ? and action_id = ?").get(credentials.id, command.actionId)) return undefined;
+    if (session.state.revision !== command.expectedSessionRevision || revision !== command.expectedWorldRevision) return undefined;
+    normalizeLoadedWorld(world, session);
+    const plan = restPlan(world, session);
+    if (!plan.view.open) return undefined;
+    const liveEvents = worldRepository.getEvents(world.id).filter(e => !e.tags.includes("riverbend-authored-history"));
+    // Real ticks: residents go home, sleep and set out on their own schedules.
+    // 60 ticks is the engine's per-call ceiling. The world was just read from
+    // storage and belongs to this call alone, so it is advanced in place.
+    let resting: RestNight = { fromRevision: revision, world, events: [] };
+    for (let left = plan.ticks; left > 0; left -= 60) {
+      const result = advancePersistentTownTick(resting.world, [...liveEvents, ...resting.events], { ...TOWN_PLAY_TICK_POLICY, steps: Math.min(60, left), status: "paused", cloneInput: false });
+      resting = { fromRevision: revision, world: { ...result.world, persistentRuntime: result.runtime } as RuntimeWorld, events: [...resting.events, ...result.events] };
+    }
+    return resting;
+  });
 }
 
 /** Reserve budget in SQLite, release the transaction, call providers, then

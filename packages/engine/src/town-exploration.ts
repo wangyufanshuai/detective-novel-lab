@@ -8,8 +8,11 @@ import { residentLifePlayerActivity } from "./town/resident-life";
  * whole world every tick (kept for lab replay and branching); a player world is
  * rewritten on every action, so that made one day of play ~40 MB and each action
  * slower than the last. Players never read snapshots, and traces and reports only
- * need a recent window (interventions keep a digest in decisionTraceArchive). */
-export const TOWN_PLAY_TICK_POLICY = { snapshotEveryTicks: Number.MAX_SAFE_INTEGER, checkpointEveryTicks: Number.MAX_SAFE_INTEGER, traceRetention: 96, reportRetention: 48 } as const;
+ * need a recent window (interventions keep a digest in decisionTraceArchive).
+ * The tick index reads the latest 300 events plus every event an open case
+ * chain still references, as the long-run gate does, so a night at the inn on
+ * day 3 costs the same as on day 1. */
+export const TOWN_PLAY_TICK_POLICY = { snapshotEveryTicks: Number.MAX_SAFE_INTEGER, checkpointEveryTicks: Number.MAX_SAFE_INTEGER, traceRetention: 96, reportRetention: 48, indexEventLimit: 300 } as const;
 
 export type TownExplorationBinding = {
   schema: "town-exploration-binding.v1";

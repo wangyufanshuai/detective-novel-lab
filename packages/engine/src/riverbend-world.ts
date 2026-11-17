@@ -8,6 +8,11 @@ import type { NPCProfile, WorldLocation, WorldState } from "./world-types";
  * Authored schedules are intentions, not proof the agent runtime follows them.
  */
 export const RIVERBEND_WORLD_REVISION = "riverbend-world.v1";
+/** Riverbend play runs three days, from day 1 08:00 to day 4 08:00, in 5-minute
+ * ticks. Nights pass by resting at the inn. Saves from the one-day release are
+ * raised to this window when they next act; nothing else about them changes. */
+export const RIVERBEND_PLAY_DAYS = 3;
+export const RIVERBEND_PLAY_TICKS = RIVERBEND_PLAY_DAYS * 288;
 export const RIVERBEND_ASSET_SHA256 = "763d45d4c549d51e96953ffc099950dd2511d31c1567d9bf9686ee6e687acbc3";
 export const RIVERBEND_VISITABLE_SCENES = ["cafe", "books", "police", "station", "post", "inn"] as const;
 
@@ -77,7 +82,7 @@ export function createRiverbendWorld(input: { worldId: string; now: string; seed
     residents: residents.map(person => ({ actorId: person.actorId, npcId: person.id }))
   };
   validateTownExplorationBinding(world, map, binding);
-  const runtime = createPersistentTownRuntime(world, [], { tickIntervalMinutes: 5, maxTicks: 288, caseTriggerPolicy: "source-signaled", now: input.now });
+  const runtime = createPersistentTownRuntime(world, [], { tickIntervalMinutes: 5, maxTicks: RIVERBEND_PLAY_TICKS, caseTriggerPolicy: "source-signaled", now: input.now });
   runtime.currentMapPackId = map.manifest.id;
   runtime.mapPacks = [map];
   if (runtime.currentExperiment) runtime.currentExperiment.mapPackId = map.manifest.id;
