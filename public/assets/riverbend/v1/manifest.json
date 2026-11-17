@@ -30,5 +30,13 @@
   },
   "lighting": "Browser directional and ambient lighting; no baked lightmap",
   "residentBinding": "unbound art placeholders",
-  "caseIntegrated": false
+  "caseIntegrated": false,
+  "delivery": {
+    "url": "/assets/riverbend/v1/town.meshopt.glb",
+    "sha256": "50329ef78d84b6c744b318d8101d0fb687f5d5fb9edd47ddbdff49dc05179f9a",
+    "bytes": 2885268,
+    "encoding": "EXT_meshopt_compression, lossless (no quantization)",
+    "identitySha256": "763d45d4c549d51e96953ffc099950dd2511d31c1567d9bf9686ee6e687acbc3",
+    "script": "scripts/compress-riverbend-town.mjs"
+  }
 }

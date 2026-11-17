@@ -3,6 +3,7 @@
 import { useEffect, useRef, type RefObject } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 import { createTownNavigator, type TownDestination, type TownNavigationData, type TownPoint } from "@/lib/riverbend-navigation";
 import { batchTownResidents } from "./resident-batching";
 import { createRefreshCadence } from "./frame-cadence";
@@ -141,19 +142,21 @@ export default function TownScene(props: Props) {
         const manifest = await manifestResponse.json();
         const residentManifest = await residentManifestResponse.json();
         if (residentManifest.baseAssetSha256 !== manifest.asset.sha256 || residentManifest.collisionRadius !== RESIDENT_RADIUS) throw new Error("居民与街区版本不一致，请重新载入。");
+        const delivery: { url: string; sha256: string } = manifest.delivery?.identitySha256 === manifest.asset.sha256 ? manifest.delivery : manifest.asset;
         const [navResponse, assetResponse, residentResponse] = await Promise.all([
           fetch(manifest.navigation.url, { signal: abort.signal }),
-          fetch(manifest.asset.url, { signal: abort.signal }),
+          // The lossless meshopt copy when one is published; asset.sha256 stays the identity notebooks record.
+          fetch(delivery.url, { signal: abort.signal }),
           fetch(residentManifest.asset.url, { signal: abort.signal })
         ]);
         if (!navResponse.ok || !assetResponse.ok || !residentResponse.ok) throw new Error("小镇资源未能载入");
         const navBytes = await navResponse.arrayBuffer(), asset = await assetResponse.arrayBuffer(), residentAsset = await residentResponse.arrayBuffer();
         const digest = async (bytes: ArrayBuffer) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))].map(v => v.toString(16).padStart(2, "0")).join("");
-        if (await digest(asset) !== manifest.asset.sha256 || await digest(navBytes) !== manifest.navigation.sha256) throw new Error("场景与通行数据版本不一致，请重新载入。");
+        if (await digest(asset) !== delivery.sha256 || await digest(navBytes) !== manifest.navigation.sha256) throw new Error("场景与通行数据版本不一致，请重新载入。");
         if (await digest(residentAsset) !== residentManifest.asset.sha256) throw new Error("居民资源校验未通过，请重新载入。");
         const data: TownNavigationData = JSON.parse(new TextDecoder().decode(navBytes));
         if (data.assetSha256 !== manifest.asset.sha256 || data.sourceSha256 !== manifest.sourceSha256) throw new Error("场景版本不一致");
-        const gltf = await new GLTFLoader().parseAsync(asset, "/assets/riverbend/v1/");
+        const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(asset, "/assets/riverbend/v1/");
         if (stopped) { disposeModel(gltf.scene); return; }
         model = gltf.scene;
         const cast = await new GLTFLoader().parseAsync(residentAsset, "/assets/riverbend/residents-v2/");

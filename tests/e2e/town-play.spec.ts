@@ -116,6 +116,8 @@ test.describe("town-play", () => {
   });
 
   test("case path: open, search, question, board, wrong theory, solve", async ({ page }, testInfo) => {
+    // Two full reloads of the 3D town plus the archive read: ~3 minutes on a busy dev machine.
+    test.setTimeout(360_000);
     await startNotebook(page);
 
     let view = await act(page, { kind: "arrive", sceneId: "books" });

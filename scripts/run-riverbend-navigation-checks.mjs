@@ -12,6 +12,11 @@ const data = read(navigationPath);
 const asset = read("public/assets/riverbend/v1/manifest.json");
 assert.equal(data.assetSha256, sha("public/assets/riverbend/v1/town.glb"));
 assert.equal(asset.navigation.sha256, sha(navigationPath));
+// The browser downloads the meshopt copy; it must be built from this exact town.glb.
+if (asset.delivery) {
+  assert.equal(asset.delivery.identitySha256, asset.asset.sha256, "delivery copy is stale: run node scripts/compress-riverbend-town.mjs");
+  assert.equal(asset.delivery.sha256, sha(asset.delivery.url.replace(/^\//, "public/")));
+}
 const navigator = createTownNavigator(data);
 const checks = [];
 for (const route of data.routes) {
