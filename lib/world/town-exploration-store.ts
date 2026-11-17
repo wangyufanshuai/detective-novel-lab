@@ -9,7 +9,7 @@ import { createRiverbendWorld, RIVERBEND_VISITABLE_SCENES, RIVERBEND_WORLD_REVIS
 import { advancePersistentTownTick, type PersistentTownRuntime } from "@/packages/engine/src/persistent-town";
 import { enableTownResidentWork, prepareResidentWorkDecision, queueResidentWorkDecision, reserveResidentWorkModelAttempt, RESIDENT_WORK_JOBS, type ResidentWorkChoice, type ResidentWorkContext } from "@/packages/engine/src/town/resident-work";
 import { chooseResidentWork, residentDecisionProviderFromEnv, type ResidentDecisionProvider } from "./resident-decision-provider";
-import { executeTownArrival, observeTownResidents, startTownExploration, townExplorationPlayerView, validateTownExplorationBinding, type TownExplorationBinding, type TownExplorationState } from "@/packages/engine/src/town-exploration";
+import { executeTownArrival, TOWN_PLAY_TICK_POLICY, observeTownResidents, startTownExploration, townExplorationPlayerView, validateTownExplorationBinding, type TownExplorationBinding, type TownExplorationState } from "@/packages/engine/src/town-exploration";
 import type { WorldState } from "@/packages/engine/src/world-types";
 import type { TownPlayCommand, TownPlayResult, TownPlayView } from "@/lib/town-play-contract";
 import { executeTownInvestigation, projectTownInvestigation, projectTownCommission, projectClosedCases, InvestigationError, type TownInvestigation } from "./riverbend-investigation";
@@ -143,6 +143,9 @@ export function commandTownPlay(credentials: TownPlayCredentials, command: TownP
     // Existing riverbend.v1 saves retain their old records. Only new events
     // adopt the world namespace; reading or restoring does not rewrite history.
     world.persistentRuntime.eventIdentityPolicy = "world-scoped";
+    // Town play never restores tick snapshots; saves made before the light
+    // tick policy carried up to 30 full-world copies. Drop them on next action.
+    if (world.persistentRuntime.snapshots?.length) world.persistentRuntime.snapshots = [];
     // Authored opening history is immutable case evidence, not a new live
     // incident for the autonomous candidate extractor to consume again.
     const liveEvents = events.filter(e => !e.tags.includes("riverbend-authored-history"));
@@ -179,7 +182,7 @@ export function commandTownPlay(credentials: TownPlayCredentials, command: TownP
       }
       const steps = command.kind === "wait" ? command.minutes / world.persistentRuntime.tickIntervalMinutes : 1;
       if (!Number.isSafeInteger(steps) || steps < 1 || steps > 60 || world.persistentRuntime.tick + steps > world.persistentRuntime.maxTicks) throw new TownPlayError("DAY_COMPLETE", "这段小镇日程已经结束，手记已保存。", 409);
-      const result = advancePersistentTownTick(world, liveEvents, { steps, status: "paused" });
+      const result = advancePersistentTownTick(world, liveEvents, { ...TOWN_PLAY_TICK_POLICY, steps, status: "paused" });
       nextWorld = { ...result.world, persistentRuntime: result.runtime };
       nextState = observeTownResidents(nextWorld, session.binding, { ...session.state, revision: session.state.revision + 1 }, result.runtime);
       addedEvents = result.events;
@@ -191,7 +194,7 @@ export function commandTownPlay(credentials: TownPlayCredentials, command: TownP
         const action = executeTownInvestigation({ world, sceneId, observedNpcIds: visible, ownerId: credentials.id, ref: session.investigation, closed: session.closedInvestigations, command, events });
         const actingWorld = action.world as RuntimeWorld;
         if ((command.kind === "case-question" || command.kind === "case-challenge") && actingWorld.persistentRuntime.dailyRoutine) actingWorld.persistentRuntime.dailyRoutine.holds[command.characterId] = { untilTick: actingWorld.persistentRuntime.tick + 1, reason: "访客正在当面核对案情" };
-        const result = advancePersistentTownTick(actingWorld, liveEvents, { steps: 1, status: "paused" });
+        const result = advancePersistentTownTick(actingWorld, liveEvents, { ...TOWN_PLAY_TICK_POLICY, steps: 1, status: "paused" });
         nextWorld = { ...result.world, persistentRuntime: result.runtime };
         nextState = observeTownResidents(nextWorld, session.binding, { ...session.state, revision: session.state.revision + 1 }, result.runtime);
         session.investigation = action.ref;

@@ -4,6 +4,13 @@ import type { WorldEvent, WorldState } from "./world-types";
 import { residentWorkPlayerView } from "./town/resident-work";
 import { residentLifePlayerActivity } from "./town/resident-life";
 
+/** Tick policy for player-owned town worlds. The engine default snapshots the
+ * whole world every tick (kept for lab replay and branching); a player world is
+ * rewritten on every action, so that made one day of play ~40 MB and each action
+ * slower than the last. Players never read snapshots, and traces and reports only
+ * need a recent window (interventions keep a digest in decisionTraceArchive). */
+export const TOWN_PLAY_TICK_POLICY = { snapshotEveryTicks: Number.MAX_SAFE_INTEGER, checkpointEveryTicks: Number.MAX_SAFE_INTEGER, traceRetention: 96, reportRetention: 48 } as const;
+
 export type TownExplorationBinding = {
   schema: "town-exploration-binding.v1";
   worldId: string;
@@ -137,7 +144,7 @@ export function planTownArrival(world: WorldState, map: TownMapPack, binding: To
 export function executeTownArrival(world: WorldState & { persistentRuntime: PersistentTownRuntime }, events: WorldEvent[], map: TownMapPack, binding: TownExplorationBinding, state: TownExplorationState, input: Parameters<typeof planTownArrival>[5]) {
   const plan = planTownArrival(world, map, binding, state, world.persistentRuntime, input);
   const result = plan.steps > 0
-    ? advancePersistentTownTick(world, events, { steps: plan.steps, status: "paused" })
+    ? advancePersistentTownTick(world, events, { ...TOWN_PLAY_TICK_POLICY, steps: plan.steps, status: "paused" })
     : { world: structuredClone(world), runtime: structuredClone(world.persistentRuntime), events: [] as WorldEvent[] };
   const nextWorld = result.world as WorldState & { persistentRuntime: PersistentTownRuntime };
   nextWorld.persistentRuntime = result.runtime;
