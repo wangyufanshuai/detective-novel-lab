@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import type { TownPlayView } from "@/lib/town-play-contract";
 import { clockHours } from "./town-lighting";
 import { townSound } from "./town-sound";
+import { weatherAt } from "./town-weather";
 
 /**
  * Turns town state changes into sound: the clock and open panels steer the
@@ -19,7 +20,10 @@ export function useTownSound(view: TownPlayView | null, panel: string | null, ov
     return () => { window.removeEventListener("pointerdown", unlock); window.removeEventListener("keydown", unlock); };
   }, []);
 
-  useEffect(() => { townSound().setWorld({ hours: clockHours(view?.time), ducked: !!panel, overview }); }, [view?.time, panel, overview]);
+  useEffect(() => {
+    const hours = clockHours(view?.time);
+    townSound().setWorld({ hours, rain: weatherAt(view?.day, hours).rain, ducked: !!panel, overview });
+  }, [view?.time, view?.day, panel, overview]);
 
   const lastPanel = useRef(panel);
   useEffect(() => {

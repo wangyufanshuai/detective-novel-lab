@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import type { TownCaseAction, TownPlayView } from "@/lib/town-play-contract";
 import { assignTargets, type RoomBox, type RoomDef } from "./interior-rooms";
-import { clockHours, gradeAt } from "./town-lighting";
+import { clockHours, easeGrade, gradeAt } from "./town-lighting";
+import { weatherAt, weatherGrade, type Weather } from "./town-weather";
 import type { TownContact } from "./town-interaction";
 import { townSound } from "./town-sound";
 import styles from "./town-play.module.css";
@@ -20,9 +21,14 @@ type Props = {
   onTalk: (person: TownContact) => void;
   onOpenBook: () => void;
   onExit: () => void;
+  /** Book a room for the night (the inn's stairs). */
+  onRest?: () => void;
+  resting?: boolean;
+  /** One line about the place, shown on the card. */
+  blurb?: string;
 };
 type Item =
-  | { id: string; kind: "spot"; name: string; at: [number, number]; spotId: string; targets: Array<{ id: string; label: string; found: boolean }>; desk: boolean; idle: string }
+  | { id: string; kind: "spot"; name: string; at: [number, number]; spotId: string; targets: Array<{ id: string; label: string; found: boolean }>; desk: boolean; rest: boolean; idle: string }
   | { id: string; kind: "person"; name: string; at: [number, number]; person: TownContact }
   | { id: string; kind: "door"; name: string; at: [number, number] };
 type Slip = { title: string; text: string; tone: "found" | "note" | "refuse" };
@@ -68,7 +74,7 @@ export function TownInterior(props: Props) {
     const targets = c && !c.solved ? assignTargets(room, c.searchTargets) : new Map();
     const people = view.residents.filter(p => p.visibility === "observed" && p.sceneId === room.sceneId);
     return [
-      ...room.spots.map(s => ({ id: `spot-${s.id}`, kind: "spot" as const, name: s.name, at: s.stand, spotId: s.id, targets: targets.get(s.id) ?? [], desk: !!s.desk, idle: s.idle })),
+      ...room.spots.map(s => ({ id: `spot-${s.id}`, kind: "spot" as const, name: s.name, at: s.stand, spotId: s.id, targets: targets.get(s.id) ?? [], desk: !!s.desk, rest: !!s.rest, idle: s.idle })),
       ...people.map((p, i) => ({ id: `person-${p.actorId}`, kind: "person" as const, name: p.name, at: room.standing[i % room.standing.length], person: { actorId: p.actorId, npcId: p.npcId, name: p.name, role: p.role, sceneId: room.sceneId } })),
       { id: "door", kind: "door" as const, name: "门口", at: room.door }
     ];
@@ -92,6 +98,11 @@ export function TownInterior(props: Props) {
     if (!item || p.busy) return;
     if (item.kind === "door") { p.onExit(); return; }
     if (item.kind === "person") { p.onTalk(item.person); return; }
+    if (item.rest) {
+      if (p.view.rest?.open && p.onRest) { setSlip(null); p.onRest(); return; }
+      setSlip({ title: item.name, text: `${item.idle}${p.view.rest && !p.view.rest.open ? p.view.rest.reason : ""}`, tone: "note" });
+      return;
+    }
     const vc = p.view.investigation;
     if (item.desk && p.view.commission && p.view.commission.openAt.includes(room.sceneId) && (!vc || vc.solved)) {
       const hook = p.view.commission.hook;
@@ -146,16 +157,18 @@ export function TownInterior(props: Props) {
     renderer.domElement.setAttribute("aria-label", `${room.title}室内`);
     const scene = new THREE.Scene();
     const camera = new THREE.OrthographicCamera(-8, 8, 5, -5, .1, 80);
-    const grade = gradeAt(clockHours(live.current.view.time));
-    scene.add(new THREE.HemisphereLight("#fff1d6", "#5e4c3a", 1.35));
+    const hoursNow = () => clockHours(live.current.view.time);
+    const weatherNow = (out?: Weather) => weatherAt(live.current.view.day, hoursNow(), out);
+    const grade = weatherGrade(gradeAt(hoursNow()), weatherNow()), target = gradeAt(hoursNow()), w: Weather = weatherNow();
+    const hemisphere = new THREE.HemisphereLight("#fff1d6", "#5e4c3a", 1.35);
+    scene.add(hemisphere);
     const sun = new THREE.DirectionalLight(grade.sun, .6 + grade.sunI * .5);
     sun.position.set(3, 7, -9); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
     Object.assign(sun.shadow.camera, { left: -8, right: 8, top: 8, bottom: -8 });
     scene.add(sun);
     const pendant = new THREE.PointLight("#ffd59a", 9 + grade.glow * 10, 10, 1.6);
     pendant.position.set(0, 3.2, .4); scene.add(pendant);
-    const lamp = new THREE.PointLight("#ffcf7f", 3 + grade.glow * 4, 4, 2);
-    lamp.position.set(-1.85, 1.5, 1.85); scene.add(lamp);
+    const lamps = room.lamps.map(([x, y, z]) => { const lamp = new THREE.PointLight("#ffcf7f", 3 + grade.glow * 4, 4, 2); lamp.position.set(x, y, z); scene.add(lamp); return lamp; });
 
     const roomGroup = new THREE.Group(); scene.add(roomGroup);
     const [W, D] = room.size;
@@ -177,12 +190,33 @@ export function TownInterior(props: Props) {
     add({ at: [0, -D / 2 + .01], size: [W, 1.0, .04], color: room.wainscot });
     add({ at: [-W / 2 + .01, 0], size: [.04, 1.0, D], color: room.wainscot });
     add({ at: [0, -D / 2 + .03], size: [W, .06, .06], color: "#2f4835", y: 1.0 });
-    add({ at: [3.4, -D / 2 + .02], size: [1.6, 1.5, .06], color: "#4e3a28", y: 1.15 });
-    const pane = add({ at: [3.4, -D / 2 + .05], size: [1.4, 1.3, .02], color: "#000000", y: 1.25 });
-    (pane.material as THREE.MeshStandardMaterial).emissive = new THREE.Color(grade.sky).lerp(new THREE.Color("#ffd28a"), grade.glow * .2);
-    (pane.material as THREE.MeshStandardMaterial).emissiveIntensity = 1.1 - grade.glow * .5;
-    add({ at: [3.4, -D / 2 + .07], size: [.05, 1.3, .02], color: "#4e3a28", y: 1.25 });
-    add({ at: [3.4, -D / 2 + .07], size: [1.4, .05, .02], color: "#4e3a28", y: 1.88 });
+    const panes: THREE.MeshStandardMaterial[] = [];
+    const streaks: THREE.Mesh[] = [];
+    const streakMaterial = new THREE.MeshBasicMaterial({ color: "#e6eef2", transparent: true, opacity: 0, depthWrite: false });
+    for (const wx of room.windows) {
+      add({ at: [wx, -D / 2 + .02], size: [1.6, 1.5, .06], color: "#4e3a28", y: 1.15 });
+      panes.push(add({ at: [wx, -D / 2 + .05], size: [1.4, 1.3, .02], color: "#000000", y: 1.25 }).material as THREE.MeshStandardMaterial);
+      add({ at: [wx, -D / 2 + .07], size: [.05, 1.3, .02], color: "#4e3a28", y: 1.25 });
+      add({ at: [wx, -D / 2 + .07], size: [1.4, .05, .02], color: "#4e3a28", y: 1.88 });
+      // Rain running down the glass: a few streaks per pane, only drawn while it rains.
+      for (let i = 0; i < 7; i++) {
+        const streak = new THREE.Mesh(new THREE.PlaneGeometry(.012, .16 + (i % 3) * .06), streakMaterial);
+        streak.position.set(wx - .62 + i * .2 + (i % 2) * .05, 1.25 + ((i * .37) % 1) * 1.3, -D / 2 + .065);
+        streak.userData.speed = .35 + (i % 4) * .12; streak.visible = false;
+        scene.add(streak); streaks.push(streak);
+      }
+    }
+    const warm = new THREE.Color("#ffd28a");
+    const lightRoom = () => {
+      hemisphere.intensity = 1.05 + (1 - grade.glow) * .3 - w.cloud * .1;
+      sun.color.copy(grade.sun); sun.intensity = .6 + grade.sunI * .5;
+      pendant.intensity = 9 + grade.glow * 10;
+      for (const lamp of lamps) lamp.intensity = 3 + grade.glow * 4;
+      for (const pane of panes) { pane.emissive.copy(grade.sky).lerp(warm, grade.glow * .2); pane.emissiveIntensity = 1.1 - grade.glow * .5 - w.rain * .25; }
+      streakMaterial.opacity = Math.min(.7, w.rain * .8);
+    };
+    lightRoom();
+    townSound().setWorld({ room: room.tone });
     add({ at: [room.door[0], room.door[1]], size: [1.3, .02, .8], color: "#6b5a3c", y: .001 });
     room.build(roomGroup, add);
 
@@ -239,6 +273,16 @@ export function TownInterior(props: Props) {
         phase += delta * 9;
       }
       townSound().setWorld({ moving });
+      // The clock moves while you are inside (a search takes five minutes): the light and the rain follow it.
+      gradeAt(hoursNow(), target); weatherNow(w); weatherGrade(target, w);
+      easeGrade(grade, target, 1 - Math.exp(-delta * 1.5));
+      lightRoom();
+      for (const streak of streaks) {
+        streak.visible = w.rain > .05;
+        if (!streak.visible) continue;
+        streak.position.y -= delta * streak.userData.speed;
+        if (streak.position.y < 1.3) streak.position.y = 2.5;
+      }
       const limbs = player.userData.limbs as THREE.Object3D[];
       limbs.forEach((limb, i) => { limb.rotation.x = moving ? Math.sin(phase + (i % 2 ? Math.PI : 0)) * (i < 2 ? .5 : -.4) : limb.rotation.x * .8; });
       // Residents face the player when close and breathe.
@@ -277,15 +321,16 @@ export function TownInterior(props: Props) {
     };
     frame = requestAnimationFrame(tick);
     return () => {
-      cancelAnimationFrame(frame); observer.disconnect(); townSound().setWorld({ moving: false });
+      cancelAnimationFrame(frame); observer.disconnect(); townSound().setWorld({ moving: false, room: null });
       scene.traverse(o => { if (o instanceof THREE.Mesh || o instanceof THREE.InstancedMesh) { o.geometry.dispose(); (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.dispose()); } });
       renderer.dispose(); renderer.domElement.remove();
     };
   }, [room]);
 
   const press = (key: string, on: boolean) => { if (on) { keys.current.add(key); setSlip(null); } else keys.current.delete(key); };
-  const spotState = (item: Extract<Item, { kind: "spot" }>) => item.desk && commissionHere ? "commission" : item.targets.some(t => !t.found) ? "open" : item.targets.length ? "done" : "idle";
-  const verb = (item: Item) => item.kind === "door" ? "出门" : item.kind === "person" ? "交谈" : spotState(item) === "commission" ? "领取调查手记" : spotState(item) === "open" ? "核对" : "查看";
+  const restOpen = !!view.rest?.open;
+  const spotState = (item: Extract<Item, { kind: "spot" }>) => item.desk && commissionHere ? "commission" : item.rest && restOpen ? "rest" : item.targets.some(t => !t.found) ? "open" : item.targets.length ? "done" : "idle";
+  const verb = (item: Item) => item.kind === "door" ? "出门" : item.kind === "person" ? "交谈" : spotState(item) === "commission" ? "领取调查手记" : spotState(item) === "rest" ? (props.resting ? "入睡中……" : "订房过夜") : spotState(item) === "open" ? "核对" : "查看";
 
   return <div className={styles.interior} aria-label={`${room.title}室内`}>
     <div ref={host} className={styles.interiorCanvas} />
@@ -295,7 +340,7 @@ export function TownInterior(props: Props) {
         const anchor = item.kind === "person" ? `${item.at[0]},2.2,${item.at[1]}` : item.kind === "door" ? `${item.at[0]},.4,${item.at[1]}` : `${item.at[0]},1.7,${item.at[1] - .9}`;
         if (item.kind === "spot" && state === "idle" && near?.id !== item.id) return null;
         return <div key={item.id} data-anchor={anchor} className={styles.interiorTag} data-state={state} data-near={near?.id === item.id}>
-          {item.kind === "spot" && state === "open" ? <i>◆</i> : item.kind === "spot" && state === "done" ? <i>✓</i> : item.kind === "spot" && state === "commission" ? <i>!</i> : null}
+          {item.kind === "spot" && state === "open" ? <i>◆</i> : item.kind === "spot" && state === "done" ? <i>✓</i> : item.kind === "spot" && state === "commission" ? <i>!</i> : item.kind === "spot" && state === "rest" ? <i>☾</i> : null}
           <span>{item.name}</span>
         </div>;
       })}
@@ -304,14 +349,16 @@ export function TownInterior(props: Props) {
     <aside className={styles.interiorCard}>
       <span className={styles.eyebrow}>室内 · {room.title}</span>
       <h2>{room.title}</h2>
+      {props.blurb && <p className={styles.interiorBlurb}>{props.blurb}</p>}
       <p>走到物品旁按 <kbd>E</kbd> 查看。也可以直接在下面选择。</p>
       <ul aria-label="房间里可以查看的地方">
         {items.filter(i => i.kind !== "door").map(item => <li key={item.id}>
-          <button disabled={props.busy || props.paused} onClick={() => void act(item)} data-state={item.kind === "spot" ? spotState(item) : "person"}>
+          <button disabled={props.busy || props.paused} aria-busy={item.kind === "spot" && item.rest ? !!props.resting : undefined} onClick={() => void act(item)} data-state={item.kind === "spot" ? spotState(item) : "person"}>
             <span>{verb(item)}</span>{item.name}{item.kind === "spot" && item.targets.length > 0 && <small>{item.targets.filter(t => t.found).length}/{item.targets.length}</small>}
           </button>
         </li>)}
       </ul>
+      {room.spots.some(s => s.rest) && view.rest && <p className={styles.interiorRest}>{view.rest.open ? `订一间房，睡到第 ${view.rest.wakeDay} 天早上 8 点。夜里居民各自回家，醒来时小镇已经开始新的一天。` : view.rest.reason}</p>}
       <div className={styles.interiorActions}>
         {c && <button className={styles.textButton} onClick={props.onOpenBook}>案件本 <kbd>K</kbd></button>}
         <button className={styles.primary} onClick={props.onExit}>出门 <kbd>Esc</kbd></button>

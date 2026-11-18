@@ -10,6 +10,8 @@ import { createRefreshCadence } from "./frame-cadence";
 import { createResidentMotion, RESIDENT_RADIUS } from "./resident-motion";
 import { chooseTownInteraction, type TownInteraction } from "./town-interaction";
 import { clockHours, easeGrade, gradeAt } from "./town-lighting";
+import { createRain } from "./town-rain";
+import { easeWeather, fogRange, weatherAt, weatherGrade, type Weather } from "./town-weather";
 import { createResidentEncounter } from "./resident-encounter";
 import { createWorldLabels, type TownEmote, type TownPlaceTag } from "./world-labels";
 import styles from "./town-play.module.css";
@@ -98,6 +100,11 @@ export default function TownScene(props: Props) {
     const grade = gradeAt(clockHours(live.current.worldView?.time)), targetGrade = gradeAt(12);
     const glowMaterials: THREE.MeshStandardMaterial[] = [], waterMaterials: THREE.MeshStandardMaterial[] = [];
     const glowColor = new THREE.Color("#ffb75e"), waterGlint = new THREE.Color("#9fd2e8");
+    // Weather eases like the light: a shower rolls in over a few seconds of play, never in one frame.
+    const weather: Weather = weatherAt(live.current.worldView?.day, clockHours(live.current.worldView?.time)), targetWeather: Weather = { ...weather };
+    weatherGrade(grade, weather);
+    const rain = createRain();
+    scene.add(rain.object);
     const resize = () => {
       const width = container.clientWidth, height = container.clientHeight;
       if (!width || !height) return;
@@ -119,13 +126,21 @@ export default function TownScene(props: Props) {
     const diagnostics = query.get("diagnostics") === "1";
     // Visual-only preview of other hours; never touches the world clock.
     const clockOverride = diagnostics ? query.get("clock") : null;
+    const weatherOverride = diagnostics ? query.get("weather") : null;
+    const forcedWeather = (w: Weather) => {
+      if (weatherOverride === "rain") Object.assign(w, { rain: .9, fog: .2, cloud: 1 });
+      else if (weatherOverride === "fog") Object.assign(w, { rain: 0, fog: .95, cloud: .4 });
+      else if (weatherOverride === "clear") Object.assign(w, { rain: 0, fog: 0, cloud: .05 });
+      return w;
+    };
 
     function applyGrade(now: number, still: boolean) {
       hemisphere.color.copy(grade.sky); hemisphere.groundColor.copy(grade.ground); hemisphere.intensity = grade.hemi;
       sun.color.copy(grade.sun); sun.intensity = grade.sunI;
       sun.position.set(-25 - (1 - grade.elevation) * 12, 10 + grade.elevation * 32, 35);
       fill.intensity = .45 + grade.glow * .35;
-      (scene.fog as THREE.Fog).color.copy(grade.fog); renderer.setClearColor(grade.fog);
+      const townFog = scene.fog as THREE.Fog, [near, far] = fogRange(weather);
+      townFog.color.copy(grade.fog); townFog.near = near; townFog.far = far; renderer.setClearColor(grade.fog);
       renderer.toneMappingExposure = grade.exposure;
       for (const material of glowMaterials) { material.emissive.copy(glowColor); material.emissiveIntensity = grade.glow * (material.name.startsWith("lamp") ? 2.2 : .9); }
       const shimmer = still ? .5 : (Math.sin(now / 900) + Math.sin(now / 370 + 1.3)) / 4 + .5;
@@ -321,8 +336,13 @@ export default function TownScene(props: Props) {
           const highlighted = talking ? conversationActor : !settings.paused && !settings.overview && interaction?.kind === "resident" ? people.get(interaction.person.actorId) : null;
           contactRing.visible = !!highlighted?.visible;
           if (highlighted?.visible) contactRing.position.set(highlighted.position.x, highlighted.position.y + .07, highlighted.position.z);
-          gradeAt(clockHours(clockOverride ?? settings.worldView?.time), targetGrade);
+          const hours = clockHours(clockOverride ?? settings.worldView?.time);
+          gradeAt(hours, targetGrade);
+          forcedWeather(weatherAt(settings.worldView?.day, hours, targetWeather));
+          easeWeather(weather, targetWeather, reducedMotion.matches ? 1 : 1 - Math.exp(-delta * .8));
+          weatherGrade(targetGrade, weather);
           easeGrade(grade, targetGrade, reducedMotion.matches ? 1 : 1 - Math.exp(-delta * 1.5));
+          rain.update(delta, focus, weather.rain, verticalSize * aspect * 1.3, reducedMotion.matches);
           applyGrade(now, reducedMotion.matches);
           if (settings.waypoint) {
             const pulse = reducedMotion.matches ? 0 : (Math.sin(now / 260) + 1) / 2;
@@ -366,7 +386,7 @@ export default function TownScene(props: Props) {
       residents?.dispose(); labels?.dispose();
       if (model) disposeModel(model);
       ring.geometry.dispose(); ring.material.dispose(); marker.geometry.dispose(); marker.material.dispose();
-      contactRing.geometry.dispose(); contactRing.material.dispose();
+      contactRing.geometry.dispose(); contactRing.material.dispose(); rain.dispose();
       sun.shadow.dispose(); renderer.dispose(); renderer.domElement.remove();
     };
   }, []);

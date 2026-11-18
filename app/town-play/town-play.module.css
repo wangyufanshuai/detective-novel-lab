@@ -545,3 +545,10 @@
 .dawn p { margin: 0; color: var(--tp-ink-muted); font-size: 13px; }
 @keyframes dawnCard { 0% { opacity: 0; transform: translate(-50%, 10px); } 12%, 80% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, -6px); } }
 @media (prefers-reduced-motion: reduce) { .dawn { animation: none; } }
+
+/* Weather on the clock card; interior blurb and the inn's overnight note. */
+.sky { font-style: normal; color: inherit; }
+.interiorCard > p.interiorBlurb { font: 13px/1.75 'Noto Serif SC', serif; color: var(--tp-ink); }
+.interiorCard > p.interiorRest { padding: 8px 10px; border-left: 3px solid var(--tp-brass); background: var(--tp-paper-deep); color: var(--tp-ink); }
+.interiorCard li button[data-state='rest'] > span { color: var(--tp-forest); font-weight: 600; }
+.interiorCard li button[aria-busy='true'] { cursor: progress; }

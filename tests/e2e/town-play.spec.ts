@@ -115,6 +115,24 @@ test.describe("town-play", () => {
     await expect(page.getByLabel("案件进度")).toContainText("第七分钟");
   });
 
+  test("every place opens as a room", async ({ page }) => {
+    test.setTimeout(480_000);
+    await openTown(page);
+    await page.getByLabel("第一次来，陪我走完第一宗（新手引导）").uncheck();
+    await page.getByRole("button", { name: "开始河湾手记" }).click();
+    await expect(page.locator("main[data-world-state='ready']")).toBeVisible({ timeout: 30_000 });
+    for (const [sceneId, title] of [["cafe", "河湾咖啡馆"], ["police", "警务所"], ["post", "邮局"], ["inn", "桥畔旅馆"], ["station", "河湾车站"]]) {
+      await act(page, { kind: "arrive", sceneId });
+      await reloadTown(page);
+      await page.keyboard.press("e");
+      await expect(page.getByRole("heading", { name: title })).toBeVisible({ timeout: 15_000 });
+      await expect(page.getByLabel("房间里可以查看的地方").getByRole("button").first()).toBeVisible();
+      await page.keyboard.press("Escape");
+      await page.keyboard.press("Escape");
+      await expect(page.getByRole("heading", { name: title })).toHaveCount(0);
+    }
+  });
+
   test("night at the inn: rest from the evening, wake on day 2", async ({ page }) => {
     await openTown(page);
     await page.getByLabel("第一次来，陪我走完第一宗（新手引导）").uncheck();
@@ -124,9 +142,11 @@ test.describe("town-play", () => {
     while (view.time < "17:00") view = await act(page, { kind: "wait", minutes: 60 });
     await reloadTown(page);
     await page.keyboard.press("e");
-    const room = dialog(page).getByRole("button", { name: "订房过夜" });
-    await expect(room).toBeVisible({ timeout: 15_000 });
-    await expect(dialog(page)).toContainText("睡到第 2 天早上 8 点");
+    // The inn opens as a room; the stairs book a room for the night.
+    await expect(page.getByRole("heading", { name: "桥畔旅馆" })).toBeVisible({ timeout: 15_000 });
+    const room = page.getByLabel("房间里可以查看的地方").getByRole("button").filter({ hasText: "订房过夜" });
+    await expect(room).toBeVisible();
+    await expect(page.locator("[class*=interiorRest]")).toContainText("睡到第 2 天早上 8 点");
     await room.click();
     // The night is simulated on the server (a few seconds), then a morning card.
     await expect(page.getByRole("status", { name: "新的一天" })).toContainText("第 2 天", { timeout: 60_000 });

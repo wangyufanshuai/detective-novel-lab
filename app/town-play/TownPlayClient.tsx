@@ -23,6 +23,7 @@ import { TownStreetConversation } from "./TownStreetConversation";
 import { interactionKey, type TownContact, type TownInteraction } from "./town-interaction";
 import { useTownCaseArchive } from "./useTownCaseArchive";
 import { TownArchiveList, TownArchivedCase } from "./TownCaseArchive";
+import { weatherAt, weatherWord } from "./town-weather";
 import { archivedCaseMarkdown, townJournalMarkdown, confirmedClosedCases, type ArchivedCase } from "./case-archive";
 
 const TownScene = dynamic(() => import("./TownScene"), { ssr: false });
@@ -105,7 +106,7 @@ export default function TownPlayClient() {
   const [resting, setResting] = useState(false);
   const rest = useCallback(async () => {
     setResting(true);
-    try { if (await world.command({ kind: "rest" })) setPanel(null); } finally { setResting(false); }
+    try { if (await world.command({ kind: "rest" })) { setPanel(null); setInterior(null); } } finally { setResting(false); }
   }, [world]);
   // The verdict moment: only when a case turns solved during this visit, never on reload.
   const [finale, setFinale] = useState<string | null>(null);
@@ -265,6 +266,7 @@ export default function TownPlayClient() {
   const markScene = (sceneId: string) => { const target = destinations.find(d => d.id === sceneId); if (target) mark(target); };
   const placeTags = destinations.map(d => ({ id: d.id, label: d.label, visited: knownVisited.includes(d.id), leads: openLeads.get(d.id) ?? 0, marked: waypointName === d.label }));
   const hours = clockHours(world.view?.time);
+  const sky = world.view ? weatherWord(weatherAt(world.view.day, hours), hours) : null;
   const peopleList = <div className={styles.peopleList}>{world.view?.residents.map(person => <div key={person.npcId}><strong>{person.name}<small>{person.role}</small></strong><span>{person.visibility === "observed" && areaId === person.sceneId ? "本次到访见于" : "上次见于"} {person.locationName}</span><small>第 {person.day} 天 · {person.time}</small></div>)}{!world.view?.residents.length && <p>亲眼见过的人，会记在这里。</p>}</div>;
   const connectionNotice = world.message && world.status !== "new" && <div className={styles.connectionNotice} role="alert"><p>{world.message}</p><button disabled={world.busy} onClick={() => void world.retry()}>重试保存</button><button disabled={world.busy} onClick={() => void world.reload()}>重新连接手记</button></div>;
 
@@ -277,7 +279,7 @@ export default function TownPlayClient() {
         <div className={styles.progress}><span>初访地点</span><span className={styles.progressDots} aria-hidden="true">{Array.from({ length: 6 }, (_, i) => <i key={i} data-filled={i < knownVisited.length} />)}</span><b>{knownVisited.length}/6</b></div>
       </div>
     </header>
-    <aside className={styles.dayCard} aria-label="小镇时间" data-period={hours >= 6 && hours < 18 ? "day" : "night"}><TownDayDial time={world.view?.time} /><div>{world.view ? <><strong>{world.view.time}</strong><span>第 {world.view.day} 天 · {dayPeriod(hours)}</span></> : <><strong>河湾小镇</strong><span>新的一段手记</span></>}</div><button aria-label="探索帮助" onClick={() => setPanel("help")}>?</button></aside>
+    <aside className={styles.dayCard} aria-label="小镇时间" data-period={hours >= 6 && hours < 18 ? "day" : "night"}><TownDayDial time={world.view?.time} /><div>{world.view ? <><strong>{world.view.time}</strong><span>第 {world.view.day} 天 · {dayPeriod(hours)}{sky && <> · <em className={styles.sky}>{sky}</em></>}</span></> : <><strong>河湾小镇</strong><span>新的一段手记</span></>}</div><button aria-label="探索帮助" onClick={() => setPanel("help")}>?</button></aside>
     {dawn !== null && <div className={styles.dawn} role="status" aria-label="新的一天"><span className={styles.eyebrow}>河湾 · 清晨</span><strong>第 {dawn} 天</strong><p>{world.view?.commission && !world.view.commission.opensOnDay && !(world.view.investigation && !world.view.investigation.solved) ? `新委托：${world.view.commission.hook}` : "镇上的人陆续出门了。"}</p></div>}
     {/* Status chip only when there is something to say; no developer labels in the player view. */}
     {(world.busy || world.view?.investigation?.solved) && <div className={styles.previewLabel} role="status">{world.busy ? "正在保存这一步…" : `${world.view?.investigation?.title} · 已归档`}</div>}
@@ -314,7 +316,8 @@ export default function TownPlayClient() {
       {panel === "help" && <><button className={styles.textButton} onClick={() => { guide.restart(); setPanel(null); }}>重新开始新手引导 →</button><div className={styles.helpRow}><kbd>W A S D</kbd><span>或方向键，沿着画面方向走动</span></div><div className={styles.helpRow}><kbd>E</kbd><span>走近居民交谈，靠近店门观察</span></div><div className={styles.helpRow}><kbd>M / J</kbd><span>全镇俯瞰 / 打开手记</span></div><div className={styles.helpRow}><kbd>K / B</kbd><span>领取调查手记后，翻开案件本 / 案件看板</span></div><div className={styles.helpRow}><kbd>1 — 8</kbd><span>切换底部随身工具</span></div><p className={styles.quiet}>触屏可按住左下方方向键行走，点击出现的交谈或地点提示。涉及案件的询问与物证核对会用五分钟，并保存到手记。</p></>}
     </dialog>
     {interior && world.view && <TownInterior key={interior} room={ROOMS[interior]} view={world.view} paused={!!panel || !!finale} busy={worldPaused} message={world.message} command={world.command}
-      onTalk={person => { setConversation(person); setPanel("person"); }} onOpenBook={() => openCase()} onExit={() => setInterior(null)} />}
+      onTalk={person => { setConversation(person); setPanel("person"); }} onOpenBook={() => openCase()} onExit={() => setInterior(null)}
+      onRest={() => void rest()} resting={resting} blurb={placeCopy[interior]} />}
     {ready && !error && world.status === "ready" && !overview && !finale && guide.step && <TownGuideCard step={guide.step} index={guide.index} total={guide.total} finishing={guide.finishing} onSkip={guide.skip} />}
     {finale && world.view?.investigation?.id === finale && <TownCaseFinale investigation={world.view.investigation} commission={world.view.commission}
       onRead={() => { setFinale(null); openCase("ending"); }} onClose={() => { setFinale(null); setPanel(null); }} />}
