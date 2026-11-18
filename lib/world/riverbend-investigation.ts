@@ -1,3 +1,5 @@
+import { evidenceWeatherBlock } from "@/packages/engine/src/riverbend-weather";
+import { RIVERBEND_PLAY_DAYS } from "@/packages/engine/src/riverbend-world";
 import { createHash } from "node:crypto";
 import { buildCasePackage, casePackDay, casePackReady, type CasePack } from "@/packages/engine/src/case-pack";
 import { RIVERBEND_CASES, riverbendCasePack, type RiverbendCaseScript } from "@/packages/engine/src/riverbend-case";
@@ -106,6 +108,10 @@ export function executeTownInvestigation(input: { world: WorldState; sceneId: st
       const who = world.npcs.find(n => n.id === needsPresent);
       throw new InvestigationError(`请等${who?.role ?? ""}${who?.name ?? "相关居民"}回来，再请对方一起核对。`);
     }
+    // A clue found before the weather turned stays in the notebook; only an unfound one is blocked.
+    const weather = target.weather ?? pack.evidence.find(e => `${pack.ids.clue}-${String(e.n).padStart(2, "0")}` === target.evidenceId)?.weather;
+    const blocked = session.discoveredEvidenceIds.includes(target.evidenceId) ? null : evidenceWeatherBlock(weather, casePackDay(pack), world, RIVERBEND_PLAY_DAYS);
+    if (blocked) throw new InvestigationError(blocked);
     session.discoveredEvidenceIds = [...new Set([...session.discoveredEvidenceIds, target.evidenceId])];
   } else if (command.kind === "case-question" || command.kind === "case-challenge") {
     const characterId = command.characterId;

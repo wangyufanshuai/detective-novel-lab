@@ -421,12 +421,15 @@ export const ROOMS: Record<string, RoomDef> = {
 
 export const hasInterior = (sceneId: string) => sceneId in ROOMS;
 
+/** The spot a search label lands on by keyword (first spot in room order wins), or undefined. */
+export const spotForLabel = (room: RoomDef, label: string) => room.spots.find(s => s.keywords.some(k => label.includes(k)));
+
 /** Assigns each case search target to a spot: by keyword, then any free spot. */
 export function assignTargets<T extends { id: string; label: string }>(room: RoomDef, targets: T[]) {
   const bySpot = new Map<string, T[]>();
   const free = [...room.spots];
   for (const target of targets) {
-    const spot = room.spots.find(s => s.keywords.some(k => target.label.includes(k))) ?? free.find(s => !bySpot.has(s.id)) ?? room.spots[0];
+    const spot = spotForLabel(room, target.label) ?? free.find(s => !bySpot.has(s.id)) ?? room.spots[0];
     bySpot.set(spot.id, [...(bySpot.get(spot.id) ?? []), target]);
   }
   return bySpot;

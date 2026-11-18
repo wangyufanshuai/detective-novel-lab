@@ -20,6 +20,10 @@ const { createRiverbendWorld, RIVERBEND_PLAY_DAYS, RIVERBEND_VISITABLE_SCENES } 
 const { RIVERBEND_CASES } = load("packages/engine/src/riverbend-case.ts");
 const { buildCasePackage, validateCaseSeries } = load("packages/engine/src/case-pack.ts");
 const { buildTravelConstraint, shortestTravelMinutes } = load("packages/engine/src/world-analysis.ts");
+// Interior rooms live in the client bundle (three.js geometry); only their spot keywords are read here.
+process.noDeprecation = true;
+const { ROOMS, spotForLabel } = load("app/town-play/interior-rooms.ts");
+const { weatherAt, weatherWord, washesAwayAt, thickFogHours, evidenceWeatherBlock } = load("packages/engine/src/riverbend-weather.ts");
 
 const world = createRiverbendWorld({ worldId: "case-check", now: "2026-10-08T08:00:00Z" }).world;
 const roads = buildTravelConstraint(world);
@@ -51,6 +55,9 @@ function lint(pack) {
   for (const e of pack.evidence) {
     if (!visitable.has(e.at)) say(`物证 ${e.n}「${e.title}」放在 ${e.at}，玩家进不去。只能放在：${[...visitable].join(", ")}`);
     for (const id of [...e.related, ...(e.contradicts ?? []), ...(e.needsPresent ? [e.needsPresent] : [])]) if (!npcs.has(id)) say(`物证 ${e.n} 提到了不存在的居民 ${id}`);
+    const room = ROOMS[e.at];
+    if (room && !e.search) say(`物证 ${e.n}「${e.title}」缺少 search（玩家在${room.title}里看到的搜查动作，例如「查看前台核页记录」）`);
+    else if (room && !spotForLabel(room, e.search)) say(`物证 ${e.n} 的 search「${e.search}」在${room.title}里对不上任何家具。search 里要包含下列某个关键词：${room.spots.filter(sp => sp.keywords.length).map(sp => `${sp.name}（${sp.keywords.join("/")}）`).join("；")}`);
     if (!pack.history.some(h => h.clue === e.n)) say(`物证 ${e.n}「${e.title}」没有来源：history 里至少要有一条 clue: ${e.n}`);
   }
   for (const id of pack.commission.openAt) if (!visitable.has(id)) say(`commission.openAt 里的 ${id} 不是可进入的地点`);
@@ -79,6 +86,12 @@ function lint(pack) {
     if (!pack.history.some(h => (h.contradictedBy ?? []).includes(n) && h.actors.includes(npcId))) say(`${npcName(npcId)} 被物证 ${n} 改正，需要一条有 ${npcName(npcId)} 参与、并写了 contradictedBy: [${n}] 和 publicVersion 的 history`);
   }
   for (const n of [...pack.answer.motive, ...pack.answer.method, ...pack.decisive]) if (!clue(n)) say(`answer/decisive 引用了不存在的物证 ${n}`);
+  for (const e of pack.evidence) {
+    if (e.weather === undefined) continue;
+    if (e.weather !== "washes-away" && e.weather !== "needs-clear-air") { say(`物证 ${e.n} 的 weather 只能是 "washes-away" 或 "needs-clear-air"，现在是 ${JSON.stringify(e.weather)}`); continue; }
+    if (e.weather === "washes-away" && [...pack.answer.motive, ...pack.answer.method, ...pack.decisive].includes(e.n)) say(`物证 ${e.n}「${e.title}」会被雨冲掉（weather: "washes-away"），不能放进 answer 或 decisive：玩家错过了就再也结不了案`);
+    if (e.weather === "needs-clear-air" && !thickFogHours(dayOf(pack)).length) say(`物证 ${e.n} 写了 weather: "needs-clear-air"，可是第 ${dayOf(pack)} 天白天没有浓雾，这个条件不起作用`);
+  }
 }
 
 /** Every resident's moves across all cases, with the case that put them there. */
@@ -104,6 +117,13 @@ function writeReference() {
     "## 地点", "", "| id | 名称 | 玩家能进入调查 |", "|---|---|---|", ...world.locations.map(l => `| \`${l.id}\` | ${l.name} | ${visitable.has(l.id) ? "是" : "否（只能出现在 history 里）"} |`), "",
     "## 步行时间（分钟，最短路线）", "", `| 从 \\ 到 | ${ids.map(id => `\`${id}\``).join(" | ")} |`, `|---|${ids.map(() => "---").join("|")}|`,
     ...ids.map(a => `| \`${a}\` | ${ids.map(b => travel(a, b)).join(" | ")} |`), "",
+    "## 室内可搜查的家具", "", "物证的 `search` 文字里包含某件家具的关键词，搜查点就落在那件家具上；同时命中几件时，取下表里排在前面的那件。对不上任何关键词会被 check-cases 报错。", "",
+    "| 地点 | 家具 | 关键词 |", "|---|---|---|",
+    ...Object.values(ROOMS).flatMap(r => r.spots.filter(sp => sp.keywords.length).map(sp => `| \`${r.sceneId}\` ${r.title} | ${sp.name}${sp.desk ? "（领取手记处）" : ""} | ${sp.keywords.join("、")} |`)), "",
+    "## 天气（固定，每位玩家都一样）", "",
+    "物证可以写 `weather`：`\"washes-away\"` 表示户外痕迹，案件开始（当天 08:00）后的第一场大雨会冲掉它，之后就搜不到了，所以不能放进 answer 或 decisive；`\"needs-clear-air\"` 表示要隔着距离看的东西，浓雾时不能核对，雾散后就可以。案件历史（08:00 以前）里提到的天气要和下表一致。", "",
+    "| 天 | 06:00 | 08:00 | 10:00 | 12:00 | 14:00 | 16:00 | 18:00 | 20:00 | 浓雾时段 | 第一场大雨（washes-away 的痕迹在此后消失） |", "|---|---|---|---|---|---|---|---|---|---|---|",
+    ...Array.from({ length: RIVERBEND_PLAY_DAYS }, (_, i) => i + 1).map(d => `| ${d} | ${[6, 8, 10, 12, 14, 16, 18, 20].map(h => weatherWord(weatherAt(d, h), h)).join(" | ")} | ${thickFogHours(d).join("，") || "无"} | ${washesAwayAt(d, RIVERBEND_PLAY_DAYS) ?? "三天内不下大雨"} |`), "",
     "## 居民", "", `游戏共 ${RIVERBEND_PLAY_DAYS} 天。每天 08:00 起居民按日程走动，19:00 回家；玩家傍晚在旅馆过夜，醒来是第二天 08:00。案件历史只写某一天 08:00 以前（用 day 指定哪一天）。询问居民时，玩家要在游戏里找到他本人。`, "",
     "| id | 姓名 | 身份 | 家 | 08:00 | 12:00 | 14:00 | 16:00 | 19:00 | 私事（可以用作动机或隐瞒的理由） |", "|---|---|---|---|---|---|---|---|---|---|",
     ...world.npcs.map(n => `| \`${n.id}\` | ${n.name} | ${n.role} | ${n.homeLocationId} | ${n.schedule["08:00"]} | ${n.schedule["12:00"]} | ${n.schedule["14:00"]} | ${n.schedule["16:00"]} | ${n.schedule["19:00"]} | ${n.secret} |`), "",
@@ -155,11 +175,17 @@ function playthrough(bundles) {
         act({ kind: "arrive", sceneId: pack.commission.openAt[0] });
         act({ kind: "case-open" });
         if (view.investigation?.title !== pack.title) throw new Error(`领取到的是「${view.investigation?.title}」，不是本案`);
-        pack.evidence.forEach((e, i) => {
+        // Like a careful player: marks the rain will wash away first, and wait out thick fog.
+        const order = pack.evidence.map((e, i) => ({ e, i })).sort((a, b) => Number(b.e.weather === "washes-away") - Number(a.e.weather === "washes-away"));
+        for (const { e, i } of order) {
           step(`搜查物证 ${e.n}「${e.title}」`);
           if (e.needsPresent) find(e.needsPresent, e.at); else act({ kind: "arrive", sceneId: e.at });
+          for (let round = 0; e.weather === "needs-clear-air" && evidenceWeatherBlock(e.weather, dayOf(pack), { day: view.day, currentTime: view.time }, RIVERBEND_PLAY_DAYS); round++) {
+            if (round > 24) throw new Error(`等了十二个小时，雾还没散，搜不了物证 ${e.n}`);
+            act({ kind: "wait", minutes: 30 });
+          }
           act({ kind: "case-search", targetId: `${pack.ids.search}-${i + 1}` });
-        });
+        }
         if (view.investigation.clues.length !== pack.evidence.length) throw new Error(`只找到 ${view.investigation.clues.length}/${pack.evidence.length} 份物证`);
         const wrong = pack.suspectIds.find(id => id !== pack.culpritId);
         const theory = culpritId => ({ culpritId, motive: "", method: "", evidenceIds: view.investigation.clues.map(c => c.id), proof: { motiveEvidenceIds: pack.answer.motive.map(n => `${pack.ids.clue}-${String(n).padStart(2, "0")}`), methodEvidenceIds: pack.answer.method.map(n => `${pack.ids.clue}-${String(n).padStart(2, "0")}`) } });

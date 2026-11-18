@@ -60,8 +60,6 @@
 .peopleList strong small { display: block; margin-top: 5px; font: 11px 'Noto Sans SC', sans-serif; color: var(--tp-olive); }
 .peopleList span { display: block; margin: 12px 0 5px; font-size: 12px; }
 .peopleList > div > small { font-size: 10px; color: var(--tp-olive); }
-.metPeople { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0; }
-.metPeople span { padding: 8px 11px; border: 1px solid var(--tp-line); font-size: 12px; }
 .waitChoices { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 24px 0 18px; }
 .waitChoices span { width: 100%; font-size: 13px; margin-bottom: 5px; }
 .waitChoices button { padding: 9px 14px; background: var(--tp-paper-deep); border: 1px solid var(--tp-wood-tan); border-radius: 3px; font-size: 12px; }
@@ -131,7 +129,6 @@
 .journal h2 { font: 600 27px 'Noto Serif SC', serif; margin: 22px 0 18px; color: var(--tp-forest-deep); }
 .prose { font-size: 14px; line-height: 2; color: var(--tp-wood); }
 .quiet { display: block; font-size: 12px; line-height: 1.85; color: var(--tp-olive); }
-.entryStamp { display: inline-block; border-block: 1px solid var(--tp-sage); color: var(--tp-forest-light); padding: 9px 0; font-size: 12px; margin: 10px 0; }
 .primary { padding: 11px 24px; margin-top: 16px; border: 1px solid var(--tp-forest-deep); border-radius: 3px; background: var(--tp-forest); color: var(--tp-paper) !important; box-shadow: 0 3px 0 var(--tp-forest-deep); font-size: 13px; }
 .textButton { background: transparent; border: 0; border-bottom: 1px solid var(--tp-wood-tan); padding: 7px 2px; font-size: 12px; }
 .journalPlaces { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 24px 0; }
@@ -169,8 +166,6 @@
 .caseHeading h3 { font: 600 25px 'Noto Serif SC', serif; margin: 6px 0 12px; letter-spacing: .08em; }
 .caseWork h4 { font: 600 15px 'Noto Serif SC', serif; margin: 16px 0 9px; }
 .caseSeal { flex: none; border: 1px solid var(--tp-ink-muted); color: var(--tp-forest-light); padding: 6px 10px; font-size: 11px; transform: rotate(-4deg); }
-.caseInvitation { border-block: 1px solid var(--tp-line); padding: 16px 0; margin: 20px 0; font-size: 13px; line-height: 1.8; }
-.caseInvitation h3 { font-family: 'Noto Serif SC', serif; margin: 0; }
 .caseBrief { font-size: 12px; line-height: 1.9; margin-bottom: 16px; }
 .caseBrief summary { min-height: 32px; cursor: pointer; color: var(--tp-wood); }
 .caseTabs { display: flex; gap: 5px; flex-wrap: wrap; border-bottom: 1px solid var(--tp-line); margin: 20px 0 16px; }
@@ -202,19 +197,8 @@
 .streetWords .originalStatement p { font-size: 12px; color: var(--tp-olive-deep); }
 @media (max-width: 560px) { .peopleDirectory li { align-items: start; flex-direction: column; gap: 4px; }.peopleDirectoryActions { justify-content: start; } }
 @media (max-width: 560px) { .notebookFilters { grid-template-columns: minmax(0, 1fr); padding: 12px; }.notebookCount { line-height: 1.8; } }
-.searchChoices { display: grid; gap: 8px; margin: 16px 0 24px; }
-.searchChoices button { text-align: left; min-height: 46px; border: 1px solid var(--tp-line); border-radius: 3px; background: var(--tp-paper); padding: 11px 13px; font-size: 12px; line-height: 1.6; }
-.searchChoices button span { color: var(--tp-forest-light); padding-right: 10px; }
-.searchChoices button:disabled { opacity: .65; cursor: default; }
-.casePeople { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.casePeople button { display: flex; align-items: center; gap: 9px; text-align: left; padding: 10px; min-height: 60px; border: 1px solid var(--tp-line); background: var(--tp-paper-deep); border-radius: 3px; }
-.casePeople button[aria-pressed='true'] { border-color: var(--tp-forest-light); background: var(--tp-sage-mist); }
-.casePeople strong { display: block; font-size: 12px; font-weight: 500; }.casePeople small { display: block; margin-top: 5px; color: var(--tp-olive); font-size: 10px; }
 .personInitial { display: grid; place-items: center; width: 34px; height: 40px; flex: none; color: var(--tp-paper-deep); background: var(--tp-moss); border: 2px solid var(--tp-forest-light); font-family: 'Noto Serif SC', serif; }
-.dialogueCard { background: var(--tp-paper); border: 1px solid var(--tp-line); border-left: 4px solid var(--tp-moss); padding: 18px; margin: 20px 0; }
-.dialogueCard h4 { margin-top: 8px; }.dialogueCard p { font-size: 13px; line-height: 2; }
-.challengeRow { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }.challengeRow label { flex: 1; min-width: 0; font-size: 11px; }
-.challengeRow select, .theoryForm select { display: block; width: 100%; max-width: 100%; min-height: 44px; background: var(--tp-paper); border: 1px solid var(--tp-line-strong); color: var(--tp-ink); padding: 7px; margin-top: 7px; font: inherit; }
+.theoryForm select { display: block; width: 100%; max-width: 100%; min-height: 44px; background: var(--tp-paper); border: 1px solid var(--tp-line-strong); color: var(--tp-ink); padding: 7px; margin-top: 7px; font: inherit; }
 .clueCards { display: grid; gap: 14px; }.clueCards article { border-bottom: 1px solid var(--tp-line); padding: 8px 0 18px; }.clueCards article:last-child { border-bottom: 0; }
 .clueCards small { font-size: 10px; color: var(--tp-olive); letter-spacing: .08em; }.clueCards h4 { margin-top: 8px; }.clueCards p { font-size: 12px; line-height: 2; margin: 8px 0 0; }
 .clueCards .questionLine { color: var(--tp-olive); font-size: 11px; }
@@ -226,7 +210,7 @@
 .caseResult { border-left: 3px solid var(--tp-moss); padding: 12px; background: color-mix(in srgb, var(--tp-sage-mist) 30%, transparent); font-size: 12px; line-height: 1.9; }
 .caseEnding p { font-size: 13px; line-height: 2; }.caseEnding ol { list-style: none; margin: 25px 0; padding: 0; border-block: 1px solid var(--tp-line); }
 .caseEnding li { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 12px; padding: 10px 0; font-size: 12px; line-height: 1.9; }.caseEnding time { color: var(--tp-moss); font-variant-numeric: tabular-nums; }
-@media (max-width: 430px) { .casePeople { grid-template-columns: 1fr; }.caseHeading { gap: 8px; }.caseHeading h3 { font-size: 22px; }.caseTabs button { padding: 8px; font-size: 11px; }.dialogueCard { padding: 12px; }.challengeRow { display: grid; }.caseEnding li { gap: 8px; } }
+@media (max-width: 430px) { .caseHeading { gap: 8px; }.caseHeading h3 { font-size: 22px; }.caseTabs button { padding: 8px; font-size: 11px; }.caseEnding li { gap: 8px; } }
 
 .town[data-panel='person'] .toolbar, .town[data-panel='person'] .walkHint, .town[data-panel='person'] .touchPad, .town[data-panel='person'] .placeName { visibility: hidden; }
 .town[data-panel='person'] .arrival, .town[data-panel='person'] .previewLabel { display: none; }
@@ -535,9 +519,6 @@
 }
 
 /* Overnight stay at the inn, and the morning card after it. */
-.restRoom { border-block: 1px solid var(--tp-line); padding: 14px 0; margin: 16px 0; font-size: 13px; line-height: 1.8; }
-.restRoom p { margin: 4px 0 12px; }
-.restRoom button[aria-busy='true'] { cursor: progress; }
 .dawn { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); z-index: 6; min-width: 240px; padding: 22px 34px; text-align: center; pointer-events: none;
   border: 2px solid var(--tp-wood); border-radius: 5px; background: var(--paper); box-shadow: 0 3px 0 var(--tp-ink), 0 18px 40px color-mix(in srgb, var(--tp-teal-deep) 22%, transparent);
   animation: dawnCard 4.2s ease both; }

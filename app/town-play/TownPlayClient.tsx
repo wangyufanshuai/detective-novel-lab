@@ -8,7 +8,7 @@ import styles from "./town-play.module.css";
 import { TownDayDial, dayPeriod } from "./TownDayDial";
 import { clockHours } from "./town-lighting";
 import { useTownWorld } from "./useTownWorld";
-import { TownCaseBook, TownCasePlace, TownCaseTracker, commissionHint, commissionLabel, type CaseBookTab } from "./TownInvestigation";
+import { TownCaseBook, TownCaseTracker, commissionHint, commissionLabel, type CaseBookTab } from "./TownInvestigation";
 import { TownSoundSettings } from "./TownSoundSettings";
 import { townSound } from "./town-sound";
 import { useTownSound } from "./useTownSound";
@@ -37,7 +37,7 @@ const placeCopy: Record<string, string> = {
   post: "邮局在广场东侧。沿着街边向南走，可以到达集市与河岸；向北则是住宅后街。",
   inn: "旅馆守着河桥西侧。木质阳台朝向步道，过桥后回望，这里是进入河湾时的另一处路标。"
 };
-type Panel = "journal" | "case" | "archive" | "board" | "notes" | "settings" | "bag" | "place" | "help" | "people" | "person" | null;
+type Panel = "journal" | "case" | "archive" | "board" | "notes" | "settings" | "bag" | "help" | "people" | "person" | null;
 
 function Icon({ name }: { name: string }) {
   const paths: Record<string, ReactNode> = {
@@ -68,7 +68,6 @@ export default function TownPlayClient() {
   const [destinations, setDestinations] = useState<TownDestination[]>([]);
   const [interaction, setInteraction] = useState<TownInteraction | null>(null);
   const [conversation, setConversation] = useState<TownContact | null>(null);
-  const [place, setPlace] = useState<TownDestination | null>(null);
   const [overview, setOverview] = useState(false);
   const [lantern, setLantern] = useState(false);
   const [quality, setQuality] = useState<"high" | "balanced">("high");
@@ -181,8 +180,8 @@ export default function TownPlayClient() {
       setConversation(target.person); setPanel("person");
     } else {
       if (world.view?.sceneId !== target.place.id) { setToast("稍候，正在记下这次到访。"); return; }
-      if (hasInterior(target.place.id)) { keys.current.clear(); setInterior(target.place.id); return; }
-      setPlace(target.place); setPanel("place");
+      if (!hasInterior(target.place.id)) { setToast(`${target.place.label}暂时还进不去。`); return; }
+      keys.current.clear(); setInterior(target.place.id);
     }
   }, [worldPaused, world.view?.sceneId]);
   const onReady = useCallback((locations: TownDestination[], controls: TownSceneControls) => {
@@ -260,7 +259,7 @@ export default function TownPlayClient() {
   };
   const closedCases = confirmedClosedCases(world.view);
   const archived = closedCases.some(c => c.id === archiveId) ? archive.entries.find(c => c.id === archiveId) : undefined;
-  const panelTitle = panel === "place" ? place?.label : ({ journal: "河湾手记", case: "调查与推断", archive: "已结案手记", board: "案件看板", notes: "随手记", settings: "稍作停留", bag: "随身行囊", help: "如何探索河湾", people: "在河湾遇见的人" } as Record<string, string>)[panel ?? ""];
+  const panelTitle = ({ journal: "河湾手记", case: "调查与推断", archive: "已结案手记", board: "案件看板", notes: "随手记", settings: "稍作停留", bag: "随身行囊", help: "如何探索河湾", people: "在河湾遇见的人" } as Record<string, string>)[panel ?? ""];
   const nextDestination = destinations.find(d => !knownVisited.includes(d.id));
   const openLeads = new Map((world.view?.investigation?.solved ? [] : world.view?.investigation?.leads ?? []).map(lead => [lead.sceneId, lead.open]));
   const markScene = (sceneId: string) => { const target = destinations.find(d => d.id === sceneId); if (target) mark(target); };
@@ -303,7 +302,6 @@ export default function TownPlayClient() {
       {panel !== "person" && <h2 id="town-dialog-title">{panelTitle}</h2>}
       {panel && connectionNotice}
       {panel === "person" && conversation && <TownStreetConversation key={conversation.actorId} person={conversation} view={world.view} disabled={worldPaused} command={world.command} openBook={() => openCase()} close={() => setPanel(null)} />}
-      {panel === "place" && place && <><p className={styles.prose}>{placeCopy[place.id]}</p><div className={styles.entryStamp}>✓ 已记入初访手记 · 第 {world.view?.day} 天 {world.view?.time}</div><div className={styles.metPeople}>{world.view?.residents.filter(person => person.visibility === "observed").map(person => <span key={person.npcId}>遇见 {person.name} · {person.role}</span>)}</div>{place.id === "inn" && world.view?.rest && <div className={styles.restRoom}><span className={styles.eyebrow}>旅馆 · 过夜</span>{world.view.rest.open ? <><p>订一间房，睡到第 {world.view.rest.wakeDay} 天早上 8 点。夜里居民各自回家，醒来时小镇已经开始新的一天。</p><button className={styles.primary} disabled={worldPaused || world.view.sceneId !== "inn"} aria-busy={resting} onClick={() => void rest()}>{resting ? "入睡中……" : "订房过夜"}</button></> : <p className={styles.quiet}>{world.view.rest.reason}</p>}</div>}{world.view?.investigation && !(world.view.investigation.solved && world.view.commission) ? <TownCasePlace investigation={world.view.investigation} residents={world.view.residents} disabled={worldPaused || world.view.sceneId !== place.id} command={world.command} openBook={() => openCase()} /> : <div className={styles.caseInvitation}>{world.view?.commission ? <><span className={styles.eyebrow}>{commissionLabel(world.view.commission)}</span><h3>{world.view.commission.hook}</h3><p>{world.view.commission.detail}</p></> : <><h3>暂时没有新的委托</h3><p>已归档的案件可以在手记里回看。</p></>}{world.view?.commission?.openAt.includes(place.id) && <button className={styles.primary} disabled={worldPaused || world.view?.sceneId !== place.id} onClick={() => void world.command({ kind: "case-open" })}>领取调查手记</button>}</div>}<button className={styles.primary} onClick={() => setPanel(null)}>继续走走</button></>}
       {panel === "journal" && <><p className={styles.prose}>每一次到访，都会在这里留下记号。选中地点可以标记方向。</p><div className={styles.journalPlaces}>{destinations.map((d, i) => <button key={d.id} onClick={() => mark(d)}><small>0{i + 1}</small><strong>{d.label}</strong><span>{knownVisited.includes(d.id) ? "已探访 ✓" : "尚未探访"}</span></button>)}</div><button className={styles.textButton} onClick={() => setPanel("people")}>人物目击 · {world.view?.residents.length || 0} 人</button><div className={styles.emptyCase}><Icon name="观察" /><div>{world.view?.investigation && !(world.view.investigation.solved && world.view.commission) ? <><strong>{world.view.investigation.title}</strong><p>{`${world.view.investigation.ordinal} · ${world.view.investigation.clues.length} 份物证 · ${world.view.investigation.solved ? "已经归档" : "继续核对证词与时间"}`}</p><button className={styles.textButton} onClick={() => openCase()}>翻开案件本 →</button> <button className={styles.textButton} onClick={() => setPanel("board")}>案件看板 →</button></> : world.view?.commission ? <><strong>{world.view.commission.hook}</strong><p>{commissionHint(world.view.commission)}</p><button className={styles.textButton} onClick={() => markScene((world.view!.commission!.openAt[0] ?? "inn"))}>标记{destinations.find(d => d.id === (world.view!.commission!.openAt[0] ?? "inn"))?.label.replace(/^河湾/, "") ?? "地点"} →</button></> : <><strong>暂时没有委托</strong><p>沿着街道走走，认一认河湾的居民。</p></>}</div></div><button className={styles.textButton} onClick={exportNotes}>导出手记 ↓</button></>}
       {panel === "journal" && <TownArchiveList closedCases={closedCases} entries={archive.entries} message={archive.message} loading={!archive.ready} onRead={id => { setArchiveId(id); setPanel("archive"); }} />}
       {panel === "archive" && (archived ? <TownArchivedCase key={archived.id} entry={archived} onBack={() => setPanel("journal")} onExport={() => exportArchived(archived)} /> : <p className={styles.quiet}>本机尚无这宗案件的完整记录。<button className={styles.textButton} onClick={() => setPanel("journal")}>返回手记</button></p>)}

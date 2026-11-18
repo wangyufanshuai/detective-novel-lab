@@ -1,3 +1,4 @@
+import type { EvidenceWeather } from "./riverbend-weather";
 import type { Character, DeductionCase, Evidence } from "./types";
 import type { CaseFromLog, MemoryRecord, WorldEvent, WorldState } from "./world-types";
 import { validateWorldCase } from "./world-case";
@@ -48,7 +49,9 @@ export type CasePack = {
   statements: Record<string, string>;
   /** Clue number → resident → corrected statement. */
   revisions: Record<string, Record<number, string>>;
-  evidence: Array<{ n: number; at: string; title: string; text: string; meaning: string; related: string[]; contradicts?: string[]; search: string; needsPresent?: string }>;
+  evidence: Array<{ n: number; at: string; title: string; text: string; meaning: string; related: string[]; contradicts?: string[]; search: string; needsPresent?: string;
+    /** Weather this clue depends on: "washes-away" (lost to the first real rain after the case opens) or "needs-clear-air" (cannot be checked in thick fog). */
+    weather?: EvidenceWeather }>;
   history: Array<{ key: string; time: string; at: string; type: WorldEvent["type"]; actors: string[]; summary: string; tags?: string[]; clue?: number; publicVersion?: string; contradictedBy?: number[] }>;
   scenes: string[];
   relationships: DeductionCase["relationships"];
@@ -66,7 +69,7 @@ export type CasePack = {
 
 export type CaseScript = {
   revision: string;
-  targets: Array<{ id: string; sceneId: string; label: string; evidenceId: string; needsPresent?: string }>;
+  targets: Array<{ id: string; sceneId: string; label: string; evidenceId: string; needsPresent?: string; weather?: EvidenceWeather }>;
   statements: Record<string, string>;
   revisions: Record<string, Record<string, string>>;
   ending: string[];
@@ -137,7 +140,7 @@ export function buildCasePackage(world: WorldState, pack: CasePack, now: string)
   const caseFromLog: CaseFromLog = { id, worldId: world.id, sourceEventIds: events.map(e => e.id), deathEventId: "", triggeredEventId: eventId(k.trigger), triggerKind: "nonfatal_incident", generationProfile, sourceMap, testimonies, deductionCase, qualityReport: buildCaseQualityReport(enrichedWorld, events, { deductionCase, generationProfile, testimonies }), validation: validateWorldCase(enrichedWorld, events, deductionCase), createdAt: now };
   const script: CaseScript = {
     revision: pack.revision, statements, revisions,
-    targets: pack.evidence.map((e, index) => ({ id: `${pack.ids.search}-${index + 1}`, sceneId: e.at, label: e.search, evidenceId: clue(e.n), ...(e.needsPresent ? { needsPresent: e.needsPresent } : {}) })),
+    targets: pack.evidence.map((e, index) => ({ id: `${pack.ids.search}-${index + 1}`, sceneId: e.at, label: e.search, evidenceId: clue(e.n), ...(e.needsPresent ? { needsPresent: e.needsPresent } : {}), ...(e.weather ? { weather: e.weather } : {}) })),
     ending: pack.ending
   };
   const bundle = { caseFromLog, events, memories, script };

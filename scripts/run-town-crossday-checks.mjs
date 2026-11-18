@@ -59,6 +59,9 @@ assert.equal(refused({ kind: "rest" }), "REST_CLOSED");
 check("rest-refused-away-from-inn-and-before-evening");
 
 first.day = 2;
+// Weather conditions ride along on the day-2 case: day 2 dawns in thick fog and rains from ~17:50.
+const [misty, chalk] = first.evidence;
+misty.weather = "needs-clear-air"; chalk.weather = "washes-away";
 try {
   view = commandTownPlay(credentials, command({ kind: "wait", minutes: 15 })).view;
   assert.equal(view.commission.opensOnDay, 2, "A day-2 commission did not wait for day 2");
@@ -90,8 +93,21 @@ try {
     assert(history.length && history.every(e => e.day === 2), "Day-2 history was stored on another day");
   });
   check("later-case-opens-on-its-morning-with-its-day");
+
+  const search = n => ({ kind: "case-search", targetId: `${first.ids.search}-${n}` });
+  act({ kind: "arrive", sceneId: misty.at });
+  assert.equal(view.time < "09:25", true, "The fog check started after the fog lifted");
+  assert.equal(refused(search(1)), "INVESTIGATION_ACTION", "A needs-clear-air clue was found in thick fog");
+  while (view.time < "09:30") act({ kind: "wait", minutes: 30 });
+  act(search(1));
+  assert.equal(view.investigation.clues.length, 1, "The clue was not found once the fog lifted");
+  check("fog-delays-a-clue-until-it-lifts");
+  act({ kind: "arrive", sceneId: chalk.at });
+  while (view.time < "18:00") act({ kind: "wait", minutes: 60 });
+  assert.equal(refused(search(2)), "INVESTIGATION_ACTION", "A washes-away clue survived the rain");
+  check("rain-washes-a-mark-away");
 } finally {
-  delete first.day;
+  delete first.day; delete misty.weather; delete chalk.weather;
 }
 
 // Days 2 and 3, then the window closes at day 4 08:00.

@@ -1,39 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { TownCaseAction, TownCaseView, TownCommissionView, TownPlayView } from "@/lib/town-play-contract";
 import type { PlayerTheory } from "@/packages/engine/src/types";
 import styles from "./town-play.module.css";
 import { caseClueNumber, casePeople, missingTheoryFields, restoreCaseDraft } from "./case-notebook";
-import { TownEvidencePreview } from "./TownEvidencePreview";
 
 type Props = { investigation: TownCaseView; residents: TownPlayView["residents"]; disabled: boolean; command: (action: TownCaseAction) => Promise<boolean> };
 const placeNames: Record<string, string> = { books: "旧书店", cafe: "咖啡馆", police: "警务所", post: "邮局", inn: "旅馆", station: "车站" };
-
-export function TownCasePlace({ investigation: c, residents, disabled, command, openBook }: Props & { openBook: () => void }) {
-  const [person, setPerson] = useState("");
-  const [evidenceId, setEvidenceId] = useState("");
-  const observed = residents.filter(p => p.visibility === "observed");
-  const entry = [...c.conversations].reverse().find(l => l.characterId === person);
-  const dialogueRef = useRef<HTMLDivElement>(null);
-  useEffect(() => { dialogueRef.current?.scrollIntoView({ block: "nearest", behavior: "instant" }); }, [entry?.id, entry?.answer]);
-  const present = observed.some(p => p.npcId === person);
-  const stationStaff = observed.some(p => p.npcId === "rb-gu-yuanshan");
-  return <section className={styles.caseWork} aria-label="地点调查">
-    <div className={styles.caseHeading}><div><span className={styles.eyebrow}>调查手记</span><h3>{c.title}</h3></div><button className={styles.textButton} onClick={openBook}>打开案件本 →</button></div>
-    {c.solved ? <p className={styles.caseResult}>这宗案件已经归档，可以回看证词和最后的经过。</p> : <>
-      <p className={styles.quiet}>搜查和交谈各用五分钟。物证由原地点保管，手记收录你核对过的内容。</p>
-      <div className={styles.searchChoices}>{c.searchTargets.map(target => <button key={target.id} disabled={disabled || target.found || (target.id === "rb-search-7" && !stationStaff)} onClick={() => void command({ kind: "case-search", targetId: target.id })}><span>{target.found ? "✓" : "◇"}</span>{target.label}{target.found ? " · 已记录" : target.id === "rb-search-7" && !stationStaff ? " · 等站员回来" : ""}</button>)}</div>
-      <h4>面前的居民</h4>
-      <div className={styles.casePeople}>{observed.map(p => <button key={p.npcId} disabled={disabled} aria-pressed={person === p.npcId} onClick={async () => { setPerson(p.npcId); setEvidenceId(""); await command({ kind: "case-question", characterId: p.npcId }); }}><span className={styles.personInitial} aria-hidden="true">{p.name.slice(0, 1)}</span><span><strong>交谈 · {p.name}</strong><small>{p.role}</small></span></button>)}</div>
-      {!observed.length && <p className={styles.quiet}>眼下没有居民停留。可以先整理线索，或稍后回来。</p>}
-      {entry && <div ref={dialogueRef} className={styles.dialogueCard} aria-label={`${entry.name}的对话`}>
-        <span className={styles.eyebrow}>{entry.corrected ? "核对后的说法" : "当面听到的说法"}</span><h4>{entry.name}</h4><p>{entry.answer}</p>
-        {present && c.questionedIds.includes(person) && c.clues.length > 0 && <><div className={styles.challengeRow}><label htmlFor="town-challenge-evidence">拿物证核对<select aria-label="拿物证核对" id="town-challenge-evidence" value={evidenceId} onChange={e => setEvidenceId(e.target.value)}><option value="">选择已取得的物证</option>{c.clues.map(e => <option key={e.id} value={e.id}>{e.title}</option>)}</select></label><button className={styles.primary} disabled={disabled || !c.clues.some(e => e.id === evidenceId)} onClick={() => void command({ kind: "case-challenge", characterId: person, evidenceId })}>出示物证</button></div><TownEvidencePreview investigation={c} personId={person} evidenceId={evidenceId} /></>}
-      </div>}
-    </>}
-  </section>;
-}
 
 export type CaseBookTab = "clues" | "testimony" | "theory" | "ending";
 export function TownCaseBook({ investigation: c, residents, disabled, command, initialTab, places = [], onMark }: Props & { initialTab?: CaseBookTab; places?: Array<{ id: string }>; onMark?: (sceneId: string) => void }) {
