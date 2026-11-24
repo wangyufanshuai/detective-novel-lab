@@ -379,6 +379,22 @@
 .archiveShelf small, .archiveShelf span { display: block; font-size: 11px; color: var(--tp-olive-deep); line-height: 1.8; }
 .archiveShelf strong { display: block; font: 600 16px/1.8 'Noto Serif SC', serif; }
 .archiveShelf button { flex: none; min-height: 44px; }
+.caseSeries { margin-top: 24px; border-top: 1px solid var(--tp-line); padding-top: 16px; }
+.caseSeries h3 { font: 600 20px 'Noto Serif SC', serif; color: var(--tp-forest-deep); }
+.caseSeries h3 small { font: 400 12px 'Noto Sans SC', sans-serif; color: var(--tp-olive-deep); margin-left: 8px; }
+.seriesWarning { margin: 8px 0; padding: 8px 12px; border-left: 3px solid var(--tp-rust); background: var(--tp-paper-glow); font-size: 13px; }
+.seriesDay { margin-top: 14px; }
+.seriesDay[data-today='true'] > .eyebrow { color: var(--tp-rust); }
+.seriesDay ol { list-style: none; padding: 0; margin: 6px 0 0; display: grid; gap: 6px; }
+.seriesDay li { display: grid; grid-template-columns: 4.5em 1fr auto; align-items: baseline; gap: 10px; padding: 8px 10px; border: 1px dashed var(--tp-line); border-radius: 4px; }
+.seriesDay li small { font-size: 11px; color: var(--tp-olive-deep); }
+.seriesDay li strong { font: 600 15px/1.6 'Noto Serif SC', serif; }
+.seriesDay li span { font-size: 11px; color: var(--tp-ink-muted); }
+.seriesDay li[data-state='later'] strong { color: var(--tp-ink-muted); font-weight: 400; }
+.seriesDay li[data-state='closed'] { border-style: solid; background: var(--tp-paper-deep); }
+.seriesDay li[data-state='active'] { border: 1px solid var(--tp-brass); background: var(--tp-paper-glow); }
+.seriesDay li[data-state='active'] span, .seriesDay li[data-state='next'] span { color: var(--tp-rust); font-weight: 600; }
+.trackerWarn { margin-top: 6px; color: var(--tp-rust); font-weight: 600; }
 .archiveActions { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
 .archiveActions button { min-height: 44px; }
 @media (max-width: 430px) { .archiveShelf li { align-items: start; flex-direction: column; gap: 5px; } }

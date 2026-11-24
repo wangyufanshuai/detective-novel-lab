@@ -11,8 +11,8 @@ import { enableTownResidentWork, prepareResidentWorkDecision, queueResidentWorkD
 import { chooseResidentWork, residentDecisionProviderFromEnv, type ResidentDecisionProvider } from "./resident-decision-provider";
 import { executeTownArrival, TOWN_PLAY_TICK_POLICY, observeTownResidents, startTownExploration, townExplorationPlayerView, validateTownExplorationBinding, type TownExplorationBinding, type TownExplorationState } from "@/packages/engine/src/town-exploration";
 import type { WorldEvent, WorldState } from "@/packages/engine/src/world-types";
-import type { TownPlayCommand, TownPlayResult, TownPlayView, TownRestView } from "@/lib/town-play-contract";
-import { executeTownInvestigation, projectTownInvestigation, projectTownCommission, projectClosedCases, InvestigationError, type TownInvestigation } from "./riverbend-investigation";
+import type { TownPlayCommand, TownPlayResult, TownPlayView, TownRestView, TownCaseSeriesView } from "@/lib/town-play-contract";
+import { executeTownInvestigation, projectTownInvestigation, projectTownCommission, projectClosedCases, projectCaseSeries, InvestigationError, type TownInvestigation } from "./riverbend-investigation";
 import { CLASSIC_LIVING_ACTORS, CLASSIC_LIVING_ASSET_SHA256, CLASSIC_LIVING_PLACES, CLASSIC_LIVING_REVISION } from "@/lib/classic-living-contract";
 
 export class TownPlayError extends Error {
@@ -103,10 +103,20 @@ function restPlan(world: RuntimeWorld, session: Session): { view: TownRestView; 
   return { view: { open: true, wakeDay: runtime.currentDay + (evening ? 1 : 0) }, ticks };
 }
 
+/** The case series and how much of the notebook's days is left. */
+function seriesView(world: RuntimeWorld, session: Session): TownCaseSeriesView {
+  const runtime = world.persistentRuntime;
+  const minutesLeft = Math.max(0, (playWindowTicks(world, session) - runtime.tick) * runtime.tickIntervalMinutes);
+  const [h, m] = runtime.currentTime.split(":").map(Number);
+  const end = (runtime.currentDay - 1) * 1440 + h * 60 + m + minutesLeft;
+  const day = Math.floor(end / 1440) + 1, rest = end % 1440;
+  return { cases: projectCaseSeries(world.id, session.investigation, session.closedInvestigations), minutesLeft, endsAt: { day, time: `${String(Math.floor(rest / 60)).padStart(2, "0")}:${String(rest % 60).padStart(2, "0")}` } };
+}
+
 function project(world: RuntimeWorld, session: Session): TownPlayView {
   const publicWorld = townExplorationPlayerView(world, session.binding, session.state, world.persistentRuntime);
   const life=world.persistentRuntime.residentLife;
-  return { ...publicWorld, assetSha256: session.binding.assetSha256, visitedSceneIds: [...session.visitedSceneIds], lastArrival: session.state.lastArrival ? { ...session.state.lastArrival } : undefined, investigation: projectTownInvestigation(world.id, publicWorld.sceneId, session.investigation), commission: session.binding.revision === RIVERBEND_WORLD_REVISION ? projectTownCommission(world.id, session.investigation, session.closedInvestigations, { day: world.persistentRuntime.currentDay, currentTime: world.persistentRuntime.currentTime }) : null, closedCases: projectClosedCases(world.id, session.closedInvestigations), ...(session.binding.revision === RIVERBEND_WORLD_REVISION ? { rest: restPlan(world, session).view } : {}), ...(world.persistentRuntime.residentWork ? { residentWorkEnabled: true } : {}),
+  return { ...publicWorld, assetSha256: session.binding.assetSha256, visitedSceneIds: [...session.visitedSceneIds], lastArrival: session.state.lastArrival ? { ...session.state.lastArrival } : undefined, investigation: projectTownInvestigation(world.id, publicWorld.sceneId, session.investigation), commission: session.binding.revision === RIVERBEND_WORLD_REVISION ? projectTownCommission(world.id, session.investigation, session.closedInvestigations, { day: world.persistentRuntime.currentDay, currentTime: world.persistentRuntime.currentTime }) : null, closedCases: projectClosedCases(world.id, session.closedInvestigations), series: session.binding.revision === RIVERBEND_WORLD_REVISION ? seriesView(world, session) : null, ...(session.binding.revision === RIVERBEND_WORLD_REVISION ? { rest: restPlan(world, session).view } : {}), ...(world.persistentRuntime.residentWork ? { residentWorkEnabled: true } : {}),
     ...(life?{residentLife:{schema:life.schema,elapsedMinutes:(world.persistentRuntime.tick-life.startedAtTick)*world.persistentRuntime.tickIntervalMinutes,remainingMinutes:Math.max(0,(life.endTick-world.persistentRuntime.tick)*world.persistentRuntime.tickIntervalMinutes),plannerMode:life.planner.mode,proposalCount:life.planner.proposals.length,modelCalls:life.planner.providerBudget.used?null:0 as const,modelAttemptsReserved:life.planner.providerBudget.used}}:{}), };
 }
 

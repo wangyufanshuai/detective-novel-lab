@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { TownCaseAction, TownCaseView, TownCommissionView, TownPlayView } from "@/lib/town-play-contract";
+import type { TownCaseAction, TownCaseSeriesView, TownCaseView, TownCommissionView, TownPlayView } from "@/lib/town-play-contract";
 import type { PlayerTheory } from "@/packages/engine/src/types";
 import styles from "./town-play.module.css";
 import { caseClueNumber, casePeople, missingTheoryFields, restoreCaseDraft } from "./case-notebook";
+import { seriesWarning } from "./TownCaseArchive";
 
 type Props = { investigation: TownCaseView; residents: TownPlayView["residents"]; disabled: boolean; command: (action: TownCaseAction) => Promise<boolean> };
 const placeNames: Record<string, string> = { books: "旧书店", cafe: "咖啡馆", police: "警务所", post: "邮局", inn: "旅馆", station: "车站" };
@@ -99,6 +100,7 @@ export function TownCaseBook({ investigation: c, residents, disabled, command, i
 type TrackerProps = {
   commission?: TownCommissionView | null;
   investigation: TownCaseView | null;
+  series?: TownCaseSeriesView | null;
   places: Array<{ id: string; label: string }>;
   onMark: (sceneId: string) => void;
   onOpenBook: () => void;
@@ -128,13 +130,15 @@ export function caseNextStep(c: TownCaseView | null, commission?: TownCommission
   return { title: c.title, hint: "整理动机、手法与时间，在案件本里提交结论。" };
 }
 
-export function TownCaseTracker({ investigation: active, commission, places, onMark, onOpenBook, onOpenBoard }: TrackerProps) {
+export function TownCaseTracker({ investigation: active, commission, series, places, onMark, onOpenBook, onOpenBoard }: TrackerProps) {
   // A finished case steps aside for the next commission.
   const c = commission && active?.solved ? null : active;
   const [open, setOpen] = useState(true);
   // Small screens start folded so the street stays visible.
   useEffect(() => { if (window.matchMedia("(max-width: 720px)").matches) setOpen(false); }, []);
   const step = caseNextStep(c, commission);
+  const warning = seriesWarning(series);
+  const closedCount = series?.cases.filter(x => x.state === "closed").length ?? 0;
   const label = (id: string) => places.find(p => p.id === id)?.label ?? placeNames[id] ?? id;
   const order = (id: string) => { const index = places.findIndex(p => p.id === id); return index < 0 ? places.length : index; };
   const leads = c ? (c.solved ? [] : [...c.leads].sort((a, b) => order(a.sceneId) - order(b.sceneId))) : (commission?.openAt ?? []).map(sceneId => ({ sceneId, open: 0 }));
@@ -142,13 +146,14 @@ export function TownCaseTracker({ investigation: active, commission, places, onM
   const total = c ? found + c.leads.reduce((sum, lead) => sum + lead.open, 0) : 0;
   return <section className={styles.tracker} aria-label="案件进度" data-open={open} data-solved={c?.solved ?? false}>
     <button className={styles.trackerHead} aria-expanded={open} onClick={() => setOpen(v => !v)}>
-      <span className={styles.eyebrow}>{c ? (c.solved ? "已归档" : `调查中 · ${c.ordinal}`) : commission ? commissionLabel(commission) : "河湾"}</span>
+      <span className={styles.eyebrow}>{c ? (c.solved ? "已归档" : `调查中 · ${c.ordinal}`) : commission ? commissionLabel(commission) : "河湾"}{series && ` · 已结 ${closedCount}/${series.cases.length}`}</span>
       <strong>{step.title}</strong>
       {c && <span className={styles.trackerPips} aria-label={`物证 ${found}/${total}`}>{Array.from({ length: total }, (_, i) => <i key={i} data-filled={i < found} />)}</span>}
       <span className={styles.trackerFold} aria-hidden="true">{open ? "−" : "+"}</span>
     </button>
     {open && <div className={styles.trackerBody}>
       <p>{step.hint}</p>
+      {warning && <p className={styles.trackerWarn} role="status">{warning}</p>}
       {leads.length > 0 && <ul>{leads.map(lead => <li key={lead.sceneId}><button onClick={() => onMark(lead.sceneId)} aria-label={`在地图上标记${label(lead.sceneId)}${lead.open ? `，${lead.open} 处待核对` : ""}`}><span aria-hidden="true">◇</span>{label(lead.sceneId).replace(/^河湾/, "")}{lead.open > 0 && <small aria-hidden="true">{lead.open}</small>}</button></li>)}</ul>}
       {c && <div className={styles.trackerFoot}><span>证词 {c.questionedIds.length} · 更正 {c.conversations.filter(line => line.corrected).length}</span><span><button className={styles.textButton} onClick={onOpenBoard}>看板 <kbd>B</kbd></button><button className={styles.textButton} onClick={onOpenBook}>案件本 <kbd>K</kbd></button></span></div>}
     </div>}

@@ -5,7 +5,7 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('/fonts/noir/noir-sans-sc-regular.rest.woff2?v=86c13c9ebec0') format('woff2');
+  src: url('/fonts/noir/noir-sans-sc-regular.rest.woff2?v=71f5026d01ba') format('woff2');
   unicode-range: U+3400-9FFF, U+F900-FAFF, U+20000-3FFFF;
 }
 
@@ -14,7 +14,7 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('/fonts/noir/noir-sans-sc-regular.core.woff2?v=8eed0c1abe0e') format('woff2');
+  src: url('/fonts/noir/noir-sans-sc-regular.core.woff2?v=eb6dbc177c6c') format('woff2');
 }
 
 @font-face {
@@ -22,7 +22,7 @@
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url('/fonts/noir/noir-sans-sc-semibold.rest.woff2?v=b6950b5e02f5') format('woff2');
+  src: url('/fonts/noir/noir-sans-sc-semibold.rest.woff2?v=b1a0e3f183da') format('woff2');
   unicode-range: U+3400-9FFF, U+F900-FAFF, U+20000-3FFFF;
 }
 
@@ -31,7 +31,7 @@
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url('/fonts/noir/noir-sans-sc-semibold.core.woff2?v=e27255c82606') format('woff2');
+  src: url('/fonts/noir/noir-sans-sc-semibold.core.woff2?v=1c3d3a73ef28') format('woff2');
 }
 
 @font-face {
@@ -39,7 +39,7 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('/fonts/noir/noir-serif-sc-regular.rest.woff2?v=214187458fb0') format('woff2');
+  src: url('/fonts/noir/noir-serif-sc-regular.rest.woff2?v=5be417228748') format('woff2');
   unicode-range: U+3400-9FFF, U+F900-FAFF, U+20000-3FFFF;
 }
 
@@ -48,7 +48,7 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('/fonts/noir/noir-serif-sc-regular.core.woff2?v=c044d9cb9d64') format('woff2');
+  src: url('/fonts/noir/noir-serif-sc-regular.core.woff2?v=b9b707f9142b') format('woff2');
 }
 
 @font-face {
@@ -56,7 +56,7 @@
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url('/fonts/noir/noir-serif-sc-semibold.rest.woff2?v=026a5ff10fe5') format('woff2');
+  src: url('/fonts/noir/noir-serif-sc-semibold.rest.woff2?v=69f91429826d') format('woff2');
   unicode-range: U+3400-9FFF, U+F900-FAFF, U+20000-3FFFF;
 }
 
@@ -65,5 +65,5 @@
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url('/fonts/noir/noir-serif-sc-semibold.core.woff2?v=68b60d672732') format('woff2');
+  src: url('/fonts/noir/noir-serif-sc-semibold.core.woff2?v=048256c55298') format('woff2');
 }

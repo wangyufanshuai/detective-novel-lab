@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import type { TownClosedCaseView } from "@/lib/town-play-contract";
+import type { TownCaseSeriesView, TownClosedCaseView } from "@/lib/town-play-contract";
 import type { ArchivedCase } from "./case-archive";
 import styles from "./town-play.module.css";
 
@@ -23,5 +23,38 @@ export function TownArchivedCase({ entry: c, onBack, onExport }: { entry: Archiv
     {tab === "ending" && <div className={styles.caseEnding}><h4>{c.headline}</h4><p>{c.motive}</p><p>{c.method}</p><ol>{c.timeline.map((t,i) => <li key={i}><time>{t.time}</time><span>{t.event}</span></li>)}</ol><h4>后来</h4>{c.ending.map((text,i) => <p key={i}>{text}</p>)}</div>}
     {tab === "clues" && <div className={styles.clueCards}>{c.clues.map(e => <article key={e.id}><h4>{e.title}</h4><p>{e.description}</p></article>)}</div>}
     {tab === "testimony" && <div className={styles.clueCards}>{c.conversations.map((l,i) => <article key={i}><small>{l.corrected ? "说法已更正" : "当面记录"}</small><h4>{l.name}</h4><p className={styles.questionLine}>{l.question}</p><p>{l.answer}</p></article>)}</div>}
+  </section>;
+}
+
+const STATE_WORD = { closed: "已结案", active: "调查中", next: "下一宗", later: "未开" } as const;
+
+/** Game time left in the notebook, in words. */
+export function timeLeftWords(minutes: number) {
+  const h = Math.floor(minutes / 60), m = minutes % 60;
+  return h ? (m ? `${h} 小时 ${m} 分` : `${h} 小时`) : `${m} 分钟`;
+}
+
+/** A reminder once the notebook's days are nearly spent; null while there is room. */
+export function seriesWarning(series: TownCaseSeriesView | null | undefined) {
+  if (!series || series.cases.every(c => c.state === "closed")) return null;
+  if (series.minutesLeft <= 0) return "河湾手记的日程到此为止。";
+  if (series.minutesLeft > 6 * 60) return null;
+  return `河湾手记还剩 ${timeLeftWords(series.minutesLeft)}，第 ${series.endsAt.day} 天 ${series.endsAt.time} 合上。`;
+}
+
+/** The whole case series grouped by day: what is done, what is open, what waits. */
+export function TownCaseSeries({ series, day }: { series: TownCaseSeriesView; day: number }) {
+  const closed = series.cases.filter(c => c.state === "closed").length;
+  const today = series.cases.filter(c => c.day === day && c.state !== "closed").length;
+  const days = [...new Set(series.cases.map(c => c.day))].sort((a, b) => a - b);
+  const warning = seriesWarning(series);
+  return <section className={styles.caseSeries} aria-label="河湾案件进度">
+    <h3>河湾案件 <small>已结 {closed} / {series.cases.length} 宗</small></h3>
+    <p className={styles.quiet}>{closed === series.cases.length ? "十宗都已归档。" : `${today ? `今天还有 ${today} 宗。` : "今天的案件已经结完。"}手记在第 ${series.endsAt.day} 天 ${series.endsAt.time} 合上。`}</p>
+    {warning && <p className={styles.seriesWarning} role="status">{warning}</p>}
+    {days.map(d => <div key={d} className={styles.seriesDay} data-today={d === day}>
+      <span className={styles.eyebrow}>第 {d} 天{d === day ? " · 今天" : ""}</span>
+      <ol>{series.cases.filter(c => c.day === d).map(c => <li key={c.ordinal} data-state={c.state}><small>{c.ordinal}</small><strong>{c.title ?? (c.state === "next" ? "等待领取" : "尚未开启")}</strong><span>{STATE_WORD[c.state]}</span></li>)}</ol>
+    </div>)}
   </section>;
 }
