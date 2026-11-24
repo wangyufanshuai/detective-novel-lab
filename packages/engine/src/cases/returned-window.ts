@@ -11,7 +11,7 @@ export const RETURNED_WINDOW: CasePack = {
   publicCaseFile: "挂号信内是旧住户准备离镇的租约副本，封口完整，收件人没有领取。退回联写着本人领取，邮局、警务所和车站的时间记录互相牵连，请核对日期戳、抽屉钥匙和清晨交接。",
   question: "谁把待寄信盖成了本人领取", verdict: "{person}把待寄信盖成了本人领取",
   commission: { hook: "退回联上的错误日期", detail: "一封挂号信仍在邮局抽屉，退回联却写着本人已经领取。第 2 天下午到邮局或警务所领取调查手记。", openAt: ["post", "police"], refusal: "请到邮局或警务所领取投递记录的调查手记。" },
-  after: "same-numbered-luggage", day: 2, window: { from: "04:50", to: "07:30" }, ids: { clue: "rb5-clue", search: "rb5-search" },
+  after: "silent-tower-bell", day: 2, window: { from: "04:50", to: "07:30" }, ids: { clue: "rb5-clue", search: "rb5-search" },
   historyTag: "riverbend-authored-history", historyNote: "第 2 天邮局退回联与挂号信记录。", timelineSource: "原创第 2 天投递记录案事实 v1",
   culpritId: CHEN, witnessId: ZHOU, suspectIds: [CHEN, ZHOU, LU, JIANG],
   culprit: { motive: "她认出信中是旧住户的离镇租约，想让信件等到本人亲自来取。", means: "她先用旧日期戳压出轮廓，再用当天蓝色印油补盖本人领取字样，把信留在待寄抽屉。", opportunity: "05:20 后她独自在分拣台和退回抽屉之间工作，钥匙登记与印油都在她手里。" },
@@ -39,7 +39,7 @@ export const RETURNED_WINDOW: CasePack = {
     { n: 2, at: "post", title: "分拣机与钥匙登记", text: "邮局电波钟记录 04:50—07:30 的分拣交接。退回抽屉钥匙只有陈蕙在 05:20 后签领，周砚只签了待寄栏备注。", meaning: "限定操作机会在陈蕙手中。", related: [CHEN, ZHOU], search: "核对邮局登记柜台的分拣机与钥匙登记" },
     { n: 3, at: "police", title: "普通退回登记", text: "警务所 06:10 的普通退回包裹使用全新的蓝色印油，纸边没有旧戳凹痕。陆行舟在电波钟旁签名，印油一直留在值班桌。", meaning: "排除陆行舟伪造旧日期压痕。", related: [LU], search: "翻阅警务所值班桌的普通退回登记" },
     { n: 4, at: "post", title: "待寄抽屉里的挂号信", text: "挂号信封口完整，仍在邮局待寄抽屉。收件栏写着旧住户姓名，信内租约副本没有被抽出，抽屉交接页没有本人领取签名。", meaning: "证明信没有被收件人领取，退回联与实物冲突。", related: [CHEN, ZHOU], search: "查看邮局待寄抽屉里的挂号信" },
-    { n: 5, at: "cafe", title: "早餐券收银条", text: "咖啡馆收银机打印 06:25，江芷领取早餐券，宋棠在底栏签名。两人记录她坐到 06:35，咖啡馆到邮局最短步行十五分钟。", meaning: "排除江芷在 05:20 后进入邮局的可能，也解释她隐瞒私人道歉信。", related: [JIANG, SONG], search: "查看咖啡馆收银台的早餐券收银条" },
+    { n: 5, at: "cafe", title: "早餐券收银条", text: "咖啡馆门口的粉笔记号在傍晚雨后只剩半截；收银机打印 06:25，江芷领取早餐券，宋棠在底栏签名。两人记录她坐到 06:35，咖啡馆到邮局最短步行十五分钟。", meaning: "排除江芷在 05:20 后进入邮局的可能，也解释她隐瞒私人道歉信。", related: [JIANG, SONG], search: "查看咖啡馆门口的湿粉笔早餐券收银条" },
     { n: 6, at: "station", title: "公文交接页", text: "车站标准钟记录顾远山 07:05 交公文，07:30 才在邮局取回执。两次签名都有地点栏，车站到邮局步行二十分钟。", meaning: "给顾远山的发现路径提供时间来源，排除他在改戳窗口接触邮局抽屉。", related: [GU], search: "核对车站柜台的公文交接页" },
     { n: 7, at: "police", title: "退回抽屉钥匙领用单", text: "钥匙领用单写着 05:20 陈蕙签领、07:30 归还。周砚、陆行舟和顾远山没有领用记录，归还时钥匙上沾着蓝色印油。", meaning: "把退回联、抽屉和蓝色印油连到陈蕙。", related: [CHEN, ZHOU, LU, GU], search: "查看值班桌上的退回抽屉钥匙领用单" },
     { n: 8, at: "post", title: "旧日期戳与蓝色印油", text: "撤下的旧日期戳缺口与退回联凹痕相合，分拣台蓝色印油的边缘与后盖字样同色。旧戳从 05:20 到 07:30 没有别人领用。", meaning: "确认手法和操作工具来自邮局分拣台。", related: [CHEN], contradicts: [CHEN], search: "检查挂号柜台的旧日期戳与蓝色印油" }

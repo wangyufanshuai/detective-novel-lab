@@ -11,7 +11,7 @@ export const SILENT_TOWER_BELL: CasePack = {
   publicCaseFile: "钟楼校时册写着已完成校准，检修层却少了一张待更换零件便笺。请核对车站、咖啡馆和警务所的时间来源，找出谁改动了公共记录。",
   question: "谁把钟楼未完成的校准写成了已完成", verdict: "{person}把钟楼未完成的校准写成了已完成",
   commission: { hook: "钟楼没有报时", detail: "警务所的公开告示写着钟楼已经校准，车站标准钟却快了七分钟。第 3 天早晨到警务所或车站领取调查手记。", openAt: ["police", "station"], refusal: "请到警务所或车站领取钟楼校时记录的调查手记。" },
-  after: "returned-window", day: 3, window: { from: "05:20", to: "07:45" }, ids: { clue: "rb6-clue", search: "rb6-search" },
+  after: "borrowed-bridge-seal", day: 2, window: { from: "05:20", to: "07:45" }, ids: { clue: "rb6-clue", search: "rb6-search" },
   historyTag: "riverbend-authored-history", historyNote: "第 3 天钟楼校时册与标准钟记录。", timelineSource: "原创第 3 天公共校时记录案事实 v1",
   culpritId: HAN, witnessId: XU, suspectIds: [HAN, LU, XU, JIANG],
   culprit: { motive: "他发现校时器摆锤磨损，担心镇上认为自己失职，想把更换零件拖到下午。", means: "他把原始待更换便笺折进旧地图册，再把正式校时册的待办栏改成已校准。", opportunity: "05:35 到 06:05 他独自在警务所和钟楼检修层之间，工具、册页和油布都在手边。" },
@@ -41,7 +41,7 @@ export const SILENT_TOWER_BELL: CasePack = {
     { n: 4, at: "books", title: "旧地图册夹页", text: "许知微 06:20 的修复登记显示，旧地图册送达时夹着一张校时便笺。便笺边缘有警务所检修编号和钟表油痕，折痕与正式册被刮平的纸屑相合。", meaning: "把原始待更换记录连接到韩朔的检修工具和被改的正式册。", related: [XU, HAN], contradicts: [XU], search: "翻看书架上的旧地图册夹页" },
     { n: 5, at: "cafe", title: "无报时收银条", text: "收银机打印 06:50，江芷与宋棠在场。宋棠写下钟楼没有报时，咖啡馆门外的邮局电波钟显示 06:57，两个来源相差七分钟。", meaning: "证明异常被公开听见，排除江芷伪造告示的可能。", related: [JIANG, SONG], search: "查看咖啡馆收银台的无报时收银条" },
     { n: 6, at: "police", title: "公开告示印刷登记", text: "警务所电波钟记录 05:50，陆行舟签名印出市场开门告示。登记栏注明时间来源是电波钟，不是钟楼，校时册当时已经写着已校准。", meaning: "排除陆行舟改变校时记录。", related: [LU, HAN], search: "核对警务所值班桌的公开告示印刷登记" },
-    { n: 7, at: "station", title: "第一班车公文交接", text: "顾远山 06:15 从邮局后巷住宅出发，06:35 在车站标准钟下签收公文。交接页没有警务所或钟楼的盖章，说明他没有接触校时册。", meaning: "排除顾远山在改册窗口进入警务所。", related: [GU], search: "阅读值班柜台的第一班车公文交接" },
+    { n: 7, at: "station", title: "第一班车公文交接", text: "顾远山 06:15 从邮局后巷住宅出发，06:35 在车站标准钟下签收公文。交接页没有警务所或钟楼的盖章，说明他没有接触校时册。", meaning: "排除顾远山在改册窗口进入警务所。", related: [GU], search: "阅读值班柜台的雨后第一班车公文交接", weather: "washes-away" },
     { n: 8, at: "books", title: "修复桌油痕登记", text: "修复桌登记 06:20 收到地图册，便笺上的油痕来自钟表工具，许知微只做了编号和封套登记。她的修复笔没有接触正式校时册。", meaning: "排除许知微改动公共记录，并固定便笺转入书店的时间。", related: [XU], search: "查看旧书店修复桌的油痕登记" }
   ],
   history: [

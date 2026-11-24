@@ -16,7 +16,7 @@ export const EMPTY_EIGHTH_TRAIN: CasePack = {
   question: "谁把不存在的登车记录写进第八班车档案",
   verdict: "{person}把不存在的登车记录写进第八班车档案",
   commission: { hook: "第八班车档案只剩一张空白联", detail: "车站档案袋少了一页旧乘客记录，警务所却收到一张写着‘已登车’的便条。第 3 天早晨到车站或警务所领取调查手记。", openAt: ["station", "police"], refusal: "请到河湾车站或警务所领取第八班车档案的调查手记。" },
-  after: "silent-tower-bell",
+  after: "borrowed-bridge-seal",
   day: 3,
   window: { from: "06:20", to: "07:30" },
   ids: { clue: "rb7-clue", search: "rb7-search" },

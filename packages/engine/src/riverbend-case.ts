@@ -13,7 +13,7 @@ import { MAP_WITHOUT_NORTH } from "./cases/map-without-north";
 
 /** PRIVATE. Riverbend's authored cases, in play order. Each opens after the
  * previous one is closed. Never import values from this module in a client. */
-export const RIVERBEND_CASES: readonly CasePack[] = [SEVENTH_MINUTE, BORROWED_CHISEL, MISSING_FAREWELL_PAGE, SAME_NUMBERED_LUGGAGE, RETURNED_WINDOW, SILENT_TOWER_BELL, EMPTY_EIGHTH_TRAIN, BORROWED_BRIDGE_SEAL, SECOND_SEVEN_RECEIPT, MAP_WITHOUT_NORTH];
+export const RIVERBEND_CASES: readonly CasePack[] = [SEVENTH_MINUTE, BORROWED_CHISEL, MISSING_FAREWELL_PAGE, SAME_NUMBERED_LUGGAGE, BORROWED_BRIDGE_SEAL, SILENT_TOWER_BELL, RETURNED_WINDOW, EMPTY_EIGHTH_TRAIN, SECOND_SEVEN_RECEIPT, MAP_WITHOUT_NORTH];
 export const RIVERBEND_CASE_REVISION = SEVENTH_MINUTE.revision;
 
 export type RiverbendCaseScript = CaseScript;
