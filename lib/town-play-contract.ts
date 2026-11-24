@@ -19,6 +19,12 @@ export type TownCaseView = {
 export type TownCommissionView = { ordinal: string; hook: string; detail: string; openAt: string[]; /** Set while the case waits for a later morning; openAt is then empty. */ opensOnDay?: number };
 /** Resting skips to 08:00 the next morning. `wake` is the day it lands on. */
 export type TownRestView = { open: true; wakeDay: number } | { open: false; reason: string };
+/** Where the player stands in Riverbend's case series. Titles only for cases already taken;
+ * `endsAt` is when the notebook's days run out, `minutesLeft` the game time until then. */
+export type TownCaseSeriesView = {
+  cases: Array<{ ordinal: string; day: number; state: "closed" | "active" | "next" | "later"; title?: string }>;
+  minutesLeft: number; endsAt: { day: number; time: string };
+};
 export type TownClosedCaseView = { id: string; ordinal: string; title: string; person: string };
 export type TownCaseAction = { kind: "case-open" } | { kind: "case-search"; targetId: string } |
   { kind: "case-question"; characterId: string } | { kind: "case-challenge"; characterId: string; evidenceId: string } |
@@ -34,6 +40,7 @@ export type TownPlayView = ReturnType<typeof townExplorationPlayerView> & {
   investigation: TownCaseView | null;
   commission?: TownCommissionView | null;
   closedCases?: TownClosedCaseView[];
+  series?: TownCaseSeriesView | null;
   residentWorkEnabled?: boolean;
   /** Overnight stay at the inn: open, or closed with the reason shown to the player. */
   rest?: TownRestView | null;

@@ -114,9 +114,18 @@ try {
 for (const wake of ["3 08:00", "4 08:00"]) {
   act({ kind: "arrive", sceneId: "inn" });
   untilEvening();
+  if (wake === "4 08:00") {
+    // Day 3 evening: the series counts down to the window's end.
+    assert.deepEqual(view.series.endsAt, { day: 4, time: "08:00" });
+    assert.equal(view.series.minutesLeft, (24 * 60 - Number(view.time.slice(0, 2)) * 60 - Number(view.time.slice(3))) + 8 * 60);
+    assert.equal(view.series.cases.length, 10);
+    assert(view.series.cases.every(c => (c.title !== undefined) === (c.state === "closed" || c.state === "active")), "A case title leaked before it was taken");
+    check("series-counts-down-and-hides-untaken-titles");
+  }
   rest();
   assert.equal(`${view.day} ${view.time}`, wake);
 }
+assert.equal(view.series.minutesLeft, 0);
 assert.equal(view.rest.open, false);
 assert.equal(refused({ kind: "wait", minutes: 15 }), "DAY_COMPLETE");
 check("three-day-window-ends-day-4-0800");

@@ -7,7 +7,7 @@ import { detectContradictionHit, makeRuleBoundInterrogation, submitWorldTheory, 
 import { isPlayerTheoryInput } from "@/packages/engine/src/judgement";
 import { certifyPlayableCase } from "@/packages/engine/src/route-certificate";
 import type { WorldState, PlayerSession, CaseFromLog, WorldEvent } from "@/packages/engine/src/world-types";
-import type { TownCaseAction, TownCaseView, TownCommissionView, TownClosedCaseView } from "@/lib/town-play-contract";
+import type { TownCaseAction, TownCaseView, TownCommissionView, TownClosedCaseView, TownCaseSeriesView } from "@/lib/town-play-contract";
 import { worldRepository as repo } from "./repository";
 
 /** This reference and frozen dialogue live only inside the owned private save.
@@ -39,6 +39,18 @@ export function projectTownCommission(worldId: string, ref: TownInvestigation | 
   if (!pack) return null;
   if (clock && !casePackReady(pack, clock)) return { ordinal: pack.ordinal, hook: "河湾暂时没有新的委托。", detail: `第 ${casePackDay(pack)} 天早上再来看看；旅馆傍晚起可以订房过夜。`, openAt: [], opensOnDay: casePackDay(pack) };
   return { ordinal: pack.ordinal, hook: pack.commission.hook, detail: pack.commission.detail, openAt: [...pack.commission.openAt] };
+}
+
+/** Each authored case in order with its day and where the player stands on it. */
+export function projectCaseSeries(worldId: string, ref: TownInvestigation | undefined, closed: TownInvestigation[] = []): TownCaseSeriesView["cases"] {
+  const done = new Set(closed.map(r => packOf(r).key));
+  const active = ref ? packOf(ref).key : null;
+  if (active && isSolved(worldId, ref)) done.add(active);
+  const next = nextPack(worldId, ref, closed)?.key;
+  return RIVERBEND_CASES.map(pack => {
+    const state = done.has(pack.key) ? "closed" as const : pack.key === active ? "active" as const : pack.key === next ? "next" as const : "later" as const;
+    return { ordinal: pack.ordinal, day: casePackDay(pack), state, ...(state === "closed" || state === "active" ? { title: pack.title } : {}) };
+  });
 }
 
 export function projectClosedCases(worldId: string, closed: TownInvestigation[] = []): TownClosedCaseView[] {
