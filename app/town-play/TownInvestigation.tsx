@@ -112,7 +112,8 @@ type TrackerProps = {
 export function commissionHint(commission: TownCommissionView) {
   // Waiting for a later morning: the server already says when and how.
   if (commission.opensOnDay) return commission.detail;
-  return `去${commission.openAt.map(id => placeNames[id] ?? id).join("或")}，领取调查手记。`;
+  const primary = commission.primarySceneId;
+  return primary ? `去${placeNames[primary] ?? primary}，领取调查手记。` : `去${commission.openAt.map(id => placeNames[id] ?? id).join("或")}，领取调查手记。`;
 }
 
 /** Eyebrow for the next case: taken now, or on a later morning. */
@@ -141,7 +142,7 @@ export function TownCaseTracker({ investigation: active, commission, series, pla
   const closedCount = series?.cases.filter(x => x.state === "closed").length ?? 0;
   const label = (id: string) => places.find(p => p.id === id)?.label ?? placeNames[id] ?? id;
   const order = (id: string) => { const index = places.findIndex(p => p.id === id); return index < 0 ? places.length : index; };
-  const leads = c ? (c.solved ? [] : [...c.leads].sort((a, b) => order(a.sceneId) - order(b.sceneId))) : (commission?.openAt ?? []).map(sceneId => ({ sceneId, open: 0 }));
+  const leads = c ? (c.solved ? [] : [...c.leads].sort((a, b) => order(a.sceneId) - order(b.sceneId))) : (commission?.primarySceneId ? [commission.primarySceneId] : (commission?.openAt ?? [])).map(sceneId => ({ sceneId, open: 0 }));
   const found = c?.clues.length ?? 0;
   const total = c ? found + c.leads.reduce((sum, lead) => sum + lead.open, 0) : 0;
   return <section className={styles.tracker} aria-label="案件进度" data-open={open} data-solved={c?.solved ?? false}>

@@ -192,7 +192,7 @@ try {
   assert(view.investigation.solved);
   assert.equal(view.investigation.resolution.headline, "顾远山取走了留言册第十七页");
   assert.equal(view.investigation.resolution.ending.length, 3);
-  assert.equal(view.commission, null);
+  assert.equal(view.commission?.opensOnDay, 2);
   const pageStable = structuredClone(view);
   repository.closeDatabase();
   assert.deepEqual(readTownPlay(credentials), pageStable);

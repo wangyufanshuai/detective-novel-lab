@@ -24,7 +24,7 @@ export const SECOND_SEVEN_RECEIPT: CasePack = {
   historyNote: "第 3 天咖啡馆收银条与租金信封的案前记录。",
   timelineSource: "原创第 3 天咖啡账目调换案事实 v1",
   culpritId: SONG,
-  witnessId: GU,
+  witnessId: LIN,
   suspectIds: [SONG, JIANG, CHEN, LIN],
   culprit: {
     motive: "妹妹寄来 200 元，请宋棠替她付给白露作花款。咖啡馆今天要交 1,200 元租金，宋棠只凑到 1,000 元，便先挪用了这笔花款，打算营业后补回。",
@@ -47,13 +47,13 @@ export const SECOND_SEVEN_RECEIPT: CasePack = {
     [CHENG]: "我处理完桥修木料才去广场，没见到咖啡馆的租金信封。"
   },
   revisions: {
-    [GU]: { 2: "那是我的签字。宋棠让我签的是『见到两张纸』，我没点过退款，也没看见江老师领钱。后来她把手抄的那张夹进退款栏；我怕被问为什么没读清栏名才装作没签过。" }
+    [LIN]: { 2: "我确实在七点五十看见第二张收据。宋棠让我把前台副联放回柜台，又当着我的面把手抄件夹进退款栏。我怕旅馆的租金副本也被牵扯进来，才说自己只在前台见过她。" }
   },
   evidence: [
-    { n: 1, at: "police", title: "收银账册副本", text: "07:05 早餐入账后，抽屉清点为 860 元，含蓝纸夹花款 200 元；07:28 复点剩 660 元。两次清点间没有别笔现金交易。退款行写『C-207，代领 200，江』，签收栏却空着。", meaning: "少的是预留给花摊的现金；『江』写在经办备注里，不能证明江芷领款。", related: [LU, JIANG, SONG], search: "阅读值班桌上的咖啡馆账册副本" },
-    { n: 2, at: "police", title: "两张相同编号的收据", text: "收银流水只有 07:05 的早餐单 C-207。第二张用旧花单的背面手抄了日期、时间和编号，底下添了『见到两张纸』，有顾远山签名和他按站台电波钟校过的 07:42 手表时间。", meaning: "第二张是手抄的假退款附件。顾远山签字证明纸张数，可以问清他当时看见什么。", related: [SONG, JIANG, GU], contradicts: [GU], search: "比对值班桌上封存的两张七点收据" },
-    { n: 3, at: "police", title: "租金交接单复写联", text: "旅馆前台电波钟 07:18：咖啡馆本月租金实收 1,200 元。林阿梨在复写联分记『租金袋 1,000』『蓝纸夹 200』。两笔由宋棠当面点交，蓝纸夹边沿还有半个白露花摊的印记。", meaning: "租金足额，差的两百是在交租时从花款里补上的。", related: [SONG, LIN, BAI], search: "查看门廊桌上的租金交接单复写联" },
-    { n: 4, at: "police", title: "邮局汇款回执复写联", text: "陈蕙按邮局电波钟于 07:30 调出回执：寄款人是宋棠的妹妹，收款人是宋棠，金额 200 元。附言为『请替我给白露，花钱已凑齐』。签收栏是宋棠的名字，没有转交记录。", meaning: "这两百元本来是给白露的花款，并非江芷付过的款或可以退款给她的钱。", related: [SONG, CHEN, BAI], search: "核对门廊桌上的邮局入账回执复写联" }
+    { n: 1, at: "cafe", title: "收银账册副本", text: "07:05 早餐入账后，抽屉清点为 860 元，含蓝纸夹花款 200 元；07:28 复点剩 660 元。两次清点间没有别笔现金交易。退款行写『C-207，代领 200，江』，签收栏却空着。", meaning: "少的是预留给花摊的现金；『江』写在经办备注里，不能证明江芷领款。", related: [LU, JIANG, SONG], search: "阅读收银台里的咖啡馆账册副本" },
+    { n: 2, at: "cafe", title: "两张相同编号的收据", text: "收银流水只有 07:05 的早餐单 C-207。第二张用旧花单的背面手抄了日期、时间和编号，底下添了『见到两张纸』，有顾远山签名和他按站台电波钟校过的 07:42 手表时间。", meaning: "第二张是手抄的假退款附件。顾远山签字证明纸张数，可以问清他当时看见什么。", related: [SONG, JIANG, GU], contradicts: [LIN], search: "比对收银台封存的两张七点收据" },
+    { n: 3, at: "inn", title: "租金交接单复写联", text: "旅馆前台电波钟 07:18：咖啡馆本月租金实收 1,200 元。林阿梨在复写联分记『租金袋 1,000』『蓝纸夹 200』。两笔由宋棠当面点交，蓝纸夹边沿还有半个白露花摊的印记。", meaning: "租金足额，差的两百是在交租时从花款里补上的。", related: [SONG, LIN, BAI], search: "查看前台桌上的租金交接单复写联" },
+    { n: 4, at: "post", title: "邮局汇款回执复写联", text: "陈蕙按邮局电波钟于 07:30 调出回执：寄款人是宋棠的妹妹，收款人是宋棠，金额 200 元。附言为『请替我给白露，花钱已凑齐』。签收栏是宋棠的名字，没有转交记录。", meaning: "这两百元本来是给白露的花款，并非江芷付过的款或可以退款给她的钱。", related: [SONG, CHEN, BAI], search: "核对分拣台上的邮局入账回执复写联" }
   ],
   history: [
     { key: "open-register", time: "07:05", at: "cafe", type: "conversation", actors: [SONG, JIANG], summary: "江芷用现金买热茶，拿到唯一一张机器收据。宋棠复点抽屉，在账上记下 860 元。", clue: 1 },
@@ -62,7 +62,7 @@ export const SECOND_SEVEN_RECEIPT: CasePack = {
     { key: "rent-return", time: "07:20", at: "inn", type: "forensic_clue", actors: [LIN], summary: "林阿梨把两笔款和蓝纸夹上的花摊印记写入交接单。" },
     { key: "cafe-return", time: "07:28", at: "cafe", type: "obtain_item", actors: [SONG, JIANG], summary: "宋棠回店时江芷还在备课。宋棠照早餐流水手抄了一张同号单，在账册里把短款写成江芷代领的退款。", tags: ["means", "staging"], clue: 2 },
     { key: "transfer-file", time: "07:30", at: "post", type: "forensic_clue", actors: [CHEN], summary: "陈蕙应租金对账请求调出带花款附言的汇款回执，发给警务所。", clue: 4 },
-    { key: "register-note", time: "07:42", at: "cafe", type: "witness", actors: [GU, SONG], summary: "顾远山看过原单和手抄件，只签名确认纸张数。宋棠当面把手抄件插进退款栏。", clue: 2, publicVersion: "顾远山称只见过一张收据，没签过字。", contradictedBy: [2] },
+    { key: "register-note", time: "07:50", at: "cafe", type: "witness", actors: [LIN, SONG], summary: "林阿梨七点五十到咖啡馆送回前台副联，看见宋棠把手抄件插进退款栏。", clue: 2, publicVersion: "林阿梨称自己只在旅馆前台见过宋棠。", contradictedBy: [2] },
     { key: "police-copy", time: "07:55", at: "police", type: "incident", actors: [LU, GU], summary: "顾远山把两张票和账册副本送到警务所。陆行舟对照旅馆和邮局先传来的副本，发现退款无签收，登记调查。", tags: ["nonfatal_incident"], clue: 1 }
   ],
   scenes: ["cafe", "inn", "post", "police", "station", "books"],
