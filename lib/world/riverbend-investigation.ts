@@ -38,7 +38,10 @@ export function projectTownCommission(worldId: string, ref: TownInvestigation | 
   const pack = nextPack(worldId, ref, closed);
   if (!pack) return null;
   if (clock && !casePackReady(pack, clock)) return { ordinal: pack.ordinal, hook: "河湾暂时没有新的委托。", detail: `第 ${casePackDay(pack)} 天早上再来看看；旅馆傍晚起可以订房过夜。`, openAt: [], opensOnDay: casePackDay(pack) };
-  return { ordinal: pack.ordinal, hook: pack.commission.hook, detail: pack.commission.detail, openAt: [...pack.commission.openAt] };
+  // The first authored scene is the player's concrete next stop. Keep the
+  // commission's original alternatives in the private pack, but make the
+  // public hand-off deterministic so the tracker and journal agree.
+  return { ordinal: pack.ordinal, hook: pack.commission.hook, detail: pack.commission.detail, openAt: [...pack.commission.openAt], primarySceneId: pack.scenes[0] };
 }
 
 /** Each authored case in order with its day and where the player stands on it. */

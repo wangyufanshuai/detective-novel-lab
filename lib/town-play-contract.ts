@@ -16,7 +16,7 @@ export type TownCaseView = {
   resolution?: { person: string; headline: string; motive: string; method: string; timeline: Array<{ time: string; event: string }>; ending: string[] };
 };
 /** The next authored case the player can take, and where its notebook is handed out. */
-export type TownCommissionView = { ordinal: string; hook: string; detail: string; openAt: string[]; /** Set while the case waits for a later morning; openAt is then empty. */ opensOnDay?: number };
+export type TownCommissionView = { ordinal: string; hook: string; detail: string; openAt: string[]; primarySceneId?: string; /** Set while the case waits for a later morning; openAt is then empty. */ opensOnDay?: number };
 /** Resting skips to 08:00 the next morning. `wake` is the day it lands on. */
 export type TownRestView = { open: true; wakeDay: number } | { open: false; reason: string };
 /** Where the player stands in Riverbend's case series. Titles only for cases already taken;
