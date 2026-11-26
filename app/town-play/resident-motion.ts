@@ -20,6 +20,8 @@ const distance = (a: TownPoint, b: TownPoint) => Math.hypot(a[0] - b[0], a[1] - 
 export function createResidentMotion(people: Map<string, THREE.Object3D>, data: TownNavigationData) {
   const nav = createTownNavigator({ ...data, player: { ...data.player, radius: RESIDENT_RADIUS } });
   const locals = new Map<string, LocalResident>();
+  /** Eased weather from the scene: rain hurries walkers and raises umbrellas; fog slows them. */
+  const air = { rain: 0, fog: 0, umbrella: 0 };
   const offsets: TownPoint[] = [[-1.65,-2.0],[1.85,-2.6],[-3.4,-3.5],[3.5,-1.65],[.15,-4.3],[-2,-4.9],[3.4,-4.7],[0,-6.0]];
   function clearSegment(a: TownPoint, b: TownPoint) {
     const length = distance(a, b);
@@ -83,10 +85,11 @@ export function createResidentMotion(people: Map<string, THREE.Object3D>, data: 
       if (local.pause === 0 && local.path.length > 1) {
         const target = local.path[local.waypoint];
         const remaining = distance(local.position, target);
-        const step = Math.min(remaining, delta * .66);
+        const step = Math.min(remaining, delta * .66 * (1 + air.rain * .45) * (1 - air.fog * .25));
         if (remaining < .025) {
           local.waypoint = (local.waypoint + 1) % local.path.length;
-          local.pause = 2.5 + local.phase % 3.5;
+          // Nobody lingers in the rain; fog makes people stop and peer.
+          local.pause = (2.5 + local.phase % 3.5) * (1 - air.rain * .6) * (1 + air.fog * .5);
         } else {
           const next: TownPoint = [local.position[0] + (target[0] - local.position[0]) / remaining * step, local.position[1] + (target[1] - local.position[1]) / remaining * step];
           const blocked = distance(next, player) < RESIDENT_RADIUS + data.player.radius + .10 || [...locals.values()].some(other => other !== local && distance(next, other.position) < RESIDENT_RADIUS * 2 + .08);
@@ -126,6 +129,12 @@ export function createResidentMotion(people: Map<string, THREE.Object3D>, data: 
       local.actor.scale.y = local.walking ? 1 : 1 + Math.sin(idle.clock * 1.6 + local.phase) * .006;
       for (const [name, joint] of local.joints) {
         joint.object.rotation.copy(joint.rest);
+        if (name === "arm_right" && air.umbrella > .05) {
+          // Holding the umbrella: forearm up and in, steady while walking.
+          joint.object.rotation.x -= air.umbrella * .95;
+          joint.object.rotation.z += air.umbrella * .18;
+          continue;
+        }
         const stride = Math.sin(local.phase + (name.endsWith("right") ? Math.PI : 0));
         if (local.walking) {
           if (name.startsWith("leg_")) joint.object.rotation.x += stride * .30;
@@ -133,7 +142,8 @@ export function createResidentMotion(people: Map<string, THREE.Object3D>, data: 
           if (name.startsWith("arm_")) joint.object.rotation.x -= stride * .23;
         } else if (name === "head") {
           joint.object.rotation.y += idle.look;
-          joint.object.rotation.x += Math.sin(idle.clock * .8 + local.phase) * .025;
+          // Heads dip a little against the rain.
+          joint.object.rotation.x += Math.sin(idle.clock * .8 + local.phase) * .025 + air.rain * .12;
         } else if (name === idle.side && lift > 0) {
           joint.object.rotation.x -= lift * .55;
           joint.object.rotation.z += (name === "arm_left" ? -1 : 1) * lift * .12;
@@ -148,7 +158,9 @@ export function createResidentMotion(people: Map<string, THREE.Object3D>, data: 
     }
     return next;
   }
-  return { reconcile, update, constrainPlayer,
+  function weather(rain: number, fog: number, umbrella: number) { air.rain = rain; air.fog = fog; air.umbrella = umbrella; }
+  const actors = () => [...locals].map(([actorId, local]) => ({ object: local.actor, seed: Number(actorId.slice(-2)) || 1 }));
+  return { reconcile, update, constrainPlayer, weather, actors,
     snapshot: () => [...locals].map(([actorId, local]) => ({ actorId, sceneId: local.sceneId, position: [...local.position], walking: local.walking, path: local.path.map(point => [...point]), jointAngles: [...local.joints].map(([name, joint]) => ({ name, x: joint.object.rotation.x, y: joint.object.rotation.y })) })),
   };
 }

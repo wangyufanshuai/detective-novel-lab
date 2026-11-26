@@ -77,6 +77,8 @@ export default function TownPlayClient() {
   const [selected, setSelected] = useState(0);
   const [panel, setPanel] = useState<Panel>(null);
   const [endSetAside, setEndSetAside] = useState<string | null>(null);
+  /** Stepping back out of a door: the street fades up from the room's dark. */
+  const [doorFade, setDoorFade] = useState(0);
   const [caseTab, setCaseTab] = useState<CaseBookTab | undefined>(undefined);
   const openCase = useCallback((tab?: CaseBookTab) => { setCaseTab(tab); setPanel("case"); }, []);
   const [visited, setVisited] = useState<string[]>([]);
@@ -317,8 +319,9 @@ export default function TownPlayClient() {
       {panel === "help" && <><button className={styles.textButton} onClick={() => { guide.restart(); setPanel(null); }}>重新开始新手引导 →</button><div className={styles.helpRow}><kbd>W A S D</kbd><span>或方向键，沿着画面方向走动</span></div><div className={styles.helpRow}><kbd>E</kbd><span>走近居民交谈，靠近店门观察</span></div><div className={styles.helpRow}><kbd>M / J</kbd><span>全镇俯瞰 / 打开手记</span></div><div className={styles.helpRow}><kbd>K / B</kbd><span>领取调查手记后，翻开案件本 / 案件看板</span></div><div className={styles.helpRow}><kbd>1 — 8</kbd><span>切换底部随身工具</span></div><p className={styles.quiet}>触屏可按住左下方方向键行走，点击出现的交谈或地点提示。涉及案件的询问与物证核对会用五分钟，并保存到手记。</p></>}
     </dialog>
     {interior && world.view && <TownInterior key={interior} room={ROOMS[interior]} view={world.view} paused={!!panel || !!finale} busy={worldPaused} message={world.message} command={world.command}
-      onTalk={person => { setConversation(person); setPanel("person"); }} onOpenBook={() => openCase()} onExit={() => setInterior(null)}
+      onTalk={person => { setConversation(person); setPanel("person"); }} onOpenBook={() => openCase()} onExit={() => { setInterior(null); setDoorFade(n => n + 1); }}
       onRest={() => void rest()} resting={resting} blurb={placeCopy[interior]} />}
+    {doorFade > 0 && !interior && <div key={doorFade} className={styles.doorFade} aria-hidden="true" onAnimationEnd={() => setDoorFade(0)} />}
     {ready && !error && world.status === "ready" && !overview && !finale && guide.step && <TownGuideCard step={guide.step} index={guide.index} total={guide.total} finishing={guide.finishing} onSkip={guide.skip} />}
     {finale && world.view?.investigation?.id === finale && <TownCaseFinale investigation={world.view.investigation} commission={world.view.commission}
       onRead={() => { setFinale(null); openCase("ending"); }} onClose={() => { setFinale(null); setPanel(null); }} />}

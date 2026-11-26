@@ -528,6 +528,9 @@
 .interiorSlip .textButton { justify-self: end; }
 .town > .guide { z-index: 6; }
 @keyframes interiorIn { from { opacity: 0; } to { opacity: 1; } }
+.doorFade { position: absolute; inset: 0; z-index: 4; pointer-events: none; background: #1f2b2e; animation: doorOut .55s ease-out both; }
+@keyframes doorOut { from { opacity: 1; } to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .doorFade { animation-duration: .01s; } }
 @keyframes slipIn { from { opacity: 0; transform: translate(-50%, 14px) rotate(-1deg); } to { opacity: 1; transform: translate(-50%, 0); } }
 @media (max-width: 720px) {
   .interiorCard { left: 12px; right: 12px; top: 12px; width: auto; padding: 12px 14px 10px; gap: 6px; }

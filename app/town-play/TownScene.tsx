@@ -11,6 +11,7 @@ import { createResidentMotion, RESIDENT_RADIUS } from "./resident-motion";
 import { chooseTownInteraction, type TownInteraction } from "./town-interaction";
 import { clockHours, easeGrade, gradeAt } from "./town-lighting";
 import { createRain } from "./town-rain";
+import { createUmbrellas } from "./town-umbrellas";
 import { easeWeather, fogRange, weatherAt, weatherGrade, type Weather } from "./town-weather";
 import { createResidentEncounter } from "./resident-encounter";
 import { createWorldLabels, type TownEmote, type TownPlaceTag } from "./world-labels";
@@ -105,6 +106,8 @@ export default function TownScene(props: Props) {
     weatherGrade(grade, weather);
     const rain = createRain();
     scene.add(rain.object);
+    const umbrellas = createUmbrellas(16);
+    scene.add(umbrellas.object);
     const resize = () => {
       const width = container.clientWidth, height = container.clientHeight;
       if (!width || !height) return;
@@ -243,7 +246,7 @@ export default function TownScene(props: Props) {
         }
         // Read-only diagnostics are opt-in; no player position or engine mutation hook is exposed.
         if (diagnostics) {
-          Object.defineProperty(container, "townDiagnostics", { configurable: true, get: () => ({ ...stats, get frameMs() { return [...stats.frameMs]; }, get samples() { return samples.map(sample => ({ ...sample })); }, visibleResidents: [...people].filter(([, actor]) => actor.visible).map(([actorId, actor]) => ({ actorId, position: actor.position.toArray(), screenBounds: screenBounds(actor, 1.91) })), residentMotion: motion.snapshot(), interaction, playerScreenBounds: screenBounds(player!, 1.72), conversationActorId: live.current.conversationActorId, cadence: cadence.snapshot(), timeOrigin: performance.timeOrigin, position: [...position], areaId, sourceSha256: manifest.sourceSha256, multiDraw, batching: residents ? { actors: residents.actorCount, meshes: residents.sourceMeshCount, batches: residents.batchCount } : null }) });
+          Object.defineProperty(container, "townDiagnostics", { configurable: true, get: () => ({ ...stats, get frameMs() { return [...stats.frameMs]; }, get samples() { return samples.map(sample => ({ ...sample })); }, visibleResidents: [...people].filter(([, actor]) => actor.visible).map(([actorId, actor]) => ({ actorId, position: actor.position.toArray(), screenBounds: screenBounds(actor, 1.91) })), residentMotion: motion.snapshot(), umbrellas: { open: umbrellas.open, count: umbrellas.object.count }, interaction, playerScreenBounds: screenBounds(player!, 1.72), conversationActorId: live.current.conversationActorId, cadence: cadence.snapshot(), timeOrigin: performance.timeOrigin, position: [...position], areaId, sourceSha256: manifest.sourceSha256, multiDraw, batching: residents ? { actors: residents.actorCount, meshes: residents.sourceMeshCount, batches: residents.batchCount } : null }) });
         }
         live.current.onReady(data.destinations, {
           capture: () => {
@@ -326,6 +329,7 @@ export default function TownScene(props: Props) {
           if (Math.abs(viewShift) > .0001) camera.setViewOffset(container!.clientWidth, container!.clientHeight, 0, container!.clientHeight * viewShift, container!.clientWidth, container!.clientHeight);
           else camera.clearViewOffset();
           camera.updateProjectionMatrix();
+          motion.weather(weather.rain, weather.fog, umbrellas.open);
           motion.update(delta, position, settings.paused || settings.overview, reducedMotion.matches);
           encounter.update(settings.conversationActorId, position, delta, reducedMotion.matches);
           if (talking) player!.rotation.y = Math.atan2(conversationActor!.position.x - position[0], conversationActor!.position.z + position[1]);
@@ -343,6 +347,7 @@ export default function TownScene(props: Props) {
           weatherGrade(targetGrade, weather);
           easeGrade(grade, targetGrade, reducedMotion.matches ? 1 : 1 - Math.exp(-delta * 1.5));
           rain.update(delta, focus, weather.rain, verticalSize * aspect * 1.3, reducedMotion.matches);
+          umbrellas.update(delta, weather.rain, motion.actors(), reducedMotion.matches);
           applyGrade(now, reducedMotion.matches);
           if (settings.waypoint) {
             const pulse = reducedMotion.matches ? 0 : (Math.sin(now / 260) + 1) / 2;
@@ -386,7 +391,7 @@ export default function TownScene(props: Props) {
       residents?.dispose(); labels?.dispose();
       if (model) disposeModel(model);
       ring.geometry.dispose(); ring.material.dispose(); marker.geometry.dispose(); marker.material.dispose();
-      contactRing.geometry.dispose(); contactRing.material.dispose(); rain.dispose();
+      contactRing.geometry.dispose(); contactRing.material.dispose(); rain.dispose(); umbrellas.dispose();
       sun.shadow.dispose(); renderer.dispose(); renderer.domElement.remove();
     };
   }, []);
