@@ -56,18 +56,6 @@ export function projectCaseSeries(worldId: string, ref: TownInvestigation | unde
   });
 }
 
-/** Each authored case in order with its day and where the player stands on it. */
-export function projectCaseSeries(worldId: string, ref: TownInvestigation | undefined, closed: TownInvestigation[] = []): TownCaseSeriesView["cases"] {
-  const done = new Set(closed.map(r => packOf(r).key));
-  const active = ref ? packOf(ref).key : null;
-  if (active && isSolved(worldId, ref)) done.add(active);
-  const next = nextPack(worldId, ref, closed)?.key;
-  return RIVERBEND_CASES.map(pack => {
-    const state = done.has(pack.key) ? "closed" as const : pack.key === active ? "active" as const : pack.key === next ? "next" as const : "later" as const;
-    return { ordinal: pack.ordinal, day: casePackDay(pack), state, ...(state === "closed" || state === "active" ? { title: pack.title } : {}) };
-  });
-}
-
 export function projectClosedCases(worldId: string, closed: TownInvestigation[] = []): TownClosedCaseView[] {
   return closed.map(ref => {
     const { c } = ownedRecords(worldId, ref);
