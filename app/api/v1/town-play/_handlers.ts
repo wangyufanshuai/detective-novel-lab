@@ -38,7 +38,7 @@ export function createTownPlayHandlers(profile: TownPlayProfile, cookieName: str
         if (!body || typeof body !== "object" || Array.isArray(body)) throw new TownPlayError("BAD_COMMAND", "动作内容未能读取。", 400);
         const credentials = identity(request);
         if (body.kind === "start") {
-          const started = startTownPlay(credentials, profile);
+          const started = startTownPlay(credentials, profile, body.fresh === true);
           const response = json({ ok: true, data: started.result });
           response.cookies.set(cookieName, `${started.credentials.id}.${started.credentials.secret}`, { httpOnly: true, secure: request.nextUrl.protocol === "https:", sameSite: "strict", path: cookiePath, maxAge: 60 * 60 * 24 * 365 });
           return response;

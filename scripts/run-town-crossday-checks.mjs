@@ -51,6 +51,10 @@ const untilEvening = () => { while (view.time < "17:00") act({ kind: "wait", min
 const nights = [];
 const rest = () => { const at = performance.now(); act({ kind: "rest" }); nights.push(Math.round(performance.now() - at)); };
 
+assert.throws(() => startTownPlay(credentials, "riverbend", true), error => error.code === "NOTEBOOK_OPEN", "An open notebook was replaced");
+assert.equal(startTownPlay(credentials).credentials.id, credentials.id, "A plain start did not resume the save");
+check("fresh-start-refused-while-notebook-open");
+
 assert.deepEqual(view.rest, { open: false, reason: "到旅馆才能订房过夜。" });
 assert.equal(refused({ kind: "rest" }), "REST_CLOSED");
 act({ kind: "arrive", sceneId: "inn" });
@@ -129,6 +133,16 @@ assert.equal(view.series.minutesLeft, 0);
 assert.equal(view.rest.open, false);
 assert.equal(refused({ kind: "wait", minutes: 15 }), "DAY_COMPLETE");
 check("three-day-window-ends-day-4-0800");
+{
+  const fresh = startTownPlay(credentials, "riverbend", true);
+  const next = fresh.result.view;
+  assert.notEqual(fresh.credentials.id, credentials.id, "A fresh notebook reused the closed session");
+  assert.notEqual(next.worldId, view.worldId, "A fresh notebook reused the closed world");
+  assert.equal(`${next.day} ${next.time}`, "1 08:00");
+  assert.equal(next.series.minutesLeft, 3 * 24 * 60);
+  assert.equal(next.series.cases.filter(c => c.state === "closed").length, 0);
+  check("fresh-start-after-window-opens-a-new-notebook");
+}
 assert(nights.every(ms => ms < 15_000), `A night took too long: ${nights.join(", ")} ms`);
 check("nights-stay-bounded");
 

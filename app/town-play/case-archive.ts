@@ -12,7 +12,10 @@ export const caseArchiveKey = (worldId: string) => `detective-town:case-archive:
 
 export function confirmedClosedCases(view: TownPlayView | null): TownClosedCaseView[] {
   const c = view?.investigation;
-  const current = c?.solved && c.resolution ? [{ id: c.id, ordinal: c.ordinal, title: c.title, person: c.resolution.person }] : [];
+  const current = c?.solved && c.resolution ? [{ id: c.id, ordinal: c.ordinal, title: c.title, person: c.resolution.person,
+    day: view?.series?.cases.find(x => x.ordinal === c.ordinal)?.day ?? view?.day ?? 1,
+    clues: c.clues.length, totalClues: c.clues.length + c.leads.reduce((sum, lead) => sum + lead.open, 0),
+    testimony: c.conversations.length, corrections: c.conversations.filter(l => l.corrected).length }] : [];
   return [...new Map([...(view?.closedCases ?? []), ...current].map(item => [item.id, item])).values()];
 }
 

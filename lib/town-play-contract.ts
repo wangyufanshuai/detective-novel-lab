@@ -25,7 +25,8 @@ export type TownCaseSeriesView = {
   cases: Array<{ ordinal: string; day: number; state: "closed" | "active" | "next" | "later"; title?: string }>;
   minutesLeft: number; endsAt: { day: number; time: string };
 };
-export type TownClosedCaseView = { id: string; ordinal: string; title: string; person: string };
+/** A solved case. `clues` of `totalClues` found, `testimony` lines taken, `corrections` statements set right. */
+export type TownClosedCaseView = { id: string; ordinal: string; title: string; person: string; day: number; clues: number; totalClues: number; testimony: number; corrections: number };
 export type TownCaseAction = { kind: "case-open" } | { kind: "case-search"; targetId: string } |
   { kind: "case-question"; characterId: string } | { kind: "case-challenge"; characterId: string; evidenceId: string } |
   { kind: "case-submit"; theory: PlayerTheory };

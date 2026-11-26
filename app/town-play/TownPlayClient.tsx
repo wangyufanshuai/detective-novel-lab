@@ -23,6 +23,7 @@ import { TownStreetConversation } from "./TownStreetConversation";
 import { interactionKey, type TownContact, type TownInteraction } from "./town-interaction";
 import { useTownCaseArchive } from "./useTownCaseArchive";
 import { TownArchiveList, TownArchivedCase, TownCaseSeries } from "./TownCaseArchive";
+import { notebookClosed, TownNotebookEnd, TownNotebookEndPill } from "./TownNotebookEnd";
 import { weatherAt, weatherWord } from "./town-weather";
 import { archivedCaseMarkdown, townJournalMarkdown, confirmedClosedCases, type ArchivedCase } from "./case-archive";
 
@@ -75,6 +76,7 @@ export default function TownPlayClient() {
   const [waypointName, setWaypointName] = useState("");
   const [selected, setSelected] = useState(0);
   const [panel, setPanel] = useState<Panel>(null);
+  const [endSetAside, setEndSetAside] = useState<string | null>(null);
   const [caseTab, setCaseTab] = useState<CaseBookTab | undefined>(undefined);
   const openCase = useCallback((tab?: CaseBookTab) => { setCaseTab(tab); setPanel("case"); }, []);
   const [visited, setVisited] = useState<string[]>([]);
@@ -320,5 +322,10 @@ export default function TownPlayClient() {
     {ready && !error && world.status === "ready" && !overview && !finale && guide.step && <TownGuideCard step={guide.step} index={guide.index} total={guide.total} finishing={guide.finishing} onSkip={guide.skip} />}
     {finale && world.view?.investigation?.id === finale && <TownCaseFinale investigation={world.view.investigation} commission={world.view.commission}
       onRead={() => { setFinale(null); openCase("ending"); }} onClose={() => { setFinale(null); setPanel(null); }} />}
+    {ready && !error && world.view?.series && notebookClosed(world.view.series) && !finale && (endSetAside === world.view.sessionId
+      ? !panel && <TownNotebookEndPill onOpen={() => setEndSetAside(null)} />
+      : !panel && <TownNotebookEnd series={world.view.series} closedCases={closedCases} busy={world.busy}
+        onJournal={() => { setEndSetAside(world.view!.sessionId); setPanel("journal"); }} onExport={exportNotes} onFresh={world.startFresh}
+        onClose={world.view.series.minutesLeft > 0 ? () => setEndSetAside(world.view!.sessionId) : undefined} />)}
   </main>;
 }

@@ -58,9 +58,11 @@ export function projectCaseSeries(worldId: string, ref: TownInvestigation | unde
 
 export function projectClosedCases(worldId: string, closed: TownInvestigation[] = []): TownClosedCaseView[] {
   return closed.map(ref => {
-    const { c } = ownedRecords(worldId, ref);
+    const { c, session } = ownedRecords(worldId, ref);
     const pack = packOf(ref);
-    return { id: c.id, ordinal: pack.ordinal, title: c.deductionCase.title, person: c.deductionCase.characters.find(p => p.id === c.deductionCase.truth.culpritId)?.name ?? "" };
+    return { id: c.id, ordinal: pack.ordinal, title: c.deductionCase.title, person: c.deductionCase.characters.find(p => p.id === c.deductionCase.truth.culpritId)?.name ?? "",
+      day: casePackDay(pack), clues: session.discoveredEvidenceIds.length, totalClues: ref.script.targets.length,
+      testimony: session.interrogationLog.length, corrections: session.interrogationLog.filter(l => l.challenge?.hit === true).length };
   });
 }
 

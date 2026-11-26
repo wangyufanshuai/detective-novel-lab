@@ -127,8 +127,14 @@ export function readTownPlay(credentials: TownPlayCredentials, profile?: TownPla
   });
 }
 
-export function startTownPlay(existing?: TownPlayCredentials, profile: TownPlayProfile = "riverbend") {
-  if (existing) return { credentials: existing, result: { view: readTownPlay(existing, profile), replayed: true } satisfies TownPlayResult };
+/** A notebook is done when its days run out or every case is closed. Only then may a new one replace it. */
+export function townNotebookClosed(view: TownPlayView) {
+  return !!view.series && (view.series.minutesLeft === 0 || view.series.cases.every(c => c.state === "closed"));
+}
+
+export function startTownPlay(existing?: TownPlayCredentials, profile: TownPlayProfile = "riverbend", fresh = false) {
+  if (existing && fresh && !townNotebookClosed(readTownPlay(existing, profile))) throw new TownPlayError("NOTEBOOK_OPEN", "这本手记还没有合上，不能另起一本。", 409);
+  if (existing && !fresh) return { credentials: existing, result: { view: readTownPlay(existing, profile), replayed: true } satisfies TownPlayResult };
   const db = database();
   return db.transaction(() => {
     const credentials = { id: crypto.randomUUID(), secret: crypto.randomBytes(32).toString("hex") };

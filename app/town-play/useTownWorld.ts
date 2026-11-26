@@ -76,6 +76,13 @@ export function useTownWorld(options: { endpoint?: string; pendingKey?: string; 
     catch (error) { setMessage(failureMessage(error, "暂时连不上小镇，请重试开始手记。")); }
     finally { locked.current = false; setBusy(false); }
   }, [accept, endpoint]);
+  /** Only a closed notebook may be replaced; the page reloads into the new one. */
+  const startFresh = useCallback(async () => {
+    if (locked.current) return;
+    locked.current = true; setBusy(true); setMessage("");
+    try { await request(endpoint, { kind: "start", fresh: true }); window.location.reload(); }
+    catch (error) { setMessage(failureMessage(error, "暂时没能翻开新的手记，请重试。")); locked.current = false; setBusy(false); }
+  }, [endpoint]);
   const submit = useCallback(async (command: TownPlayCommand) => {
     const current = viewRef.current;
     if (!current || locked.current || deferred.current) return false;
@@ -104,5 +111,5 @@ export function useTownWorld(options: { endpoint?: string; pendingKey?: string; 
     if (!current || pending || status !== "ready") return Promise.resolve(false);
     return submit({ ...input, actionId: crypto.randomUUID(), expectedSessionRevision: current.revision, expectedWorldRevision: current.worldRevision });
   }, [pending, status, submit]);
-  return { view, status, busy, message, pending: !!pending, restore, motion, finishMotion, start, reload: load, command, retry: () => pending ? submit(pending.command) : load() };
+  return { view, status, busy, message, pending: !!pending, restore, motion, finishMotion, start, startFresh, reload: load, command, retry: () => pending ? submit(pending.command) : load() };
 }

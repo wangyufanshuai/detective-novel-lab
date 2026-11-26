@@ -434,6 +434,26 @@
 .finaleNext small { font: 600 11px 'Noto Sans SC', sans-serif; color: var(--tp-brass); letter-spacing: .12em; }
 .finaleActions { display: flex; align-items: center; gap: 18px; margin-top: 4px; }
 .finaleActions .primary { margin: 0; }
+.notebookEnd { width: min(720px, calc(100vw - 32px)); }
+.notebookEnd .finaleActions { flex-wrap: wrap; gap: 10px 18px; }
+.endTotals { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 0; }
+.endTotals div { padding: 10px 12px; border: 1px solid var(--tp-line); border-radius: 4px; background: var(--tp-paper-glow); }
+.endTotals dt { font-size: 11px; color: var(--tp-ink-muted); letter-spacing: .1em; }
+.endTotals dd { margin: 2px 0 0; font: 600 24px 'Noto Serif SC', serif; color: var(--tp-forest-deep); }
+.endTotals dd small { font: 400 13px 'Noto Sans SC', sans-serif; color: var(--tp-ink-muted); }
+.endDays { display: grid; gap: 12px; }
+.endDays ol { list-style: none; padding: 0; margin: 6px 0 0; display: grid; gap: 4px; }
+.endDays li { display: grid; grid-template-columns: 4.5em 1fr; gap: 0 10px; padding: 6px 10px; border-left: 3px solid var(--tp-forest); background: var(--tp-paper-deep); }
+.endDays li small { grid-row: span 2; font-size: 11px; color: var(--tp-olive-deep); padding-top: 3px; }
+.endDays li strong { font: 600 15px/1.5 'Noto Serif SC', serif; }
+.endDays li span { font-size: 12px; color: var(--tp-ink-muted); }
+.endDays li:not([data-state='closed']) { border-left-color: var(--tp-line); background: transparent; }
+.endDays li:not([data-state='closed']) strong { color: var(--tp-ink-muted); font-weight: 400; }
+.endDays li[data-state='active'] span { color: var(--tp-rust); }
+.endConfirm { display: grid; gap: 8px; padding: 12px 14px; border: 1px dashed var(--tp-rust); border-radius: 4px; }
+.endConfirm p { margin: 0; font-size: 13px; line-height: 1.8; }
+.endPill { position: fixed; left: 50%; top: 14px; z-index: 30; transform: translateX(-50%); padding: 8px 16px; font: 600 13px 'Noto Serif SC', serif; color: var(--tp-paper); background: var(--tp-forest-deep); border: 1px solid var(--tp-brass); border-radius: 999px; box-shadow: 0 3px 0 var(--tp-ink); cursor: pointer; }
+@media (max-width: 520px) { .endTotals { grid-template-columns: repeat(2, 1fr); } }
 @keyframes finaleFade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes finaleRise { from { opacity: 0; transform: translateY(18px) scale(.97); } to { opacity: 1; transform: none; } }
 @keyframes finaleStamp { from { opacity: 0; transform: rotate(-9deg) scale(2.4); } 70% { opacity: .95; } to { opacity: .88; transform: rotate(-9deg) scale(1); } }

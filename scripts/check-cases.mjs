@@ -210,6 +210,21 @@ function playthrough(bundles) {
         return;
       }
     }
+    // The notebook's end page: per-case figures, and a fresh notebook once every case is filed.
+    if (bundles.length === RIVERBEND_CASES.length) {
+      const closed = view.closedCases ?? [];
+      for (const { pack } of bundles) {
+        const live = view.investigation?.solved && view.investigation.title === pack.title ? view.investigation : null;
+        const c = live ? { day: view.day, clues: live.clues.length, totalClues: live.clues.length + live.leads.reduce((n, l) => n + l.open, 0), testimony: live.conversations.length, corrections: live.conversations.filter(l => l.corrected).length } : closed.find(x => x.title === pack.title);
+        if (!c) { report(pack, "结案后没有出现在已结案件列表里"); continue; }
+        const corrections = Object.values(pack.revisions).reduce((n, byClue) => n + Object.keys(byClue).length, 0);
+        if (c.day !== dayOf(pack) || c.clues !== pack.evidence.length || c.totalClues !== pack.evidence.length || c.corrections !== corrections || c.testimony < Object.keys(pack.revisions).length)
+          report(pack, `结案统计不对：${JSON.stringify({ day: c.day, clues: c.clues, totalClues: c.totalClues, testimony: c.testimony, corrections: c.corrections })}`);
+      }
+      const fresh = startTownPlay(started.credentials, "riverbend", true);
+      if (fresh.credentials.id === started.credentials.id || fresh.result.view.day !== 1) report(null, "十宗都结案后，不能另起一本新的手记");
+      else console.log("  ✓ 十宗结案后的统计与另起新手记");
+    }
   } finally { repository.closeDatabase(); }
 }
 
